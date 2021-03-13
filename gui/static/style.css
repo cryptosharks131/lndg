@@ -1,0 +1,18 @@
+html {
+  font-family: helvetica, arial, sans-serif;
+}
+
+table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border: 3px solid black;
+} 
+
+th, td {
+  padding: 20px;
+}
+
+tbody td {
+  text-align: center;
+}
