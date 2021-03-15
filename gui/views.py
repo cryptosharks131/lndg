@@ -31,9 +31,10 @@ def home(request):
         total_payments = 0
         detailed_payments = []
         for payment in payments:
-            total_sent += payment.value
-            total_fees += payment.fee
-            total_payments += 1
+            if payment.status == 2:
+                total_sent += payment.value
+                total_fees += payment.fee
+                total_payments += 1
             detailed_payment = {}
             detailed_payment['creation_date'] = datetime.fromtimestamp(payment.creation_date)
             detailed_payment['payment_hash'] = payment.payment_hash
@@ -47,8 +48,9 @@ def home(request):
         total_invoices = 0
         detailed_invoices = []
         for invoice in invoices:
-            total_received += invoice.amt_paid_sat
-            total_invoices += 1
+            if invoice.state == 1:
+                total_received += invoice.amt_paid_sat
+                total_invoices += 1
             detailed_invoice = {}
             detailed_invoice['creation_date'] = datetime.fromtimestamp(invoice.creation_date)
             detailed_invoice['settle_date'] = datetime.fromtimestamp(invoice.settle_date)
