@@ -53,12 +53,18 @@ def home(request):
             detailed_forward['chan_id_out'] = forward.chan_id_out
             detailed_forward['amt_in'] = forward.amt_in
             detailed_forward['amt_out'] = forward.amt_out
-            detailed_forward['fee_msat'] = forward.fee_msat
+            detailed_forward['fee_msat'] = round(forward.fee_msat/1000, 3)
             detailed_forwards.append(detailed_forward)
         #Get active channels
         active_channels = stub.ListChannels(ln.ListChannelsRequest(active_only=True)).channels
+        total_capacity = 0
+        total_inbound = 0
+        total_outbound = 0
         detailed_active_channels = []
         for channel in active_channels:
+            total_capacity += channel.capacity
+            total_inbound += channel.remote_balance
+            total_outbound += channel.local_balance
             alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey)).node.alias
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -88,11 +94,14 @@ def home(request):
             'balances': balances,
             'payments': detailed_payments,
             'paid': total_paid,
+            'total_payments': total_payments,
             'forwards': detailed_forwards,
             'earned': round(total_earned, 3),
-            'total_payments': total_payments,
             'total_forwards': total_forwards,
             'active_channels': detailed_active_channels,
+            'capacity': total_capacity,
+            'inbound': total_inbound,
+            'outbound': total_outbound,
             'inactive_channels': detailed_inactive_channels
         }
         return render(request, 'home.html', context)
