@@ -22,50 +22,6 @@
       <h4>Total Outbound Liquidity: {{ outbound|intcomma }}</h4>
     </div>
     <div class="w3-container">
-      <h2>Payments Sent</h2>
-      <table class="w3-table-all w3-centered w3-hoverable">
-        <tr>
-          <th>Timestamp</th>
-          <th width=30%>Hash</th>
-          <th>Value</th>
-          <th>Fee Paid</th>
-          <th>Status</th>
-        </tr>
-        {% for payment in payments %}
-        <tr>
-          <td>{{ payment.creation_date|naturaltime }}</td>
-          <td>{{ payment.payment_hash }}</td>
-          <td>{{ payment.value|intcomma }}</td>
-          <td>{{ payment.fee }}</td>
-          <td>{% if payment.status == 2 %}Success{% elif payment.status == 1 %}Payment Status=1 (unknown){% else %}Error{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-    <div class="w3-container">
-      <h2>Payments Routed</h2>
-      <table class="w3-table-all w3-centered w3-hoverable">
-        <tr>
-          <th>Timestamp</th>
-          <th>Channel In</th>
-          <th>Channel Out</th>
-          <th>Amount In</th>
-          <th>Amount Out</th>
-          <th>Fees Earned</th>
-        </tr>
-        {% for forward in forwards %}
-        <tr>
-          <td>{{ forward.timestamp|naturaltime }}</td>
-          <td>{{ forward.chan_id_in }}</td>
-          <td>{{ forward.chan_id_out }}</td>
-          <td>{{ forward.amt_in|intcomma }}</td>
-          <td>{{ forward.amt_out|intcomma }}</td>
-          <td>{{ forward.fee_msat }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-    <div class="w3-container">
       <h2>Active Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
@@ -74,7 +30,7 @@
           <th>Channel ID</th>
           <th>Capacity</th>
           <th>Outbound Liquidity</th>
-          <th>Visualize</th>
+          <th width=20%></th>
           <th>Inbound Liquidity</th>
           <th>Initiated By Me</th>
         </tr>
@@ -113,6 +69,50 @@
           <td>{{ channel.local_balance|intcomma }}</td>
           <td>{{ channel.remote_balance|intcomma }}</td>
           <td>{{ channel.initiator }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <div class="w3-container">
+      <h2>Payments Routed</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th>Timestamp</th>
+          <th>Channel In</th>
+          <th>Channel Out</th>
+          <th>Amount In</th>
+          <th>Amount Out</th>
+          <th>Fees Earned</th>
+        </tr>
+        {% for forward in forwards %}
+        <tr>
+          <td>{{ forward.timestamp|naturaltime }}</td>
+          <td>{{ forward.chan_id_in }}</td>
+          <td>{{ forward.chan_id_out }}</td>
+          <td>{{ forward.amt_in|intcomma }}</td>
+          <td>{{ forward.amt_out|intcomma }}</td>
+          <td>{{ forward.fee_msat }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <div class="w3-container">
+      <h2>Payments Sent</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th>Timestamp</th>
+          <th width=30%>Hash</th>
+          <th>Value</th>
+          <th>Fee Paid</th>
+          <th>Status</th>
+        </tr>
+        {% for payment in payments %}
+        <tr>
+          <td>{{ payment.creation_date|naturaltime }}</td>
+          <td>{{ payment.payment_hash }}</td>
+          <td>{{ payment.value|intcomma }}</td>
+          <td>{{ payment.fee }}</td>
+          <td>{% if payment.status == 2 %}Success{% elif payment.status == 1 %}Payment Status=1 (unknown){% else %}Error{% endif %}</td>
         </tr>
         {% endfor %}
       </table>
