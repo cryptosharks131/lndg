@@ -48,6 +48,7 @@
         {% endfor %}
       </table>
     </div>
+    {% if inactive_channels %}
     <div class="w3-container">
       <h2>Inactive Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
@@ -73,6 +74,7 @@
         {% endfor %}
       </table>
     </div>
+    {% endif %}
     <div class="w3-container">
       <h2>Payments Routed</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
