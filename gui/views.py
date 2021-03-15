@@ -88,6 +88,7 @@ def home(request):
             detailed_channel['remote_balance'] = channel.remote_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = alias
+            detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_inactive_channels.append(detailed_channel)
         #Build context for front-end and render page
         context = {
