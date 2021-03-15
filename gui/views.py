@@ -74,6 +74,7 @@ def home(request):
             detailed_channel['remote_balance'] = channel.remote_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = alias
+            detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_active_channels.append(detailed_channel)
         #Get inactive channels
         inactive_channels = stub.ListChannels(ln.ListChannelsRequest(inactive_only=True)).channels
@@ -88,7 +89,6 @@ def home(request):
             detailed_channel['remote_balance'] = channel.remote_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = alias
-            detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_inactive_channels.append(detailed_channel)
         #Build context for front-end and render page
         context = {
