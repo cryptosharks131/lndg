@@ -13,11 +13,11 @@
     <div class="w3-container">
       <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
       <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
-      <h4>Total Payments Made: {{ total_payments }}</h4>
+      <h4>Total Completed Payments: {{ total_payments }}</h4>
       <h4>Total Sats Sent: {{ total_sent|intcomma }}</h4>
       <h4>Total Fees Paid: {{ fees_paid|intcomma }}</h4>
-      <h4>Total Invoice Made: {{ total_invoices }}</h4>
-      <h4>Total Sats Received: {{ paid|intcomma }}</h4>
+      <h4>Total Paid Invoices: {{ total_invoices }}</h4>
+      <h4>Total Sats Received: {{ total_received|intcomma }}</h4>
       <h4>Total Payments Routed: {{ total_forwards }}</h4>
       <h4>Total Fees Earned: {{ earned|intcomma }}</h4>
       <h4>Total Node Capacity: {{ capacity|intcomma }}</h4>
@@ -137,7 +137,7 @@
           <td>{{ invoice.creation_date|naturaltime }}</td>
           <td>{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
           <td>{{ invoice.value|intcomma }}</td>
-          <td>{{ invoice.amt_paid|intcomma }}</td>
+          <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
           <td>{% if invoice.state == 1 %}Settled{% else %}{{ invoice.state }}{% endif %}</td>
         </tr>
         {% endfor %}
