@@ -26,11 +26,13 @@ def home(request):
         balances = stub.WalletBalance(ln.WalletBalanceRequest())
         #Get payment events
         payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True)).payments
-        total_paid = 0
+        total_sent = 0
+        total_fees = 0
         total_payments = 0
         detailed_payments = []
         for payment in payments:
-            total_paid += payment.fee
+            total_sent += payment.value
+            total_fees += payment.fee
             total_payments += 1
             detailed_payment = {}
             detailed_payment['creation_date'] = datetime.fromtimestamp(payment.creation_date)
@@ -39,6 +41,21 @@ def home(request):
             detailed_payment['fee'] = payment.fee
             detailed_payment['status'] = payment.status
             detailed_payments.append(detailed_payment)
+        #Get invoice details
+        invoices = stub.ListInvoices(ln.ListInvoiceRequest()).invoices
+        total_received = 0
+        total_invoices = 0
+        detailed_invoices = []
+        for invoice in invoices:
+            total_received += invoice.amt_paid_sat
+            total_invoices += 1
+            detailed_invoice = {}
+            detailed_invoice['creation_date'] = datetime.fromtimestamp(invoice.creation_date)
+            detailed_invoice['settle_date'] = datetime.fromtimestamp(invoice.settle_date)
+            detailed_invoice['value'] = invoice.value
+            detailed_invoice['amt_paid'] = invoice.amt_paid_sat
+            detailed_invoice['state'] = invoice.state
+            detailed_invoices.append(detailed_invoice)
         #Get forwarding events
         forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1614556800)).forwarding_events
         total_earned = 0
@@ -94,8 +111,12 @@ def home(request):
         context = {
             'balances': balances,
             'payments': detailed_payments,
-            'paid': total_paid,
+            'total_sent': total_sent,
+            'fees_paid': total_fees,
             'total_payments': total_payments,
+            'invoices': detailed_invoices,
+            'total_received': total_received,
+            'total_invoices': total_invoices,
             'forwards': detailed_forwards,
             'earned': round(total_earned, 3),
             'total_forwards': total_forwards,

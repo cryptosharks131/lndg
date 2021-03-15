@@ -14,7 +14,10 @@
       <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
       <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
       <h4>Total Payments Made: {{ total_payments }}</h4>
-      <h4>Total Fees Paid: {{ paid|intcomma }}</h4>
+      <h4>Total Sats Sent: {{ total_sent|intcomma }}</h4>
+      <h4>Total Fees Paid: {{ fees_paid|intcomma }}</h4>
+      <h4>Total Invoice Made: {{ total_invoices }}</h4>
+      <h4>Total Sats Received: {{ paid|intcomma }}</h4>
       <h4>Total Payments Routed: {{ total_forwards }}</h4>
       <h4>Total Fees Earned: {{ earned|intcomma }}</h4>
       <h4>Total Node Capacity: {{ capacity|intcomma }}</h4>
@@ -114,7 +117,28 @@
           <td>{{ payment.payment_hash }}</td>
           <td>{{ payment.value|intcomma }}</td>
           <td>{{ payment.fee }}</td>
-          <td>{% if payment.status == 2 %}Success{% elif payment.status == 1 %}Payment Status=1 (unknown){% else %}Error{% endif %}</td>
+          <td>{% if payment.status == 2 %}Success{% elif payment.status == 1 %}Payment Status=1 (unknown){% else %}payment.status{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <div class="w3-container">
+      <h2>Payments Received</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th>Created</th>
+          <th>Settled</th>
+          <th>Value</th>
+          <th>Amount Paid</th>
+          <th>State</th>
+        </tr>
+        {% for invoice in invoices %}
+        <tr>
+          <td>{{ invoice.creation_date|naturaltime }}</td>
+          <td>{{ invoice.settle_date|naturaltime }}</td>
+          <td>{{ invoice.value|intcomma }}</td>
+          <td>{{ invoice.amt_paid|intcomma }}</td>
+          <td>{% if invoice.state == 1 %}Settled{% else %}invoice.state{% endif %}</td>
         </tr>
         {% endfor %}
       </table>
