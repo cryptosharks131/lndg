@@ -80,14 +80,14 @@
         </tr>
         {% for channel in active_channels %}
         <tr>
-          <td>{{ remote_pubkey }}</td>
-          <td>{{ alias }}</td>
-          <td>{{ chan_id }}</td>
-          <td>{{ capacity|intcomma }}</td>
-          <td>{{ local_balance|intcomma }}</td>
-          <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:16px;width:{% widthratio visual 1 100 %}%"></div></div></td>
-          <td>{{ remote_balance|intcomma }}</td>
-          <td>{{ initiator }}</td>
+          <td>{{ channel.remote_pubkey }}</td>
+          <td>{{ channel.alias }}</td>
+          <td>{{ channel.chan_id }}</td>
+          <td>{{ channel.capacity|intcomma }}</td>
+          <td>{{ channel.local_balance|intcomma }}</td>
+          <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div></div></td>
+          <td>{{ channel.remote_balance|intcomma }}</td>
+          <td>{{ channel.initiator }}</td>
         </tr>
         {% endfor %}
       </table>
