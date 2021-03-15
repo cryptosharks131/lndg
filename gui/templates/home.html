@@ -13,6 +13,7 @@
     <div class="w3-container">
       <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
       <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
+      <h4>Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
       <h4>Total Completed Payments: {{ total_payments }}</h4>
       <h4>Total Sats Sent: {{ total_sent|intcomma }}</h4>
       <h4>Total Fees Paid: {{ fees_paid|intcomma }}</h4>
