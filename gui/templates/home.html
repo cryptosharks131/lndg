@@ -6,26 +6,35 @@
     {% load static %}
     {% load humanize %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
-    <!-- <link href="{% static 'style.css' %}" rel="stylesheet" type="text/css"> -->
   </head>
   <body>
-    <div class="w3-container"><h1>My Lnd Overview</h1></div>
-    <div class="w3-container">
+    <div class="w3-container w3-margin"></div>
+      <h1>My Lnd Overview</h1>
+    </div>
+    <div class="w3-container w3-padding-small">
       <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
       <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
       <h4>Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
+    </div>
+    <div class="w3-container w3-padding-small">
       <h4>Total Completed Payments: {{ total_payments }}</h4>
       <h4>Total Sats Sent: {{ total_sent|intcomma }}</h4>
       <h4>Total Fees Paid: {{ fees_paid|intcomma }}</h4>
+    </div>
+    <div class="w3-container w3-padding-small">
       <h4>Total Paid Invoices: {{ total_invoices }}</h4>
       <h4>Total Sats Received: {{ total_received|intcomma }}</h4>
+    </div>
+    <div class="w3-container w3-padding-small">
       <h4>Total Payments Routed: {{ total_forwards }}</h4>
       <h4>Total Fees Earned: {{ earned|intcomma }}</h4>
+    </div>
+    <div class="w3-container w3-padding-small">
       <h4>Total Node Capacity: {{ capacity|intcomma }}</h4>
       <h4>Total Inbound Liquidity: {{ inbound|intcomma }}</h4>
       <h4>Total Outbound Liquidity: {{ outbound|intcomma }}</h4>
     </div>
-    <div class="w3-container">
+    <div class="w3-container w3-padding-small">
       <h2>Active Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
@@ -53,7 +62,7 @@
       </table>
     </div>
     {% if inactive_channels %}
-    <div class="w3-container">
+    <div class="w3-container w3-padding-small">
       <h2>Inactive Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
@@ -79,7 +88,7 @@
       </table>
     </div>
     {% endif %}
-    <div class="w3-container">
+    <div class="w3-container w3-padding-small">
       <h2>Payments Routed</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
@@ -102,7 +111,7 @@
         {% endfor %}
       </table>
     </div>
-    <div class="w3-container">
+    <div class="w3-container w3-padding-small">
       <h2>Payments Sent</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
@@ -123,7 +132,7 @@
         {% endfor %}
       </table>
     </div>
-    <div class="w3-container">
+    <div class="w3-container w3-padding-small">
       <h2>Payments Received</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
