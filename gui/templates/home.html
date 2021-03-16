@@ -93,20 +93,24 @@
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
           <th>Timestamp</th>
-          <th>Channel In</th>
-          <th>Channel Out</th>
+          <th>Channel In Alias</th>
+          <th>Channel In Id</th>
+          <th>Channel Out Alias</th>
+          <th>Channel Out Id</th>
           <th>Amount In</th>
           <th>Amount Out</th>
           <th>Fees Earned</th>
         </tr>
         {% for forward in forwards %}
         <tr>
-          <td>{{ forward.timestamp|naturaltime }}</td>
+          <td>{{ forward.forward_date|naturaltime }}</td>
+          <td>{{ forward.chan_in_alias }}</td>
           <td>{{ forward.chan_id_in }}</td>
+          <td>{{ forward.chan_out_alias }}</td>
           <td>{{ forward.chan_id_out }}</td>
           <td>{{ forward.amt_in|intcomma }}</td>
           <td>{{ forward.amt_out|intcomma }}</td>
-          <td>{{ forward.fee_msat }}</td>
+          <td>{{ forward.fee }}</td>
         </tr>
         {% endfor %}
       </table>
