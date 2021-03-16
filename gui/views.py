@@ -38,7 +38,7 @@ def home(request):
         #Get recorded forwarding events
         forwards = Forwards.objects.all()
         total_forwards = Forwards.objects.count()
-        total_earned = 0 if total_forwards == 0 else round(Forwards.objects.aggregate(Sum('fee'))['fee__sum']/1000, 3)
+        total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
         active_channels = stub.ListChannels(ln.ListChannelsRequest(active_only=True)).channels
         total_capacity = 0
