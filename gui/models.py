@@ -7,6 +7,7 @@ class Payments(models.Model):
     value = models.BigIntegerField()
     fee = models.IntegerField()
     status = models.IntegerField()
+    index = models.IntegerField()
     class Meta:
         app_label = 'gui'
 

@@ -1,5 +1,6 @@
 import os, codecs, django, grpc
 from django.conf import settings
+from django.db.models import Max
 from pathlib import Path
 from datetime import datetime
 import rpc_pb2 as ln
@@ -20,11 +21,9 @@ from models import Payments, Invoices, Forwards
 
 def update_payments(stub):
     #Get the number of records in the database currently
-    records = Payments.objects.count()
-    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, reversed=False, index_offset=records)).payments
-    print(payments)
-    for payment in payments:
-        Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=payment.fee, status=payment.status).save()
+    while payments := stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max'], max_payments=1)).payments:
+        payment = payments[0]
+        Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=payment.fee, status=payment.status, index=payment.payment_index).save()
 
 def update_invoices(stub):
     records = Invoices.objects.count()
