@@ -1,9 +1,9 @@
 # lndg
 Lite GUI web interface to analyze lnd data.
 
-##Setup
-1. Running bitcoind
-2. Running lnd
+## Setup
+1. Run bitcoind
+2. Run lnd
 3. Build required py file for your system to interact with lnd grpc: https://github.com/lightningnetwork/lnd/blob/master/docs/grpc/python.md#setup-and-installation
 4. Clone respository
 5. Place the 2 ouput files from step 3 inside the repository at: lndg/gui/
