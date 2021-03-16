@@ -21,7 +21,8 @@ from models import Payments, Invoices, Forwards
 def update_payments(stub):
     #Get the number of records in the database currently
     records = Payments.objects.count()
-    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, paginate_forwards=True, index_offset=records)).payments
+    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, reversed=False, index_offset=records)).payments
+    print(payments)
     for payment in payments:
         Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=payment.fee, status=payment.status).save()
 
