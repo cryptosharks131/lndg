@@ -48,12 +48,14 @@ def update_channels(stub):
         exists = 1 if Channels.objects.filter(chan_id=channel.chan_id).count() == 1 else 0
         if exists == 1:
             #Update the channel record with the most current data
+            chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
+            policy = chan_data.node2_policy if chan_data.node1_pub == channel.remote_pubkey else chan_data.node1_policy
             db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
             db_channel.capacity = channel.capacity
             db_channel.local_balance = channel.local_balance
             db_channel.remote_balance = channel.remote_balance
-            db_channel.base_fee = channel.base_fee
-            db_channel.fee_rate = channel.fee_rate
+            db_channel.base_fee = policy.base_fee
+            db_channel.fee_rate = policy.fee_rate
             db_channel.is_active = channel.is_active
             db_channel.is_open = True
             db_channel.save()
