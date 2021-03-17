@@ -5,7 +5,7 @@ class Payments(models.Model):
     creation_date = models.DateTimeField()
     payment_hash = models.CharField(max_length=64)
     value = models.BigIntegerField()
-    fee = models.IntegerField()
+    fee = models.FloatField()
     status = models.IntegerField()
     index = models.IntegerField()
     class Meta:
