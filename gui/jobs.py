@@ -56,7 +56,7 @@ def update_channels(stub):
             db_channel.remote_balance = channel.remote_balance
             db_channel.base_fee = policy.fee_base_msat
             db_channel.fee_rate = policy.fee_rate_milli_msat
-            db_channel.is_active = channel.is_active
+            db_channel.is_active = channel.active
             db_channel.is_open = True
             db_channel.save()
         elif exists == 0:
