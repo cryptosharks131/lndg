@@ -17,7 +17,7 @@ settings.configure(
     TIME_ZONE = 'America/New_York'
 )
 django.setup()
-from models import Payments, Invoices, Forwards
+from models import Payments, Invoices, Forwards, Channels
 
 def update_payments(stub):
     #Get the number of records in the database currently
@@ -45,6 +45,40 @@ def update_forwards(stub):
         outgoing_peer_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=outgoing_peer_pubkey)).node.alias
         Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in=forward.amt_in, amt_out=forward.amt_out, fee=round(forward.fee_msat/1000, 3)).save()
 
+def update_channels(stub):
+    counter = 0
+    chan_list = []
+    channels = stub.ListChannels(ln.ListChannelsRequest()).channels
+    for channel in channels:
+        exists = 1 if Channels.objects.filter(chan_id=channel.chan_id).count() == 1 else 0
+        if exists == 1:
+            #Update the channel record with the most current data
+            db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
+            db_channel.remote_pubkey = channel.remote_pubkey
+            db_channel.chan_id = channel.chan_id
+            db_channel.capacity = channel.capacity
+            db_channel.local_balance = channel.local_balance
+            db_channel.remote_balance = channel.remote_balance
+            db_channel.initiator = channel.initiator
+            db_channel.alias = channel.alias
+            db_channel.base_fee = channel.base_fee
+            db_channel.fee_rate = channel.fee_rate
+            db_channel.is_active = channel.is_active
+            db_channel.is_open = True
+            db_channel.save()
+        elif exists == 0:
+            #Create a record for this new channel
+            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, initiator=channel.initiator, alias=channel.chan_id, base_fee=channel.chan_id, fee_rate=channel.chan_id, is_active=channel.active, is_open=True).save()
+        counter += 1
+        chan_list.append(channel.chan_id)
+    records = Channels.objects.filter(is_open=True).count()
+    if records > counter:
+        #A channel must have been closed, mark it as closed
+        channels = Channels.objects.filter(is_open=True).exclude(chan_id__in=chan_list)
+        for channel in channels:
+            channel.is_open = False
+            channel.save()
+
 def main():
     #Open connection with lnd via grpc
     with open(os.path.expanduser('~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon'), 'rb') as f:
@@ -63,6 +97,7 @@ def main():
     update_payments(stub)
     update_invoices(stub)
     update_forwards(stub)
+    update_channels(stub)
 
 if __name__ == '__main__':
     main()
