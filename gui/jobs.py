@@ -33,16 +33,11 @@ def update_invoices(stub):
         Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash, value=invoice.value, amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
 
 def update_forwards(stub):
-    local_node = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     records = Forwards.objects.count()
     forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records)).forwarding_events
     for forward in forwards:
-        chan_in_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=forward.chan_id_in))
-        incoming_peer_pubkey = chan_in_data.node2_pub if chan_in_data.node1_pub == local_node else chan_in_data.node1_pub
-        chan_out_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=forward.chan_id_out))
-        outgoing_peer_pubkey = chan_out_data.node2_pub if chan_out_data.node1_pub == local_node else chan_out_data.node1_pub
-        incoming_peer_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=incoming_peer_pubkey)).node.alias
-        outgoing_peer_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=outgoing_peer_pubkey)).node.alias
+        incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].alias
+        outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].alias
         Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in=forward.amt_in, amt_out=forward.amt_out, fee=round(forward.fee_msat/1000, 3)).save()
 
 def update_channels(stub):
@@ -75,6 +70,7 @@ def update_channels(stub):
         #A channel must have been closed, mark it as closed
         channels = Channels.objects.filter(is_open=True).exclude(chan_id__in=chan_list)
         for channel in channels:
+            channel.is_active = False
             channel.is_open = False
             channel.save()
 
@@ -93,10 +89,10 @@ def main():
     channel = grpc.secure_channel('localhost:10009', creds)
     stub = lnrpc.LightningStub(channel)
     #Update data
+    update_channels(stub)
     update_payments(stub)
     update_invoices(stub)
     update_forwards(stub)
-    update_channels(stub)
 
 if __name__ == '__main__':
     main()

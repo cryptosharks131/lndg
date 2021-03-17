@@ -4,7 +4,7 @@ import codecs
 from datetime import datetime
 from django.shortcuts import render, redirect
 from django.db.models import Sum
-from .models import Payments, Invoices, Forwards
+from .models import Payments, Invoices, Forwards, Channels
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
 
@@ -40,16 +40,13 @@ def home(request):
         total_forwards = Forwards.objects.count()
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
-        active_channels = stub.ListChannels(ln.ListChannelsRequest(active_only=True)).channels
-        total_capacity = 0
-        total_inbound = 0
-        total_outbound = 0
+        active_channels = Channels.objects.filter(is_active=True, is_open=True)
+        total_capacity = active_channels.aggregate(Sum('capacity'))['capacity__sum']
+        total_inbound = active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
+        total_outbound = active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         detailed_active_channels = []
         for channel in active_channels:
-            total_capacity += channel.capacity
-            total_inbound += channel.remote_balance
-            total_outbound += channel.local_balance
-            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey)).node.alias
+            alias = Channels.objects.filter(chan_id=channel.chan_id)[0].alias
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
@@ -58,14 +55,16 @@ def home(request):
             detailed_channel['remote_balance'] = channel.remote_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = alias
+            detailed_channel['base_fee'] = channel.base_fee
+            detailed_channel['fee_rate'] = channel.fee_rate
             detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
-        inactive_channels = stub.ListChannels(ln.ListChannelsRequest(inactive_only=True)).channels
+        inactive_channels = Channels.objects.filter(is_active=False, is_open=True)
         detailed_inactive_channels = []
         for channel in inactive_channels:
+            alias = Channels.objects.filter(chan_id=channel.chan_id)[0].alias
             detailed_channel = {}
-            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey)).node.alias
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
             detailed_channel['capacity'] = channel.capacity
@@ -73,6 +72,8 @@ def home(request):
             detailed_channel['remote_balance'] = channel.remote_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = alias
+            detailed_channel['base_fee'] = channel.base_fee
+            detailed_channel['fee_rate'] = channel.fee_rate
             detailed_inactive_channels.append(detailed_channel)
         #Build context for front-end and render page
         context = {
