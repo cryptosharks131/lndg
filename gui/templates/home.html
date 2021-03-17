@@ -38,8 +38,8 @@
       <h2>Active Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <th>Channel Alias</th>
           <th>Channel ID</th>
+          <th>Channel Alias</th>
           <th>Capacity</th>
           <th>Outbound Liquidity</th>
           <th width=20%></th>
@@ -50,8 +50,8 @@
         </tr>
         {% for channel in active_channels %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
           <td>{{ channel.chan_id }}</td>
+          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
           <td>{{ channel.local_balance|intcomma }}</td>
           <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div></div></td>
@@ -97,23 +97,23 @@
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
           <th>Timestamp</th>
-          <th>Channel In Alias</th>
-          <th>Channel In Id</th>
-          <th>Channel Out Alias</th>
-          <th>Channel Out Id</th>
           <th>Amount In</th>
           <th>Amount Out</th>
+          <th>Channel In Alias</th>
+          <th>Channel Out Alias</th>
+          <th>Channel In Id</th>
+          <th>Channel Out Id</th>
           <th>Fees Earned</th>
         </tr>
         {% for forward in forwards %}
         <tr>
           <td>{{ forward.forward_date|naturaltime }}</td>
-          <td>{{ forward.chan_in_alias }}</td>
-          <td>{{ forward.chan_id_in }}</td>
-          <td>{{ forward.chan_out_alias }}</td>
-          <td>{{ forward.chan_id_out }}</td>
           <td>{{ forward.amt_in|intcomma }}</td>
           <td>{{ forward.amt_out|intcomma }}</td>
+          <td>{{ forward.chan_in_alias }}</td>
+          <td>{{ forward.chan_out_alias }}</td>
+          <td>{{ forward.chan_id_in }}</td>
+          <td>{{ forward.chan_id_out }}</td>
           <td>{{ forward.fee }}</td>
         </tr>
         {% endfor %}
