@@ -50,7 +50,7 @@
         </tr>
         {% for channel in active_channels %}
         <tr>
-          <td><a ref="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
           <td>{{ channel.chan_id }}</td>
           <td>{{ channel.capacity|intcomma }}</td>
           <td>{{ channel.local_balance|intcomma }}</td>
@@ -79,7 +79,7 @@
         </tr>
         {% for channel in inactive_channels %}
         <tr>
-          <td><a ref="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
           <td>{{ channel.chan_id }}</td>
           <td>{{ channel.capacity|intcomma }}</td>
           <td>{{ channel.local_balance|intcomma }}</td>
