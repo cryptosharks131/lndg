@@ -21,9 +21,10 @@ from models import Payments, Invoices, Forwards
 
 def update_payments(stub):
     #Get the number of records in the database currently
-    while payments := stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max'], max_payments=1)).payments:
-        payment = payments[0]
-        Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=payment.fee, status=payment.status, index=payment.payment_index).save()
+    last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
+    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index)).payments
+    for payment in payments:
+        Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index).save()
 
 def update_invoices(stub):
     records = Invoices.objects.count()
