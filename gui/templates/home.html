@@ -8,13 +8,26 @@
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
   <body>
-    <div class="w3-container"></div>
+    {% if messages %}
+    <div class="w3-container w3-padding-small">
+      {% for message in messages %}
+        <h1 class="w3-orange w3-padding-small">{{ message }}</h1>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="w3-container">
       <h1>My Lnd Overview</h1>
     </div>
     <div class="w3-container w3-padding-small">
       <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
       <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
       <h4>Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
+    </div>
+    <div class="w3-container">
+      <form action="/newaddress/" method="post">
+        {% csrf_token %}
+        <input type="submit" value="Get New Deposit Address">
+      </form>
     </div>
     <div class="w3-container w3-padding-small">
       <h4>Total Completed Payments: {{ total_payments }}</h4>
@@ -33,16 +46,19 @@
       <h4>Total Node Capacity: {{ capacity|intcomma }}</h4>
       <h4>Total Inbound Liquidity: {{ inbound|intcomma }}</h4>
       <h4>Total Outbound Liquidity: {{ outbound|intcomma }}</h4>
+      <h4>Total Balance In Limbo: {{ limbo_balance|intcomma }}</h4>
     </div>
+    {% if active_channels %}
     <div class="w3-container w3-padding-small">
       <h2>Active Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
+          <th width=15%>Channel Point</th>
           <th>Channel ID</th>
           <th>Channel Alias</th>
           <th>Capacity</th>
           <th>Outbound Liquidity</th>
-          <th width=20%></th>
+          <th width=10%></th>
           <th>Inbound Liquidity</th>
           <th>Initiated By Me</th>
           <th>Base Fee</th>
@@ -50,6 +66,7 @@
         </tr>
         {% for channel in active_channels %}
         <tr>
+          <td>{{ channel.funding_txid }}:{{ channel.output_index }}</td>
           <td>{{ channel.chan_id }}</td>
           <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
@@ -63,13 +80,15 @@
         {% endfor %}
       </table>
     </div>
+    {% endif %}
     {% if inactive_channels %}
     <div class="w3-container w3-padding-small">
       <h2>Inactive Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <th>Channel Alias</th>
+          <td width=20%>Channel Point</td>
           <th>Channel ID</th>
+          <th>Channel Alias</th>
           <th>Capacity</th>
           <th>Local Balance</th>
           <th>Remote Balance</th>
@@ -79,8 +98,9 @@
         </tr>
         {% for channel in inactive_channels %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
+          <td>{{ channel.funding_txid }}:{{ channel.output_index }}</td>
           <td>{{ channel.chan_id }}</td>
+          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
           <td>{{ channel.local_balance|intcomma }}</td>
           <td>{{ channel.remote_balance|intcomma }}</td>
@@ -92,6 +112,107 @@
       </table>
     </div>
     {% endif %}
+    {% if pending_open %}
+    <div class="w3-container w3-padding-small">
+      <h2>Pending Open Channels</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th width=30%>Peer PubKey</th>
+          <th width=30%>Channel Point</th>
+          <th>Capacity</th>
+          <th>Local Balance</th>
+          <th>Remote Balance</th>
+          <th>Commit Fee</th>
+        </tr>
+        {% for channel in pending_open %}
+        <tr>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td>{{ channel.channel.channel_point }}</td>
+          <td>{{ channel.channel.capacity|intcomma }}</td>
+          <td>{{ channel.channel.local_balance|intcomma }}</td>
+          <td>{{ channel.channel.remote_balance|intcomma }}</td>
+          <td>{{ channel.commit_fee }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+    {% if pending_closed %}
+    <div class="w3-container w3-padding-small">
+      <h2>Pending Close Channels</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th width=30%>Peer PubKey</th>
+          <th width=30%>Channel Point</th>
+          <th>Capacity</th>
+          <th>Local Balance</th>
+          <th>Remote Balance</th>
+          <th>Commit Fee</th>
+        </tr>
+        {% for channel in pending_closed %}
+        <tr>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td>{{ channel.channel.channel_point }}</td>
+          <td>{{ channel.channel.capacity|intcomma }}</td>
+          <td>{{ channel.channel.local_balance|intcomma }}</td>
+          <td>{{ channel.channel.remote_balance|intcomma }}</td>
+          <td>{{ channel.commit_fee }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+    {% if pending_force_closed %}
+    <div class="w3-container w3-padding-small">
+      <h2>Pending Force Close Channels</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th width=30%>Peer PubKey</th>
+          <th width=30%>Channel Point</th>
+          <th>Capacity</th>
+          <th>Local Balance</th>
+          <th>Remote Balance</th>
+          <th>Commit Fee</th>
+        </tr>
+        {% for channel in pending_force_closed %}
+        <tr>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td>{{ channel.channel.channel_point }}</td>
+          <td>{{ channel.channel.capacity|intcomma }}</td>
+          <td>{{ channel.channel.local_balance|intcomma }}</td>
+          <td>{{ channel.channel.remote_balance|intcomma }}</td>
+          <td>{{ channel.commit_fee }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+    {% if waiting_for_close %}
+    <div class="w3-container w3-padding-small">
+      <h2>Channels Waiting To Close</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th width=30%>Peer PubKey</th>
+          <th width=30%>Channel Point</th>
+          <th>Capacity</th>
+          <th>Local Balance</th>
+          <th>Remote Balance</th>
+          <th>Commit Fee</th>
+        </tr>
+        {% for channel in waiting_for_close %}
+        <tr>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td>{{ channel.channel.channel_point }}</td>
+          <td>{{ channel.channel.capacity|intcomma }}</td>
+          <td>{{ channel.channel.local_balance|intcomma }}</td>
+          <td>{{ channel.channel.remote_balance|intcomma }}</td>
+          <td>{{ channel.commit_fee }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+    {% if forwards %}
     <div class="w3-container w3-padding-small">
       <h2>Payments Routed</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
@@ -119,6 +240,8 @@
         {% endfor %}
       </table>
     </div>
+    {% endif %}
+    {% if payments %}
     <div class="w3-container w3-padding-small">
       <h2>Payments Sent</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
@@ -140,6 +263,8 @@
         {% endfor %}
       </table>
     </div>
+    {% endif %}
+    {% if invoices %}
     <div class="w3-container w3-padding-small">
       <h2>Payments Received</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
@@ -160,6 +285,71 @@
         </tr>
         {% endfor %}
       </table>
+    </div>
+    {% endif %}
+    {% if peers %}
+    <div class="w3-container w3-padding-small">
+      <h2>Peer List</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th width=40%>Peer PubKey</th>
+          <th>Network Address</th>
+          <th>Inbound</th>
+          <th>Sats Sent</th>
+          <th>Sats Received</th>
+        </tr>
+        {% for peer in peers %}
+        <tr>
+          <td><a href="https://1ml.com/node/{{ peer.pub_key }}">{{ peer.pub_key }}</a></td>
+          <td>{{ peer.address }}</td>
+          <td>{{ peer.inbound }}</td>
+          <td>{{ peer.sat_sent|intcomma }}</td>
+          <td>{{ peer.sat_recv|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+    <div class="w3-container w3-padding-small">
+      <h2>Connect To A Peer</h2>
+      <div class="w3-container w3-padding-32">
+        <form action="/connectpeer/" method="post">
+          {% csrf_token %}
+          <label for="peer_pubkey">Peer PubKey: </label>
+          <input id="peer_pubkey" type="text" name="peer_pubkey">
+          <label for="host">Host IP/Onion: </label>
+          <input id="host" type="text" name="host">
+          <input type="submit" value="OK">
+        </form>
+      </div>
+    </div>
+    <div class="w3-container w3-padding-small">
+      <h2>Open A Channel</h2>
+      <div class="w3-container w3-padding-32">
+        <form action="/openchannel/" method="post">
+          {% csrf_token %}
+          <label for="peer_pubkey">Peer Pubkey: </label>
+          <input id="peer_pubkey" type="text" name="peer_pubkey">
+          <label for="local_amt">Local Amount: </label>
+          <input id="local_amt" type="number" name="local_amt">
+          <label for="sat_per_byte">Target Fee (sats/byte): </label>
+          <input id="sat_per_byte" type="number" name="sat_per_byte">
+          <input type="submit" value="OK">
+        </form>
+      </div>
+    </div>
+    <div class="w3-container w3-padding-small">
+      <h2>Close A Channel</h2>
+      <div class="w3-container w3-padding-32">
+        <form action="/closechannel/" method="post">
+          {% csrf_token %}
+          <label for="funding_txid">Funding TXID: </label>
+          <input id="funding_txid" type="text" name="funding_txid">
+          <label for="output_index">Output Index: </label>
+          <input id="output_index" type="number" name="output_index">
+          <input type="submit" value="OK">
+        </form>
+      </div>
     </div>
   </body>
 </html>

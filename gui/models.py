@@ -36,6 +36,8 @@ class Forwards(models.Model):
 class Channels(models.Model):
     remote_pubkey = models.CharField(max_length=66)
     chan_id = models.CharField(max_length=18)
+    funding_txid = models.CharField(max_length=64)
+    output_index = models.IntegerField()
     capacity = models.BigIntegerField()
     local_balance = models.BigIntegerField()
     remote_balance = models.BigIntegerField()

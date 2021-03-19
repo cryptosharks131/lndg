@@ -64,7 +64,9 @@ def update_channels(stub):
             alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey)).node.alias
             chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
             policy = chan_data.node2_policy if chan_data.node1_pub == channel.remote_pubkey else chan_data.node1_policy
-            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, initiator=channel.initiator, alias=alias, base_fee=policy.fee_base_msat, fee_rate=policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
+            channel_point = channel.channel_point
+            txid, index = channel_point.split(':')
+            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, funding_txid=txid, output_index=index, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, initiator=channel.initiator, alias=alias, base_fee=policy.fee_base_msat, fee_rate=policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()
