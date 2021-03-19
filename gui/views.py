@@ -60,7 +60,6 @@ def home(request):
         total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         detailed_active_channels = []
         for channel in active_channels:
-            alias = Channels.objects.filter(chan_id=channel.chan_id)[0].alias
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
@@ -68,7 +67,7 @@ def home(request):
             detailed_channel['local_balance'] = channel.local_balance
             detailed_channel['remote_balance'] = channel.remote_balance
             detailed_channel['initiator'] = channel.initiator
-            detailed_channel['alias'] = alias
+            detailed_channel['alias'] = channel.alias
             detailed_channel['base_fee'] = channel.base_fee
             detailed_channel['fee_rate'] = channel.fee_rate
             detailed_channel['funding_txid'] = channel.funding_txid
@@ -77,20 +76,6 @@ def home(request):
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-alias')
-        detailed_inactive_channels = []
-        for channel in inactive_channels:
-            alias = Channels.objects.filter(chan_id=channel.chan_id)[0].alias
-            detailed_channel = {}
-            detailed_channel['remote_pubkey'] = channel.remote_pubkey
-            detailed_channel['chan_id'] = channel.chan_id
-            detailed_channel['capacity'] = channel.capacity
-            detailed_channel['local_balance'] = channel.local_balance
-            detailed_channel['remote_balance'] = channel.remote_balance
-            detailed_channel['initiator'] = channel.initiator
-            detailed_channel['alias'] = alias
-            detailed_channel['base_fee'] = channel.base_fee
-            detailed_channel['fee_rate'] = channel.fee_rate
-            detailed_inactive_channels.append(detailed_channel)
         #Build context for front-end and render page
         context = {
             'balances': balances,
@@ -109,7 +94,7 @@ def home(request):
             'inbound': total_inbound,
             'outbound': total_outbound,
             'limbo_balance': limbo_balance,
-            'inactive_channels': detailed_inactive_channels,
+            'inactive_channels': inactive_channels,
             'pending_open': pending_open,
             'pending_closed': pending_closed,
             'pending_force_closed': pending_force_closed,
