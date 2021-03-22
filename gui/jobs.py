@@ -20,14 +20,15 @@ django.setup()
 from models import Payments, Invoices, Forwards, Channels
 
 def update_payments(stub):
+    #Remove anything in-flight so we can get most up to date status
+    Payments.objects.filter(status=1).delete()
     #Get the number of records in the database currently
     last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index)).payments
     for payment in payments:
         try:
             Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index).save()
-        except Exception as e:
-            print(e)
+        except:
             #Error inserting, try to update instead
             db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
             db_payment.creation_date = datetime.fromtimestamp(payment.creation_date)
