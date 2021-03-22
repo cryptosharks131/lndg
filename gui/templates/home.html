@@ -258,7 +258,7 @@
           <td>{{ payment.payment_hash }}</td>
           <td>{{ payment.value|intcomma }}</td>
           <td>{{ payment.fee }}</td>
-          <td>{% if payment.status == 2 %}Success{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
+          <td>{% if payment.status == 2 %}Success{% elif payment.status == 3 %}Failed{% elif payment.status == 1 %}In-Flight{% else %}{{ payment.status }}{% endif %}</td>
         </tr>
         {% endfor %}
       </table>

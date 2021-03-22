@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 class Payments(models.Model):
     creation_date = models.DateTimeField()
-    payment_hash = models.CharField(max_length=64)
+    payment_hash = models.CharField(max_length=64, primary_key=True)
     value = models.BigIntegerField()
     fee = models.FloatField()
     status = models.IntegerField()
@@ -14,7 +14,7 @@ class Payments(models.Model):
 class Invoices(models.Model):
     creation_date = models.DateTimeField()
     settle_date = models.DateTimeField()
-    r_hash = models.CharField(max_length=64)
+    r_hash = models.CharField(max_length=64, primary_key=True)
     value = models.BigIntegerField()
     amt_paid = models.BigIntegerField()
     state = models.IntegerField()
@@ -35,7 +35,7 @@ class Forwards(models.Model):
 
 class Channels(models.Model):
     remote_pubkey = models.CharField(max_length=66)
-    chan_id = models.CharField(max_length=18)
+    chan_id = models.CharField(max_length=18, primary_key=True)
     funding_txid = models.CharField(max_length=64)
     output_index = models.IntegerField()
     capacity = models.BigIntegerField()

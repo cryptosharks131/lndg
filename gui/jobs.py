@@ -24,7 +24,18 @@ def update_payments(stub):
     last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index)).payments
     for payment in payments:
-        Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index).save()
+        try:
+            Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index).save()
+        except Exception as e:
+            print(e)
+            #Error inserting, try to update instead
+            db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
+            db_payment.creation_date = datetime.fromtimestamp(payment.creation_date)
+            db_payment.value = payment.value
+            db_payment.fee = round(payment.fee_msat/1000, 3)
+            db_payment.status = payment.status
+            db_payment.index = payment.payment_index
+            db_payment.save()
 
 def update_invoices(stub):
     records = Invoices.objects.count()

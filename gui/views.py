@@ -43,7 +43,7 @@ def home(request):
         #Get recorded payment events
         payments = Payments.objects.all()
         total_payments = Payments.objects.filter(status=2).count()
-        total_sent = 0 if total_payments == 0 else Payments.objects.aggregate(Sum('value'))['value__sum']
+        total_sent = 0 if total_payments == 0 else Payments.objects.filter(status=2).aggregate(Sum('value'))['value__sum']
         total_fees = 0 if total_payments == 0 else Payments.objects.aggregate(Sum('fee'))['fee__sum']
         #Get recorded invoice details
         invoices = Invoices.objects.all()
@@ -75,7 +75,7 @@ def home(request):
             detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
-        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-alias')
+        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
         #Build context for front-end and render page
         context = {
             'balances': balances,
@@ -113,7 +113,7 @@ def open_channel(request):
             pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
             try:
                 for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
-                    messages.success(request, 'Channel created! Funding TXID: ' )
+                    messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
                     break
             except Exception as e:
                 error = str(e)
