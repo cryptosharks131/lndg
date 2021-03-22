@@ -39,6 +39,8 @@ def update_payments(stub):
             db_payment.save()
 
 def update_invoices(stub):
+    #Remove anything open so we can get most up to date status
+    Invoices.objects.filter(state=0).delete()
     records = Invoices.objects.count()
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records)).invoices
     for invoice in invoices:

@@ -258,7 +258,7 @@
           <td>{{ payment.payment_hash }}</td>
           <td>{{ payment.value|intcomma }}</td>
           <td>{{ payment.fee }}</td>
-          <td>{% if payment.status == 2 %}Success{% elif payment.status == 3 %}Failed{% elif payment.status == 1 %}In-Flight{% else %}{{ payment.status }}{% endif %}</td>
+          <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
         </tr>
         {% endfor %}
       </table>
@@ -281,7 +281,7 @@
           <td>{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
           <td>{{ invoice.value|intcomma }}</td>
           <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
-          <td>{% if invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
+          <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
         </tr>
         {% endfor %}
       </table>
