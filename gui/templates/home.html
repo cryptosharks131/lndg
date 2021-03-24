@@ -71,7 +71,7 @@
         </tr>
         {% for channel in active_channels %}
         <tr>
-          <td>{{ channel.funding_txid }}:{{ channel.output_index }}</td>
+          <td><a href="https://www.blockchain.com/btc/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
           <td>{{ channel.chan_id }}</td>
           <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
@@ -91,7 +91,7 @@
       <h2>Inactive Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <td width=20%>Channel Point</td>
+          <th width=20%>Channel Point</th>
           <th>Channel ID</th>
           <th>Channel Alias</th>
           <th>Capacity</th>
@@ -103,7 +103,7 @@
         </tr>
         {% for channel in inactive_channels %}
         <tr>
-          <td>{{ channel.funding_txid }}:{{ channel.output_index }}</td>
+          <td><a href="https://www.blockchain.com/btc/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
           <td>{{ channel.chan_id }}</td>
           <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
@@ -122,8 +122,8 @@
       <h2>Pending Open Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <th width=30%>Peer PubKey</th>
           <th width=30%>Channel Point</th>
+          <th width=30%>Peer PubKey</th>
           <th>Capacity</th>
           <th>Local Balance</th>
           <th>Remote Balance</th>
@@ -131,8 +131,8 @@
         </tr>
         {% for channel in pending_open %}
         <tr>
+          <td><a href="https://www.blockchain.com/btc/tx/{{ channel.channel_point|slice:":-3" }}" target="_blank">{{ channel.channel.channel_point }}</a></td>
           <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-          <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
           <td>{{ channel.channel.remote_balance|intcomma }}</td>

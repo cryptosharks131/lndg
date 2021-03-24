@@ -44,7 +44,7 @@ def update_invoices(stub):
     records = Invoices.objects.count()
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records)).invoices
     for invoice in invoices:
-        Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash, value=invoice.value, amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
+        Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=invoice.value, amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
 
 def update_forwards(stub):
     records = Forwards.objects.count()
