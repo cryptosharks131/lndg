@@ -53,6 +53,7 @@ def home(request):
         #Get recorded forwarding events
         forwards = Forwards.objects.all()
         total_forwards = Forwards.objects.count()
+        total_value_forwards = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('amt_out'))['amt_out__sum']
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
         active_channels = Channels.objects.filter(is_active=True, is_open=True).order_by('-alias')
@@ -91,6 +92,7 @@ def home(request):
             'forwards': forwards,
             'earned': round(total_earned, 3),
             'total_forwards': total_forwards,
+            'total_value_forwards': total_value_forwards,
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
