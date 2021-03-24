@@ -19,7 +19,7 @@
       <h1>My Lnd Overview</h1>
     </div>
     <div class="w3-container w3-padding-small">
-      <h3><a href="https://1ml.com/node/{{ node_info.identity_pubkey }}">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }} | Active Channels: {{ node_info.num_active_channels }}</h3>
+      <h3><a href="https://1ml.com/node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }} | Active Channels: {{ node_info.num_active_channels }}</h3>
       <h4>{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
     </div>
     <div class="w3-container w3-padding-small">
@@ -72,7 +72,7 @@
         <tr>
           <td>{{ channel.funding_txid }}:{{ channel.output_index }}</td>
           <td>{{ channel.chan_id }}</td>
-          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
           <td>{{ channel.local_balance|intcomma }}</td>
           <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div></div></td>
@@ -104,7 +104,7 @@
         <tr>
           <td>{{ channel.funding_txid }}:{{ channel.output_index }}</td>
           <td>{{ channel.chan_id }}</td>
-          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}">{{ channel.alias }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
           <td>{{ channel.capacity|intcomma }}</td>
           <td>{{ channel.local_balance|intcomma }}</td>
           <td>{{ channel.remote_balance|intcomma }}</td>
@@ -130,7 +130,7 @@
         </tr>
         {% for channel in pending_open %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
           <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
@@ -155,7 +155,7 @@
         </tr>
         {% for channel in pending_closed %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
           <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
@@ -180,7 +180,7 @@
         </tr>
         {% for channel in pending_force_closed %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
           <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
@@ -205,7 +205,7 @@
         </tr>
         {% for channel in waiting_for_close %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}">{{ channel.channel.remote_node_pub }}</a></td>
+          <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
           <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
@@ -304,7 +304,7 @@
         </tr>
         {% for peer in peers %}
         <tr>
-          <td><a href="https://1ml.com/node/{{ peer.pub_key }}">{{ peer.pub_key }}</a></td>
+          <td><a href="https://1ml.com/node/{{ peer.pub_key }}" target="_blank">{{ peer.pub_key }}</a></td>
           <td>{{ peer.address }}</td>
           <td>{{ peer.inbound }}</td>
           <td>{{ peer.sat_sent|intcomma }}</td>
