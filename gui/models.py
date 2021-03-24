@@ -41,6 +41,7 @@ class Channels(models.Model):
     capacity = models.BigIntegerField()
     local_balance = models.BigIntegerField()
     remote_balance = models.BigIntegerField()
+    unsettled_balance = models.BigIntegerField()
     initiator = models.BooleanField()
     alias = models.CharField(max_length=32)
     base_fee = models.IntegerField()

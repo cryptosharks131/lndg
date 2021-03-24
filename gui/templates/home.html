@@ -52,6 +52,7 @@
       <h4>Total Node Capacity: {{ capacity|intcomma }}</h4>
       <h4>Total Inbound Liquidity: {{ inbound|intcomma }}</h4>
       <h4>Total Outbound Liquidity: {{ outbound|intcomma }}</h4>
+      <h4>Total Unsettled Liquidity: {{ unsettled|intcomma }}</h4>
       <h4>Total Balance In Limbo: {{ limbo_balance|intcomma }}</h4>
     </div>
     {% if active_channels %}

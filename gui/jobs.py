@@ -68,6 +68,7 @@ def update_channels(stub):
             db_channel.capacity = channel.capacity
             db_channel.local_balance = channel.local_balance
             db_channel.remote_balance = channel.remote_balance
+            db_channel.unsettled_balance = channel.unsettled_balance
             db_channel.base_fee = policy.fee_base_msat
             db_channel.fee_rate = policy.fee_rate_milli_msat
             db_channel.is_active = channel.active
@@ -80,7 +81,7 @@ def update_channels(stub):
             policy = chan_data.node2_policy if chan_data.node1_pub == channel.remote_pubkey else chan_data.node1_policy
             channel_point = channel.channel_point
             txid, index = channel_point.split(':')
-            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, funding_txid=txid, output_index=index, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, initiator=channel.initiator, alias=alias, base_fee=policy.fee_base_msat, fee_rate=policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
+            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, funding_txid=txid, output_index=index, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, unsettled_balance=channel.unsettled_balance, initiator=channel.initiator, alias=alias, base_fee=policy.fee_base_msat, fee_rate=policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()

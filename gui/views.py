@@ -60,6 +60,7 @@ def home(request):
         total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
         total_inbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
         total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+        total_unsettled = 0 if total_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
         detailed_active_channels = []
         for channel in active_channels:
             detailed_channel = {}
@@ -68,6 +69,7 @@ def home(request):
             detailed_channel['capacity'] = channel.capacity
             detailed_channel['local_balance'] = channel.local_balance
             detailed_channel['remote_balance'] = channel.remote_balance
+            detailed_channel['unsettled_balance'] = channel.unsettled_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = channel.alias
             detailed_channel['base_fee'] = channel.base_fee
@@ -97,6 +99,7 @@ def home(request):
             'capacity': total_capacity,
             'inbound': total_inbound,
             'outbound': total_outbound,
+            'unsettled': total_unsettled,
             'limbo_balance': limbo_balance,
             'inactive_channels': inactive_channels,
             'pending_open': pending_open,
