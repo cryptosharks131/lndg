@@ -32,6 +32,7 @@ def home(request):
     if request.method == 'GET':
         stub = lnd_connect()
         #Get balance and peers
+        node_info = stub.GetInfo(ln.GetInfoRequest())
         balances = stub.WalletBalance(ln.WalletBalanceRequest())
         peers = stub.ListPeers(ln.ListPeersRequest()).peers
         pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
@@ -78,6 +79,7 @@ def home(request):
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
         #Build context for front-end and render page
         context = {
+            'node_info': node_info,
             'balances': balances,
             'payments': payments,
             'total_sent': total_sent,

@@ -19,6 +19,10 @@
       <h1>My Lnd Overview</h1>
     </div>
     <div class="w3-container w3-padding-small">
+      <h3><a href="https://1ml.com/node/{{ node_info.identity_pubkey }}">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }} | Active Channels: {{ node_info.num_active_channels }}</h3>
+      <h4>{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
+    </div>
+    <div class="w3-container w3-padding-small">
       <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
       <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
       <h4>Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
