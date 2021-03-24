@@ -276,6 +276,7 @@
         <tr>
           <th>Created</th>
           <th>Settled</th>
+          <th width=25%>Payment Hash</th>
           <th>Value</th>
           <th>Amount Paid</th>
           <th>State</th>
@@ -284,6 +285,7 @@
         <tr>
           <td>{{ invoice.creation_date|naturaltime }}</td>
           <td>{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
+          <td>{{ invoice.r_hash }}</td>
           <td>{{ invoice.value|intcomma }}</td>
           <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
           <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
