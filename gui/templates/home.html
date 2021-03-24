@@ -131,7 +131,9 @@
         </tr>
         {% for channel in pending_open %}
         <tr>
-          <td><a href="https://www.blockchain.com/btc/tx/{{ channel.channel_point|slice:":-3" }}" target="_blank">{{ channel.channel.channel_point }}</a></td>
+          {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+            <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+          {% endwith %}
           <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
@@ -147,8 +149,8 @@
       <h2>Pending Close Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <th width=30%>Peer PubKey</th>
           <th width=30%>Channel Point</th>
+          <th width=30%>Peer PubKey</th>
           <th>Capacity</th>
           <th>Local Balance</th>
           <th>Remote Balance</th>
@@ -156,8 +158,10 @@
         </tr>
         {% for channel in pending_closed %}
         <tr>
+          {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+            <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+          {% endwith %}
           <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-          <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
           <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -172,8 +176,8 @@
       <h2>Pending Force Close Channels</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <th width=30%>Peer PubKey</th>
           <th width=30%>Channel Point</th>
+          <th width=30%>Peer PubKey</th>
           <th>Capacity</th>
           <th>Local Balance</th>
           <th>Remote Balance</th>
@@ -181,8 +185,10 @@
         </tr>
         {% for channel in pending_force_closed %}
         <tr>
+          {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+            <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+          {% endwith %}
           <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-          <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
           <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -197,8 +203,8 @@
       <h2>Channels Waiting To Close</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
-          <th width=30%>Peer PubKey</th>
           <th width=30%>Channel Point</th>
+          <th width=30%>Peer PubKey</th>
           <th>Capacity</th>
           <th>Local Balance</th>
           <th>Remote Balance</th>
@@ -206,8 +212,10 @@
         </tr>
         {% for channel in waiting_for_close %}
         <tr>
+          {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+            <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+          {% endwith %}
           <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-          <td>{{ channel.channel.channel_point }}</td>
           <td>{{ channel.channel.capacity|intcomma }}</td>
           <td>{{ channel.channel.local_balance|intcomma }}</td>
           <td>{{ channel.channel.remote_balance|intcomma }}</td>
