@@ -72,6 +72,8 @@
           <th>Initiated By Me</th>
           <th>Base Fee</th>
           <th>Fee Rate</th>
+          <th>Routed In</th>
+          <th>Routed Out</th>
         </tr>
         {% for channel in active_channels %}
         <tr>
@@ -85,6 +87,8 @@
           <td>{{ channel.initiator }}</td>
           <td>{{ channel.base_fee }}</td>
           <td>{{ channel.fee_rate }}</td>
+          <td>{{ channel.routed_in }}</td>
+          <td>{{ channel.routed_out }}</td>
         </tr>
         {% endfor %}
       </table>

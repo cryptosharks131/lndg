@@ -77,6 +77,8 @@ def home(request):
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
+            detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
+            detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
