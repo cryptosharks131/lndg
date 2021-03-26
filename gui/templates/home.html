@@ -5,13 +5,15 @@
   <head>
     {% load static %}
     {% load humanize %}
+    {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
   <body>
     {% if messages %}
     <div class="w3-container w3-padding-small">
       {% for message in messages %}
-        <h1 class="w3-orange w3-padding-small">{{ message }}</h1>
+        <h1 class="w3-orange w3-padding-small">{{ message.message }}</h1>
+        {% if message.message|slice:":17" == "Deposit Address: " %}{% qr_from_text message.message|slice:"17:" size="m" image_format="png" error_correction="L" %}{% endif %}
       {% endfor %}
     </div>
     {% endif %}
