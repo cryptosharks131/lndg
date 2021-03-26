@@ -229,9 +229,32 @@
       </table>
     </div>
     {% endif %}
+    {% if peers %}
+    <div class="w3-container w3-padding-small">
+      <h2>Peers List</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th width=40%>Peer PubKey</th>
+          <th>Network Address</th>
+          <th>Inbound</th>
+          <th>Sats Sent</th>
+          <th>Sats Received</th>
+        </tr>
+        {% for peer in peers %}
+        <tr>
+          <td><a href="https://1ml.com/node/{{ peer.pub_key }}" target="_blank">{{ peer.pub_key }}</a></td>
+          <td>{{ peer.address }}</td>
+          <td>{{ peer.inbound }}</td>
+          <td>{{ peer.sat_sent|intcomma }}</td>
+          <td>{{ peer.sat_recv|intcomma }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
     {% if forwards %}
     <div class="w3-container w3-padding-small">
-      <h2>Payments Routed</h2>
+      <h2>Last 10 Payments Routed</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
           <th>Timestamp</th>
@@ -260,7 +283,7 @@
     {% endif %}
     {% if payments %}
     <div class="w3-container w3-padding-small">
-      <h2>Payments Sent</h2>
+      <h2>Last 10 Payments Sent</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
           <th>Timestamp</th>
@@ -283,7 +306,7 @@
     {% endif %}
     {% if invoices %}
     <div class="w3-container w3-padding-small">
-      <h2>Payments Received</h2>
+      <h2>Last 10 Payments Received</h2>
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
           <th>Created</th>
@@ -301,29 +324,6 @@
           <td>{{ invoice.value|intcomma }}</td>
           <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
           <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </div>
-    {% endif %}
-    {% if peers %}
-    <div class="w3-container w3-padding-small">
-      <h2>Peers List</h2>
-      <table class="w3-table-all w3-centered w3-hoverable">
-        <tr>
-          <th width=40%>Peer PubKey</th>
-          <th>Network Address</th>
-          <th>Inbound</th>
-          <th>Sats Sent</th>
-          <th>Sats Received</th>
-        </tr>
-        {% for peer in peers %}
-        <tr>
-          <td><a href="https://1ml.com/node/{{ peer.pub_key }}" target="_blank">{{ peer.pub_key }}</a></td>
-          <td>{{ peer.address }}</td>
-          <td>{{ peer.inbound }}</td>
-          <td>{{ peer.sat_sent|intcomma }}</td>
-          <td>{{ peer.sat_recv|intcomma }}</td>
         </tr>
         {% endfor %}
       </table>
