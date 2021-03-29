@@ -87,8 +87,8 @@
           <td>{{ channel.initiator }}</td>
           <td>{{ channel.base_fee }}</td>
           <td>{{ channel.fee_rate }}</td>
-          <td>{{ channel.routed_in }}</td>
-          <td>{{ channel.routed_out }}</td>
+          <td>{{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in }})</td>
+          <td>{{ channel.amt_routed_out|intcomma }} ({{ channel.routed_out }})</td>
         </tr>
         {% endfor %}
       </table>

@@ -79,6 +79,8 @@ def home(request):
             detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
+            detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in'))['amt_in__sum']
+            detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out'))['amt_out__sum']
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
