@@ -12,3 +12,6 @@ class CloseChannelForm(forms.Form):
 class ConnectPeerForm(forms.Form):
     peer_pubkey = forms.CharField(label='funding_txid', max_length=66)
     host = forms.CharField(label='funding_txid', max_length=120)
+
+class AddInvoice(forms.Form):
+    value = forms.IntegerField(label='value')

@@ -12,8 +12,8 @@
     {% if messages %}
     <div class="w3-container w3-padding-small">
       {% for message in messages %}
-        <h1 class="w3-orange w3-padding-small">{{ message.message }}</h1>
-        {% if message.message|slice:":17" == "Deposit Address: " %}{% qr_from_text message.message|slice:"17:" size="m" image_format="png" error_correction="L" %}{% endif %}
+        <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word">{{ message.message }}</h1>
+        {% if message.message|slice:":17" == "Deposit Address: " or message.message|slice:":17" == "Invoice created! " %}{% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}{% endif %}
       {% endfor %}
     </div>
     {% endif %}
@@ -370,6 +370,17 @@
           <input id="funding_txid" type="text" name="funding_txid">
           <label for="output_index">Output Index: </label>
           <input id="output_index" type="number" name="output_index">
+          <input type="submit" value="OK">
+        </form>
+      </div>
+    </div>
+    <div class="w3-container w3-padding-small">
+      <h2>Create Invoice</h2>
+      <div class="w3-container w3-padding-32">
+        <form action="/createinvoice/" method="post">
+          {% csrf_token %}
+          <label for="value">Invoice Amount: </label>
+          <input id="value" type="text" name="value">
           <input type="submit" value="OK">
         </form>
       </div>

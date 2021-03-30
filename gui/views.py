@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoice
 from .models import Payments, Invoices, Forwards, Channels
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
@@ -197,5 +197,24 @@ def new_address(request):
             error = str(e)
             messages.error(request, 'Address request! Error: ' + error)
         return redirect('home')
+    else:
+        return redirect('home')
+
+def add_invoice(request):
+    if request.method == 'POST':
+        form = AddInvoice(request.POST)
+        if form.is_valid():
+            stub = lnd_connect()
+            value = form.cleaned_data['value']
+            try:
+                response = stub.AddInvoice(ln.Invoice(value=value))
+                messages.success(request, 'Invoice created! ' + str(response.payment_request))
+            except Exception as e:
+                error = str(e)
+                messages.error(request, 'Invoice creation failed! Error: ' + error)
+            return redirect('home')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+            return redirect('home')
     else:
         return redirect('home')

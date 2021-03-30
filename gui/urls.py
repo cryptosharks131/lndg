@@ -8,4 +8,5 @@ urlpatterns = [
     path('closechannel/', views.close_channel, name='close-channel'),
     path('connectpeer/', views.connect_peer, name='connect-peer'),
     path('newaddress/', views.new_address, name='new-address'),
+    path('createinvoice/', views.add_invoice, name='add-invoice'),
 ]
