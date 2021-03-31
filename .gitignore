@@ -2,6 +2,6 @@ __pycache__
 db.sqlite3
 lndg/settings.py
 gui/migrations
-gui/rpc_pb2.py
-gui/rpc_pb2_grpc.py
+gui/rpc_pb2*
+gui/router_pb2*
 

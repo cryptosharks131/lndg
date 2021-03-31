@@ -23,8 +23,8 @@ class Invoices(models.Model):
 
 class Forwards(models.Model):
     forward_date = models.DateTimeField()
-    chan_id_in = models.CharField(max_length=18)
-    chan_id_out = models.CharField(max_length=18)
+    chan_id_in = models.IntegerField()
+    chan_id_out = models.IntegerField()
     chan_in_alias = models.CharField(max_length=32, default='Unknown')
     chan_out_alias = models.CharField(max_length=32, default='Unknown')
     amt_in = models.BigIntegerField()
@@ -35,7 +35,7 @@ class Forwards(models.Model):
 
 class Channels(models.Model):
     remote_pubkey = models.CharField(max_length=66)
-    chan_id = models.CharField(max_length=18, primary_key=True)
+    chan_id = models.IntegerField(primary_key=True)
     funding_txid = models.CharField(max_length=64)
     output_index = models.IntegerField()
     capacity = models.BigIntegerField()

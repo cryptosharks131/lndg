@@ -5,10 +5,12 @@ from datetime import datetime
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoice
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm
 from .models import Payments, Invoices, Forwards, Channels
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
+from . import router_pb2 as lnr
+from . import router_pb2_grpc as lnrouter
 
 #Define lnd connection for repeated use
 def lnd_connect():
@@ -24,13 +26,12 @@ def lnd_connect():
     auth_creds = grpc.metadata_call_credentials(metadata_callback)
     creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
     channel = grpc.secure_channel('localhost:10009', creds)
-    stub = lnrpc.LightningStub(channel)
-    return stub
+    return channel
 
 # Create your views here.
 def home(request):
     if request.method == 'GET':
-        stub = lnd_connect()
+        stub = lnrpc.LightningStub(lnd_connect())
         #Get balance and peers
         node_info = stub.GetInfo(ln.GetInfoRequest())
         balances = stub.WalletBalance(ln.WalletBalanceRequest())
@@ -110,7 +111,8 @@ def home(request):
             'pending_closed': pending_closed,
             'pending_force_closed': pending_force_closed,
             'waiting_for_close': waiting_for_close,
-            'peers': peers
+            'peers': peers,
+            'form': RebalancerForm
         }
         return render(request, 'home.html', context)
     else:
@@ -120,7 +122,7 @@ def open_channel(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
         if form.is_valid():
-            stub = lnd_connect()
+            stub = lnrpc.LightningStub(lnd_connect())
             pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
             try:
                 for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
@@ -143,7 +145,7 @@ def close_channel(request):
     if request.method == 'POST':
         form = CloseChannelForm(request.POST)
         if form.is_valid():
-            stub = lnd_connect()
+            stub = lnrpc.LightningStub(lnd_connect())
             funding_txid = form.cleaned_data['funding_txid']
             output_index = form.cleaned_data['output_index']
             channel_point = ln.ChannelPoint()
@@ -168,7 +170,7 @@ def connect_peer(request):
     if request.method == 'POST':
         form = ConnectPeerForm(request.POST)
         if form.is_valid():
-            stub = lnd_connect()
+            stub = lnrpc.LightningStub(lnd_connect())
             peer_pubkey = form.cleaned_data['peer_pubkey']
             host = form.cleaned_data['host']
             ln_addr = ln.LightningAddress()
@@ -189,7 +191,7 @@ def connect_peer(request):
 
 def new_address(request):
     if request.method == 'POST':
-        stub = lnd_connect()
+        stub = lnrpc.LightningStub(lnd_connect())
         try:
             response = stub.NewAddress(ln.NewAddressRequest(type=0))
             messages.success(request, 'Deposit Address: ' + str(response.address))
@@ -204,14 +206,37 @@ def add_invoice(request):
     if request.method == 'POST':
         form = AddInvoice(request.POST)
         if form.is_valid():
-            stub = lnd_connect()
-            value = form.cleaned_data['value']
+            stub = lnrpc.LightningStub(lnd_connect())
             try:
-                response = stub.AddInvoice(ln.Invoice(value=value))
+                response = stub.AddInvoice(ln.Invoice(value=form.cleaned_data['value']))
                 messages.success(request, 'Invoice created! ' + str(response.payment_request))
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Invoice creation failed! Error: ' + error)
+            return redirect('home')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+            return redirect('home')
+    else:
+        return redirect('home')
+
+def rebalance(request):
+    if request.method == 'POST':
+        form = RebalancerForm(request.POST)
+        if form.is_valid():
+            stub = lnrpc.LightningStub(lnd_connect())
+            routerstub = lnrouter.RouterStub(lnd_connect())
+            try:
+                chan_ids = []
+                for channel in form.cleaned_data['outgoing_chan_ids']:
+                    chan_ids.append(int(channel.chan_id))
+                response = stub.AddInvoice(ln.Invoice(value=form.cleaned_data['value'], expiry=600))
+                for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(form.cleaned_data['last_hop_pubkey']), timeout_seconds=585, allow_self_payment=True)):
+                    messages.success(request, 'Rebalancer started! Last Hop: ' + str(response.status))
+                    break
+            except Exception as e:
+                error = str(e)
+                messages.error(request, 'Error starting rebalancer! Error: ' + error)
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
