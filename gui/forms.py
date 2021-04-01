@@ -36,5 +36,5 @@ class RebalancerForm(forms.ModelForm):
         fields = []
     value = forms.IntegerField(label='value')
     fee_limit = forms.IntegerField(label='fee_limit')
-    outgoing_chan_ids = CustomModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.all().order_by('-alias'), blank=True)
-    last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66)
+    outgoing_chan_ids = CustomModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-alias'), blank=True, required=False)
+    last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)

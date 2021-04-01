@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 # Create your models here.
 class Payments(models.Model):
@@ -48,5 +49,17 @@ class Channels(models.Model):
     fee_rate = models.IntegerField()
     is_active = models.BooleanField()
     is_open = models.BooleanField()
+    class Meta:
+        app_label = 'gui'
+
+class Rebalancer(models.Model):
+    requested = models.DateTimeField(default=timezone.now)
+    value = models.IntegerField()
+    fee_limit = models.IntegerField()
+    outgoing_chan_ids = models.TextField(null=True)
+    last_hop_pubkey = models.CharField(max_length=66)
+    start = models.DateTimeField(null=True)
+    stop = models.DateTimeField(null=True)
+    status = models.IntegerField(default=0)
     class Meta:
         app_label = 'gui'

@@ -1,12 +1,9 @@
-import grpc
-import os
-import codecs
-from datetime import datetime
+import grpc, os, codecs, json
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm
-from .models import Payments, Invoices, Forwards, Channels
+from .models import Payments, Invoices, Forwards, Channels, Rebalancer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
 from . import router_pb2 as lnr
@@ -85,6 +82,8 @@ def home(request):
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
+        #Get list of recent rebalance requests
+        rebalances = Rebalancer.objects.all().order_by('-requested')
         #Build context for front-end and render page
         context = {
             'node_info': node_info,
@@ -112,6 +111,7 @@ def home(request):
             'pending_force_closed': pending_force_closed,
             'waiting_for_close': waiting_for_close,
             'peers': peers,
+            'rebalances': rebalances,
             'form': RebalancerForm
         }
         return render(request, 'home.html', context)
@@ -230,13 +230,11 @@ def rebalance(request):
                 chan_ids = []
                 for channel in form.cleaned_data['outgoing_chan_ids']:
                     chan_ids.append(int(channel.chan_id))
-                response = stub.AddInvoice(ln.Invoice(value=form.cleaned_data['value'], expiry=600))
-                for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(form.cleaned_data['last_hop_pubkey']), timeout_seconds=585, allow_self_payment=True)):
-                    messages.success(request, 'Rebalancer started! Last Hop: ' + str(response.status))
-                    break
+                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=json.dumps(chan_ids), last_hop_pubkey=form.cleaned_data['last_hop_pubkey']).save()
+                messages.success(request, 'Rebalancer request created!')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error starting rebalancer! Error: ' + error)
+                messages.error(request, 'Error entering rebalancer request! Error: ' + error)
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')

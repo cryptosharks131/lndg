@@ -333,6 +333,33 @@
       </table>
     </div>
     {% endif %}
+    {% if rebalances %}
+    <div class="w3-container w3-padding-small">
+      <h2>Last 10 Rebalance Requests</h2>
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th>Requested</th>
+          <th>Start</th>
+          <th>Stop</th>
+          <th>Value</th>
+          <th>Fee Limit</th>
+          <th>Last Hop PubKey</th>
+          <th>Status</th>
+        </tr>
+        {% for rebalance in rebalances %}
+        <tr>
+          <td>{{ rebalance.requested|naturaltime }}</td>
+          <td>{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
+          <td>{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
+          <td>{{ rebalance.value }}</td>
+          <td>{{ rebalance.fee_limit }}</td>
+          <td width=30%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
+          <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% else %}{{ rebalance.status }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
     <div class="w3-container w3-padding-small">
       <h2>Connect To A Peer</h2>
       <div class="w3-container w3-padding-32">
