@@ -341,6 +341,7 @@
           <th>Requested</th>
           <th>Start</th>
           <th>Stop</th>
+          <th>Scheduled Duration</th>
           <th>Value</th>
           <th>Fee Limit</th>
           <th>Last Hop PubKey</th>
@@ -351,9 +352,10 @@
           <td>{{ rebalance.requested|naturaltime }}</td>
           <td>{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
           <td>{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
+          <td>{{ rebalance.duration }} minutes</td>
           <td>{{ rebalance.value }}</td>
           <td>{{ rebalance.fee_limit }}</td>
-          <td width=30%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
+          <td width=25%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
           <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% else %}{{ rebalance.status }}{% endif %}</td>
         </tr>
         {% endfor %}
@@ -397,6 +399,8 @@
           <input id="funding_txid" type="text" name="funding_txid">
           <label for="output_index">Output Index: </label>
           <input id="output_index" type="number" name="output_index">
+          <label for="force">Force Close? </label>
+          <input id="force" type="checkbox" name="force">
           <input type="submit" value="OK">
         </form>
       </div>
@@ -415,8 +419,10 @@
     <div class="w3-container w3-padding-small">
       <h2>Rebalancer</h2>
       <div class="w3-container w3-padding-32">
-        <form action="/rebalancer/" method="post" enctype="multipart/form-data">
+        <form action="/rebalancer/" method="post">
           {% csrf_token %}
+          <label for="duration">Run Time (min): </label>
+          <input id="duration" type="number" name="duration">
           <label for="value">Rebalance Amount: </label>
           <input id="value" type="number" name="value">
           <label for="fee_limit">Fee Limit: </label>
@@ -426,7 +432,28 @@
           <input type="submit" value="OK">
           <ul class="w3-ul w3-border" style="width:30%">
             <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-            {% for channel in form.outgoing_chan_ids %}
+            {% for channel in rebalancer_form.outgoing_chan_ids %}
+              <li>{{ channel }}</li>
+            {% endfor %}
+          </ul>
+        </form>
+      </div>
+    </div>
+    <div class="w3-container w3-padding-small">
+      <h2>Update Channel Policy</h2>
+      <div class="w3-container w3-padding-32">
+        <form action="/updatechanpolicy/" method="post">
+          {% csrf_token %}
+          <label for="new_base_fee">New Base Fee: </label>
+          <input id="new_base_fee" type="number" name="new_base_fee">
+          <label for="new_fee_rate">New Fee Rate: </label>
+          <input id="new_fee_rate" type="number" name="new_fee_rate">
+          <label for="target_all">Target All Channels? </label>
+          <input id="target_all" type="checkbox" name="target_all">
+          <input type="submit" value="OK">
+          <ul class="w3-ul w3-border" style="width:30%">
+            <li><h3><label for="target_chans">Select Channels To Update: </label></h3></li>
+            {% for channel in chan_policy_form.target_chans %}
               <li>{{ channel }}</li>
             {% endfor %}
           </ul>

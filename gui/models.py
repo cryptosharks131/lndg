@@ -58,6 +58,7 @@ class Rebalancer(models.Model):
     fee_limit = models.IntegerField()
     outgoing_chan_ids = models.TextField(null=True)
     last_hop_pubkey = models.CharField(max_length=66)
+    duration = models.IntegerField()
     start = models.DateTimeField(null=True)
     stop = models.DateTimeField(null=True)
     status = models.IntegerField(default=0)

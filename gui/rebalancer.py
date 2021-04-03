@@ -50,8 +50,9 @@ def main():
         stub = lnrpc.LightningStub(lnd_connect())
         routerstub = lnrouter.RouterStub(lnd_connect())
         chan_ids = json.loads(rebalance.outgoing_chan_ids)
-        response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=600))
-        for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=585, allow_self_payment=True)):
+        timeout = rebalance.duration * 60
+        response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
+        for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-15), allow_self_payment=True)):
             if response.status == 1 and rebalance.status == 0:
                 #IN-FLIGHT
                 rebalance.status = 1

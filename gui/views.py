@@ -2,7 +2,7 @@ import grpc, os, codecs, json
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm
 from .models import Payments, Invoices, Forwards, Channels, Rebalancer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
@@ -112,7 +112,8 @@ def home(request):
             'waiting_for_close': waiting_for_close,
             'peers': peers,
             'rebalances': rebalances,
-            'form': RebalancerForm
+            'rebalancer_form': RebalancerForm,
+            'chan_policy_form': ChanPolicyForm
         }
         return render(request, 'home.html', context)
     else:
@@ -122,9 +123,9 @@ def open_channel(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
         if form.is_valid():
-            stub = lnrpc.LightningStub(lnd_connect())
-            pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
             try:
+                stub = lnrpc.LightningStub(lnd_connect())
+                pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
                 for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
                     messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
                     break
@@ -145,17 +146,22 @@ def close_channel(request):
     if request.method == 'POST':
         form = CloseChannelForm(request.POST)
         if form.is_valid():
-            stub = lnrpc.LightningStub(lnd_connect())
-            funding_txid = form.cleaned_data['funding_txid']
-            output_index = form.cleaned_data['output_index']
-            channel_point = ln.ChannelPoint()
-            channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
-            channel_point.funding_txid_str = funding_txid
-            channel_point.output_index = output_index
             try:
-                for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point)):
-                    messages.success(request, 'Channel closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
-                    break
+                stub = lnrpc.LightningStub(lnd_connect())
+                funding_txid = form.cleaned_data['funding_txid']
+                output_index = form.cleaned_data['output_index']
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
+                channel_point.funding_txid_str = funding_txid
+                channel_point.output_index = output_index
+                if form.cleaned_data['force']:
+                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, force=True)):
+                        messages.success(request, 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
+                        break
+                else:
+                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point)):
+                        messages.success(request, 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
+                        break
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Channel creation failed! Error: ' + error)
@@ -170,13 +176,13 @@ def connect_peer(request):
     if request.method == 'POST':
         form = ConnectPeerForm(request.POST)
         if form.is_valid():
-            stub = lnrpc.LightningStub(lnd_connect())
-            peer_pubkey = form.cleaned_data['peer_pubkey']
-            host = form.cleaned_data['host']
-            ln_addr = ln.LightningAddress()
-            ln_addr.pubkey = peer_pubkey
-            ln_addr.host = host
             try:
+                stub = lnrpc.LightningStub(lnd_connect())
+                peer_pubkey = form.cleaned_data['peer_pubkey']
+                host = form.cleaned_data['host']
+                ln_addr = ln.LightningAddress()
+                ln_addr.pubkey = peer_pubkey
+                ln_addr.host = host
                 response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
                 messages.success(request, 'Connection successful! ' + str(response))
             except Exception as e:
@@ -191,8 +197,8 @@ def connect_peer(request):
 
 def new_address(request):
     if request.method == 'POST':
-        stub = lnrpc.LightningStub(lnd_connect())
         try:
+            stub = lnrpc.LightningStub(lnd_connect())
             response = stub.NewAddress(ln.NewAddressRequest(type=0))
             messages.success(request, 'Deposit Address: ' + str(response.address))
         except Exception as e:
@@ -206,8 +212,8 @@ def add_invoice(request):
     if request.method == 'POST':
         form = AddInvoice(request.POST)
         if form.is_valid():
-            stub = lnrpc.LightningStub(lnd_connect())
             try:
+                stub = lnrpc.LightningStub(lnd_connect())
                 response = stub.AddInvoice(ln.Invoice(value=form.cleaned_data['value']))
                 messages.success(request, 'Invoice created! ' + str(response.payment_request))
             except Exception as e:
@@ -224,13 +230,11 @@ def rebalance(request):
     if request.method == 'POST':
         form = RebalancerForm(request.POST)
         if form.is_valid():
-            stub = lnrpc.LightningStub(lnd_connect())
-            routerstub = lnrouter.RouterStub(lnd_connect())
             try:
                 chan_ids = []
                 for channel in form.cleaned_data['outgoing_chan_ids']:
-                    chan_ids.append(int(channel.chan_id))
-                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=json.dumps(chan_ids), last_hop_pubkey=form.cleaned_data['last_hop_pubkey']).save()
+                    chan_ids.append(channel.chan_id)
+                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=json.dumps(chan_ids), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], duration=form.cleaned_data['duration']).save()
                 messages.success(request, 'Rebalancer request created!')
             except Exception as e:
                 error = str(e)
@@ -238,6 +242,35 @@ def rebalance(request):
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
+            return redirect('home')
+    else:
+        return redirect('home')
+
+def update_chan_policy(request):
+    if request.method == 'POST':
+        form = ChanPolicyForm(request.POST)
+        if form.is_valid():
+            try:
+                stub = lnrpc.LightningStub(lnd_connect())
+                if form.cleaned_data['target_all']:
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(update_all=True, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
+                elif len(form.cleaned_data['target_chans']) > 0:
+                    for channel in form.cleaned_data['target_chans']:
+                        channel_point = ln.ChannelPoint()
+                        channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
+                        channel_point.funding_txid_str = channel.funding_txid
+                        channel_point.output_index = channel.output_index
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
+                else:
+                    messages.error(request, 'No channels were specified in the update request!')
+                messages.success(request, 'Channel policies updated!')
+            except Exception as e:
+                error = str(e)
+                messages.error(request, 'Error updating channel policies! Error: ' + error)
+            return redirect('home')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+            print(form.errors)
             return redirect('home')
     else:
         return redirect('home')
