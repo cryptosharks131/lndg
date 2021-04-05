@@ -356,7 +356,7 @@
           <td>{{ rebalance.value }}</td>
           <td>{{ rebalance.fee_limit }}</td>
           <td width=25%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
-          <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% else %}{{ rebalance.status }}{% endif %}</td>
+          <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% else %}{{ rebalance.status }}{% endif %}</td>
         </tr>
         {% endfor %}
       </table>

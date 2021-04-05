@@ -78,6 +78,7 @@ def main():
                     #FAILURE_REASON_INSUFFICIENT_BALANCE
                     rebalance.status = 7
     except Exception as e:
+        rebalance.status = 400
         error = str(e)
         print(error)
     finally:

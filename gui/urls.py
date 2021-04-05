@@ -1,6 +1,13 @@
-
-from django.urls import path
+from django.urls import path, include
+from rest_framework import routers
 from . import views
+
+router = routers.DefaultRouter()
+router.register(r'payments', views.PaymentsViewSet)
+router.register(r'invoices', views.InvoicesViewSet)
+router.register(r'forwards', views.ForwardsViewSet)
+router.register(r'channels', views.ChannelsViewSet)
+router.register(r'rebalancer', views.RebalancerViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -11,4 +18,5 @@ urlpatterns = [
     path('createinvoice/', views.add_invoice, name='add-invoice'),
     path('rebalancer/', views.rebalance, name='rebalancer'),
     path('updatechanpolicy/', views.update_chan_policy, name='updatechanpolicy'),
+    path('api/', include(router.urls), name='api-root'),
 ]

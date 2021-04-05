@@ -2,8 +2,10 @@ import grpc, os, codecs, json
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
+from rest_framework import viewsets
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm
 from .models import Payments, Invoices, Forwards, Channels, Rebalancer
+from .serializers import PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
 from . import router_pb2 as lnr
@@ -263,7 +265,7 @@ def update_chan_policy(request):
                         stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
                 else:
                     messages.error(request, 'No channels were specified in the update request!')
-                messages.success(request, 'Channel policies updated!')
+                messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Error updating channel policies! Error: ' + error)
@@ -274,3 +276,32 @@ def update_chan_policy(request):
             return redirect('home')
     else:
         return redirect('home')
+
+class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Payments.objects.all()
+    serializer_class = PaymentSerializer
+
+class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Invoices.objects.all()
+    serializer_class = InvoiceSerializer
+
+class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Forwards.objects.all()
+    serializer_class = ForwardSerializer
+
+class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Channels.objects.all()
+    serializer_class = ChannelSerializer
+
+class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Rebalancer.objects.all()
+    serializer_class = RebalancerSerializer
+
+    def create(self, request):
+        serializer = RebalancerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return redirect('api-root')
+        else:
+            print(serializer.errors)
+            return redirect('api-root')
