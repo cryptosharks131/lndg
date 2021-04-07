@@ -52,7 +52,7 @@ def update_forwards(stub):
     for forward in forwards:
         incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].alias
         outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].alias
-        Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in=forward.amt_in, amt_out=forward.amt_out, fee=round(forward.fee_msat/1000, 3)).save()
+        Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in=forward.amt_in_msat, amt_out=forward.amt_out_msat, fee=round(forward.fee_msat/1000, 3)).save()
 
 def update_channels(stub):
     counter = 0
