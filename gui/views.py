@@ -53,7 +53,7 @@ def home(request):
         #Get recorded forwarding events
         forwards = Forwards.objects.all().order_by('-forward_date')
         total_forwards = Forwards.objects.count()
-        total_value_forwards = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'] / 1000
+        total_value_forwards = 0 if total_forwards == 0 else int(Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
         active_channels = Channels.objects.filter(is_active=True, is_open=True).order_by('-alias')
@@ -79,8 +79,8 @@ def home(request):
             detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
             detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
-            detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum'] / 1000
-            detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'] / 1000
+            detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/1000)
+            detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
