@@ -28,8 +28,8 @@ class Forwards(models.Model):
     chan_id_out = models.IntegerField()
     chan_in_alias = models.CharField(max_length=32, default='Unknown')
     chan_out_alias = models.CharField(max_length=32, default='Unknown')
-    amt_in = models.BigIntegerField()
-    amt_out = models.BigIntegerField()
+    amt_in_msat = models.BigIntegerField()
+    amt_out_msat = models.BigIntegerField()
     fee = models.FloatField()
     class Meta:
         app_label = 'gui'

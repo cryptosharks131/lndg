@@ -273,8 +273,8 @@
         {% for forward in forwards %}
         <tr>
           <td>{{ forward.forward_date|naturaltime }}</td>
-          <td>{{ forward.amt_in|intcomma }}</td>
-          <td>{{ forward.amt_out|intcomma }}</td>
+          <td>{% widthratio forward.amt_in_msat 1000 1 %}</td>
+          <td>{% widthratio forward.amt_out_msat 1000 1 %}</td>
           <td>{{ forward.chan_in_alias }}</td>
           <td>{{ forward.chan_out_alias }}</td>
           <td>{{ forward.chan_id_in }}</td>
