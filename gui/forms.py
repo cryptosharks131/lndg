@@ -4,7 +4,7 @@ from .models import Channels
 class RebalancerModelChoiceIterator(forms.models.ModelChoiceIterator):
     def choice(self, obj):
         return (self.field.prepare_value(obj),
-                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + "{:,}".format(obj.local_balance)))
+                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + "{:,}".format(obj.local_balance) + ' | ' + obj.remote_pubkey))
 
 class RebalancerModelChoiceField(forms.models.ModelMultipleChoiceField):
     def _get_choices(self):
