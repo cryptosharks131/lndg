@@ -50,7 +50,7 @@ class RebalancerForm(forms.ModelForm):
         fields = []
     value = forms.IntegerField(label='value')
     fee_limit = forms.IntegerField(label='fee_limit')
-    outgoing_chan_ids = RebalancerModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-alias'), required=False)
+    outgoing_chan_ids = RebalancerModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-local_balance'), required=False)
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
 
@@ -60,5 +60,5 @@ class ChanPolicyForm(forms.ModelForm):
         fields = []
     new_base_fee = forms.IntegerField(label='new_base_fee')
     new_fee_rate = forms.IntegerField(label='new_fee_rate')
-    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-local_balance'), required=False)
+    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-alias'), required=False)
     target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
