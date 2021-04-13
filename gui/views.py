@@ -90,11 +90,11 @@ def home(request):
         context = {
             'node_info': node_info,
             'balances': balances,
-            'payments': payments[:10],
+            'payments': payments[:5],
             'total_sent': total_sent,
             'fees_paid': round(total_fees, 3),
             'total_payments': total_payments,
-            'invoices': invoices[:10],
+            'invoices': invoices[:5],
             'total_received': total_received,
             'total_invoices': total_invoices,
             'forwards': forwards[:10],
@@ -113,7 +113,7 @@ def home(request):
             'pending_force_closed': pending_force_closed,
             'waiting_for_close': waiting_for_close,
             'peers': peers,
-            'rebalances': rebalances,
+            'rebalances': rebalances[:5],
             'rebalancer_form': RebalancerForm,
             'chan_policy_form': ChanPolicyForm
         }
