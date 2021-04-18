@@ -42,12 +42,12 @@ def home(request):
         pending_force_closed = pending_channels.pending_force_closing_channels
         waiting_for_close = pending_channels.waiting_close_channels
         #Get recorded payment events
-        payments = Payments.objects.all().order_by('-creation_date')
+        payments = Payments.objects.exclude(status=3).order_by('-creation_date')
         total_payments = Payments.objects.filter(status=2).count()
         total_sent = 0 if total_payments == 0 else Payments.objects.filter(status=2).aggregate(Sum('value'))['value__sum']
         total_fees = 0 if total_payments == 0 else Payments.objects.aggregate(Sum('fee'))['fee__sum']
         #Get recorded invoice details
-        invoices = Invoices.objects.all().order_by('-creation_date')
+        invoices = Invoices.objects.exclude(state=2).order_by('-creation_date')
         total_invoices = Invoices.objects.filter(state=1).count()
         total_received = 0 if total_invoices == 0 else Invoices.objects.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
