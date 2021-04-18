@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from django.db.models import Sum
 from rest_framework import viewsets
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm
-from .models import Payments, Invoices, Forwards, Channels, Rebalancer
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer
 from .serializers import PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
@@ -118,6 +118,17 @@ def home(request):
             'chan_policy_form': ChanPolicyForm
         }
         return render(request, 'home.html', context)
+    else:
+        return redirect('home')
+
+def route(request):
+    if request.method == 'GET':
+        payment_hash = request.GET.urlencode()[1:]
+        context = {
+            'payment_hash': payment_hash,
+            'route': PaymentHops.objects.filter(payment_hash=payment_hash)
+        }
+        return render(request, 'route.html', context)
     else:
         return redirect('home')
 

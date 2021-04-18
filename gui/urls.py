@@ -11,6 +11,7 @@ router.register(r'rebalancer', views.RebalancerViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('route', views.route, name='route'),
     path('openchannel/', views.open_channel, name='open-channel'),
     path('closechannel/', views.close_channel, name='close-channel'),
     path('connectpeer/', views.connect_peer, name='connect-peer'),

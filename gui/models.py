@@ -5,18 +5,32 @@ from django.utils import timezone
 class Payments(models.Model):
     creation_date = models.DateTimeField()
     payment_hash = models.CharField(max_length=64, primary_key=True)
-    value = models.BigIntegerField()
+    value = models.FloatField()
     fee = models.FloatField()
     status = models.IntegerField()
     index = models.IntegerField()
     class Meta:
         app_label = 'gui'
 
+class PaymentHops(models.Model):
+    payment_hash = models.ForeignKey('Payments', on_delete=models.CASCADE)
+    attempt_id = models.IntegerField()
+    step = models.IntegerField()
+    chan_id = models.IntegerField()
+    alias = models.CharField(max_length=32)
+    chan_capacity = models.BigIntegerField()
+    node_pubkey = models.CharField(max_length=66)
+    amt = models.FloatField()
+    fee = models.FloatField()
+    class Meta:
+        app_label = 'gui'
+        unique_together = (('payment_hash', 'attempt_id', 'step'),)
+
 class Invoices(models.Model):
     creation_date = models.DateTimeField()
     settle_date = models.DateTimeField()
     r_hash = models.CharField(max_length=64, primary_key=True)
-    value = models.BigIntegerField()
+    value = models.FloatField()
     amt_paid = models.BigIntegerField()
     state = models.IntegerField()
     class Meta:

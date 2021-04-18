@@ -17,7 +17,7 @@ settings.configure(
     TIME_ZONE = 'America/New_York'
 )
 django.setup()
-from models import Payments, Invoices, Forwards, Channels
+from models import Payments, PaymentHops, Invoices, Forwards, Channels
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -27,16 +27,35 @@ def update_payments(stub):
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index)).payments
     for payment in payments:
         try:
-            Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=payment.value, fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index).save()
+            new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
+            new_payment.save()
+            if payment.status == 2:
+                for attempt in payment.htlcs:
+                    if attempt.status == 1:
+                        hop_count = 0
+                        for hop in attempt.route.hops:
+                            hop_count += 1
+                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
+                            PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
+                        break
         except:
             #Error inserting, try to update instead
             db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
             db_payment.creation_date = datetime.fromtimestamp(payment.creation_date)
-            db_payment.value = payment.value
+            db_payment.value = round(payment.value_msat/1000, 3)
             db_payment.fee = round(payment.fee_msat/1000, 3)
             db_payment.status = payment.status
             db_payment.index = payment.payment_index
             db_payment.save()
+            if payment.status == 2:
+                for attempt in payment.htlcs:
+                    if attempt.status == 1:
+                        hop_count = 0
+                        for hop in attempt.route.hops:
+                            hop_count += 1
+                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
+                            PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
+                        break
 
 def update_invoices(stub):
     #Remove anything open so we can get most up to date status
@@ -44,7 +63,7 @@ def update_invoices(stub):
     records = Invoices.objects.count()
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records)).invoices
     for invoice in invoices:
-        Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=invoice.value, amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
+        Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
 
 def update_forwards(stub):
     records = Forwards.objects.count()

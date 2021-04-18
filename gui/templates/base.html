@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <style>
+  </style>
+  <head>
+    <meta charset="utf-8">
+    <title>LNDg</title>
+    {% load static %}
+    {% load qr_code %}
+    <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <div id="content">
+        {% if messages %}
+        <div class="w3-container w3-padding-small">
+          {% for message in messages %}
+            <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word">{{ message.message }}</h1>
+            {% if message.message|slice:":17" == "Deposit Address: " or message.message|slice:":17" == "Invoice created! " %}{% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}{% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="w3-container">
+          <h1><a href="/">My Lnd Overview</a></h1>
+        </div>
+        {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>

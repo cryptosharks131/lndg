@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+<div class="w3-container w3-padding-small">
+  <h2>Route For Payment: {{ payment_hash }}</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Step</th>
+      <th>Amount</th>
+      <th>Fee</th>
+      <th>Alias</th>
+      <th>Channel ID</th>
+      <th>Channel Capacity</th>
+    </tr>
+    {% for hop in route %}
+    <tr>
+      <td>{{ hop.step }}</td>
+      <td>{{ hop.amt }}</td>
+      <td>{{ hop.fee }}</td>
+      <td>{{ hop.alias }}</td>
+      <td>{{ hop.chan_id }}</td>
+      <td>{{ hop.chan_capacity|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}
