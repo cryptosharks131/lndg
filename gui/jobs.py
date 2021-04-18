@@ -124,7 +124,7 @@ def main():
     cert_creds = grpc.ssl_channel_credentials(cert)
     auth_creds = grpc.metadata_call_credentials(metadata_callback)
     creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
-    channel = grpc.secure_channel('localhost:10009', creds)
+    channel = grpc.secure_channel('localhost:10009', creds, options=[('grpc.max_send_message_length', 9999999), ('grpc.max_receive_message_length', 9999999),],)
     stub = lnrpc.LightningStub(channel)
     #Update data
     update_channels(stub)
