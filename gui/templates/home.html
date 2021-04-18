@@ -285,7 +285,7 @@
       <td>{{ payment.value|add:"0" }}</td>
       <td>{{ payment.fee }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}">Open</a>{% else %}N/A{% endif %}</td>
+      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
