@@ -19,5 +19,6 @@ urlpatterns = [
     path('createinvoice/', views.add_invoice, name='add-invoice'),
     path('rebalancer/', views.rebalance, name='rebalancer'),
     path('updatechanpolicy/', views.update_chan_policy, name='updatechanpolicy'),
+    path('autorebalance/', views.auto_rebalance, name='auto-rebalance'),
     path('api/', include(router.urls), name='api-root'),
 ]

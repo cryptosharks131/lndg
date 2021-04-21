@@ -1,4 +1,4 @@
-import os, codecs, django, grpc, json
+import os, codecs, django, grpc, json, pandas
 from django.conf import settings
 from django.utils import timezone
 from django.db.models import Max
@@ -20,7 +20,7 @@ settings.configure(
     TIME_ZONE = 'America/New_York'
 )
 django.setup()
-from models import Rebalancer
+from models import Rebalancer, Channels
 
 #Define lnd connection for repeated use
 def lnd_connect():
@@ -40,7 +40,44 @@ def lnd_connect():
 
 def main():
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')
-    if len(rebalances) < 1:
+    if len(rebalances) == 0:
+        #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
+        auto_rebalance_channels = Channels.objects.filter(auto_rebalance=True)
+        if len(auto_rebalance_channels) > 0:
+            auto_rebalance_data = {}
+            chan_id_list = []
+            inbound_liq_list = []
+            outbound_liq_list = []
+            outbound_cans = []
+            for channel in auto_rebalance_channels:
+                chan_id_list.append(channel.chan_id)
+                outbound_liq_list.append(channel.local_balance)
+                inbound_liq_list.append(channel.remote_balance)
+                if (channel.local_balance / (channel.local_balance + channel.remote_balance)) > 0.85:
+                    outbound_cans.append(channel.chan_id)
+            auto_rebalance_data['chan_id'] = chan_id_list
+            auto_rebalance_data['outbound_liq'] = outbound_liq_list
+            auto_rebalance_data['inbound_liq'] = inbound_liq_list
+            df = pandas.DataFrame(auto_rebalance_data, columns=['chan_id', 'outbound_liq', 'inbound_liq'])
+            df['total_liq'] = df.inbound_liq + df.outbound_liq
+            df['%inbound'] = df.inbound_liq / df.total_liq
+            df['%outbound'] = df.outbound_liq / df.total_liq
+            df = df.sort_values('%inbound', ascending=False, ignore_index=True)
+            if df['%inbound'][0] > 0.85:
+                target_value = int(((df['total_liq'][0] * 0.5) * 0.25) / 25000) * 25000 # TLDR: lets target 25% of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
+                if target_value > 25000:
+                    inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
+                    target_fee = int(target_value * (1 / 25000)) # TLDR: willing to pay 1 sat for every 25,000 sats moved
+                    target_time = 60 # In minutes
+                    last_rebalance = Rebalancer.objects.exclude(status=0).order_by('-id')[0]
+                    if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value:
+                        print('Creating Auto Rebalance Request')
+                        print('Request for:', df['chan_id'][0])
+                        print('Request routing through:', outbound_cans)
+                        print('Target Value:', target_value)
+                        print('Target Fee:', target_fee)
+                        print('Target Time:', target_time)
+                        #Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
         quit()
     rebalance = rebalances[0]
     rebalance.start = timezone.now()

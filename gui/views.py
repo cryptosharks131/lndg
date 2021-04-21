@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
 from rest_framework import viewsets
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer
 from .serializers import PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from . import rpc_pb2 as ln
@@ -81,6 +81,7 @@ def home(request):
             detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
             detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/1000)
             detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
+            detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
@@ -284,6 +285,26 @@ def update_chan_policy(request):
         else:
             messages.error(request, 'Invalid Request. Please try again.')
             print(form.errors)
+            return redirect('home')
+    else:
+        return redirect('home')
+
+def auto_rebalance(request):
+    if request.method == 'POST':
+        form = AutoRebalanceForm(request.POST)
+        if form.is_valid():
+            target_chan_id = form.cleaned_data['chan_id']
+            target_channel = Channels.objects.filter(chan_id=target_chan_id)
+            if len(target_channel) == 1:
+                target_channel = target_channel[0]
+                target_channel.auto_rebalance = True if target_channel.auto_rebalance == False else False
+                target_channel.save()
+                messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
+            else:
+                messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
+            return redirect('home')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
             return redirect('home')
     else:
         return redirect('home')

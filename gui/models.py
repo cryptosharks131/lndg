@@ -63,6 +63,7 @@ class Channels(models.Model):
     fee_rate = models.IntegerField()
     is_active = models.BooleanField()
     is_open = models.BooleanField()
+    auto_rebalance = models.BooleanField(default=False)
     class Meta:
         app_label = 'gui'
 

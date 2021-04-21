@@ -55,6 +55,7 @@
       <th>Fee Rate</th>
       <th>Routed In</th>
       <th>Routed Out</th>
+      <th>Rebalance?</th>
     </tr>
     {% for channel in active_channels %}
     <tr>
@@ -70,6 +71,7 @@
       <td>{{ channel.fee_rate }}</td>
       <td>{{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in }})</td>
       <td>{{ channel.amt_routed_out|intcomma }} ({{ channel.routed_out }})</td>
+      <td>{{ channel.auto_rebalance }}</td>
     </tr>
     {% endfor %}
   </table>
@@ -440,6 +442,17 @@
           <li>{{ channel }}</li>
         {% endfor %}
       </ul>
+    </form>
+  </div>
+</div>
+<div class="w3-container w3-padding-small">
+  <h2>Toggle Channel Auto Rebalance Status</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/autorebalance/" method="post">
+      {% csrf_token %}
+      <label for="chan_id">Channel ID: </label>
+      <input id="chan_id" type="number" name="chan_id">
+      <input type="submit" value="OK">
     </form>
   </div>
 </div>

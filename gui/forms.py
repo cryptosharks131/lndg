@@ -62,3 +62,6 @@ class ChanPolicyForm(forms.ModelForm):
     new_fee_rate = forms.IntegerField(label='new_fee_rate')
     target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-alias'), required=False)
     target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
+
+class AutoRebalanceForm(forms.Form):
+    chan_id = forms.IntegerField(label='chan_id')
