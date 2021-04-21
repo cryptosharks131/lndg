@@ -70,7 +70,7 @@ def main():
                     target_fee = int(target_value * (1 / 25000)) # TLDR: willing to pay 1 sat for every 25,000 sats moved
                     target_time = 60 # In minutes
                     last_rebalance = Rebalancer.objects.exclude(status=0).order_by('-id')[0]
-                    if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value:
+                    if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status == 2:
                         print('Creating Auto Rebalance Request')
                         print('Request for:', df['chan_id'][0])
                         print('Request routing through:', outbound_cans)
