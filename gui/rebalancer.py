@@ -63,7 +63,7 @@ def main():
             df['%inbound'] = df.inbound_liq / df.total_liq
             df['%outbound'] = df.outbound_liq / df.total_liq
             df = df.sort_values('%inbound', ascending=False, ignore_index=True)
-            if df['%inbound'][0] > 0.85:
+            if df['%inbound'][0] > 0.85 and len(outbound_cans) > 0:
                 target_value = int(((df['total_liq'][0] * 0.5) * 0.25) / 25000) * 25000 # TLDR: lets target 25% of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
                 if target_value > 25000:
                     inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
@@ -77,7 +77,7 @@ def main():
                         print('Target Value:', target_value)
                         print('Target Fee:', target_fee)
                         print('Target Time:', target_time)
-                        #Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
+                        Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
         quit()
     rebalance = rebalances[0]
     rebalance.start = timezone.now()
