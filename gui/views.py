@@ -1,4 +1,4 @@
-import grpc, os, codecs, json
+import grpc, os, codecs
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
@@ -248,7 +248,7 @@ def rebalance(request):
                 chan_ids = []
                 for channel in form.cleaned_data['outgoing_chan_ids']:
                     chan_ids.append(channel.chan_id)
-                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=json.dumps(chan_ids), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], duration=form.cleaned_data['duration']).save()
+                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], duration=form.cleaned_data['duration']).save()
                 messages.success(request, 'Rebalancer request created!')
             except Exception as e:
                 error = str(e)

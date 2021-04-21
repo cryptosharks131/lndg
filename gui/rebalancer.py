@@ -64,7 +64,7 @@ def main():
             df['%outbound'] = df.outbound_liq / df.total_liq
             df = df.sort_values('%inbound', ascending=False, ignore_index=True)
             if df['%inbound'][0] > 0.85 and len(outbound_cans) > 0:
-                target_value = int(((df['total_liq'][0] * 0.5) * 0.25) / 25000) * 25000 # TLDR: lets target 25% of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
+                target_value = int(((df['total_liq'][0] * 0.5) * 0.40) / 25000) * 25000 # TLDR: lets target 40% of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
                 if target_value > 25000:
                     inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
                     target_fee = int(target_value * (1 / 25000)) # TLDR: willing to pay 1 sat for every 25,000 sats moved
