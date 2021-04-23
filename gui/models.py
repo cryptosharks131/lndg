@@ -79,3 +79,9 @@ class Rebalancer(models.Model):
     status = models.IntegerField(default=0)
     class Meta:
         app_label = 'gui'
+
+class LocalSettings(models.Model):
+    key = models.CharField(primary_key=True, default=None, max_length=20)
+    value = models.CharField(default=None, max_length=50)
+    class Meta:
+        app_label = 'gui'

@@ -64,4 +64,6 @@ class ChanPolicyForm(forms.ModelForm):
     target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class AutoRebalanceForm(forms.Form):
-    chan_id = forms.IntegerField(label='chan_id')
+    chan_id = forms.IntegerField(label='chan_id', required=False)
+    target_percent = forms.FloatField(label='target_percent', required=False)
+    target_time = forms.IntegerField(label='target_time', required=False)

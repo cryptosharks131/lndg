@@ -347,6 +347,61 @@
   </table>
 </div>
 {% endif %}
+{% if local_settings %}
+<div class="w3-container w3-padding-small">
+  <h2>Local Settings</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Key</th>
+      <th>Value</th>
+    </tr>
+    {% for settings in local_settings %}
+    <tr>
+      <td>{{ settings.key }}</td>
+      <td>{{ settings.value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+<div class="w3-container w3-padding-small">
+  <h2>Toggle Channel Auto Rebalance Status Or Update Settings</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/autorebalance/" method="post">
+      {% csrf_token %}
+      <label for="chan_id">Channel ID: </label>
+      <input id="chan_id" type="number" name="chan_id">
+      <label for="target_percent">Target Percent: </label>
+      <input id="target_percent" type="number" step="0.01" min="0" max="1" name="target_percent">
+      <label for="target_time">Target Time: </label>
+      <input id="target_time" type="number" min="0" max="300" name="target_time">
+      <input type="submit" value="OK">
+    </form>
+  </div>
+</div>
+<div class="w3-container w3-padding-small">
+  <h2>Rebalancer</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/rebalancer/" method="post">
+      {% csrf_token %}
+      <label for="duration">Run Time (min): </label>
+      <input id="duration" type="number" name="duration">
+      <label for="value">Rebalance Amount: </label>
+      <input id="value" type="number" name="value">
+      <label for="fee_limit">Fee Limit: </label>
+      <input id="fee_limit" type="number" name="fee_limit">
+      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
+      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+      <input type="submit" value="OK">
+      <ul class="w3-ul w3-border" style="width:56.15%">
+        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
+        {% for channel in rebalancer_form.outgoing_chan_ids %}
+          <li>{{ channel }}</li>
+        {% endfor %}
+      </ul>
+    </form>
+  </div>
+</div>
 <div class="w3-container w3-padding-small">
   <h2>Connect To A Peer</h2>
   <div class="w3-container w3-padding-32">
@@ -402,29 +457,6 @@
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Rebalancer</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
-      {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
-      <label for="value">Rebalance Amount: </label>
-      <input id="value" type="number" name="value">
-      <label for="fee_limit">Fee Limit: </label>
-      <input id="fee_limit" type="number" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
   <h2>Update Channel Policy</h2>
   <div class="w3-container w3-padding-32">
     <form action="/updatechanpolicy/" method="post">
@@ -442,17 +474,6 @@
           <li>{{ channel }}</li>
         {% endfor %}
       </ul>
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Toggle Channel Auto Rebalance Status</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/autorebalance/" method="post">
-      {% csrf_token %}
-      <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="number" name="chan_id">
-      <input type="submit" value="OK">
     </form>
   </div>
 </div>

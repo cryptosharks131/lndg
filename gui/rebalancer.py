@@ -20,7 +20,7 @@ settings.configure(
     TIME_ZONE = 'America/New_York'
 )
 django.setup()
-from models import Rebalancer, Channels
+from models import Rebalancer, Channels, LocalSettings
 
 #Define lnd connection for repeated use
 def lnd_connect():
@@ -64,16 +64,26 @@ def main():
             df['%outbound'] = df.outbound_liq / df.total_liq
             df = df.sort_values('%inbound', ascending=False, ignore_index=True)
             if df['%inbound'][0] > 0.85 and len(outbound_cans) > 0:
-                target_value = int(((df['total_liq'][0] * 0.5) * 0.15) / 25000) * 25000 # TLDR: lets target 15% of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
+                if LocalSettings.objects.filter(key='AR-Target%').exists():
+                    target_percent = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+                else:
+                    LocalSettings(key='AR-Target%', value='0.35').save()
+                    target_percent = 0.35
+                target_value = int(((df['total_liq'][0] * 0.5) * target_percent) / 25000) * 25000 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
                 if target_value > 25000:
+                    if LocalSettings.objects.filter(key='AR-Time').exists():
+                        target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
+                    else:
+                        LocalSettings(key='AR-Time', value='20').save()
+                        target_time = 20
                     inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
                     target_fee = int(target_value * (1 / 25000)) # TLDR: willing to pay 1 sat for every 25,000 sats moved
-                    target_time = 10 # In minutes
                     last_rebalance = Rebalancer.objects.exclude(status=0).order_by('-id')[0]
                     if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status == 2:
                         print('Creating Auto Rebalance Request')
                         print('Request for:', df['chan_id'][0])
                         print('Request routing through:', outbound_cans)
+                        print('Target % Of Value:', target_percent)
                         print('Target Value:', target_value)
                         print('Target Fee:', target_fee)
                         print('Target Time:', target_time)

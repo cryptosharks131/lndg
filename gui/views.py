@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from django.db.models import Sum
 from rest_framework import viewsets
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings
 from .serializers import PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
@@ -87,6 +87,8 @@ def home(request):
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
+        #Grab local settings
+        local_settings = LocalSettings.objects.all()
         #Build context for front-end and render page
         context = {
             'node_info': node_info,
@@ -116,7 +118,8 @@ def home(request):
             'peers': peers,
             'rebalances': rebalances[:5],
             'rebalancer_form': RebalancerForm,
-            'chan_policy_form': ChanPolicyForm
+            'chan_policy_form': ChanPolicyForm,
+            'local_settings': local_settings,
         }
         return render(request, 'home.html', context)
     else:
@@ -293,15 +296,28 @@ def auto_rebalance(request):
     if request.method == 'POST':
         form = AutoRebalanceForm(request.POST)
         if form.is_valid():
-            target_chan_id = form.cleaned_data['chan_id']
-            target_channel = Channels.objects.filter(chan_id=target_chan_id)
-            if len(target_channel) == 1:
-                target_channel = target_channel[0]
-                target_channel.auto_rebalance = True if target_channel.auto_rebalance == False else False
-                target_channel.save()
-                messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
-            else:
-                messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
+            if form.cleaned_data['chan_id'] is not None:
+                target_chan_id = form.cleaned_data['chan_id']
+                target_channel = Channels.objects.filter(chan_id=target_chan_id)
+                if len(target_channel) == 1:
+                    target_channel = target_channel[0]
+                    target_channel.auto_rebalance = True if target_channel.auto_rebalance == False else False
+                    target_channel.save()
+                    messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
+                else:
+                    messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
+            if form.cleaned_data['target_percent'] is not None:
+                target_percent = form.cleaned_data['target_percent']
+                db_percent_target = LocalSettings.objects.get(key='AR-Target%')
+                db_percent_target.value = target_percent
+                db_percent_target.save()
+                messages.success(request, 'Updated auto rebalancer target percent setting to: ' + str(target_percent))
+            if form.cleaned_data['target_time'] is not None:
+                target_time = form.cleaned_data['target_time']
+                db_time_target = LocalSettings.objects.get(key='AR-Time')
+                db_time_target.value = target_time
+                db_time_target.save()
+                messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
