@@ -65,5 +65,8 @@ class ChanPolicyForm(forms.ModelForm):
 
 class AutoRebalanceForm(forms.Form):
     chan_id = forms.IntegerField(label='chan_id', required=False)
+    enabled = forms.IntegerField(label='enabled', required=False)
     target_percent = forms.FloatField(label='target_percent', required=False)
     target_time = forms.IntegerField(label='target_time', required=False)
+    inbound_percent = forms.FloatField(label='inbound_percent', required=False)
+    outbound_percent = forms.FloatField(label='outbound_percent', required=False)
