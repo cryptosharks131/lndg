@@ -77,6 +77,8 @@ def home(request):
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
+            detailed_channel['outbound_percent'] = int(round(detailed_channel['visual'] * 100, 0))
+            detailed_channel['inbound_percent'] = int(round((1-detailed_channel['visual']) * 100, 0))
             detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
             detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/1000)
