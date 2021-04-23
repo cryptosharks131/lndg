@@ -68,5 +68,6 @@ class AutoRebalanceForm(forms.Form):
     enabled = forms.IntegerField(label='enabled', required=False)
     target_percent = forms.FloatField(label='target_percent', required=False)
     target_time = forms.IntegerField(label='target_time', required=False)
+    fee_rate = forms.IntegerField(label='fee_rate', required=False)
     inbound_percent = forms.FloatField(label='inbound_percent', required=False)
     outbound_percent = forms.FloatField(label='outbound_percent', required=False)

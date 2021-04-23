@@ -85,15 +85,20 @@ def main():
                     else:
                         LocalSettings(key='AR-Target%', value='0.35').save()
                         target_percent = 0.35
-                    target_value = int(((df['total_liq'][0] * 0.5) * target_percent) / 25000) * 25000 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance in 25,000 sat intervals
-                    if target_value > 25000:
+                    if LocalSettings.objects.filter(key='AR-ValuePerFee').exists():
+                        fee_rate = int(LocalSettings.objects.filter(key='AR-ValuePerFee')[0].value)
+                    else:
+                        LocalSettings(key='AR-ValuePerFee', value='25000').save()
+                        fee_rate = 25000
+                    target_value = int(((df['total_liq'][0] * 0.5) * target_percent) / fee_rate) * fee_rate # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance in 'ValuePerFee' sat intervals
+                    if target_value >= fee_rate:
                         if LocalSettings.objects.filter(key='AR-Time').exists():
                             target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
                         else:
                             LocalSettings(key='AR-Time', value='20').save()
                             target_time = 20
                         inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
-                        target_fee = int(target_value * (1 / 25000)) # TLDR: willing to pay 1 sat for every 25,000 sats moved
+                        target_fee = int(target_value * (1 / fee_rate)) # TLDR: willing to pay 1 sat for every 'ValuePerFee' sats moved
                         last_rebalance = Rebalancer.objects.exclude(status=0).order_by('-id')[0]
                         if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status == 2:
                             print('Creating Auto Rebalance Request')
