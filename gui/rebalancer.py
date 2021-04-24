@@ -100,7 +100,9 @@ def main():
                         inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
                         target_fee = int(target_value * (1 / fee_rate)) # TLDR: willing to pay 1 sat for every 'ValuePerFee' sats moved
                         last_rebalance = Rebalancer.objects.exclude(status=0).order_by('-id')[0]
-                        if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status == 2:
+                        if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status in [2, 3, 6]:
+                            if last_rebalance.status == 3 and last_rebalance.last_hop_pubkey == inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids == str(outbound_cans) or last_rebalance.value == target_value:
+                                target_time = int(last_rebalance.duration + (target_time * 0.5))  #Last run was a timeout failure, lets let it run again but with a longer duration (add 50% of target time to previous run time)
                             print('Creating Auto Rebalance Request')
                             print('Request for:', df['chan_id'][0])
                             print('Request routing through:', outbound_cans)
