@@ -48,7 +48,7 @@ def main():
             LocalSettings(key='AR-Enabled', value='0').save()
             enabled = 0
         if enabled == 1:
-            auto_rebalance_channels = Channels.objects.filter(auto_rebalance=True)
+            auto_rebalance_channels = Channels.objects.filter(auto_rebalance=True, is_active=True, is_open=True)
             if len(auto_rebalance_channels) > 0:
                 if LocalSettings.objects.filter(key='AR-Outbound%').exists():
                     outbound_percent = float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)

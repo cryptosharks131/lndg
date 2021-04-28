@@ -118,7 +118,7 @@ def home(request):
             'pending_force_closed': pending_force_closed,
             'waiting_for_close': waiting_for_close,
             'peers': peers,
-            'rebalances': rebalances[:5],
+            'rebalances': rebalances[:10],
             'rebalancer_form': RebalancerForm,
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
