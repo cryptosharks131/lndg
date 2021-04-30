@@ -1,5 +1,5 @@
 # lndg
-Lite GUI web interface to analyze lnd data.
+Lite GUI web interface to analyze lnd data and manage your node with automation.
 
 ## Setup
 1. Run bitcoind
