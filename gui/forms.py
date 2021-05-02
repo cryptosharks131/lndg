@@ -35,6 +35,7 @@ class OpenChannelForm(forms.Form):
 class CloseChannelForm(forms.Form):
     funding_txid = forms.CharField(label='funding_txid', max_length=64)
     output_index = forms.IntegerField(label='output_index')
+    target_fee = forms.IntegerField(label='target_fee')
     force = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class ConnectPeerForm(forms.Form):

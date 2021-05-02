@@ -169,6 +169,7 @@ def close_channel(request):
                 stub = lnrpc.LightningStub(lnd_connect())
                 funding_txid = form.cleaned_data['funding_txid']
                 output_index = form.cleaned_data['output_index']
+                target_fee = form.cleaned_data['target_fee']
                 channel_point = ln.ChannelPoint()
                 channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
                 channel_point.funding_txid_str = funding_txid
@@ -178,7 +179,7 @@ def close_channel(request):
                         messages.success(request, 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
                         break
                 else:
-                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point)):
+                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, sat_per_byte=target_fee)):
                         messages.success(request, 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
                         break
             except Exception as e:
