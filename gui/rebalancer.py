@@ -39,7 +39,12 @@ def lnd_connect():
     return channel
 
 def run_rebalancer(rebalance):
-    #rebalance = rebalances[0]
+    if Rebalancer.objects.filter(status=1).exists():
+        unknown_errors = Rebalancer.objects.filter(status=1)
+        for unknown_error in unknown_errors:
+            unknown_error.status = 400
+            unknown_error.stop = timezone.now()
+            unknown_error.save()
     rebalance.start = timezone.now()
     rebalance.save()
     try:
