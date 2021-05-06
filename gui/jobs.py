@@ -36,7 +36,7 @@ def update_payments(stub):
                         for hop in attempt.route.hops:
                             hop_count += 1
                             alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
-                            PaymentHops(payment_hash=new_payment.payment_hash, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
+                            PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                             if hop_count == 1:
                                 new_payment.chan_out = hop.chan_id
                                 new_payment.chan_out_alias = alias
@@ -58,7 +58,7 @@ def update_payments(stub):
                         for hop in attempt.route.hops:
                             hop_count += 1
                             alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
-                            PaymentHops(payment_hash=db_payment.payment_hash, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
+                            PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                             if hop_count == 1:
                                 db_payment.chan_out = hop.chan_id
                                 db_payment.chan_out_alias = alias
