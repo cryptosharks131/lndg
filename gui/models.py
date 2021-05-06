@@ -9,6 +9,8 @@ class Payments(models.Model):
     fee = models.FloatField()
     status = models.IntegerField()
     index = models.IntegerField()
+    chan_out = models.IntegerField(null=True)
+    chan_out_alias = models.CharField(null=True, max_length=32)
     class Meta:
         app_label = 'gui'
 

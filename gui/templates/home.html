@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-{% load humanize %}
+{% load humanize %} 
 <div class="w3-container w3-padding-small">
   <h3><a href="https://1ml.com/node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
   <h4>Active Channels: {{ node_info.num_active_channels }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
@@ -43,9 +43,10 @@
   <h2>Active Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th width=15%>Channel Point</th>
+      <th>Funding TX</th>
       <th>Channel ID</th>
-      <th>Channel Alias</th>
+      <th width=15%>Peer PubKey</th>
+      <th>Peer Alias</th>
       <th>Capacity</th>
       <th>Outbound Liquidity</th>
       <th width=10%></th>
@@ -59,8 +60,9 @@
     </tr>
     {% for channel in active_channels %}
     <tr>
-      <td><a href="https://www.blockchain.com/btc/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
-      <td>{{ channel.chan_id }}</td>
+      <td><a href="https://www.blockstream.info/tx/{{ channel.funding_txid }}" target="_blank">Open Explorer</a></td>
+      <td><a href="{{ channel.funding_txid }}:{{ channel.output_index }}">{{ channel.chan_id }}</a></td>
+      <td>{{ channel.remote_pubkey }}</td>
       <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
@@ -94,7 +96,7 @@
     </tr>
     {% for channel in inactive_channels %}
     <tr>
-      <td><a href="https://www.blockchain.com/btc/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
+      <td><a href="https://www.blockstream.info/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
       <td>{{ channel.chan_id }}</td>
       <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
@@ -123,7 +125,7 @@
     {% for channel in pending_open %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -150,7 +152,7 @@
     {% for channel in pending_closed %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -177,7 +179,7 @@
     {% for channel in pending_force_closed %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -204,7 +206,7 @@
     {% for channel in waiting_for_close %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockchain.com/btc/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -278,6 +280,8 @@
       <th>Value</th>
       <th>Fee Paid</th>
       <th>Status</th>
+      <th>Chan Out Alias</th>
+      <th>Chan Out ID</th>
       <th>Route</th>
     </tr>
     {% for payment in payments %}
@@ -286,8 +290,10 @@
       <td>{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0" }}</td>
       <td>{{ payment.fee }}</td>
-      <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
+      <td width="7%">{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
+      <td width="13%">{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
+      <td width="7%">{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
+      <td width="5%">{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
