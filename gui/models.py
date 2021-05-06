@@ -36,6 +36,7 @@ class Invoices(models.Model):
     amt_paid = models.BigIntegerField()
     state = models.IntegerField()
     chan_in = models.IntegerField(null=True)
+    chan_in_alias = models.CharField(null=True, max_length=32)
     class Meta:
         app_label = 'gui'
 

@@ -288,10 +288,10 @@
       <td>{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0" }}</td>
       <td>{{ payment.fee }}</td>
-      <td width="7%">{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td width="13%">{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
-      <td width="7%">{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
-      <td width="5%">{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
+      <td width=7%>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
+      <td width=13%>{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
+      <td width=7%>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
+      <td width=5%>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
@@ -308,7 +308,8 @@
       <th>Value</th>
       <th>Amount Paid</th>
       <th>State</th>
-      <th>Channel In</th>
+      <th>Channel In Alias</th>
+      <th width=10%>Channel In</th>
     </tr>
     {% for invoice in invoices %}
     <tr>
@@ -318,6 +319,7 @@
       <td>{{ invoice.value|add:"0" }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
+      <td>{{ invoice.chan_in_alias }}</td>
       <td>{{ invoice.chan_in }}</td>
     </tr>
     {% endfor %}
