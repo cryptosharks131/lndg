@@ -35,12 +35,12 @@ def update_payments(stub):
                         hop_count = 0
                         for hop in attempt.route.hops:
                             hop_count += 1
+                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
+                            PaymentHops(payment_hash=new_payment.payment_hash, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                             if hop_count == 1:
                                 new_payment.chan_out = hop.chan_id
                                 new_payment.chan_out_alias = alias
                                 new_payment.save()
-                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
-                            PaymentHops(payment_hash=new_payment.payment_hash, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                         break
         except:
             #Error inserting, try to update instead
@@ -57,12 +57,12 @@ def update_payments(stub):
                         hop_count = 0
                         for hop in attempt.route.hops:
                             hop_count += 1
+                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
+                            PaymentHops(payment_hash=db_payment.payment_hash, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                             if hop_count == 1:
                                 db_payment.chan_out = hop.chan_id
                                 db_payment.chan_out_alias = alias
                                 db_payment.save()
-                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
-                            PaymentHops(payment_hash=db_payment.payment_hash, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                         break
 
 def update_invoices(stub):
