@@ -56,7 +56,7 @@ def home(request):
         total_value_forwards = 0 if total_forwards == 0 else int(Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
-        active_channels = Channels.objects.filter(is_active=True, is_open=True).order_by('local_balance')
+        active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(ordering=(Sum('local_balance')*100)/Sum('capacity')).order_by('ordering')
         total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
         total_inbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
         total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
