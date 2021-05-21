@@ -311,37 +311,61 @@ def auto_rebalance(request):
                     messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
             if form.cleaned_data['target_percent'] is not None:
                 target_percent = form.cleaned_data['target_percent']
-                db_percent_target = LocalSettings.objects.get(key='AR-Target%')
+                try:
+                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
+                except:
+                    LocalSettings(key='AR-Target%', value='0.35').save()
+                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
                 messages.success(request, 'Updated auto rebalancer rebalance target percent setting to: ' + str(target_percent))
             if form.cleaned_data['target_time'] is not None:
                 target_time = form.cleaned_data['target_time']
-                db_time_target = LocalSettings.objects.get(key='AR-Time')
+                try:
+                    db_time_target = LocalSettings.objects.get(key='AR-Time')
+                except:
+                    LocalSettings(key='AR-Time', value='20').save()
+                    db_time_target = LocalSettings.objects.get(key='AR-Time')
                 db_time_target.value = target_time
                 db_time_target.save()
                 messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
             if form.cleaned_data['enabled'] is not None:
                 enabled = form.cleaned_data['enabled']
-                db_enabled = LocalSettings.objects.get(key='AR-Enabled')
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
+                except:
+                    LocalSettings(key='AR-Enabled', value='0').save()
+                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
                 db_enabled.value = enabled
                 db_enabled.save()
                 messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
             if form.cleaned_data['outbound_percent'] is not None:
                 outbound_percent = form.cleaned_data['outbound_percent']
-                db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
+                try:
+                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
+                except:
+                    LocalSettings(key='AR-Outbound%', value='0.85').save()
+                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting to: ' + str(outbound_percent))
             if form.cleaned_data['inbound_percent'] is not None:
                 inbound_percent = form.cleaned_data['inbound_percent']
-                db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
+                try:
+                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
+                except:
+                    LocalSettings(key='AR-Inbound%', value='0.85').save()
+                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
                 db_inbound_target.value = inbound_percent
                 db_inbound_target.save()
                 messages.success(request, 'Updated auto rebalancer target inbound percent setting to: ' + str(inbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
-                db_fee_rate = LocalSettings.objects.get(key='AR-ValuePerFee')
+                try:
+                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
+                except:
+                    LocalSettings(key='AR-MaxFeeRate', value='10').save()
+                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
                 db_fee_rate.value = fee_rate
                 db_fee_rate.save()
                 messages.success(request, 'Updated auto rebalancer value sent per 1 sat fee setting to: ' + str(fee_rate))
