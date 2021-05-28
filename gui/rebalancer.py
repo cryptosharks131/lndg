@@ -1,7 +1,7 @@
-import os, codecs, django, grpc, json, pandas, datetime
+import os, codecs, django, grpc, json, datetime
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Max
+from django.db.models import Sum
 from pathlib import Path
 from datetime import datetime
 import rpc_pb2 as ln
@@ -95,38 +95,21 @@ def auto_schedule():
         LocalSettings(key='AR-Enabled', value='0').save()
         enabled = 0
     if enabled == 1:
-        auto_rebalance_channels = Channels.objects.filter(auto_rebalance=True, is_active=True, is_open=True)
+        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity'))
         if len(auto_rebalance_channels) > 0:
             if LocalSettings.objects.filter(key='AR-Outbound%').exists():
-                outbound_percent = float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
+                outbound_percent = int(float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) * 100)
             else:
                 LocalSettings(key='AR-Outbound%', value='0.85').save()
-                outbound_percent = 0.85
+                outbound_percent = 0.85 * 100
             if LocalSettings.objects.filter(key='AR-Inbound%').exists():
-                inbound_percent = float(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
+                inbound_percent = int(float(LocalSettings.objects.filter(key='AR-Inbound%')[0].value) * 100)
             else:
                 LocalSettings(key='AR-Inbound%', value='0.85').save()
-                inbound_percent = 0.85
-            auto_rebalance_data = {}
-            chan_id_list = []
-            inbound_liq_list = []
-            outbound_liq_list = []
-            outbound_cans = []
-            for channel in auto_rebalance_channels:
-                chan_id_list.append(channel.chan_id)
-                outbound_liq_list.append(channel.local_balance)
-                inbound_liq_list.append(channel.remote_balance)
-                if (channel.local_balance / (channel.local_balance + channel.remote_balance)) > outbound_percent:
-                    outbound_cans.append(channel.chan_id)
-            auto_rebalance_data['chan_id'] = chan_id_list
-            auto_rebalance_data['outbound_liq'] = outbound_liq_list
-            auto_rebalance_data['inbound_liq'] = inbound_liq_list
-            df = pandas.DataFrame(auto_rebalance_data, columns=['chan_id', 'outbound_liq', 'inbound_liq'])
-            df['total_liq'] = df.inbound_liq + df.outbound_liq
-            df['%inbound'] = df.inbound_liq / df.total_liq
-            df['%outbound'] = df.outbound_liq / df.total_liq
-            df = df.sort_values('%inbound', ascending=False, ignore_index=True)
-            if df['%inbound'][0] > inbound_percent and len(outbound_cans) > 0:
+                inbound_percent = 0.85 * 100
+            outbound_cans = list(auto_rebalance_channels.filter(percent_inbound__lte=(100 - outbound_percent)).values_list('chan_id', flat=True))
+            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, percent_inbound__gte=inbound_percent)
+            if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if LocalSettings.objects.filter(key='AR-Target%').exists():
                     target_percent = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
                 else:
@@ -139,36 +122,37 @@ def auto_schedule():
                     max_fee_rate = 10
                 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance using the MaxFeerate to calculate sat fee intervals
                 value_per_fee = int(1 / (max_fee_rate / 1000000))
-                target_value = int(((df['total_liq'][0] * 0.5) * target_percent) / value_per_fee) * value_per_fee
-                if target_value >= value_per_fee:
-                    if LocalSettings.objects.filter(key='AR-Time').exists():
-                        target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
-                    else:
-                        LocalSettings(key='AR-Time', value='20').save()
-                        target_time = 20
-                    inbound_pubkey = Channels.objects.filter(chan_id=df['chan_id'][0])[0]
-                    # TLDR: willing to pay 1 sat for every value_per_fee sats moved
-                    target_fee = int(target_value * (1 / value_per_fee))
-                    if Rebalancer.objects.exclude(status=0).exists():
-                        last_rebalance = Rebalancer.objects.exclude(status=0).order_by('-id')[0]
-                        if last_rebalance.last_hop_pubkey != inbound_pubkey.remote_pubkey or last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status in [2, 6] or (last_rebalance.status in [3, 4] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)):
+                for target in inbound_cans:
+                    target_value = int(((target.capacity * 0.5) * target_percent) / value_per_fee) * value_per_fee
+                    if target_value >= value_per_fee:
+                        if LocalSettings.objects.filter(key='AR-Time').exists():
+                            target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
+                        else:
+                            LocalSettings(key='AR-Time', value='20').save()
+                            target_time = 20
+                        inbound_pubkey = Channels.objects.filter(chan_id=target.chan_id)[0]
+                        # TLDR: willing to pay 1 sat for every value_per_fee sats moved
+                        target_fee = int(target_value * (1 / value_per_fee))
+                        if Rebalancer.objects.filter(last_hop_pubkey=inbound_pubkey.remote_pubkey).exclude(status=0).exists():
+                            last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=inbound_pubkey.remote_pubkey).exclude(status=0).order_by('-id')[0]
+                            if last_rebalance.outgoing_chan_ids != str(outbound_cans) or last_rebalance.value != target_value or last_rebalance.status in [2, 6] or (last_rebalance.status in [3, 4] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)):
+                                print('Creating Auto Rebalance Request')
+                                print('Request for:', target.chan_id)
+                                print('Request routing through:', outbound_cans)
+                                print('Target % Of Value:', target_percent)
+                                print('Target Value:', target_value)
+                                print('Target Fee:', target_fee)
+                                print('Target Time:', target_time)
+                                Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
+                        else:
                             print('Creating Auto Rebalance Request')
-                            print('Request for:', df['chan_id'][0])
+                            print('Request for:', target.chan_id)
                             print('Request routing through:', outbound_cans)
                             print('Target % Of Value:', target_percent)
                             print('Target Value:', target_value)
                             print('Target Fee:', target_fee)
                             print('Target Time:', target_time)
                             Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
-                    else:
-                        print('Creating Auto Rebalance Request')
-                        print('Request for:', df['chan_id'][0])
-                        print('Request routing through:', outbound_cans)
-                        print('Target % Of Value:', target_percent)
-                        print('Target Value:', target_value)
-                        print('Target Fee:', target_fee)
-                        print('Target Time:', target_time)
-                        Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
 
 def main():
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')

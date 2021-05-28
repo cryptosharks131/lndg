@@ -76,7 +76,7 @@ def home(request):
             detailed_channel['fee_rate'] = channel.fee_rate
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
-            detailed_channel['visual'] = channel.local_balance / (channel.local_balance + channel.remote_balance)
+            detailed_channel['visual'] = channel.local_balance / channel.capacity
             detailed_channel['outbound_percent'] = int(round(detailed_channel['visual'] * 100, 0))
             detailed_channel['inbound_percent'] = int(round((1-detailed_channel['visual']) * 100, 0))
             detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
@@ -273,7 +273,8 @@ def update_chan_policy(request):
             try:
                 stub = lnrpc.LightningStub(lnd_connect())
                 if form.cleaned_data['target_all']:
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(update_all=True, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
+                    args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': 40}
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
                 elif len(form.cleaned_data['target_chans']) > 0:
                     for channel in form.cleaned_data['target_chans']:
                         channel_point = ln.ChannelPoint()
@@ -368,7 +369,7 @@ def auto_rebalance(request):
                     db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
                 db_fee_rate.value = fee_rate
                 db_fee_rate.save()
-                messages.success(request, 'Updated auto rebalancer value sent per 1 sat fee setting to: ' + str(fee_rate))
+                messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
