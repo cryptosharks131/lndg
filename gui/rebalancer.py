@@ -95,7 +95,7 @@ def auto_schedule():
         LocalSettings(key='AR-Enabled', value='0').save()
         enabled = 0
     if enabled == 1:
-        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity'))
+        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity'))
         if len(auto_rebalance_channels) > 0:
             if LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 outbound_percent = int(float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) * 100)
@@ -107,7 +107,7 @@ def auto_schedule():
             else:
                 LocalSettings(key='AR-Inbound%', value='0.85').save()
                 inbound_percent = 0.85 * 100
-            outbound_cans = list(auto_rebalance_channels.filter(percent_inbound__lte=(100 - outbound_percent)).values_list('chan_id', flat=True))
+            outbound_cans = list(auto_rebalance_channels.filter(percent_outbound__gte=outbound_percent).values_list('chan_id', flat=True))
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, percent_inbound__gte=inbound_percent)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if LocalSettings.objects.filter(key='AR-Target%').exists():
