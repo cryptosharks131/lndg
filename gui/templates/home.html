@@ -3,40 +3,24 @@
 {% load humanize %} 
 <div class="w3-container w3-padding-small">
   <h3><a href="https://1ml.com/node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Active Channels: {{ node_info.num_active_channels }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
+  <h4>Capacity: {{ capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
   <h4>Public Address: {% for info in node_info.uris %}{{ info }}{% endfor %}</h4>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Total Wallet Balance: {{ balances.total_balance|intcomma }}</h4>
-  <h4>Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</h4>
-  <h4>Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
-</div>
-<div class="w3-container">
+  <h4>Wallet Balance: {{ balances.total_balance|intcomma }} | Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
   <form action="/newaddress/" method="post">
     {% csrf_token %}
     <input type="submit" value="Get New Deposit Address">
   </form>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Total Completed Payments: {{ total_payments }}</h4>
-  <h4>Total Sats Sent: {{ total_sent|intcomma }}</h4>
-  <h4>Total Fees Paid: {{ fees_paid|intcomma }}</h4>
+  <h4>Completed Payments: {{ total_payments }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }}</h4>
+  <h4>Paid Invoices: {{ total_invoices }} | Sats Received: {{ total_received|intcomma }}</h4>
+  <h4>Payments Routed: {{ total_forwards }} | Value Routed: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }}</h4>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Total Paid Invoices: {{ total_invoices }}</h4>
-  <h4>Total Sats Received: {{ total_received|intcomma }}</h4>
-</div>
-<div class="w3-container w3-padding-small">
-  <h4>Total Payments Routed: {{ total_forwards }}</h4>
-  <h4>Total Value Routed: {{ total_value_forwards|intcomma }}</h4>
-  <h4>Total Fees Earned: {{ earned|intcomma }}</h4>
-</div>
-<div class="w3-container w3-padding-small">
-  <h4>Total Node Capacity: {{ capacity|intcomma }}</h4>
-  <h4>Total Inbound Liquidity: {{ inbound|intcomma }}</h4>
-  <h4>Total Outbound Liquidity: {{ outbound|intcomma }}</h4>
-  <h4>Total Unsettled Liquidity: {{ unsettled|intcomma }}</h4>
-  <h4>Total Balance In Limbo: {{ limbo_balance|intcomma }}</h4>
+  <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }}</h4>
+  <h4>Unsettled Liquidity: {{ unsettled|intcomma }} | Balance In Limbo: {{ limbo_balance|intcomma }}</h4>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
@@ -216,29 +200,6 @@
   </table>
 </div>
 {% endif %}
-{% if peers %}
-<div class="w3-container w3-padding-small">
-  <h2>Peers List</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th width=40%>Peer PubKey</th>
-      <th>Network Address</th>
-      <th>Inbound</th>
-      <th>Sats Sent</th>
-      <th>Sats Received</th>
-    </tr>
-    {% for peer in peers %}
-    <tr>
-      <td><a href="https://1ml.com/node/{{ peer.pub_key }}" target="_blank">{{ peer.pub_key }}</a></td>
-      <td>{{ peer.address }}</td>
-      <td>{{ peer.inbound }}</td>
-      <td>{{ peer.sat_sent|intcomma }}</td>
-      <td>{{ peer.sat_recv|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
 {% if forwards %}
 <div class="w3-container w3-padding-small">
   <h2>Last 10 Payments Routed</h2>
@@ -263,6 +224,35 @@
       <td>{{ forward.chan_id_in }}</td>
       <td>{{ forward.chan_id_out }}</td>
       <td>{{ forward.fee }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if rebalances %}
+<div class="w3-container w3-padding-small">
+  <h2>Last 10 Rebalance Requests</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Requested</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Scheduled Duration</th>
+      <th>Value</th>
+      <th>Fee Limit</th>
+      <th>Last Hop PubKey</th>
+      <th>Status</th>
+    </tr>
+    {% for rebalance in rebalances %}
+    <tr>
+      <td>{{ rebalance.requested|naturaltime }}</td>
+      <td>{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
+      <td>{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
+      <td>{{ rebalance.duration }} minutes</td>
+      <td>{{ rebalance.value }}</td>
+      <td>{{ rebalance.fee_limit }}</td>
+      <td width=25%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
+      <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% else %}{{ rebalance.status }}{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
@@ -326,38 +316,9 @@
   </table>
 </div>
 {% endif %}
-{% if rebalances %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 Rebalance Requests</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Requested</th>
-      <th>Start</th>
-      <th>Stop</th>
-      <th>Scheduled Duration</th>
-      <th>Value</th>
-      <th>Fee Limit</th>
-      <th>Last Hop PubKey</th>
-      <th>Status</th>
-    </tr>
-    {% for rebalance in rebalances %}
-    <tr>
-      <td>{{ rebalance.requested|naturaltime }}</td>
-      <td>{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td>{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
-      <td>{{ rebalance.duration }} minutes</td>
-      <td>{{ rebalance.value }}</td>
-      <td>{{ rebalance.fee_limit }}</td>
-      <td width=25%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
-      <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% else %}{{ rebalance.status }}{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
 {% if local_settings %}
 <div class="w3-container w3-padding-small">
-  <h2>Local Settings</h2>
+  <h2>Auto-Rebalancer Settings</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Key</th>
@@ -396,7 +357,7 @@
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Rebalancer</h2>
+  <h2>Manual Rebalancer Request</h2>
   <div class="w3-container w3-padding-32">
     <form action="/rebalancer/" method="post">
       {% csrf_token %}

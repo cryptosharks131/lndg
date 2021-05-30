@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if peers %}
+<div class="w3-container w3-padding-small">
+  <h2>Peers List</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th width=40%>Peer PubKey</th>
+      <th>Network Address</th>
+      <th>Inbound</th>
+      <th>Sats Sent</th>
+      <th>Sats Received</th>
+    </tr>
+    {% for peer in peers %}
+    <tr>
+      <td><a href="https://1ml.com/node/{{ peer.pub_key }}" target="_blank">{{ peer.pub_key }}</a></td>
+      <td>{{ peer.address }}</td>
+      <td>{{ peer.inbound }}</td>
+      <td>{{ peer.sat_sent|intcomma }}</td>
+      <td>{{ peer.sat_recv|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

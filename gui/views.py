@@ -31,10 +31,9 @@ def lnd_connect():
 def home(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
-        #Get balance and peers
+        #Get balance and general node information
         node_info = stub.GetInfo(ln.GetInfoRequest())
         balances = stub.WalletBalance(ln.WalletBalanceRequest())
-        peers = stub.ListPeers(ln.ListPeersRequest()).peers
         pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
         limbo_balance = pending_channels.total_limbo_balance
         pending_open = pending_channels.pending_open_channels
@@ -78,7 +77,7 @@ def home(request):
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['visual'] = channel.local_balance / channel.capacity
             detailed_channel['outbound_percent'] = int(round(detailed_channel['visual'] * 100, 0))
-            detailed_channel['inbound_percent'] = int(round((1-detailed_channel['visual']) * 100, 0))
+            detailed_channel['inbound_percent'] = int(round((channel.remote_balance / channel.capacity) * 100, 0))
             detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
             detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/1000)
@@ -95,14 +94,14 @@ def home(request):
         context = {
             'node_info': node_info,
             'balances': balances,
-            'payments': payments[:5],
+            'payments': payments[:6],
             'total_sent': total_sent,
             'fees_paid': round(total_fees, 3),
             'total_payments': total_payments,
-            'invoices': invoices[:5],
+            'invoices': invoices[:6],
             'total_received': total_received,
             'total_invoices': total_invoices,
-            'forwards': forwards[:10],
+            'forwards': forwards[:15],
             'earned': round(total_earned, 3),
             'total_forwards': total_forwards,
             'total_value_forwards': total_value_forwards,
@@ -117,8 +116,7 @@ def home(request):
             'pending_closed': pending_closed,
             'pending_force_closed': pending_force_closed,
             'waiting_for_close': waiting_for_close,
-            'peers': peers,
-            'rebalances': rebalances[:10],
+            'rebalances': rebalances[:12],
             'rebalancer_form': RebalancerForm,
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
@@ -135,6 +133,16 @@ def route(request):
             'route': PaymentHops.objects.filter(payment_hash=payment_hash)
         }
         return render(request, 'route.html', context)
+    else:
+        return redirect('home')
+
+def peers(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect())
+        context = {
+            'peers': stub.ListPeers(ln.ListPeersRequest()).peers
+        }
+        return render(request, 'peers.html', context)
     else:
         return redirect('home')
 
