@@ -121,15 +121,16 @@ def auto_schedule():
                     LocalSettings(key='AR-MaxFeeRate', value='10').save()
                     max_fee_rate = 10
                 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance using the MaxFeerate to calculate sat fee intervals
-                value_per_fee = int(1 / (max_fee_rate / 1000000))
                 for target in inbound_cans:
+                    target_fee_rate = int(target.fee_rate * 0.25)
+                    value_per_fee = int(1 / (target_fee_rate / 1000000)) if target.fee_rate <= max_fee_rate else int(1 / (max_fee_rate / 1000000))
                     target_value = int(((target.capacity * 0.5) * target_percent) / value_per_fee) * value_per_fee
                     if target_value >= value_per_fee:
                         if LocalSettings.objects.filter(key='AR-Time').exists():
                             target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
                         else:
-                            LocalSettings(key='AR-Time', value='20').save()
-                            target_time = 20
+                            LocalSettings(key='AR-Time', value='10').save()
+                            target_time = 10
                         inbound_pubkey = Channels.objects.filter(chan_id=target.chan_id)[0]
                         # TLDR: willing to pay 1 sat for every value_per_fee sats moved
                         target_fee = int(target_value * (1 / value_per_fee))
