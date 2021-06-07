@@ -36,3 +36,21 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Rebalancer
         exclude = []
+
+class ConnectPeerSerializer(serializers.Serializer):
+    peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
+    host = serializers.CharField(label='host', max_length=120)
+
+class OpenChannelSerializer(serializers.Serializer):
+    peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
+    local_amt = serializers.IntegerField(label='local_amt')
+    sat_per_byte = serializers.IntegerField(label='sat_per_btye')
+
+class CloseChannelSerializer(serializers.Serializer):
+    funding_txid = serializers.CharField(label='funding_txid', max_length=64)
+    output_index = serializers.IntegerField(label='output_index')
+    target_fee = serializers.IntegerField(label='target_fee')
+    force = serializers.BooleanField(default=False)
+
+class AddInvoiceSerializer(serializers.Serializer):
+    value = serializers.IntegerField(label='value')

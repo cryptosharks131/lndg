@@ -3,13 +3,13 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
 from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings
-from .serializers import PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
+from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
-from . import router_pb2 as lnr
-from . import router_pb2_grpc as lnrouter
 
 #Define lnd connection for repeated use
 def lnd_connect():
@@ -50,7 +50,7 @@ def home(request):
         total_invoices = Invoices.objects.filter(state=1).count()
         total_received = 0 if total_invoices == 0 else Invoices.objects.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
-        forwards = Forwards.objects.all().order_by('-forward_date')
+        forwards = Forwards.objects.all().order_by('-id')
         total_forwards = Forwards.objects.count()
         total_value_forwards = 0 if total_forwards == 0 else int(Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
@@ -146,7 +146,7 @@ def peers(request):
     else:
         return redirect('home')
 
-def open_channel(request):
+def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
         if form.is_valid():
@@ -169,7 +169,7 @@ def open_channel(request):
     else:
         return redirect('home')
 
-def close_channel(request):
+def close_channel_form(request):
     if request.method == 'POST':
         form = CloseChannelForm(request.POST)
         if form.is_valid():
@@ -192,7 +192,7 @@ def close_channel(request):
                         break
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Channel creation failed! Error: ' + error)
+                messages.error(request, 'Channel close failed! Error: ' + error)
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
@@ -200,7 +200,7 @@ def close_channel(request):
     else:
         return redirect('home')
 
-def connect_peer(request):
+def connect_peer_form(request):
     if request.method == 'POST':
         form = ConnectPeerForm(request.POST)
         if form.is_valid():
@@ -223,7 +223,7 @@ def connect_peer(request):
     else:
         return redirect('home')
 
-def new_address(request):
+def new_address_form(request):
     if request.method == 'POST':
         try:
             stub = lnrpc.LightningStub(lnd_connect())
@@ -236,9 +236,9 @@ def new_address(request):
     else:
         return redirect('home')
 
-def add_invoice(request):
+def add_invoice_form(request):
     if request.method == 'POST':
-        form = AddInvoice(request.POST)
+        form = AddInvoiceForm(request.POST)
         if form.is_valid():
             try:
                 stub = lnrpc.LightningStub(lnd_connect())
@@ -413,3 +413,89 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             print(serializer.errors)
             return redirect('api-root')
+
+@api_view(['POST'])
+def connect_peer(request):
+    serializer = ConnectPeerSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            peer_pubkey = serializer.validated_data['peer_pubkey']
+            host = serializer.validated_data['host']
+            ln_addr = ln.LightningAddress()
+            ln_addr.pubkey = peer_pubkey
+            ln_addr.host = host
+            response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+            return Response({'message': 'Connection successful! ' + str(response)})
+        except Exception as e:
+            error = str(e)
+            return Response({'error': 'Connection request failed! Error: ' + error})
+    else:
+        return Response({'error': 'Invalid request!'})
+
+@api_view(['POST'])
+def open_channel(request):
+    serializer = OpenChannelSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            pubkey_bytes = bytes.fromhex(serializer.validated_data['peer_pubkey'])
+            for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=serializer.validated_data['local_amt'], sat_per_byte=serializer.validated_data['sat_per_byte'])):
+                return Response({'message': 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index)})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Channel creation failed! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'})
+
+@api_view(['POST'])
+def close_channel(request):
+    serializer = CloseChannelSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            funding_txid = serializer.validated_data['funding_txid']
+            output_index = serializer.validated_data['output_index']
+            target_fee = serializer.validated_data['target_fee']
+            channel_point = ln.ChannelPoint()
+            channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
+            channel_point.funding_txid_str = funding_txid
+            channel_point.output_index = output_index
+            if serializer.validated_data['force']:
+                for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, force=True)):
+                    return Response({'message': 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index)})
+            else:
+                for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, sat_per_byte=target_fee)):
+                    return Response({'message': 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index)})
+        except Exception as e:
+            error = str(e)
+            return Response({'error': 'Channel close failed! Error: ' + error})
+    else:
+        return Response({'error': 'Invalid request!'})
+
+@api_view(['POST'])
+def add_invoice(request):
+    serializer = AddInvoiceSerializer(data=request.data)
+    if serializer.is_valid() and serializer.validated_data['value'] >= 0:
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            response = stub.AddInvoice(ln.Invoice(value=serializer.validated_data['value']))
+            return Response({'message': 'Invoice created!', 'data':str(response.payment_request)})
+        except Exception as e:
+            error = str(e)
+            return Response({'error': 'Invoice creation failed! Error: ' + error})
+    else:
+        return Response({'error': 'Invalid request!'})
+
+@api_view(['POST'])
+def new_address(request):
+    try:
+        stub = lnrpc.LightningStub(lnd_connect())
+        response = stub.NewAddress(ln.NewAddressRequest(type=0))
+        return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
+    except Exception as e:
+        error = str(e)
+        return Response({'error': 'Address creation failed! Error: ' + error})
