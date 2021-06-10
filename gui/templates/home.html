@@ -43,7 +43,7 @@
     </tr>
     {% for channel in active_channels %}
     <tr>
-      <td><a href="https://www.blockstream.info/tx/{{ channel.funding_txid }}" target="_blank">Open</a></td>
+      <td><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">Open</a></td>
       <td><a href="{{ channel.funding_txid }}:{{ channel.output_index }}">{{ channel.chan_id }}</a></td>
       <td>{{ channel.remote_pubkey }}</td>
       <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
@@ -78,7 +78,7 @@
     </tr>
     {% for channel in inactive_channels %}
     <tr>
-      <td><a href="https://www.blockstream.info/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
+      <td><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a></td>
       <td>{{ channel.chan_id }}</td>
       <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
@@ -107,7 +107,7 @@
     {% for channel in pending_open %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -134,7 +134,7 @@
     {% for channel in pending_closed %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -161,7 +161,7 @@
     {% for channel in pending_force_closed %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
@@ -188,7 +188,7 @@
     {% for channel in waiting_for_close %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://www.blockstream.info/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
       <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
