@@ -72,3 +72,4 @@ class AutoRebalanceForm(forms.Form):
     fee_rate = forms.IntegerField(label='fee_rate', required=False)
     inbound_percent = forms.FloatField(label='inbound_percent', required=False)
     outbound_percent = forms.FloatField(label='outbound_percent', required=False)
+    max_cost = forms.FloatField(label='max_cost', required=False)

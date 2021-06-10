@@ -333,7 +333,7 @@ def auto_rebalance(request):
                 try:
                     db_time_target = LocalSettings.objects.get(key='AR-Time')
                 except:
-                    LocalSettings(key='AR-Time', value='20').save()
+                    LocalSettings(key='AR-Time', value='10').save()
                     db_time_target = LocalSettings.objects.get(key='AR-Time')
                 db_time_target.value = target_time
                 db_time_target.save()
@@ -378,6 +378,16 @@ def auto_rebalance(request):
                 db_fee_rate.value = fee_rate
                 db_fee_rate.save()
                 messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
+            if form.cleaned_data['max_cost'] is not None:
+                max_cost = form.cleaned_data['max_cost']
+                try:
+                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
+                except:
+                    LocalSettings(key='AR-MaxCost%', value='0.25').save()
+                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
+                db_max_cost.value = max_cost
+                db_max_cost.save()
+                messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
             return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
