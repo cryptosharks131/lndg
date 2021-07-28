@@ -4,4 +4,5 @@ lndg/settings.py
 gui/migrations
 gui/rpc_pb2*
 gui/router_pb2*
-
+frontend
+node_modules
