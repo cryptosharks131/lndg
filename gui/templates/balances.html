@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if utxos %}
+<div class="w3-container w3-padding-small">
+  <h2>Balances</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th width=30%>Address</th>
+      <th>Amount</th>
+      <th width=40%>Outpoint</th>
+      <th>Confirmations</th>
+    </tr>
+    {% for uxto in utxos %}
+    <tr>
+      <td>{{ uxto.address }}</td>
+      <td>{{ uxto.amount_sat|intcomma }}</td>
+      <td>{{ uxto.outpoint.txid_str }}</td>
+      <td>{{ uxto.confirmations|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if transactions %}
+<div class="w3-container w3-padding-small">
+  <h2>Transactions</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th width=35%>TX Hash</th>
+      <th>Amount</th>
+      <th>Confirmations</th>
+      <th>Block Height</th>
+      <th>Fees</th>
+      <th width=25%>Label</th>
+    </tr>
+    {% for transaction in transactions %}
+    <tr>
+      <td>{{ transaction.tx_hash }}</td>
+      <td>{{ transaction.amount }}</td>
+      <td>{{ transaction.num_confirmations }}</td>
+      <td>{{ transaction.block_height }}</td>
+      <td>{{ transaction.total_fees }}</td>
+      <td>{{ transaction.label }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

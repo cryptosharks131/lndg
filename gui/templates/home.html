@@ -7,7 +7,7 @@
   <h4>Public Address: {% for info in node_info.uris %}{{ info }}{% endfor %}</h4>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Wallet Balance: {{ balances.total_balance|intcomma }} | Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</h4>
+  <h4>Wallet Balance: {{ balances.total_balance|intcomma }} | Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>
   <form action="/newaddress/" method="post">
     {% csrf_token %}
     <input type="submit" value="Get New Deposit Address">

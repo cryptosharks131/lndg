@@ -146,6 +146,17 @@ def peers(request):
     else:
         return redirect('home')
 
+def balances(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect())
+        context = {
+            'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
+            'transactions': stub.GetTransactions(ln.GetTransactionsRequest(start_height=0)).transactions
+        }
+        return render(request, 'balances.html', context)
+    else:
+        return redirect('home')
+
 def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
