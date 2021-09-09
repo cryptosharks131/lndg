@@ -24,7 +24,7 @@ def update_payments(stub):
     Payments.objects.filter(status=1).delete()
     #Get the number of records in the database currently
     last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
-    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index)).payments
+    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     for payment in payments:
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
@@ -69,7 +69,7 @@ def update_invoices(stub):
     #Remove anything open so we can get most up to date status
     Invoices.objects.filter(state=0).delete()
     records = Invoices.objects.count()
-    invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records)).invoices
+    invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records, num_max_invoices=100)).invoices
     for invoice in invoices:
         if invoice.state == 1:
             alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias
@@ -79,7 +79,7 @@ def update_invoices(stub):
 
 def update_forwards(stub):
     records = Forwards.objects.count()
-    forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records)).forwarding_events
+    forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records, num_max_events=100)).forwarding_events
     for forward in forwards:
         incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].alias
         outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].alias

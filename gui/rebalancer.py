@@ -79,6 +79,8 @@ def run_rebalancer(rebalance):
                 elif response.failure_reason == 5:
                     #FAILURE_REASON_INSUFFICIENT_BALANCE
                     rebalance.status = 7
+            elif response.status == 0:
+                rebalance.status == 400
     except Exception as e:
         rebalance.status = 400
         error = str(e)
