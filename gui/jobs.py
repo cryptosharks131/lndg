@@ -124,6 +124,22 @@ def update_channels(stub):
             channel.is_open = False
             channel.save()
 
+def reconnect_peers(stub):
+    inactive_peers = Channels.objects.filter(is_open=True, is_active=False).values_list('remote_pubkey', flat=True).distinct()
+    if len(inactive_peers) > 0:
+        connected_peers = stub.ListPeers(ln.ListPeersRequest(latest_error=True)).peers
+        peer_list = set()
+        for connected_peer in connected_peers:
+            peer_list.add(connected_peer.pub_key)
+        for inactive_peer in inactive_peers:
+            if inactive_peer in peer_list:
+                print('Inactive channel is still connected to peer, disconnecting peer...')
+                stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
+            print('Attempting connection to:', inactive_peer)
+            host = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node.addresses[-1].addr
+            address = ln.LightningAddress(pubkey=inactive_peer, host=host)
+            stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
+
 def main():
     #Open connection with lnd via grpc
     with open(os.path.expanduser('~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon'), 'rb') as f:
@@ -143,6 +159,7 @@ def main():
     update_payments(stub)
     update_invoices(stub)
     update_forwards(stub)
+    reconnect_peers(stub)
 
 if __name__ == '__main__':
     main()
