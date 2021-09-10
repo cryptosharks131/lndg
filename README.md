@@ -33,3 +33,5 @@ The following data can be accessed at the /api endpoint: `payments`, `invoices`,
 
 ### Opens In Separate Screens
 ![image](https://user-images.githubusercontent.com/38626122/132701553-bbab3f27-ac72-4de6-9591-506c6740579b.png)
+![image](https://user-images.githubusercontent.com/38626122/132861336-3cb02cad-2b09-4548-8186-a93b2482c40d.png)
+
