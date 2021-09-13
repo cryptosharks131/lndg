@@ -136,7 +136,9 @@ def reconnect_peers(stub):
                 print('Inactive channel is still connected to peer, disconnecting peer...')
                 stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
             print('Attempting connection to:', inactive_peer)
-            host = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node.addresses[-1].addr
+            node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
+            host = node.addresses[-1].addr
+            host = node.addresses[0].addr if host[0] == '[' else host
             address = ln.LightningAddress(pubkey=inactive_peer, host=host)
             stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
 
