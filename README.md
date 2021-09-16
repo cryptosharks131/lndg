@@ -7,9 +7,14 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 3. Build required python file for your system to interact with lnd grpc (rpc + router), instructions here: [here](https://github.com/lightningnetwork/lnd/blob/master/docs/grpc/python.md#setup-and-installation)
 4. Clone respository
 5. Place the 4 output files from step 3 inside the repository at `lndg/gui/`
-6. A settings file is required at lndg/settings.py (default django setting file + 'gui' + 'rest_framework' + 'qr_code' added to your installed apps inside the file) - generate your own or use the default one from the django github repo [here](https://github.com/django/django/blob/main/django/conf/project_template/project_name/settings.py-tpl)
-7. Make migrations and migrate all database objects (python manage.py makemigrations && python manage.py migrate)
-8. Run the server via chosen webserver or via python development server (python manage.py runserver IP:PORT)
+6. Due to some parts running as a web app and some as standalone the following is also required:<br />
+  a. Make copy of `rpc_pb2_grpc.py`, naming it `rpc_pb2_grpc_jobs.py` within the same folder.<br />
+  b. Rename `router_pb2.py`, naming it `router_pb2_rebalancer.py`.<br />
+  c. Rename `router_pb2_grpc.py`, naming it `router_pb2_grpc_rebalancer.py`.<br />
+  d. Replace `import rpc_pb2 as rpc__pb2` with `from . import rpc_pb2 as rpc__pb2` in the following file: `rpc_pb2_grpc.py` <br />
+8. A settings file is required at lndg/settings.py (default django setting file + 'gui' + 'rest_framework' + 'qr_code' added to your installed apps inside the file) - generate your own or use the default one from the django github repo [here](https://github.com/django/django/blob/main/django/conf/project_template/project_name/settings.py-tpl)
+9. Make migrations and migrate all database objects (python manage.py makemigrations && python manage.py migrate)
+10. Run the server via chosen webserver or via python development server (python manage.py runserver IP:PORT)
 
 ## Backend Data Refreshes
 The file `jobs.py` inside lndg/gui/ serves to update the backend database with the most up to date information.  This reduces the amount of calls made when a user refreshes the front end and enables the rest api usage to fetch data from your lnd node.
