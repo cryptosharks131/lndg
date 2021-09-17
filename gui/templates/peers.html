@@ -14,7 +14,7 @@
     </tr>
     {% for peer in peers %}
     <tr>
-      <td><a href="https://1ml.com/node/{{ peer.pub_key }}" target="_blank">{{ peer.pub_key }}</a></td>
+      <td><a href="https://1ml.com/node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
       <td>{{ peer.address }}</td>
       <td>{{ peer.inbound }}</td>
       <td>{{ peer.sat_sent|intcomma }}</td>

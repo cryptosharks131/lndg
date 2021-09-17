@@ -17,7 +17,7 @@ settings.configure(
     TIME_ZONE = 'America/New_York'
 )
 django.setup()
-from models import Payments, PaymentHops, Invoices, Forwards, Channels
+from models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -124,23 +124,53 @@ def update_channels(stub):
             channel.is_open = False
             channel.save()
 
+def update_peers(stub):
+    counter = 0
+    peer_list = []
+    peers = stub.ListPeers(ln.ListPeersRequest(latest_error=True)).peers
+    for peer in peers:
+        exists = 1 if Peers.objects.filter(pubkey=peer.pub_key).count() == 1 else 0
+        if exists == 1:
+            db_peer = Peers.objects.filter(pubkey=peer.pub_key)[0]
+            db_peer.pubkey = peer.pub_key
+            db_peer.address = peer.address
+            db_peer.sat_sent = peer.sat_sent
+            db_peer.sat_recv = peer.sat_recv
+            db_peer.inbound = peer.inbound
+            db_peer.connected = True
+            db_peer.save()
+        elif exists == 0:
+            Peers(pubkey = peer.pub_key, address = peer.address, sat_sent = peer.sat_sent, sat_recv = peer.sat_recv, inbound = peer.inbound, connected = True).save()
+        counter += 1
+        peer_list.append(peer.pub_key)
+    records = Peers.objects.filter(connected=True).count()
+    if records > counter:
+        disconnected = Peers.objects.filter(connected=True).exclude(pubkey__in=peer_list)
+        for peer in disconnected:
+            peer.connected = False
+            peer.save()
+
 def reconnect_peers(stub):
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
-        connected_peers = stub.ListPeers(ln.ListPeersRequest(latest_error=True)).peers
-        peer_list = set()
-        for connected_peer in connected_peers:
-            peer_list.add(connected_peer.pub_key)
+        peers = Peers.objects.all()
         for inactive_peer in inactive_peers:
-            if inactive_peer in peer_list:
-                print('Inactive channel is still connected to peer, disconnecting peer...')
-                stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
-            print('Attempting connection to:', inactive_peer)
-            node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
-            host = node.addresses[-1].addr
-            host = node.addresses[0].addr if host[0] == '[' else host
-            address = ln.LightningAddress(pubkey=inactive_peer, host=host)
-            stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
+            if peers.filter(pubkey=inactive_peer).exists():
+                peer = peers.filter(pubkey=inactive_peer)[0] 
+                if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) > 2):
+                    if peer.connected == True:
+                        print('Inactive channel is still connected to peer, disconnecting peer...')
+                        stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
+                        peer.connected = False
+                        peer.save()
+                    print('Attempting connection to:', inactive_peer)
+                    node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
+                    host = node.addresses[-1].addr
+                    host = node.addresses[0].addr if host[0] == '[' else host
+                    address = ln.LightningAddress(pubkey=inactive_peer, host=host)
+                    stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
+                    peer.last_reconnected = datetime.now()
+                    peer.save()
 
 def main():
     #Open connection with lnd via grpc
@@ -158,6 +188,7 @@ def main():
     stub = lnrpc.LightningStub(channel)
     #Update data
     update_channels(stub)
+    update_peers(stub)
     update_payments(stub)
     update_invoices(stub)
     update_forwards(stub)

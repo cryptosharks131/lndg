@@ -71,6 +71,17 @@ class Channels(models.Model):
     class Meta:
         app_label = 'gui'
 
+class Peers(models.Model):
+    pubkey = models.CharField(max_length=66, primary_key=True)
+    address = models.CharField(max_length=100)
+    sat_sent = models.BigIntegerField()
+    sat_recv = models.BigIntegerField()
+    inbound = models.BooleanField()
+    connected = models.BooleanField()
+    last_reconnected = models.DateTimeField(null=True, default=None)
+    class Meta:
+        app_label = 'gui'
+
 class Rebalancer(models.Model):
     requested = models.DateTimeField(default=timezone.now)
     value = models.IntegerField()

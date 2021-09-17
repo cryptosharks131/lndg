@@ -6,7 +6,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers
 from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from . import rpc_pb2 as ln
 from . import rpc_pb2_grpc as lnrpc
@@ -140,7 +140,7 @@ def peers(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
         context = {
-            'peers': stub.ListPeers(ln.ListPeersRequest(latest_error=True)).peers
+            'peers': Peers.objects.all()
         }
         return render(request, 'peers.html', context)
     else:
