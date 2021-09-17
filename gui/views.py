@@ -140,7 +140,7 @@ def peers(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
         context = {
-            'peers': Peers.objects.all()
+            'peers': Peers.objects.filter(connected=True)
         }
         return render(request, 'peers.html', context)
     else:
