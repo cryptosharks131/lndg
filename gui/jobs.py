@@ -13,8 +13,7 @@ settings.configure(
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3'
         }
-    },
-    TIME_ZONE = 'America/New_York'
+    }
 )
 django.setup()
 from models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers

@@ -1,6 +1,5 @@
 import os, codecs, django, grpc, json, datetime
 from django.conf import settings
-from django.utils import timezone
 from django.db.models import Sum
 from pathlib import Path
 from datetime import datetime
@@ -16,8 +15,7 @@ settings.configure(
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3'
         }
-    },
-    TIME_ZONE = 'America/New_York'
+    }
 )
 django.setup()
 from models import Rebalancer, Channels, LocalSettings
@@ -43,9 +41,9 @@ def run_rebalancer(rebalance):
         unknown_errors = Rebalancer.objects.filter(status=1)
         for unknown_error in unknown_errors:
             unknown_error.status = 400
-            unknown_error.stop = timezone.now()
+            unknown_error.stop = datetime.now()
             unknown_error.save()
-    rebalance.start = timezone.now()
+    rebalance.start = datetime.now()
     rebalance.save()
     try:
         #Open connection with lnd via grpc
@@ -86,7 +84,7 @@ def run_rebalancer(rebalance):
         error = str(e)
         print(error)
     finally:
-        rebalance.stop = timezone.now()
+        rebalance.stop = datetime.now()
         rebalance.save()
 
 def auto_schedule():
