@@ -2,3 +2,4 @@ Django
 djangorestframework
 django-qr-code
 grpcio
+protobuf
