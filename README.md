@@ -5,14 +5,11 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 1. Run `bitcoind`
 2. Run `lnd`
 3. Build required python file for your system to interact with lnd grpc (`lightning` + `router`), instructions can be found [here](https://github.com/lightningnetwork/lnd/blob/master/docs/grpc/python.md#setup-and-installation).  
-  NOTE! The name of the `rpc` proto file has since been change in the lnd github to the `lightning` proto file and thus new compilations of this file will have a compatiblity issue with views.py, jobs.py and rebalancer.py. This can be resolved by updating the import statement in these files until an update for these files is made in this repo.
 5. Clone respository
 6. Place the 4 output files from step 3 inside the repository at: `lndg/gui/`
 7. Due to some parts running as a web app and some as standalone the following is also required:  
   a. Make copy of `lightning_pb2_grpc.py`, naming it `lightning_pb2_grpc_jobs.py` within the same folder.  
-  b. Rename `router_pb2.py`, naming it `router_pb2_rebalancer.py`.  
-  c. Rename `router_pb2_grpc.py`, naming it `router_pb2_grpc_rebalancer.py`.  
-  d. Replace `import lightning_pb2 as rpc__pb2` with `from . import lightning_pb2 as rpc__pb2` in the following file: `lightning_pb2_grpc.py`  
+  b. Replace `import lightning_pb2 as rpc__pb2` with `from . import lightning_pb2 as rpc__pb2` in the following file: `lightning_pb2_grpc.py`  
 8. A settings file is required at lndg/settings.py (default django setting file + 'django.contrib.humanize' + 'gui' + 'rest_framework' + 'qr_code' added to your installed apps inside the file) - generate your own or use the default one from the django github repo [here](https://github.com/django/django/blob/main/django/conf/project_template/project_name/settings.py-tpl).
 9. Make migrations and migrate all database objects (python manage.py makemigrations gui && python manage.py migrate)
 10. Run the server via chosen webserver or via python development server (python manage.py runserver IP:PORT)
