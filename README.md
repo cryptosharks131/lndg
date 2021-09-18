@@ -5,7 +5,7 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 1. Run `bitcoind`
 2. Run `lnd`
 3. Build required python file for your system to interact with lnd grpc (`lightning` + `router`), instructions can be found [here](https://github.com/lightningnetwork/lnd/blob/master/docs/grpc/python.md#setup-and-installation).  
-  NOTE! The name of the `rpc` proto file has since been change in the lnd github to the `lightning` proto file and thus new compilations of this file will have a compatiblity issue with views.py and jobs.py. This can be resolved by updating the import statement in these files until an update for these files is made in this repo.
+  NOTE! The name of the `rpc` proto file has since been change in the lnd github to the `lightning` proto file and thus new compilations of this file will have a compatiblity issue with views.py, jobs.py and rebalancer.py. This can be resolved by updating the import statement in these files until an update for these files is made in this repo.
 5. Clone respository
 6. Place the 4 output files from step 3 inside the repository at: `lndg/gui/`
 7. Due to some parts running as a web app and some as standalone the following is also required:  
