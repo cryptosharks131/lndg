@@ -8,8 +8,8 @@ from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers
 from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
-from . import rpc_pb2 as ln
-from . import rpc_pb2_grpc as lnrpc
+from . import lightning_pb2 as ln
+from . import lightning_pb2_grpc as lnrpc
 
 #Define lnd connection for repeated use
 def lnd_connect():
