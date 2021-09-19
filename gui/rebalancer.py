@@ -47,8 +47,9 @@ def run_rebalancer(rebalance):
     rebalance.save()
     try:
         #Open connection with lnd via grpc
-        stub = lnrpc.LightningStub(lnd_connect())
-        routerstub = lnrouter.RouterStub(lnd_connect())
+        connection = lnd_connect()
+        stub = lnrpc.LightningStub(connection)
+        routerstub = lnrouter.RouterStub(connection)
         chan_ids = json.loads(rebalance.outgoing_chan_ids)
         timeout = rebalance.duration * 60
         response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
