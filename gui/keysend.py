@@ -1,21 +1,7 @@
-import os, codecs, django, grpc, secrets
-from django.conf import settings
-from pathlib import Path
+import os, codecs, grpc, secrets
 from hashlib import sha256
 import router_pb2 as lnr
 import router_pb2_grpc as lnrouter
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-settings.configure(
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3'
-        }
-    }
-)
-django.setup()
-#from models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers
 
 def lnd_connect():
     #Open connection with lnd via grpc
@@ -37,8 +23,11 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout):
     routerstub = lnrouter.RouterStub(lnd_connect())
     secret = secrets.token_bytes(32)
     hashed_secret = sha256(secret).hexdigest()
-    hex_msg = msg.encode('utf-8').hex()
-    for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(dest=bytes.fromhex(target_pubkey), dest_custom_records=[(34349334, bytes.fromhex(hex_msg)),(5482373484, secret),], fee_limit_sat=fee_limit, timeout_seconds=timeout, amt=amount, payment_hash=bytes.fromhex(hashed_secret))):
+    custom_records = [(5482373484, secret),]
+    msg = str(msg)
+    if len(msg) > 0:
+        custom_records.append((34349334, bytes.fromhex(msg.encode('utf-8').hex())))
+    for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(dest=bytes.fromhex(target_pubkey), dest_custom_records=custom_records, fee_limit_sat=fee_limit, timeout_seconds=timeout, amt=amount, payment_hash=bytes.fromhex(hashed_secret))):
         if response.status == 1:
             print('In-flight')
         if response.status == 2:
@@ -58,12 +47,18 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout):
             print('Unknown Error')
 
 def main():
-    #User defined variables
-    target_pubkey = '<fill_target_pubkey_here>'
-    msg = '<fill_message_here>'
-    amount = 10
-    fee_limit = 10
+    #Ask user for variables
+    try:
+        target_pubkey = input('Enter the pubkey of the node you want to send a keysend payment to: ')
+        amount = int(input('Enter an amount in sats to be sent with the keysend payment (defaults to 1 sat): ') or '1')
+        fee_limit = int(input('Enter an amount in sats to be used as a max fee limit for sending (defaults to 1 sat): ') or '1')
+        msg = input('Enter an optional message to be included (leave this blank for no message): ')
+    except:
+        print('Invalid data entered, please try again.')
     timeout = 10
+    print('Sending keysend payment of %s to: %s' % (amount, target_pubkey))
+    if len(msg) > 0:
+        print('Attaching this message to the keysend payment:', msg)
     keysend(target_pubkey, msg, amount, fee_limit, timeout)
 
 if __name__ == '__main__':
