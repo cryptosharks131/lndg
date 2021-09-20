@@ -11,6 +11,8 @@ class Payments(models.Model):
     index = models.IntegerField()
     chan_out = models.IntegerField(null=True)
     chan_out_alias = models.CharField(null=True, max_length=32)
+    keysend_preimage = models.CharField(null=True, max_length=64)
+    message = models.CharField(null=True, max_length=200)
     class Meta:
         app_label = 'gui'
 
@@ -37,6 +39,8 @@ class Invoices(models.Model):
     state = models.IntegerField()
     chan_in = models.IntegerField(null=True)
     chan_in_alias = models.CharField(null=True, max_length=32)
+    keysend_preimage = models.CharField(null=True, max_length=64)
+    message = models.CharField(null=True, max_length=200)
     class Meta:
         app_label = 'gui'
 
