@@ -44,7 +44,7 @@ def update_payments(stub):
                                 new_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
-                                message = records[34349334].decode('cp1252')[:200] if 34349334 in records else None
+                                message = records[34349334].decode('utf-8', errors='ignore')[:200] if 34349334 in records else None
                                 new_payment.keysend_preimage = records[5482373484].hex()
                                 new_payment.message = message
                                 new_payment.save()
@@ -74,7 +74,7 @@ def update_payments(stub):
                                 db_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
-                                message = records[34349334].decode('cp1252')[:200] if 34349334 in records else None
+                                message = records[34349334].decode('utf-8', errors='ignore')[:200] if 34349334 in records else None
                                 db_payment.keysend_preimage = records[5482373484].hex()
                                 db_payment.message = message
                                 db_payment.save()
@@ -90,7 +90,7 @@ def update_invoices(stub):
             alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
-            message = records[34349334].decode('cp1252')[:200] if 34349334 in records else None
+            message = records[34349334].decode('utf-8', errors='ignore')[:200] if 34349334 in records else None
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message).save()
         else:
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
