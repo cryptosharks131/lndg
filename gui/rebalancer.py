@@ -3,10 +3,10 @@ from django.conf import settings
 from django.db.models import Sum
 from pathlib import Path
 from datetime import datetime
-import lightning_pb2 as ln
-import lightning_pb2_grpc_jobs as lnrpc
-import router_pb2 as lnr
-import router_pb2_grpc as lnrouter
+from lnd_deps import lightning_pb2 as ln
+from lnd_deps import lightning_pb2_grpc as lnrpc
+from lnd_deps import router_pb2 as lnr
+from lnd_deps import router_pb2_grpc as lnrouter
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 settings.configure(

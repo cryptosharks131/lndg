@@ -3,8 +3,8 @@ from django.conf import settings
 from django.db.models import Max
 from pathlib import Path
 from datetime import datetime
-import lightning_pb2 as ln
-import lightning_pb2_grpc_jobs as lnrpc
+from lnd_deps import lightning_pb2 as ln
+from lnd_deps import lightning_pb2_grpc as lnrpc
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 settings.configure(

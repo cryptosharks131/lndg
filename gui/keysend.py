@@ -1,7 +1,7 @@
 import os, codecs, grpc, secrets
 from hashlib import sha256
-import router_pb2 as lnr
-import router_pb2_grpc as lnrouter
+from lnd_deps import router_pb2 as lnr
+from lnd_deps import router_pb2_grpc as lnrouter
 
 def lnd_connect():
     #Open connection with lnd via grpc

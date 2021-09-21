@@ -1,6 +1,6 @@
 import os, codecs, grpc
-import lightning_pb2 as ln
-import lightning_pb2_grpc_jobs as lnrpc
+from lnd_deps import lightning_pb2 as ln
+from lnd_deps import lightning_pb2_grpc as lnrpc
 
 #Define lnd connection for repeated use
 def lnd_connect():
