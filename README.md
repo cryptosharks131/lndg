@@ -5,8 +5,8 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 1. Run `bitcoind`
 2. Run `lnd`
 3. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-4. Change directory into the reop `cd lndg`
-5. A settings file is required at lndg/settings.py (default django setting file + 'django.contrib.humanize' + 'gui' + 'rest_framework' + 'qr_code' added to your installed apps inside the file) - generate your own or use the default one from the django github repo [here](https://github.com/django/django/blob/main/django/conf/project_template/project_name/settings.py-tpl).
+4. Change directory into the repo `cd lndg`
+5. Initialize a settings.py file for your django site `python initialize.py`
 6. Make migrations and migrate all database objects `python manage.py makemigrations gui && python manage.py migrate`
 7. Run the server via chosen webserver or via python development server `python manage.py runserver`
 
