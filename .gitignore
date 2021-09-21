@@ -1,6 +1,5 @@
 __pycache__
 db.sqlite3
 lndg/settings.py
-gui/migrations
 frontend
 node_modules
