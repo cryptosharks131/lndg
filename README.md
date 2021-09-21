@@ -10,15 +10,11 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 6. Migrate all database objects `.venv/bin/python manage.py makemigrations gui && .venv/bin/python manage.py migrate`
 7. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver`
 
-## Backend Data Refreshes
-The file `jobs.py` inside lndg/gui/ serves to update the backend database with the most up to date information.  This reduces the amount of calls made when a user refreshes the front end and enables the rest api usage to fetch data from your lnd node.
+## Backend Data Refreshes and Automated Rebalancing
+The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.
 
-You will need to setup a systemd/crontab (linux) or task scheduler (windows) to run this file at your specified refresh interval.  A refresh of 15-60 seconds is advisable for the best experience and may depend on how quickly your machine is capable of handling the file execution. This can be ran manually with: `.venv/bin/python gui/jobs.py`
+You can find instructions on settings these files up to run in the background via systemd [here](https://github.com/cryptosharks131/lndg/blob/master/systemd.md).
 
-## Automated Rebalancing
-The file `rebalancer.py` inside lndg/gui/ serves to rebalance any channels that meet the specifications set on your lndg dashboard.  Default values are set upon the first run of the rebalancer file.  You can review this file to find the default values.
-
-You will need to setup a systemd/crontab (linux) or task scheduler (windows) to run this file at your specified refresh interval.  A refresh of 15-60 seconds is advisable for the best experience and may depend on how quickly your machine is capable of handling the file execution. This can be ran manually with: `.venv/bin/python gui/rebalancer.py`
 
 ## API Backend
 The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels`, and `rebalancer`
