@@ -7,8 +7,13 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 3. Setup a python virtual environment `virtualenv .venv`
 4. Install required dependencies `.venv/bin/pip install -r requirements.txt`
 5. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
-6. Migrate all database objects `.venv/bin/python manage.py makemigrations gui && .venv/bin/python manage.py migrate`
+6. Migrate all database objects `.venv/bin/python manage.py migrate`
 7. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver`
+
+## Updating
+1. Make sure you are in the lndg folder `cd lndg`
+2. Pull the new files `git pull`
+3. Migrate any database changes `.venv/bin/python manage.py migrate`
 
 ## Backend Data Refreshes and Automated Rebalancing
 The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.
