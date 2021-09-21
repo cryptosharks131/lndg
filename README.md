@@ -2,23 +2,25 @@
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
 ## Setup
-1. Run `bitcoind`
-2. Run `lnd`
+1. Running `bitcoind`
+2. Running `lnd`
 3. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 4. Change directory into the repo `cd lndg`
-5. Initialize a settings.py file for your django site `python initialize.py`
-6. Make migrations and migrate all database objects `python manage.py makemigrations gui && python manage.py migrate`
-7. Run the server via chosen webserver or via python development server `python manage.py runserver`
+5. Setup a python virtual environment `virtualenv .venv`
+6. Install required dependencies `.venv/bin/pip install -r requirements.txt`
+7. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
+8. Make migrations and migrate all database objects `.venv/bin/python manage.py makemigrations gui && .venv/bin/python manage.py migrate`
+9. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver`
 
 ## Backend Data Refreshes
 The file `jobs.py` inside lndg/gui/ serves to update the backend database with the most up to date information.  This reduces the amount of calls made when a user refreshes the front end and enables the rest api usage to fetch data from your lnd node.
 
-You will need to setup a systemd/crontab (linux) or task scheduler (windows) to run this file at your specified refresh interval.  A refresh of 15-60 seconds is advisable for the best experience and may depend on how quickly your machine is capable of handling the file execution.
+You will need to setup a systemd/crontab (linux) or task scheduler (windows) to run this file at your specified refresh interval.  A refresh of 15-60 seconds is advisable for the best experience and may depend on how quickly your machine is capable of handling the file execution. This can be ran manually with: `.venv/bin/python gui/jobs.py`
 
 ## Automated Rebalancing
 The file `rebalancer.py` inside lndg/gui/ serves to rebalance any channels that meet the specifications set on your lndg dashboard.  Default values are set upon the first run of the rebalancer file.  You can review this file to find the default values.
 
-You will need to setup a systemd/crontab (linux) or task scheduler (windows) to run this file at your specified refresh interval.  A refresh of 15-60 seconds is advisable for the best experience and may depend on how quickly your machine is capable of handling the file execution.
+You will need to setup a systemd/crontab (linux) or task scheduler (windows) to run this file at your specified refresh interval.  A refresh of 15-60 seconds is advisable for the best experience and may depend on how quickly your machine is capable of handling the file execution. This can be ran manually with: `.venv/bin/python gui/rebalancer.py`
 
 ## API Backend
 The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels`, and `rebalancer`
