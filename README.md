@@ -2,15 +2,13 @@
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
 ## Setup
-1. Running `bitcoind`
-2. Running `lnd`
-3. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-4. Change directory into the repo `cd lndg`
-5. Setup a python virtual environment `virtualenv .venv`
-6. Install required dependencies `.venv/bin/pip install -r requirements.txt`
-7. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
-8. Make migrations and migrate all database objects `.venv/bin/python manage.py makemigrations gui && .venv/bin/python manage.py migrate`
-9. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver`
+1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
+2. Change directory into the repo `cd lndg`
+3. Setup a python virtual environment `virtualenv .venv`
+4. Install required dependencies `.venv/bin/pip install -r requirements.txt`
+5. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
+6. Migrate all database objects `.venv/bin/python manage.py makemigrations gui && .venv/bin/python manage.py migrate`
+7. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver`
 
 ## Backend Data Refreshes
 The file `jobs.py` inside lndg/gui/ serves to update the backend database with the most up to date information.  This reduces the amount of calls made when a user refreshes the front end and enables the rest api usage to fetch data from your lnd node.
