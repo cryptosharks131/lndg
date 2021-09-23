@@ -15,7 +15,7 @@ from .lnd_deps import lightning_pb2_grpc as lnrpc
 #Define lnd connection for repeated use
 def lnd_connect():
     #Open connection with lnd via grpc
-    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/mainnet/admin.macaroon'), 'rb') as f:
+    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/' + settings.LND_NETWORK + '/admin.macaroon'), 'rb') as f:
         macaroon_bytes = f.read()
         macaroon = codecs.encode(macaroon_bytes, 'hex')
     def metadata_callback(context, callback):

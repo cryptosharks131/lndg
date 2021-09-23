@@ -24,7 +24,7 @@ from gui.models import Rebalancer, Channels, LocalSettings
 #Define lnd connection for repeated use
 def lnd_connect():
     #Open connection with lnd via grpc
-    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/mainnet/admin.macaroon'), 'rb') as f:
+    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/' + settings.LND_NETWORK + '/admin.macaroon'), 'rb') as f:
         macaroon_bytes = f.read()
         macaroon = codecs.encode(macaroon_bytes, 'hex')
     def metadata_callback(context, callback):
@@ -132,7 +132,7 @@ def auto_schedule():
                     target_fee_rate = int(target.fee_rate * max_cost)
                     if target_fee_rate > 0:
                         value_per_fee = int(1 / (target_fee_rate / 1000000)) if target_fee_rate <= max_fee_rate else int(1 / (max_fee_rate / 1000000))
-                        target_value = int(((target.capacity * 0.5) * target_percent) / value_per_fee) * value_per_fee
+                        target_value = int((target.capacity * target_percent) / value_per_fee) * value_per_fee
                         if target_value >= value_per_fee:
                             if LocalSettings.objects.filter(key='AR-Time').exists():
                                 target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)

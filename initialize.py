@@ -33,6 +33,7 @@ DEBUG = False
 ALLOWED_HOSTS = ['*']
 
 LND_DIR_PATH = '~/.lnd'
+LND_NETWORK = 'mainnet'
 
 # Application definition
 

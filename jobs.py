@@ -88,7 +88,7 @@ def update_invoices(stub):
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records, num_max_invoices=100)).invoices
     for invoice in invoices:
         if invoice.state == 1:
-            alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias
+            alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias if Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id).exists() else None
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:200] if 34349334 in records else None
@@ -100,8 +100,8 @@ def update_forwards(stub):
     records = Forwards.objects.count()
     forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records, num_max_events=100)).forwarding_events
     for forward in forwards:
-        incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].alias
-        outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].alias
+        incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].alias if Channels.objects.filter(chan_id=forward.chan_id_in).exists() else None
+        outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].alias if Channels.objects.filter(chan_id=forward.chan_id_out).exists() else None
         Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=forward.amt_in_msat, amt_out_msat=forward.amt_out_msat, fee=round(forward.fee_msat/1000, 3)).save()
 
 def update_channels(stub):
@@ -109,7 +109,7 @@ def update_channels(stub):
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
     for channel in channels:
-        exists = 1 if Channels.objects.filter(chan_id=channel.chan_id).count() == 1 else 0
+        exists = Channels.objects.filter(chan_id=channel.chan_id).count()
         if exists == 1:
             #Update the channel record with the most current data
             chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
@@ -193,7 +193,7 @@ def reconnect_peers(stub):
 
 def lnd_connect():
     #Open connection with lnd via grpc
-    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/mainnet/admin.macaroon'), 'rb') as f:
+    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/' + settings.LND_NETWORK + '/admin.macaroon'), 'rb') as f:
         macaroon_bytes = f.read()
         macaroon = codecs.encode(macaroon_bytes, 'hex')
     def metadata_callback(context, callback):
