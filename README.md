@@ -12,7 +12,7 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
 9. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver <your_node_ip>:80`
 
-Note: If you are not using the default path for LND `~/.lnd` you can add a custom path in the django settings file `lndg/settings.py`
+Note: If you are not using the default path for LND `~/.lnd` or you would like to run a LND instance on a network other than `mainnet` you can add a custom path or specify the desired network (testnet/signet) in the django settings file `lndg/settings.py`
 
 ## Updating
 1. Make sure you are in the lndg folder `cd lndg`
