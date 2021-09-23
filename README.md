@@ -5,11 +5,14 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
 3. Make sure you have python virtualenv installed `apt install virtualenv`
-4. Setup a python virtual environment `virtualenv -p python3 .venv`
+4. Setup a python3 virtual environment `virtualenv -p python3 .venv`
 5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
 6. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
 7. Migrate all database objects `.venv/bin/python manage.py migrate`
 8. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver <your_node_ip>:80`
+9. Generate some initial data for your web GUI `.venv/bin/python gui/jobs.py`
+
+If you are not using the default path for LND `~/.lnd` you can add a custom path in the django settings file `lndg/settings.py`
 
 ## Updating
 1. Make sure you are in the lndg folder `cd lndg`
