@@ -20,11 +20,11 @@ Note: If you are not using the default path for LND `~/.lnd` you can add a custo
 3. Migrate any database changes `.venv/bin/python manage.py migrate`
 
 ## Backend Data Refreshes and Automated Rebalancing
-The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.  
+The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.
 
-You can find instructions on settings these files up to run in the background via systemd [here](https://github.com/cryptosharks131/lndg/blob/master/systemd.md).  
-If you are familiar with crontab, this is also an option for setting up these files to run on a frequent basis, however it only has a resolution of 1 minute.  
-A bash script has also been included to install the systemd setup. `sudo bash systemd.sh`
+You can find instructions on settings these files up to run in the background via systemd [here](https://github.com/cryptosharks131/lndg/blob/master/systemd.md). If you are familiar with crontab, this is also an option for setting up these files to run on a frequent basis, however it only has a resolution of 1 minute.
+
+A bash script has also been included to help aide in the setup of systemd. `sudo bash systemd.sh`
 
 ## Nginx Webserver
 If you would like to serve the dashboard at all times, it is recommended to setup a proper production webserver to host the site.  
