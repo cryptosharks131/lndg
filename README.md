@@ -4,11 +4,12 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 ## Setup
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
-3. Setup a python virtual environment `virtualenv .venv`
-4. Install required dependencies `.venv/bin/pip install -r requirements.txt`
-5. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
-6. Migrate all database objects `.venv/bin/python manage.py migrate`
-7. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver`
+3. Make sure you have python virtualenv installed `apt install virtualenv`
+4. Setup a python virtual environment `virtualenv -p python3 .venv`
+5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
+6. Initialize a settings.py file for your django site `.venv/bin/python initialize.py`
+7. Migrate all database objects `.venv/bin/python manage.py migrate`
+8. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver <your_node_ip>:80`
 
 ## Updating
 1. Make sure you are in the lndg folder `cd lndg`
