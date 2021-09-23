@@ -4,11 +4,11 @@ You will need to fill in the proper username below in the paths marked `<run_as_
 
 ## Backend Refreshes
 Create a simple bash file to call `jobs.py`, copying the contents below to the file.  
-`nano /home/<run_as_user>/lndg/gui/jobs.sh`
+`nano /home/<run_as_user>/lndg/jobs.sh`
 ```
 #!/bin/bash
 
-/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/gui/jobs.py
+/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/jobs.py
 ```
 Create a service file for `jobs.py`, copying the contents below to the file and filling in the user you would like this to run under.  
 `nano /etc/systemd/system/jobs-lndg.service`
@@ -18,7 +18,7 @@ Description=Run Jobs For Lndg
 [Service]
 User=<run_as_user>
 Group=<run_as_user>
-ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/gui/jobs.sh
+ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/jobs.sh
 StandardError=append:/var/log/lnd_jobs_error.log
 ```
 
@@ -40,11 +40,11 @@ Enable the timer to run the jobs service file at the specified interval.
 
 ## Rebalancer Runs
 Create a simple bash file to call `rebalancer.py`, copying the contents below to the file.  
-`nano /home/<run_as_user>/lndg/gui/rebalancer.sh`
+`nano /home/<run_as_user>/lndg/rebalancer.sh`
 ```
 #!/bin/bash
 
-/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/gui/rebalancer.py
+/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/rebalancer.py
 ```
 Create a service file for `rebalancer.py`, copying the contents below to the file and filling in the user you would like this to run under.  
 `nano /etc/systemd/system/rebalancer-lndg.service`
@@ -54,7 +54,7 @@ Description=Run Rebalancer For Lndg
 [Service]
 User=<run_as_user>
 Group=<run_as_user>
-ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/gui/rebalancer.sh
+ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/rebalancer.sh
 StandardError=append:/var/log/lnd_rebalancer_error.log
 RuntimeMaxSec=3600
 ```
