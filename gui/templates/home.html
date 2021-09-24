@@ -216,7 +216,7 @@
     </tr>
     {% for forward in forwards %}
     <tr>
-      <td>{{ forward.forward_date|naturaltime }}</td>
+      <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
       <td>{% widthratio forward.amt_in_msat 1000 1 %}</td>
       <td>{% widthratio forward.amt_out_msat 1000 1 %}</td>
       <td>{{ forward.chan_in_alias }}</td>
@@ -245,9 +245,9 @@
     </tr>
     {% for rebalance in rebalances %}
     <tr>
-      <td>{{ rebalance.requested|naturaltime }}</td>
-      <td>{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td>{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
+      <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
+      <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
+      <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
       <td>{{ rebalance.duration }} minutes</td>
       <td>{{ rebalance.value }}</td>
       <td>{{ rebalance.fee_limit }}</td>
@@ -275,7 +275,7 @@
     </tr>
     {% for payment in payments %}
     <tr>
-      <td>{{ payment.creation_date|naturaltime }}</td>
+      <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
       <td>{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0" }}</td>
       <td>{{ payment.fee }}</td>
@@ -306,8 +306,8 @@
     </tr>
     {% for invoice in invoices %}
     <tr>
-      <td>{{ invoice.creation_date|naturaltime }}</td>
-      <td>{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
+      <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
+      <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
       <td>{{ invoice.r_hash }}</td>
       <td>{{ invoice.value|add:"0" }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
