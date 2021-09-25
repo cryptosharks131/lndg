@@ -7,6 +7,7 @@ from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
+from gui.lnd_deps.lnd_connect import lnd_connect
 
 BASE_DIR = Path(__file__).resolve().parent
 settings.configure(
@@ -21,22 +22,6 @@ django.setup()
 from lndg import settings
 from gui.models import Rebalancer, Channels, LocalSettings
 
-#Define lnd connection for repeated use
-def lnd_connect():
-    #Open connection with lnd via grpc
-    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/' + settings.LND_NETWORK + '/admin.macaroon'), 'rb') as f:
-        macaroon_bytes = f.read()
-        macaroon = codecs.encode(macaroon_bytes, 'hex')
-    def metadata_callback(context, callback):
-        callback([('macaroon', macaroon)], None)
-    os.environ["GRPC_SSL_CIPHER_SUITES"] = 'HIGH+ECDSA'
-    cert = open(os.path.expanduser(settings.LND_DIR_PATH + '/tls.cert'), 'rb').read()
-    cert_creds = grpc.ssl_channel_credentials(cert)
-    auth_creds = grpc.metadata_call_credentials(metadata_callback)
-    creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
-    channel = grpc.secure_channel('localhost:10009', creds)
-    return channel
-
 def run_rebalancer(rebalance):
     if Rebalancer.objects.filter(status=1).exists():
         unknown_errors = Rebalancer.objects.filter(status=1)
@@ -48,7 +33,7 @@ def run_rebalancer(rebalance):
     rebalance.save()
     try:
         #Open connection with lnd via grpc
-        connection = lnd_connect()
+        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
         stub = lnrpc.LightningStub(connection)
         routerstub = lnrouter.RouterStub(connection)
         chan_ids = json.loads(rebalance.outgoing_chan_ids)

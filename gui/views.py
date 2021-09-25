@@ -11,27 +11,12 @@ from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalan
 from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
-
-#Define lnd connection for repeated use
-def lnd_connect():
-    #Open connection with lnd via grpc
-    with open(os.path.expanduser(settings.LND_DIR_PATH + '/data/chain/bitcoin/' + settings.LND_NETWORK + '/admin.macaroon'), 'rb') as f:
-        macaroon_bytes = f.read()
-        macaroon = codecs.encode(macaroon_bytes, 'hex')
-    def metadata_callback(context, callback):
-        callback([('macaroon', macaroon)], None)
-    os.environ["GRPC_SSL_CIPHER_SUITES"] = 'HIGH+ECDSA'
-    cert = open(os.path.expanduser(settings.LND_DIR_PATH + '/tls.cert'), 'rb').read()
-    cert_creds = grpc.ssl_channel_credentials(cert)
-    auth_creds = grpc.metadata_call_credentials(metadata_callback)
-    creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
-    channel = grpc.secure_channel('localhost:10009', creds)
-    return channel
+from .lnd_deps.lnd_connect import lnd_connect
 
 # Create your views here.
 def home(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect())
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         #Get balance and general node information
         node_info = stub.GetInfo(ln.GetInfoRequest())
         balances = stub.WalletBalance(ln.WalletBalanceRequest())
@@ -139,7 +124,7 @@ def route(request):
 
 def peers(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect())
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         context = {
             'peers': Peers.objects.filter(connected=True)
         }
@@ -149,7 +134,7 @@ def peers(request):
 
 def balances(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect())
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         context = {
             'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': stub.GetTransactions(ln.GetTransactionsRequest(start_height=0)).transactions
@@ -163,7 +148,7 @@ def open_channel_form(request):
         form = OpenChannelForm(request.POST)
         if form.is_valid():
             try:
-                stub = lnrpc.LightningStub(lnd_connect())
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
                 for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
                     messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
@@ -186,7 +171,7 @@ def close_channel_form(request):
         form = CloseChannelForm(request.POST)
         if form.is_valid():
             try:
-                stub = lnrpc.LightningStub(lnd_connect())
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 funding_txid = form.cleaned_data['funding_txid']
                 output_index = form.cleaned_data['output_index']
                 target_fee = form.cleaned_data['target_fee']
@@ -217,7 +202,7 @@ def connect_peer_form(request):
         form = ConnectPeerForm(request.POST)
         if form.is_valid():
             try:
-                stub = lnrpc.LightningStub(lnd_connect())
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 peer_pubkey = form.cleaned_data['peer_pubkey']
                 host = form.cleaned_data['host']
                 ln_addr = ln.LightningAddress()
@@ -238,7 +223,7 @@ def connect_peer_form(request):
 def new_address_form(request):
     if request.method == 'POST':
         try:
-            stub = lnrpc.LightningStub(lnd_connect())
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             response = stub.NewAddress(ln.NewAddressRequest(type=0))
             messages.success(request, 'Deposit Address: ' + str(response.address))
         except Exception as e:
@@ -253,7 +238,7 @@ def add_invoice_form(request):
         form = AddInvoiceForm(request.POST)
         if form.is_valid():
             try:
-                stub = lnrpc.LightningStub(lnd_connect())
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 response = stub.AddInvoice(ln.Invoice(value=form.cleaned_data['value']))
                 messages.success(request, 'Invoice created! ' + str(response.payment_request))
             except Exception as e:
@@ -291,7 +276,7 @@ def update_chan_policy(request):
         form = ChanPolicyForm(request.POST)
         if form.is_valid():
             try:
-                stub = lnrpc.LightningStub(lnd_connect())
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 if form.cleaned_data['target_all']:
                     args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': 40}
                     stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
@@ -441,7 +426,7 @@ def connect_peer(request):
     serializer = ConnectPeerSerializer(data=request.data)
     if serializer.is_valid():
         try:
-            stub = lnrpc.LightningStub(lnd_connect())
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             peer_pubkey = serializer.validated_data['peer_pubkey']
             host = serializer.validated_data['host']
             ln_addr = ln.LightningAddress()
@@ -460,7 +445,7 @@ def open_channel(request):
     serializer = OpenChannelSerializer(data=request.data)
     if serializer.is_valid():
         try:
-            stub = lnrpc.LightningStub(lnd_connect())
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             pubkey_bytes = bytes.fromhex(serializer.validated_data['peer_pubkey'])
             for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=serializer.validated_data['local_amt'], sat_per_byte=serializer.validated_data['sat_per_byte'])):
                 return Response({'message': 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index)})
@@ -478,7 +463,7 @@ def close_channel(request):
     serializer = CloseChannelSerializer(data=request.data)
     if serializer.is_valid():
         try:
-            stub = lnrpc.LightningStub(lnd_connect())
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             funding_txid = serializer.validated_data['funding_txid']
             output_index = serializer.validated_data['output_index']
             target_fee = serializer.validated_data['target_fee']
@@ -503,7 +488,7 @@ def add_invoice(request):
     serializer = AddInvoiceSerializer(data=request.data)
     if serializer.is_valid() and serializer.validated_data['value'] >= 0:
         try:
-            stub = lnrpc.LightningStub(lnd_connect())
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             response = stub.AddInvoice(ln.Invoice(value=serializer.validated_data['value']))
             return Response({'message': 'Invoice created!', 'data':str(response.payment_request)})
         except Exception as e:
@@ -515,7 +500,7 @@ def add_invoice(request):
 @api_view(['POST'])
 def new_address(request):
     try:
-        stub = lnrpc.LightningStub(lnd_connect())
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         response = stub.NewAddress(ln.NewAddressRequest(type=0))
         return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
     except Exception as e:

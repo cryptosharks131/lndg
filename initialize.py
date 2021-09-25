@@ -1,6 +1,6 @@
-import secrets
+import secrets, argparse
 
-def write_settings():
+def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     settings_file = '''"""
@@ -30,10 +30,11 @@ SECRET_KEY = '%s'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['%s']
 
-LND_DIR_PATH = '~/.lnd'
-LND_NETWORK = 'mainnet'
+LND_DIR_PATH = '%s'
+LND_NETWORK = '%s'
+LND_RPC_SERVER = '%s'
 
 # Application definition
 
@@ -110,6 +111,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/{{ docs_version }}/topics/i18n/
@@ -129,7 +134,7 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret)
+''' % (secret, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server)
     try:
         f = open("lndg/settings.py", "x")
         f.close()
@@ -143,7 +148,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
         print('Error creating the settings file:', e)
 
 def main():
-    write_settings()
+    help_msg = "LNDg Settings Initializer"
+    parser = argparse.ArgumentParser(description = help_msg)
+    parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
+    parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default='~/.lnd')
+    parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
+    parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
+    args = parser.parse_args()
+    node_ip = args.nodeip
+    lnd_dir_path = args.lnddir
+    lnd_network = args.network
+    lnd_rpc_server = args.rpcserver
+    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server)
 
 if __name__ == '__main__':
     main()

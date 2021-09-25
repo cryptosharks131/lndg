@@ -1,0 +1,14 @@
+lndg:
+  build: ./lndg
+  environment:
+    MYENV: LNDg
+  depends_on:
+    - lnd
+  volumes:
+  - ./lndg:/lndg
+  - type: bind
+    source: /root/.lnd/
+    target: /root/.lnd/
+    read_only: true
+  ports:
+  - 8000:8000
