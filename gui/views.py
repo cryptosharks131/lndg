@@ -57,8 +57,10 @@ def home(request):
             detailed_channel['unsettled_balance'] = channel.unsettled_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = channel.alias
-            detailed_channel['base_fee'] = channel.base_fee
-            detailed_channel['fee_rate'] = channel.fee_rate
+            detailed_channel['local_base_fee'] = channel.local_base_fee
+            detailed_channel['local_fee_rate'] = channel.local_fee_rate
+            detailed_channel['remote_base_fee'] = channel.remote_base_fee
+            detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['visual'] = channel.local_balance / channel.capacity
@@ -71,7 +73,7 @@ def home(request):
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
-        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-fee_rate').order_by('-alias')
+        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-local_fee_rate').order_by('-alias')
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
         #Grab local settings

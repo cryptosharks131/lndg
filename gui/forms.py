@@ -17,7 +17,7 @@ class RebalancerModelChoiceField(forms.models.ModelMultipleChoiceField):
 class ChanPolicyModelChoiceIterator(forms.models.ModelChoiceIterator):
     def choice(self, obj):
         return (self.field.prepare_value(obj),
-                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.base_fee) + ' | ' + str(obj.fee_rate)))
+                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.local_base_fee) + ' | ' + str(obj.local_fee_rate)))
 
 class ChanPolicyModelChoiceField(forms.models.ModelMultipleChoiceField):
     def _get_choices(self):

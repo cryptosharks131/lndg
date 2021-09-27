@@ -131,7 +131,7 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/{{ docs_version }}/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
+#STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ''' % (secret, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server)
     try:

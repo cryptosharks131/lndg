@@ -51,8 +51,8 @@
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
       <td><div class="w3-orange w3-round">{% if channel.visual == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div>{% endif %}</div></td>
       <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
-      <td>{{ channel.base_fee }}</td>
-      <td>{{ channel.fee_rate }}</td>
+      <td>{{ channel.local_base_fee }}</td>
+      <td>{{ channel.local_fee_rate }}</td>
       <td>{{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in }})</td>
       <td>{{ channel.amt_routed_out|intcomma }} ({{ channel.routed_out }})</td>
       <td>{{ channel.auto_rebalance }}</td>
@@ -85,8 +85,8 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.initiator }}</td>
-      <td>{{ channel.base_fee }}</td>
-      <td>{{ channel.fee_rate }}</td>
+      <td>{{ channel.local_base_fee }}</td>
+      <td>{{ channel.local_fee_rate }}</td>
     </tr>
     {% endfor %}
   </table>
