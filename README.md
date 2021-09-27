@@ -1,7 +1,7 @@
 # lndg
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
-## Setup
+## Manual Installation
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
 3. Make sure you have python virtualenv installed `apt install virtualenv`
@@ -29,6 +29,12 @@ A bash script has also been included to help aide in the setup of systemd. `sudo
 ## Nginx Webserver
 If you would like to serve the dashboard at all times, it is recommended to setup a proper production webserver to host the site.  
 A bash script has been included to help aide in the setup of a nginx webserver. `sudo bash nginx.sh`
+
+## Docker Installation
+1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
+2. Change directory into the repo `cd lndg`
+3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
+4. LNDg should now be available on port `8000`
 
 ## API Backend
 The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels`, and `rebalancer`

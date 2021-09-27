@@ -1,12 +1,10 @@
 lndg:
   build: .
-  environment:
-    MYENV: LNDg
   volumes:
     - /root/.lnd:/root/.lnd
   command:
     - sh
     - -c
-    - python initialize.py -net 'mainnet' -server 'localhost:10009' && python manage.py migrate && python manage.py runserver 0.0.0.0:8000
+    - python initialize.py -net 'mainnet' -server 'localhost:10009' -sd && python manage.py migrate && supervisord && python manage.py runserver 0.0.0.0:8000
   ports:
     - 8000:8000
