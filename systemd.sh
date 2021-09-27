@@ -3,11 +3,17 @@ REFRESH=20
 RED='\033[0;31m'
 NC='\033[0m'
 
+if [ "$INSTALL_USER" == 'root' ] >/dev/null 2>&1; then
+    HOME_DIR='/root'
+else
+    HOME_DIR="/home/$INSTALL_USER"
+fi
+
 function configure_jobs() {
-    cat << EOF > /home/$INSTALL_USER/lndg/jobs.sh
+    cat << EOF > $HOME_DIR/lndg/jobs.sh
 #!/bin/bash
 
-/home/$INSTALL_USER/lndg/.venv/bin/python /home/$INSTALL_USER/lndg/jobs.py
+$HOME_DIR/lndg/.venv/bin/python $HOME_DIR/lndg/jobs.py
 EOF
 
     cat << EOF > /etc/systemd/system/jobs-lndg.service
@@ -16,7 +22,7 @@ Description=Run Jobs For Lndg
 [Service]
 User=$INSTALL_USER
 Group=$INSTALL_USER
-ExecStart=/usr/bin/bash /home/$INSTALL_USER/lndg/jobs.sh
+ExecStart=/usr/bin/bash $HOME_DIR/lndg/jobs.sh
 StandardError=append:/var/log/lnd_jobs_error.log
 EOF
 
@@ -33,10 +39,10 @@ EOF
 }
 
 function configure_rebalancer() {
-    cat << EOF > /home/$INSTALL_USER/lndg/rebalancer.sh
+    cat << EOF > $HOME_DIR/lndg/rebalancer.sh
 #!/bin/bash
 
-/home/$INSTALL_USER/lndg/.venv/bin/python /home/$INSTALL_USER/lndg/jobs.py
+$HOME_DIR/lndg/.venv/bin/python $HOME_DIR/lndg/jobs.py
 EOF
 
     cat << EOF > /etc/systemd/system/rebalancer-lndg.service
@@ -45,7 +51,7 @@ Description=Run Rebalancer For Lndg
 [Service]
 User=$INSTALL_USER
 Group=$INSTALL_USER
-ExecStart=/usr/bin/bash /home/$INSTALL_USER/lndg/rebalancer.sh
+ExecStart=/usr/bin/bash $HOME_DIR/lndg/rebalancer.sh
 StandardError=append:/var/log/lnd_rebalancer_error.log
 RuntimeMaxSec=3600
 EOF

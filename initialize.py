@@ -146,6 +146,65 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
     except Exception as e:
         print('Error creating the settings file:', e)
 
+def write_supervisord_settings():
+    supervisord_secret = secrets.token_urlsafe(16)
+    supervisord_settings_file = '''[supervisord]
+user=root
+childlogdir = /var/log
+logfile = /var/log/supervisord.log
+logfile_maxbytes = 50MB
+logfile_backups = 30
+loglevel = info
+pidfile = /var/supervisord.pid
+umask = 022
+nodaemon = false
+nocleanup = false
+
+[inet_http_server]
+port = 9001
+username = lndg-supervisord
+password = %s
+
+[supervisorctl]
+serverurl = http://localhost:9001
+username = lndg-supervisord
+password = %s
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
+
+[program:jobs]
+command = sh -c "python jobs.py && sleep 15"
+process_name = lndg-jobs
+directory = /lndg
+autorestart = true
+redirect_stderr = true
+stdout_logfile = /var/log/lnd-jobs.log
+stdout_logfile_maxbytes = 150MB
+stdout_logfile_backups = 15
+
+[program:rebalancer]
+command = sh -c "python rebalancer.py && sleep 15"
+process_name = lndg-rebalancer
+directory = /lndg
+autorestart = true
+redirect_stderr = true
+stdout_logfile = /var/log/lnd-rebalancer.log
+stdout_logfile_maxbytes = 150MB
+stdout_logfile_backups = 15
+''' % (supervisord_secret, supervisord_secret)
+    try:
+        f = open("/usr/local/etc/supervisord.conf", "x")
+        f.close()
+    except:
+        print('A supervisord settings file may already exist, please double check.')
+    try:
+        f = open("/usr/local/etc/supervisord.conf", "w")
+        f.write(supervisord_settings_file)
+        f.close()
+    except Exception as e:
+        print('Error creating the settings file:', e)
+
 def main():
     help_msg = "LNDg Settings Initializer"
     parser = argparse.ArgumentParser(description = help_msg)
@@ -153,12 +212,17 @@ def main():
     parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default='~/.lnd')
     parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
     parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
+    parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
     args = parser.parse_args()
     node_ip = args.nodeip
     lnd_dir_path = args.lnddir
     lnd_network = args.network
     lnd_rpc_server = args.rpcserver
+    setup_supervisord = args.supervisord
     write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server)
+    if setup_supervisord:
+        print('Supervisord setup requested...')
+        write_supervisord_settings()
 
 if __name__ == '__main__':
     main()
