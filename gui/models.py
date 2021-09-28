@@ -32,7 +32,7 @@ class PaymentHops(models.Model):
 
 class Invoices(models.Model):
     creation_date = models.DateTimeField()
-    settle_date = models.DateTimeField()
+    settle_date = models.DateTimeField(null=True)
     r_hash = models.CharField(max_length=64, primary_key=True)
     value = models.FloatField()
     amt_paid = models.BigIntegerField()
