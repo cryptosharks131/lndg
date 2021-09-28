@@ -1,8 +1,15 @@
 import secrets, argparse
 
-def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server):
+def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
+    if whitenoise:
+        sfl = '#'
+        wnl = """
+    'whitenoise.middleware.WhiteNoiseMiddleware',"""
+    else:
+        sfl = ''
+        wnl = ''
     settings_file = '''"""
 Django settings for lndg project.
 
@@ -43,7 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    %s'django.contrib.staticfiles',
     'django.contrib.humanize',
     'gui',
     'rest_framework',
@@ -51,7 +58,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
+    'django.middleware.security.SecurityMiddleware',%s
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -131,9 +138,9 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/{{ docs_version }}/howto/static-files/
 
 STATIC_URL = 'static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
+STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server)
+''' % (secret, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, sfl, wnl)
     try:
         f = open("lndg/settings.py", "x")
         f.close()
@@ -213,13 +220,20 @@ def main():
     parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
     parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
+    parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
+    parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
     args = parser.parse_args()
     node_ip = args.nodeip
     lnd_dir_path = args.lnddir
     lnd_network = args.network
     lnd_rpc_server = args.rpcserver
     setup_supervisord = args.supervisord
-    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server)
+    whitenoise = args.whitenoise
+    docker = args.docker
+    if docker:
+        setup_supervisord = True
+        whitenoise = True
+    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings()
