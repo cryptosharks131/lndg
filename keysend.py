@@ -1,4 +1,4 @@
-import os, codecs, grpc, secrets
+import secrets
 from hashlib import sha256
 from lndg import settings
 from gui.lnd_deps import router_pb2 as lnr

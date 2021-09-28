@@ -1,4 +1,4 @@
-import os, codecs, django, grpc
+import django
 from django.conf import settings
 from django.db.models import Max
 from pathlib import Path
@@ -125,6 +125,7 @@ def update_channels(stub):
             db_channel.local_balance = channel.local_balance
             db_channel.remote_balance = channel.remote_balance
             db_channel.unsettled_balance = channel.unsettled_balance
+            db_channel.local_commit = channel.commit_fee
             db_channel.local_base_fee = local_policy.fee_base_msat
             db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
             db_channel.remote_base_fee = remote_policy.fee_base_msat
@@ -144,7 +145,8 @@ def update_channels(stub):
                 remote_policy = chan_data.node2_policy
             channel_point = channel.channel_point
             txid, index = channel_point.split(':')
-            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, funding_txid=txid, output_index=index, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, unsettled_balance=channel.unsettled_balance, initiator=channel.initiator, alias=alias, local_base_fee=local_policy.fee_base_msat, local_fee_rate=local_policy.fee_rate_milli_msat, remote_base_fee=remote_policy.fee_base_msat, remote_fee_rate=remote_policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
+            local_commit = channel.commit_fee
+            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, funding_txid=txid, output_index=index, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, unsettled_balance=channel.unsettled_balance, local_commit=local_commit, initiator=channel.initiator, alias=alias, local_base_fee=local_policy.fee_base_msat, local_fee_rate=local_policy.fee_rate_milli_msat, remote_base_fee=remote_policy.fee_base_msat, remote_fee_rate=remote_policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()

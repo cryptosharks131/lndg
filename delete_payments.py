@@ -1,4 +1,3 @@
-import os, codecs, grpc
 from lndg import settings
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
