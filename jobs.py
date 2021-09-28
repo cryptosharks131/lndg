@@ -95,7 +95,7 @@ def update_invoices(stub):
             message = records[34349334].decode('utf-8', errors='ignore')[:200] if 34349334 in records else None
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message).save()
         else:
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
+            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
 
 def update_forwards(stub):
     records = Forwards.objects.count()
@@ -126,6 +126,7 @@ def update_channels(stub):
             db_channel.remote_balance = channel.remote_balance
             db_channel.unsettled_balance = channel.unsettled_balance
             db_channel.local_commit = channel.commit_fee
+            db_channel.local_chan_reserve = channel.local_chan_reserve_sat
             db_channel.local_base_fee = local_policy.fee_base_msat
             db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
             db_channel.remote_base_fee = remote_policy.fee_base_msat
@@ -145,8 +146,26 @@ def update_channels(stub):
                 remote_policy = chan_data.node2_policy
             channel_point = channel.channel_point
             txid, index = channel_point.split(':')
-            local_commit = channel.commit_fee
-            Channels(remote_pubkey=channel.remote_pubkey, chan_id=channel.chan_id, funding_txid=txid, output_index=index, capacity=channel.capacity, local_balance=channel.local_balance, remote_balance=channel.remote_balance, unsettled_balance=channel.unsettled_balance, local_commit=local_commit, initiator=channel.initiator, alias=alias, local_base_fee=local_policy.fee_base_msat, local_fee_rate=local_policy.fee_rate_milli_msat, remote_base_fee=remote_policy.fee_base_msat, remote_fee_rate=remote_policy.fee_rate_milli_msat, is_active=channel.active, is_open=True).save()
+            db_channel = Channels()
+            db_channel.remote_pubkey = channel.remote_pubkey
+            db_channel.chan_id = channel.chan_id
+            db_channel.initiator = channel.initiator
+            db_channel.alias = alias
+            db_channel.funding_txid = txid
+            db_channel.output_index = index
+            db_channel.capacity = channel.capacity
+            db_channel.local_balance = channel.local_balance
+            db_channel.remote_balance = channel.remote_balance
+            db_channel.unsettled_balance = channel.unsettled_balance
+            db_channel.local_commit = channel.commit_fee
+            db_channel.local_chan_reserve = channel.local_chan_reserve_sat
+            db_channel.local_base_fee = local_policy.fee_base_msat
+            db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
+            db_channel.remote_base_fee = remote_policy.fee_base_msat
+            db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
+            db_channel.is_active = channel.active
+            db_channel.is_open = True
+            db_channel.save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()

@@ -32,7 +32,7 @@ class PaymentHops(models.Model):
 
 class Invoices(models.Model):
     creation_date = models.DateTimeField()
-    settle_date = models.DateTimeField(null=True)
+    settle_date = models.DateTimeField(null=True, default=None)
     r_hash = models.CharField(max_length=64, primary_key=True)
     value = models.FloatField()
     amt_paid = models.BigIntegerField()
@@ -66,6 +66,7 @@ class Channels(models.Model):
     remote_balance = models.BigIntegerField()
     unsettled_balance = models.BigIntegerField()
     local_commit = models.IntegerField()
+    local_chan_reserve = models.IntegerField()
     initiator = models.BooleanField()
     alias = models.CharField(max_length=32)
     local_base_fee = models.IntegerField()
@@ -96,8 +97,8 @@ class Rebalancer(models.Model):
     outgoing_chan_ids = models.TextField(default='[]')
     last_hop_pubkey = models.CharField(default='', max_length=66)
     duration = models.IntegerField()
-    start = models.DateTimeField(null=True)
-    stop = models.DateTimeField(null=True)
+    start = models.DateTimeField(null=True, default=None)
+    stop = models.DateTimeField(null=True, default=None)
     status = models.IntegerField(default=0)
     class Meta:
         app_label = 'gui'
