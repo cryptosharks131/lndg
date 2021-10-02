@@ -7,10 +7,10 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 3. Make sure you have python virtualenv installed `apt install virtualenv`
 4. Setup a python3 virtual environment `virtualenv -p python3 .venv`
 5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
-6. Initialize a settings.py file for your django site `.venv/bin/python initialize.py -net 'mainnet' -server 'localhost:10009'`
+6. Initialize a settings.py file for your django site (use --help for custom options) `.venv/bin/python initialize.py -net 'mainnet' -server 'localhost:10009'`
 7. Migrate all database objects `.venv/bin/python manage.py migrate`
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
-9. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver <your_node_ip>:80`
+9. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver 0.0.0.0:8000`
 
 Note: If you are not using the default path for LND `~/.lnd` or you would like to run a LND instance on a network other than `mainnet` you can add a custom path or specify the desired network (testnet/signet) in the django settings file `lndg/settings.py`
 

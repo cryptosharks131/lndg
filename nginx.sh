@@ -3,26 +3,32 @@ NODE_IP=$(hostname -I | cut -d' ' -f1)
 RED='\033[0;31m'
 NC='\033[0m'
 
+if [ "$INSTALL_USER" == 'root' ] >/dev/null 2>&1; then
+    HOME_DIR='/root'
+else
+    HOME_DIR="/home/$INSTALL_USER"
+fi
+
 function install_deps() {
     apt install -y python3-dev >/dev/null 2>&1
     apt install -y build-essential python >/dev/null 2>&1
     apt install -y uwsgi >/dev/null 2>&1
     apt install -y nginx >/dev/null 2>&1
-    /home/$INSTALL_USER/lndg/.venv/bin/python -m pip install uwsgi >/dev/null 2>&1
+    $HOME_DIR/lndg/.venv/bin/python -m pip install uwsgi >/dev/null 2>&1
 }
 
 function steup_uwsgi() {
-    cat << EOF > /home/$INSTALL_USER/lndg/lndg.ini
+    cat << EOF > $HOME_DIR/lndg/lndg.ini
 # lndg.ini file
 [uwsgi]
 
 # Django-related settings
 # the base directory (full path)
-chdir           = /home/$INSTALL_USER/lndg
+chdir           = $HOME_DIR/lndg
 # Django's wsgi file
 module          = lndg.wsgi
 # the virtualenv (full path)
-home            = /home/$INSTALL_USER/lndg/.venv
+home            = $HOME_DIR/lndg/.venv
 #location of log files
 logto           = /var/log/uwsgi/%n.log
 
@@ -32,13 +38,13 @@ master          = true
 # maximum number of worker processes
 processes       = 1
 # the socket (use the full path to be safe
-socket          = /home/$INSTALL_USER/lndg/lndg.sock
+socket          = $HOME_DIR/lndg/lndg.sock
 # ... with appropriate permissions - may be needed
 chmod-socket    = 660
 # clear environment on exit
 vacuum          = true
 EOF
-    cat <<\EOF > /home/$INSTALL_USER/lndg/uwsgi_params
+    cat <<\EOF > $HOME_DIR/lndg/uwsgi_params
 
 uwsgi_param  QUERY_STRING       $query_string;
 uwsgi_param  REQUEST_METHOD     $request_method;
@@ -63,8 +69,8 @@ Description=Lndg uWSGI app
 After=syslog.target
 
 [Service]
-ExecStart=/home/$INSTALL_USER/lndg/.venv/bin/uwsgi \
---ini /home/$INSTALL_USER/lndg/lndg.ini
+ExecStart=$HOME_DIR/lndg/.venv/bin/uwsgi \
+--ini $HOME_DIR/lndg/lndg.ini
 User=$INSTALL_USER
 Group=www-data
 Restart=on-failure
@@ -82,12 +88,12 @@ EOF
 function steup_nginx() {
     cat << EOF > /etc/nginx/sites-enabled/lndg
 upstream django {
-    server unix:///home/$INSTALL_USER/lndg/lndg.sock; # for a file socket
+    server unix://$HOME_DIR/lndg/lndg.sock; # for a file socket
 }
 
 server {
     # the port your site will be served on, use port 80 unless setting up ssl certs, then 443
-    listen      $NODE_IP:80;
+    listen      $NODE_IP:8000;
     # optional settings for ssl setup
     #ssl on;
     #ssl_certificate /<path_to_certs>/fullchain.pem;
@@ -104,13 +110,13 @@ server {
 
     # Django media
     location /static {
-        alias /home/$INSTALL_USER/lndg/gui/static; # your Django project's static files - amend as required
+        alias $HOME_DIR/lndg/gui/static; # your Django project's static files - amend as required
     }
 
     # Finally, send all non-media requests to the Django server.
     location / {
         uwsgi_pass  django;
-        include     /home/$INSTALL_USER/lndg/uwsgi_params; # the uwsgi_params file
+        include     $HOME_DIR/lndg/uwsgi_params; # the uwsgi_params file
     }
 }
 EOF
@@ -119,9 +125,9 @@ EOF
 
 function start_services() {
     touch /var/log/uwsgi/lndg.log
-    touch /home/$INSTALL_USER/lndg/lndg.sock
+    touch $HOME_DIR/lndg/lndg.sock
     chgrp www-data /var/log/uwsgi/lndg.log
-    chgrp www-data /home/$INSTALL_USER/lndg/lndg.sock
+    chgrp www-data $HOME_DIR/lndg/lndg.sock
     chmod 660 /var/log/uwsgi/lndg.log
     systemctl start uwsgi
     systemctl restart nginx
