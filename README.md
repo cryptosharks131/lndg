@@ -10,11 +10,12 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 6. Initialize some settings for your django site (see notes below) `.venv/bin/python initialize.py`
 7. Migrate all database objects `.venv/bin/python manage.py migrate`
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
-9. Run the server via chosen webserver or via python development server `.venv/bin/python manage.py runserver 0.0.0.0:8000`
+9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8000`
 
 Notes:
 1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/settings.py`.
 2. You can also use `initialize.py` to setup supervisord to run your `jobs.py` and `rebalancer.py` files on a timer. This does require also installing `supervisord` with `.venv/bin/pip install supervisord` and starting the supervisord service with `supervisord`.
+3. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below).
 
 ## Updating
 1. Make sure you are in the lndg folder `cd lndg`
@@ -38,10 +39,12 @@ A bash script has been included to help aide in the setup of a nginx webserver. 
 3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
 4. LNDg should now be available on port `8000`
 
-Note: Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
+Notes: 
+1. Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
+2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`.
 
 ## API Backend
-The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels`, and `rebalancer`
+The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels` and `rebalancer`
 
 ## Preview Screens
 ### Main Dashboard
@@ -58,5 +61,5 @@ The following data can be accessed at the /api endpoint: `payments`, `invoices`,
 ### Browsable API at `/api` (json format available with url appended with `?format=json`)
 ![image](https://user-images.githubusercontent.com/38626122/134045960-13019cd9-715d-43aa-873d-414626369373.png)
 
-### New! View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
+### View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
 ![image](https://user-images.githubusercontent.com/38626122/134045287-086d56e3-5959-4f5f-a06e-cb6d2ac4957c.png)
