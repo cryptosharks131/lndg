@@ -4,13 +4,13 @@ from .models import Payments, Invoices, Forwards, Channels, Rebalancer
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
 class PaymentSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+    payment_hash = serializers.ReadOnlyField()
     class Meta:
         model = Payments
         exclude = []
 
 class InvoiceSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+    r_hash = serializers.ReadOnlyField()
     class Meta:
         model = Invoices
         exclude = []
@@ -23,6 +23,22 @@ class ForwardSerializer(serializers.HyperlinkedModelSerializer):
 
 class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     chan_id = serializers.ReadOnlyField()
+    remote_pubkey = serializers.ReadOnlyField()
+    funding_txid = serializers.ReadOnlyField()
+    output_index = serializers.ReadOnlyField()
+    capacity = serializers.ReadOnlyField()
+    local_balance = serializers.ReadOnlyField()
+    remote_balance = serializers.ReadOnlyField()
+    unsettled_balance = serializers.ReadOnlyField()
+    local_commit = serializers.ReadOnlyField()
+    local_chan_reserve = serializers.ReadOnlyField()
+    initiator = serializers.ReadOnlyField()
+    local_base_fee = serializers.ReadOnlyField()
+    local_fee_rate = serializers.ReadOnlyField()
+    remote_base_fee = serializers.ReadOnlyField()
+    remote_fee_rate = serializers.ReadOnlyField()
+    is_active = serializers.ReadOnlyField()
+    is_open = serializers.ReadOnlyField()
     class Meta:
         model = Channels
         exclude = []
@@ -54,3 +70,6 @@ class CloseChannelSerializer(serializers.Serializer):
 
 class AddInvoiceSerializer(serializers.Serializer):
     value = serializers.IntegerField(label='value')
+
+class UpdateAliasSerializer(serializers.Serializer):
+    peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)

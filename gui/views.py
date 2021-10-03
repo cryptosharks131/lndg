@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum
 from django.conf import settings
 from rest_framework import viewsets
@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers
-from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer
+from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer, UpdateAliasSerializer
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
@@ -409,6 +409,15 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Channels.objects.all()
     serializer_class = ChannelSerializer
 
+    def update(self, request, pk=None):
+        channel = get_object_or_404(Channels.objects.all(), pk=pk)
+        serializer = ChannelSerializer(channel, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors)
+
 class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Rebalancer.objects.all()
     serializer_class = RebalancerSerializer
@@ -417,10 +426,10 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = RebalancerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return redirect('api-root')
+            return Response(serializer.data)
         else:
             print(serializer.errors)
-            return redirect('api-root')
+            return Response(serializer.errors)
 
 @api_view(['POST'])
 def connect_peer(request):
@@ -507,3 +516,26 @@ def new_address(request):
     except Exception as e:
         error = str(e)
         return Response({'error': 'Address creation failed! Error: ' + error})
+
+@api_view(['POST'])
+def update_alias(request):
+    serializer = UpdateAliasSerializer(data=request.data)
+    if serializer.is_valid():
+        peer_pubkey = serializer.validated_data['peer_pubkey']
+        if Channels.objects.filter(remote_pubkey=peer_pubkey).exists():
+            try:
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                new_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey)).node.alias
+                update_channels = Channels.objects.filter(remote_pubkey=peer_pubkey)
+                for channel in update_channels:
+                    channel.alias = new_alias
+                    channel.save()
+                messages.success(request, 'Alias updated to: ' + str(new_alias))
+            except Exception as e:
+                error = str(e)
+                messages.error(request, 'Error updating alias: ' + error)
+        else:
+            messages.error(request, 'Pubkey not in channels list.')
+    else:
+        messages.error(request, 'Invalid Request. Please try again.')
+    return redirect('home')

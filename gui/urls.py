@@ -28,4 +28,5 @@ urlpatterns = [
     path('api/closechannel/', views.close_channel, name='close-channel'),
     path('api/createinvoice/', views.add_invoice, name='add-invoice'),
     path('api/newaddress/', views.new_address, name='new-address'),
+    path('api/updatealias/', views.update_alias, name='update-alias'),
 ]
