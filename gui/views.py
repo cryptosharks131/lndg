@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum
+from django.db.models import Sum, IntegerField
+from django.db.models.functions import Cast
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.response import Response
@@ -35,7 +36,7 @@ def home(request):
         total_invoices = Invoices.objects.filter(state=1).count()
         total_received = 0 if total_invoices == 0 else Invoices.objects.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
-        forwards = Forwards.objects.all().order_by('-id')
+        forwards = Forwards.objects.all().annotate(ppm=Cast((Sum('fee')*1000)/(Sum('amt_out_msat')/1000000), output_field=IntegerField())).order_by('-id')
         total_forwards = Forwards.objects.count()
         total_value_forwards = 0 if total_forwards == 0 else int(Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']

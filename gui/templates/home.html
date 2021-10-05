@@ -213,6 +213,7 @@
       <th>Channel In Id</th>
       <th>Channel Out Id</th>
       <th>Fees Earned</th>
+      <th>PPM Earned</th>
     </tr>
     {% for forward in forwards %}
     <tr>
@@ -224,6 +225,7 @@
       <td>{{ forward.chan_id_in }}</td>
       <td>{{ forward.chan_id_out }}</td>
       <td>{{ forward.fee }}</td>
+      <td>{{ forward.ppm }}</td>
     </tr>
     {% endfor %}
   </table>
