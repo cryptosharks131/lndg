@@ -51,8 +51,8 @@
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
       <td><div class="w3-orange w3-round">{% if channel.visual == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{% widthratio channel.visual 1 100 %}%"></div>{% endif %}</div></td>
       <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
-      <td>{{ channel.local_base_fee }}</td>
-      <td>{{ channel.local_fee_rate }}</td>
+      <td>{{ channel.local_base_fee|intcomma }}</td>
+      <td>{{ channel.local_fee_rate|intcomma }}</td>
       <td>{{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in }})</td>
       <td>{{ channel.amt_routed_out|intcomma }} ({{ channel.routed_out }})</td>
       <td>{{ channel.auto_rebalance }}</td>
@@ -218,14 +218,14 @@
     {% for forward in forwards %}
     <tr>
       <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
-      <td>{% widthratio forward.amt_in_msat 1000 1 %}</td>
-      <td>{% widthratio forward.amt_out_msat 1000 1 %}</td>
+      <td>{{ forward.amt_in|intcomma }}</td>
+      <td>{{ forward.amt_out|intcomma }}</td>
       <td>{{ forward.chan_in_alias }}</td>
       <td>{{ forward.chan_out_alias }}</td>
       <td>{{ forward.chan_id_in }}</td>
       <td>{{ forward.chan_id_out }}</td>
       <td>{{ forward.fee }}</td>
-      <td>{{ forward.ppm }}</td>
+      <td>{{ forward.ppm|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>
@@ -251,7 +251,7 @@
       <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
       <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
       <td>{{ rebalance.duration }} minutes</td>
-      <td>{{ rebalance.value }}</td>
+      <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit }}</td>
       <td width=25%>{% if rebalance.last_hop_pubkey == '' %}None Specified{% else %}{{ rebalance.last_hop_pubkey }}{% endif %}</td>
       <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% else %}{{ rebalance.status }}{% endif %}</td>
@@ -279,7 +279,7 @@
     <tr>
       <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
       <td>{{ payment.payment_hash }}</td>
-      <td>{{ payment.value|add:"0" }}</td>
+      <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
@@ -311,7 +311,7 @@
       <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
       <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
       <td>{{ invoice.r_hash }}</td>
-      <td>{{ invoice.value|add:"0" }}</td>
+      <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
       <td>{{ invoice.chan_in_alias }}</td>
@@ -333,7 +333,7 @@
     {% for settings in local_settings %}
     <tr>
       <td>{{ settings.key }}</td>
-      <td>{{ settings.value }}</td>
+      <td>{{ settings.value|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>

@@ -36,7 +36,7 @@ def home(request):
         total_invoices = Invoices.objects.filter(state=1).count()
         total_received = 0 if total_invoices == 0 else Invoices.objects.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
-        forwards = Forwards.objects.all().annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
+        forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
         total_forwards = Forwards.objects.count()
         total_value_forwards = 0 if total_forwards == 0 else int(Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
