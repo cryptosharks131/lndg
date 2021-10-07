@@ -7,4 +7,4 @@ lndg:
     - -c
     - python initialize.py -net 'mainnet' -server 'localhost:10009' -d && python manage.py migrate && supervisord && python manage.py runserver 0.0.0.0:8000
   ports:
-    - 8000:8000
+    - 8889:8000

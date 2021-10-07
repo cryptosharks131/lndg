@@ -38,7 +38,7 @@ def update_payments(stub):
                         total_hops = len(hops)
                         for hop in hops:
                             hop_count += 1
-                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
+                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
                             PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                             if hop_count == 1:
                                 new_payment.chan_out = hop.chan_id
@@ -68,7 +68,7 @@ def update_payments(stub):
                         total_hops = len(hops)
                         for hop in hops:
                             hop_count += 1
-                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key)).node.alias
+                            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
                             PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
                             if hop_count == 1:
                                 db_payment.chan_out = hop.chan_id
@@ -136,7 +136,7 @@ def update_channels(stub):
             db_channel.save()
         elif exists == 0:
             #Create a record for this new channel
-            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey)).node.alias
+            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey, include_channels=False)).node.alias
             chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
             if chan_data.node1_pub == channel.remote_pubkey:
                 local_policy = chan_data.node2_policy
