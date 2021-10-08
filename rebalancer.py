@@ -1,4 +1,4 @@
-import django, json, datetime, time
+import django, json, datetime
 from django.conf import settings
 from django.db.models import Sum
 from pathlib import Path
@@ -39,8 +39,7 @@ def run_rebalancer(rebalance):
         chan_ids = json.loads(rebalance.outgoing_chan_ids)
         timeout = rebalance.duration * 60
         response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
-        start_time = time.time()
-        for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-15), allow_self_payment=True)):
+        for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-15), allow_self_payment=True), timeout=(timeout+15)):
             if response.status == 1 and rebalance.status == 0:
                 #IN-FLIGHT
                 rebalance.status = 1
@@ -65,15 +64,13 @@ def run_rebalancer(rebalance):
                 elif response.failure_reason == 5:
                     #FAILURE_REASON_INSUFFICIENT_BALANCE
                     rebalance.status = 7
-            elif response.status == 0:
-                rebalance.status == 400
-            if ((time.time() - start_time) - 15) > timeout:
-                rebalance.status == 408
-                break
     except Exception as e:
-        rebalance.status = 400
-        error = str(e)
-        print(error)
+        if str(e.code()) == 'StatusCode.DEADLINE_EXCEEDED':
+            rebalance.status = 408
+        else:
+            rebalance.status = 400
+            error = str(e)
+            print(error)
     finally:
         rebalance.stop = datetime.now()
         rebalance.save()
