@@ -10,10 +10,10 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 6. Initialize some settings for your django site (see notes below) `.venv/bin/python initialize.py`
 7. Migrate all database objects `.venv/bin/python manage.py migrate`
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
-9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8000`
+9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8889`
 
 Notes:
-1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/settings.py`.
+1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.
 2. You can also use `initialize.py` to setup supervisord to run your `jobs.py` and `rebalancer.py` files on a timer. This does require also installing `supervisord` with `.venv/bin/pip install supervisord` and starting the supervisord service with `supervisord`.
 3. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below).
 
