@@ -76,6 +76,7 @@ class Channels(models.Model):
     is_active = models.BooleanField()
     is_open = models.BooleanField()
     auto_rebalance = models.BooleanField(default=False)
+    ar_target = models.IntegerField(default=100)
     class Meta:
         app_label = 'gui'
 

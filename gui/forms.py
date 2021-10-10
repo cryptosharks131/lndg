@@ -73,3 +73,7 @@ class AutoRebalanceForm(forms.Form):
     inbound_percent = forms.FloatField(label='inbound_percent', required=False)
     outbound_percent = forms.FloatField(label='outbound_percent', required=False)
     max_cost = forms.FloatField(label='max_cost', required=False)
+
+class ARTarget(forms.Form):
+    chan_id = forms.IntegerField(label='chan_id')
+    ar_target = forms.IntegerField(label='ar_target')

@@ -6,7 +6,7 @@ from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers
 from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer, UpdateAliasSerializer
 from .lnd_deps import lightning_pb2 as ln
@@ -71,6 +71,7 @@ def home(request):
             detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/1000)
             detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
+            detailed_channel['ar_target'] = channel.ar_target
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).order_by('-local_fee_rate').order_by('-alias')
@@ -161,12 +162,9 @@ def open_channel_form(request):
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
                 messages.error(request, 'Channel creation failed! Error: ' + error_msg)
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def close_channel_form(request):
     if request.method == 'POST':
@@ -192,12 +190,9 @@ def close_channel_form(request):
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Channel close failed! Error: ' + error)
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def connect_peer_form(request):
     if request.method == 'POST':
@@ -215,12 +210,9 @@ def connect_peer_form(request):
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Connection request failed! Error: ' + error)
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def new_address_form(request):
     if request.method == 'POST':
@@ -231,9 +223,7 @@ def new_address_form(request):
         except Exception as e:
             error = str(e)
             messages.error(request, 'Address request! Error: ' + error)
-        return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def add_invoice_form(request):
     if request.method == 'POST':
@@ -246,12 +236,9 @@ def add_invoice_form(request):
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Invoice creation failed! Error: ' + error)
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def rebalance(request):
     if request.method == 'POST':
@@ -266,12 +253,9 @@ def rebalance(request):
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Error entering rebalancer request! Error: ' + error)
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def update_chan_policy(request):
     if request.method == 'POST':
@@ -295,13 +279,10 @@ def update_chan_policy(request):
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Error updating channel policies! Error: ' + error)
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
             print(form.errors)
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
 
 def auto_rebalance(request):
     if request.method == 'POST':
@@ -387,12 +368,23 @@ def auto_rebalance(request):
                 db_max_cost.value = max_cost
                 db_max_cost.save()
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
-            return redirect('home')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-            return redirect('home')
-    else:
-        return redirect('home')
+    return redirect('home')
+
+def ar_target(request):
+    if request.method == 'POST':
+        form = ARTarget(request.POST)
+        if form.is_valid() and Channels.objects.filter(chan_id=form.cleaned_data['chan_id']).exists():
+            chan_id = form.cleaned_data['chan_id']
+            target = form.cleaned_data['ar_target']
+            db_channel = Channels.objects.filter(chan_id=chan_id)[0]
+            db_channel.ar_target = target
+            db_channel.save()
+            messages.success(request, 'Auto rebalancer inbound target for channel ' + str(chan_id) + ' updated to a value of: ' + str(target) + '%')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect('home')
 
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Payments.objects.all()

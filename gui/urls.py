@@ -22,6 +22,7 @@ urlpatterns = [
     path('rebalancer/', views.rebalance, name='rebalancer'),
     path('updatechanpolicy/', views.update_chan_policy, name='updatechanpolicy'),
     path('autorebalance/', views.auto_rebalance, name='auto-rebalance'),
+    path('ar_target/', views.ar_target, name='ar-target'),
     path('api/', include(router.urls), name='api-root'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
     path('api/openchannel/', views.open_channel, name='open-channel'),
