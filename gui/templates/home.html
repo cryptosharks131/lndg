@@ -110,7 +110,7 @@
     </tr>
     {% for channel in inactive_channels %}
     <tr>
-      <td><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
       <td>{{ channel.remote_pubkey }}</td>
       <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
