@@ -46,6 +46,20 @@ Notes:
 ## API Backend
 The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels` and `rebalancer`
 
+## Using The Rebalancer
+Here are some notes to help you get started using the auto-rebalancer (AR).
+1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities.
+2. Rebalances will only consider any `OUTBOUND` channel that has more outbound liquidity than the current `AR-Outbound%` target.
+3. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts.
+4. The AR variable `AR-Time` defines the maximum amount of time we will spend looking for a route.
+5. The AR variable `AR-MaxFeeRate` defines the maximum amount in ppm a rebalance attempt can ever use for a fee limit.
+6. The AR variable `AR-MaxCost%	` defines the maximum % of the ppm being charged on the `INBOUND` receving channel that will be used as the fee limit for the rebalance attempt.
+7. Channels also need to be targeted in order to be refilled with outbound liquidity and in order to control costs as a first prioirty all calculations are based on the specific `INBOUND` receving channel.
+8. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%`. Rebalance attempts will be made until inbound liquidity falls below this settting.
+9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
+10. Successful and attempts with only incorrect payment information are tried again immediately.
+11. Attempts that fail for other reasons will not be tried again for 30 minutes afer the stop time.
+
 ## Preview Screens
 ### Main Dashboard
 ![image](https://user-images.githubusercontent.com/38626122/132701345-7129e4e5-09b8-483e-96eb-bf003171ed3f.png)
@@ -63,3 +77,7 @@ The following data can be accessed at the /api endpoint: `payments`, `invoices`,
 
 ### View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
 ![image](https://user-images.githubusercontent.com/38626122/134045287-086d56e3-5959-4f5f-a06e-cb6d2ac4957c.png)
+
+### More control added to rebalancer to enable a per channel % inbound liquidity targets
+![image](https://user-images.githubusercontent.com/38626122/136802399-06f1e0ee-0960-4508-934b-b0c9fc906469.png)
+
