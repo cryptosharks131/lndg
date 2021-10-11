@@ -1,4 +1,5 @@
 import secrets, argparse
+from pathlib import Path
 
 def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise):
     #Generate a unique secret to be used for your django site
@@ -146,6 +147,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
         f.close()
     except:
         print('A settings file may already exist, please double check.')
+        return
     try:
         f = open("lndg/settings.py", "w")
         f.write(settings_file)
@@ -154,6 +156,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
         print('Error creating the settings file:', e)
 
 def write_supervisord_settings():
+    target_path = Path(__file__).resolve().parent
     supervisord_secret = secrets.token_urlsafe(16)
     supervisord_settings_file = '''[supervisord]
 user=root
@@ -183,7 +186,7 @@ supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
 [program:jobs]
 command = sh -c "python jobs.py && sleep 15"
 process_name = lndg-jobs
-directory = /lndg
+directory = %s
 autorestart = true
 redirect_stderr = true
 stdout_logfile = /var/log/lnd-jobs.log
@@ -193,18 +196,19 @@ stdout_logfile_backups = 15
 [program:rebalancer]
 command = sh -c "python rebalancer.py && sleep 15"
 process_name = lndg-rebalancer
-directory = /lndg
+directory = %s
 autorestart = true
 redirect_stderr = true
 stdout_logfile = /var/log/lnd-rebalancer.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
-''' % (supervisord_secret, supervisord_secret)
+''' % (supervisord_secret, supervisord_secret, target_path, target_path)
     try:
         f = open("/usr/local/etc/supervisord.conf", "x")
         f.close()
     except:
         print('A supervisord settings file may already exist, please double check.')
+        return
     try:
         f = open("/usr/local/etc/supervisord.conf", "w")
         f.write(supervisord_settings_file)

@@ -93,7 +93,7 @@ upstream django {
 
 server {
     # the port your site will be served on, use port 80 unless setting up ssl certs, then 443
-    listen      $NODE_IP:8000;
+    listen      $NODE_IP:8889;
     # optional settings for ssl setup
     #ssl on;
     #ssl_certificate /<path_to_certs>/fullchain.pem;
@@ -138,7 +138,8 @@ function start_services() {
 function report_information() {
     echo -e ""
     echo -e "================================================================================================================================"
-    echo -e "Nginx service setup using user account $INSTALL_USER and a IP address of $NODE_IP."
+    echo -e "Nginx service setup using user account $INSTALL_USER and an address of $NODE_IP:8889."
+    echo -e "You can update the IP or port used by modifying this configuration file and restarting nginx: /etc/nginx/sites-enabled/lndg"
     echo -e ""
     echo -e "uWSGI Status: ${RED}sudo systemctl status uwsgi.service${NC}"
     echo -e "Nginx Status: ${RED}sudo systemctl status nginx.service${NC}"
