@@ -7,8 +7,8 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers
-from .serializers import ConnectPeerSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer, UpdateAliasSerializer
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain
+from .serializers import ConnectPeerSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
@@ -139,7 +139,7 @@ def balances(request):
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         context = {
             'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
-            'transactions': stub.GetTransactions(ln.GetTransactionsRequest(start_height=0)).transactions
+            'transactions': Onchain.objects.all()
         }
         return render(request, 'balances.html', context)
     else:
@@ -389,6 +389,10 @@ class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Payments.objects.all()
     serializer_class = PaymentSerializer
 
+class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PaymentHops.objects.all()
+    serializer_class = PaymentHopsSerializer
+
 class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Invoices.objects.all()
     serializer_class = InvoiceSerializer
@@ -396,6 +400,27 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Forwards.objects.all()
     serializer_class = ForwardSerializer
+
+class PeersViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Peers.objects.all()
+    serializer_class = PeerSerializer
+
+class OnchainViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Onchain.objects.all()
+    serializer_class = OnchainSerializer
+
+class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = LocalSettings.objects.all()
+    serializer_class = LocalSettingsSerializer
+
+    def update(self, request, pk=None):
+        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
+        serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors)
 
 class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Channels.objects.all()

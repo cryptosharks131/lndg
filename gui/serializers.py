@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Payments, Invoices, Forwards, Channels, Rebalancer
+from rest_framework.relations import PrimaryKeyRelatedField
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -73,3 +74,27 @@ class AddInvoiceSerializer(serializers.Serializer):
 
 class UpdateAliasSerializer(serializers.Serializer):
     peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
+
+class PeerSerializer(serializers.HyperlinkedModelSerializer):
+    pubkey = serializers.ReadOnlyField()
+    class Meta:
+        model = Peers
+        exclude = []
+
+class OnchainSerializer(serializers.HyperlinkedModelSerializer):
+    tx_hash = serializers.ReadOnlyField()
+    class Meta:
+        model = Onchain
+        exclude = []
+
+class PaymentHopsSerializer(serializers.HyperlinkedModelSerializer):
+    payment_hash = PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = PaymentHops
+        exclude = []
+
+class LocalSettingsSerializer(serializers.HyperlinkedModelSerializer):
+    key = serializers.ReadOnlyField()
+    class Meta:
+        model = LocalSettings
+        exclude = []

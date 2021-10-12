@@ -18,7 +18,7 @@ settings.configure(
 )
 django.setup()
 from lndg import settings
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -203,6 +203,13 @@ def update_peers(stub):
             peer.connected = False
             peer.save()
 
+def update_onchain(stub):
+    Onchain.objects.filter(block_height=0).delete()
+    last_block = 0 if Onchain.objects.aggregate(Max('block_height'))['block_height__max'] == None else Onchain.objects.aggregate(Max('block_height'))['block_height__max'] + 1
+    onchain_txs = stub.GetTransactions(ln.GetTransactionsRequest(start_height=last_block)).transactions
+    for tx in onchain_txs:
+        Onchain(tx_hash=tx.tx_hash, time_stamp=datetime.fromtimestamp(tx.time_stamp), amount=tx.amount, fee=tx.total_fees, block_hash=tx.block_hash, block_height=tx.block_height, label=tx.label[:100]).save()
+
 def reconnect_peers(stub):
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
@@ -232,6 +239,7 @@ def main():
     update_payments(stub)
     update_invoices(stub)
     update_forwards(stub)
+    update_onchain(stub)
     reconnect_peers(stub)
 
 if __name__ == '__main__':

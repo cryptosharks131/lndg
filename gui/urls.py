@@ -4,10 +4,14 @@ from . import views
 
 router = routers.DefaultRouter()
 router.register(r'payments', views.PaymentsViewSet)
+router.register(r'paymenthops', views.PaymentHopsViewSet)
 router.register(r'invoices', views.InvoicesViewSet)
 router.register(r'forwards', views.ForwardsViewSet)
+router.register(r'onchain', views.OnchainViewSet)
+router.register(r'peers', views.PeersViewSet)
 router.register(r'channels', views.ChannelsViewSet)
 router.register(r'rebalancer', views.RebalancerViewSet)
+router.register(r'settings', views.LocalSettingsViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),

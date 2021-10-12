@@ -109,3 +109,14 @@ class LocalSettings(models.Model):
     value = models.CharField(default=None, max_length=50)
     class Meta:
         app_label = 'gui'
+
+class Onchain(models.Model):
+    tx_hash = models.CharField(max_length=64, primary_key=True)
+    amount = models.BigIntegerField()
+    block_hash = models.CharField(max_length=64)
+    block_height = models.IntegerField()
+    time_stamp = models.DateTimeField()
+    fee = models.IntegerField()
+    label = models.CharField(max_length=100)
+    class Meta:
+        app_label = 'gui'

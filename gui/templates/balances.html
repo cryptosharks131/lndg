@@ -29,7 +29,6 @@
     <tr>
       <th width=35%>TX Hash</th>
       <th>Amount</th>
-      <th>Confirmations</th>
       <th>Block Height</th>
       <th>Fees</th>
       <th width=25%>Label</th>
@@ -38,9 +37,8 @@
     <tr>
       <td>{{ transaction.tx_hash }}</td>
       <td>{{ transaction.amount }}</td>
-      <td>{{ transaction.num_confirmations }}</td>
       <td>{{ transaction.block_height }}</td>
-      <td>{{ transaction.total_fees }}</td>
+      <td>{{ transaction.fee }}</td>
       <td>{{ transaction.label }}</td>
     </tr>
     {% endfor %}
