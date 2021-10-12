@@ -1,6 +1,6 @@
 import os, codecs, grpc
 
-def lnd_connect(LND_DIR_PATH, LND_NETWORK,LND_RPC_SERVER):
+def lnd_connect(LND_DIR_PATH, LND_NETWORK, LND_RPC_SERVER):
     #Open connection with lnd via grpc
     with open(os.path.expanduser(LND_DIR_PATH + '/data/chain/bitcoin/' + LND_NETWORK + '/admin.macaroon'), 'rb') as f:
         macaroon_bytes = f.read()
@@ -12,7 +12,7 @@ def lnd_connect(LND_DIR_PATH, LND_NETWORK,LND_RPC_SERVER):
     cert_creds = grpc.ssl_channel_credentials(cert)
     auth_creds = grpc.metadata_call_credentials(metadata_callback)
     creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
-    channel = grpc.secure_channel(LND_RPC_SERVER, creds)
+    channel = grpc.secure_channel(LND_RPC_SERVER, creds, options=[('grpc.max_send_message_length', 9999999), ('grpc.max_receive_message_length', 9999999),])
     return channel
 
 def main():
