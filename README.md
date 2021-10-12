@@ -58,7 +58,7 @@ Here are some notes to help you get started using the auto-rebalancer (AR).
 8. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%`. Rebalance attempts will be made until inbound liquidity falls below this settting.
 9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
 10. Successful and attempts with only incorrect payment information are tried again immediately.
-11. Attempts that fail for other reasons will not be tried again for 30 minutes afer the stop time.
+11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time.
 
 ## Preview Screens
 ### Main Dashboard
