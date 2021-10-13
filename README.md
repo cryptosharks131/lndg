@@ -44,7 +44,8 @@ Notes:
 2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`.
 
 ## API Backend
-The following data can be accessed at the /api endpoint: `payments`, `invoices`, `forwards`, `channels` and `rebalancer`
+The following data can be accessed at the /api endpoint:  
+`payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings`
 
 ## Using The Rebalancer
 Here are some notes to help you get started using the auto-rebalancer (AR).
@@ -78,6 +79,6 @@ Here are some notes to help you get started using the auto-rebalancer (AR).
 ### View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
 ![image](https://user-images.githubusercontent.com/38626122/134045287-086d56e3-5959-4f5f-a06e-cb6d2ac4957c.png)
 
-### More control added to rebalancer to enable a per channel % inbound liquidity targets
-![image](https://user-images.githubusercontent.com/38626122/136802399-06f1e0ee-0960-4508-934b-b0c9fc906469.png)
+### More detail for fees and added control for rebalancer to enable a per channel % inbound liquidity targets
+![image](https://user-images.githubusercontent.com/38626122/137048967-9655a779-e73a-4b58-83b3-127c411f7bb7.png)
 
