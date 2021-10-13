@@ -1,7 +1,7 @@
 import secrets, argparse
 from pathlib import Path
 
-def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise):
+def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
@@ -36,7 +36,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '%s'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = %s
 
 ALLOWED_HOSTS = ['%s']
 
@@ -141,7 +141,7 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, sfl, wnl)
+''' % (secret, debug, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, sfl, wnl)
     try:
         f = open("lndg/settings.py", "x")
         f.close()
@@ -226,6 +226,7 @@ def main():
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
     parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
     parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
+    parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')
     args = parser.parse_args()
     node_ip = args.nodeip
     lnd_dir_path = args.lnddir
@@ -234,10 +235,11 @@ def main():
     setup_supervisord = args.supervisord
     whitenoise = args.whitenoise
     docker = args.docker
+    debug = args.debug
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise)
+    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings()
