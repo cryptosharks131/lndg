@@ -17,7 +17,7 @@ function install_deps() {
     $HOME_DIR/lndg/.venv/bin/python -m pip install uwsgi >/dev/null 2>&1
 }
 
-function steup_uwsgi() {
+function setup_uwsgi() {
     cat << EOF > $HOME_DIR/lndg/lndg.ini
 # lndg.ini file
 [uwsgi]
@@ -85,7 +85,7 @@ EOF
     usermod -a -G www-data $INSTALL_USER
 }
 
-function steup_nginx() {
+function setup_nginx() {
     cat << EOF > /etc/nginx/sites-enabled/lndg
 upstream django {
     server unix://$HOME_DIR/lndg/lndg.sock; # for a file socket
@@ -157,7 +157,7 @@ function report_information() {
 ##### Main #####
 echo -e "Setting up, this may take a few minutes..."
 install_deps
-steup_uwsgi
-steup_nginx
+setup_uwsgi
+setup_nginx
 start_services
 report_information
