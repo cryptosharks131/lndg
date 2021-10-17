@@ -22,7 +22,7 @@ def main():
     try:
         connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
         routerstub = lnrouter.RouterStub(connection)
-        lndg_path = Path(__file__).resolve().parent
+        lndg_path = str(Path(__file__).resolve().parent)
         f = open(lndg_path + '/failed-htlc-stream.txt', 'a')
         for response in routerstub.SubscribeHtlcEvents(lnr.SubscribeHtlcEventsRequest()):
             if response.event_type == 3 and str(response.link_fail_event) != '':
