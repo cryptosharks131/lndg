@@ -43,6 +43,7 @@ def run_rebalancer(rebalance):
             if response.status == 1 and rebalance.status == 0:
                 #IN-FLIGHT
                 rebalance.status = 1
+                rebalance.payment_hash = response.payment_hash
                 rebalance.save()
             elif response.status == 2:
                 #SUCCESSFUL

@@ -36,8 +36,10 @@
       <th>Inbound Liquidity</th>
       <th>oRate</th>
       <th>oBase</th>
-      <th>Routed Out</th>
-      <th>Routed In</th>
+      <th>o7D</th>
+      <th>i7D</th>
+      <th>oLife</th>
+      <th>iLife</th>
       <th>iRate</th>
       <th>iBase</th>
       <th>Target%</th>
@@ -54,8 +56,10 @@
       <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
       <td>{{ channel.local_fee_rate|intcomma }}</td>
       <td>{{ channel.local_base_fee|intcomma }}</td>
-      <td>{{ channel.amt_routed_out|intcomma }} ({{ channel.routed_out }})</td>
-      <td>{{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in }})</td>
+      <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
+      <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
+      <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
+      <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
       <td>{{ channel.remote_fee_rate|intcomma }}</td>
       <td>{{ channel.remote_base_fee|intcomma }}</td>
       <td>
@@ -390,7 +394,7 @@
 </div>
 {% endif %}
 <div class="w3-container w3-padding-small">
-  <h2>Toggle Channel Auto Rebalance Status Or Update Settings</h2>
+  <h2>Update Auto Rebalancer Settings</h2>
   <div class="w3-container w3-padding-32">
     <form action="/autorebalance/" method="post">
       {% csrf_token %}
