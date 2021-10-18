@@ -151,12 +151,14 @@ def update_channels(stub):
         if len(channel.pending_htlcs) > 0:
             for htlc in channel.pending_htlcs:
                 pending_htlc = PendingHTLCs()
+                pending_htlc.chan_id = db_channel.chan_id
+                pending_htlc.alias = db_channel.alias
                 pending_htlc.incoming = htlc.incoming
                 pending_htlc.amount = htlc.amount
-                pending_htlc.hash_lock=htlc.hash_lock
-                pending_htlc.expiration_height=htlc.expiration_height
-                pending_htlc.forwarding_channel=htlc.forwarding_channel
-                pending_htlc.alias=Channels.objects.filter(chan_id=htlc.forwarding_channel)[0]
+                pending_htlc.hash_lock = htlc.hash_lock.hex()
+                pending_htlc.expiration_height = htlc.expiration_height
+                pending_htlc.forwarding_channel = htlc.forwarding_channel
+                pending_htlc.forwarding_alias = Channels.objects.filter(chan_id=htlc.forwarding_channel)[0].alias if Channels.objects.filter(chan_id=htlc.forwarding_channel).exists() else '---'
                 pending_htlc.save()
     records = Channels.objects.filter(is_open=True).count()
     if records > counter:

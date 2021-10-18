@@ -123,11 +123,13 @@ class Onchain(models.Model):
         app_label = 'gui'
 
 class PendingHTLCs(models.Model):
+    chan_id = models.IntegerField()
+    alias = models.CharField(max_length=32)
     incoming = models.BooleanField()
     amount = models.BigIntegerField()
     hash_lock = models.CharField(max_length=64)
     expiration_height = models.IntegerField()
     forwarding_channel = models.IntegerField()
-    alias = models.CharField(max_length=32)
+    forwarding_alias = models.CharField(max_length=32)
     class Meta:
         app_label = 'gui'
