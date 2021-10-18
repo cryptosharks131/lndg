@@ -63,22 +63,21 @@ Here are some notes to help you get started using the auto-rebalancer (AR).
 
 ## Preview Screens
 ### Main Dashboard
-![image](https://user-images.githubusercontent.com/38626122/132701345-7129e4e5-09b8-483e-96eb-bf003171ed3f.png)
-![image](https://user-images.githubusercontent.com/38626122/132701473-33611c23-cb91-4496-a9ee-c276f1b35f34.png)
-![image](https://user-images.githubusercontent.com/38626122/132701498-5cefa10f-00b3-45e3-9a38-e6512d47b750.png)
-![image](https://user-images.githubusercontent.com/38626122/132701518-41e585ae-bac3-413b-a6a2-c202e20fd7f9.png)
-![image](https://user-images.githubusercontent.com/38626122/132701532-a129f74f-ee6e-4f03-89c8-e82eef775ab1.png)
+![image](https://user-images.githubusercontent.com/38626122/137809242-5af2afc2-681a-43a4-b1c3-e7955b8744e5.png)
+![image](https://user-images.githubusercontent.com/38626122/137809328-c64c038b-8dbb-40a2-aeb3-a1bae5554d7a.png)
+![image](https://user-images.githubusercontent.com/38626122/137809356-ec46193a-478c-424b-a184-2b15cfbb5c52.png)
+![image](https://user-images.githubusercontent.com/38626122/137809433-b363fff1-31b6-4b0e-80e9-1916ef0af052.png)
+![image](https://user-images.githubusercontent.com/38626122/137809648-bb191ba9-b989-4325-95ac-d25a8333ae62.png)
+![image](https://user-images.githubusercontent.com/38626122/137809583-db743233-25c1-4d3e-aaec-2a7767de2c9f.png)
 
-### Peers, Balances and Routes All Open In Separate Screens
-![image](https://user-images.githubusercontent.com/38626122/132701553-bbab3f27-ac72-4de6-9591-506c6740579b.png)
-![image](https://user-images.githubusercontent.com/38626122/132861336-3cb02cad-2b09-4548-8186-a93b2482c40d.png)
+### Peers, Balances, Routes and Pending HTLCs All Open In Separate Screens
+![image](https://user-images.githubusercontent.com/38626122/137809809-1ed40cfb-9d12-447a-8e5e-82ae79605895.png)
+![image](https://user-images.githubusercontent.com/38626122/137810021-4f69dcb0-5fce-4062-bc49-e75f5dd0feda.png)
+![image](https://user-images.githubusercontent.com/38626122/137809882-4a87f86d-290c-456e-9606-ed669fd98561.png)
 
 ### Browsable API at `/api` (json format available with url appended with `?format=json`)
-![image](https://user-images.githubusercontent.com/38626122/134045960-13019cd9-715d-43aa-873d-414626369373.png)
+![image](https://user-images.githubusercontent.com/38626122/137810278-7f38ac5b-8932-4953-aa4c-9c29d66dce0c.png)
 
 ### View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
 ![image](https://user-images.githubusercontent.com/38626122/134045287-086d56e3-5959-4f5f-a06e-cb6d2ac4957c.png)
-
-### More detail for fees and added control for rebalancer to enable a per channel % inbound liquidity targets
-![image](https://user-images.githubusercontent.com/38626122/137048967-9655a779-e73a-4b58-83b3-127c411f7bb7.png)
 
