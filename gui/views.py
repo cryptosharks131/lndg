@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs
 from .serializers import ConnectPeerSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
@@ -75,6 +75,7 @@ def home(request):
             detailed_channel['routed_out_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).count()
             detailed_channel['amt_routed_in_7day'] = 0 if detailed_channel['routed_in_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
             detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
+            detailed_channel['htlc_count'] = PendingHTLCs.objects.filter(forwarding_channel=channel.chan_id).count()
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_channel['ar_target'] = channel.ar_target
             detailed_active_channels.append(detailed_channel)
@@ -114,6 +115,7 @@ def home(request):
             'rebalancer_form': RebalancerForm,
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
+            'pending_htlc_count': PendingHTLCs.objects.all().count(),
         }
         return render(request, 'home.html', context)
     else:
@@ -148,6 +150,16 @@ def balances(request):
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height'))
         }
         return render(request, 'balances.html', context)
+    else:
+        return redirect('home')
+
+def pending_htlcs(request):
+    if request.method == 'GET':
+        context = {
+            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True),
+            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False)
+        }
+        return render(request, 'pending_htlcs.html', context)
     else:
         return redirect('home')
 

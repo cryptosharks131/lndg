@@ -20,7 +20,7 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }}</h4>
-  <h4>Unsettled Liquidity: {{ unsettled|intcomma }} | Balance In Limbo: {{ limbo_balance|intcomma }}</h4>
+  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
@@ -34,6 +34,7 @@
       <th>Outbound Liquidity</th>
       <th width=10%></th>
       <th>Inbound Liquidity</th>
+      <th>Unsettled</th>
       <th>oRate</th>
       <th>oBase</th>
       <th>o7D</th>
@@ -54,6 +55,7 @@
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
       <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
       <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
+      <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
       <td>{{ channel.local_fee_rate|intcomma }}</td>
       <td>{{ channel.local_base_fee|intcomma }}</td>
       <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>

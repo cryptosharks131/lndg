@@ -18,7 +18,7 @@ settings.configure(
 )
 django.setup()
 from lndg import settings
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, PendingHTLCs
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -109,41 +109,14 @@ def update_channels(stub):
     counter = 0
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
+    PendingHTLCs.objects.all().delete()
     for channel in channels:
-        exists = Channels.objects.filter(chan_id=channel.chan_id).count()
-        if exists == 1:
+        if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
-            chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
-            if chan_data.node1_pub == channel.remote_pubkey:
-                local_policy = chan_data.node2_policy
-                remote_policy = chan_data.node1_policy
-            else:
-                local_policy = chan_data.node1_policy
-                remote_policy = chan_data.node2_policy
             db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
-            db_channel.capacity = channel.capacity
-            db_channel.local_balance = channel.local_balance
-            db_channel.remote_balance = channel.remote_balance
-            db_channel.unsettled_balance = channel.unsettled_balance
-            db_channel.local_commit = channel.commit_fee
-            db_channel.local_chan_reserve = channel.local_chan_reserve_sat
-            db_channel.local_base_fee = local_policy.fee_base_msat
-            db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
-            db_channel.remote_base_fee = remote_policy.fee_base_msat
-            db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
-            db_channel.is_active = channel.active
-            db_channel.is_open = True
-            db_channel.save()
-        elif exists == 0:
+        else:
             #Create a record for this new channel
             alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey, include_channels=False)).node.alias
-            chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
-            if chan_data.node1_pub == channel.remote_pubkey:
-                local_policy = chan_data.node2_policy
-                remote_policy = chan_data.node1_policy
-            else:
-                local_policy = chan_data.node1_policy
-                remote_policy = chan_data.node2_policy
             channel_point = channel.channel_point
             txid, index = channel_point.split(':')
             db_channel = Channels()
@@ -153,21 +126,38 @@ def update_channels(stub):
             db_channel.alias = alias
             db_channel.funding_txid = txid
             db_channel.output_index = index
-            db_channel.capacity = channel.capacity
-            db_channel.local_balance = channel.local_balance
-            db_channel.remote_balance = channel.remote_balance
-            db_channel.unsettled_balance = channel.unsettled_balance
-            db_channel.local_commit = channel.commit_fee
-            db_channel.local_chan_reserve = channel.local_chan_reserve_sat
-            db_channel.local_base_fee = local_policy.fee_base_msat
-            db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
-            db_channel.remote_base_fee = remote_policy.fee_base_msat
-            db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
-            db_channel.is_active = channel.active
-            db_channel.is_open = True
-            db_channel.save()
+        chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
+        if chan_data.node1_pub == channel.remote_pubkey:
+            local_policy = chan_data.node2_policy
+            remote_policy = chan_data.node1_policy
+        else:
+            local_policy = chan_data.node1_policy
+            remote_policy = chan_data.node2_policy
+        db_channel.capacity = channel.capacity
+        db_channel.local_balance = channel.local_balance
+        db_channel.remote_balance = channel.remote_balance
+        db_channel.unsettled_balance = channel.unsettled_balance
+        db_channel.local_commit = channel.commit_fee
+        db_channel.local_chan_reserve = channel.local_chan_reserve_sat
+        db_channel.local_base_fee = local_policy.fee_base_msat
+        db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
+        db_channel.remote_base_fee = remote_policy.fee_base_msat
+        db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
+        db_channel.is_active = channel.active
+        db_channel.is_open = True
+        db_channel.save()
         counter += 1
         chan_list.append(channel.chan_id)
+        if len(channel.pending_htlcs) > 0:
+            for htlc in channel.pending_htlcs:
+                pending_htlc = PendingHTLCs()
+                pending_htlc.incoming = htlc.incoming
+                pending_htlc.amount = htlc.amount
+                pending_htlc.hash_lock=htlc.hash_lock
+                pending_htlc.expiration_height=htlc.expiration_height
+                pending_htlc.forwarding_channel=htlc.forwarding_channel
+                pending_htlc.alias=Channels.objects.filter(chan_id=htlc.forwarding_channel)[0]
+                pending_htlc.save()
     records = Channels.objects.filter(is_open=True).count()
     if records > counter:
         #A channel must have been closed, mark it as closed

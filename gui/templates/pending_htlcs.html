@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if outgoing_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Outgoing HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Forwarding Channel</th>
+      <th>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration Height</th>
+      <th width=40%>Hash Lock</th>
+    </tr>
+    {% for htlc in outgoing_htlcs %}
+    <tr>
+      <td>{{ htlc.forwarding_channel }}</td>
+      <td>{{ htlc.alias }}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td>{{ htlc.expiration_height|intcomma }}</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if incoming_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Incoming HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Forwarding Channel</th>
+      <th>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration Height</th>
+      <th width=40%>Hash Lock</th>
+    </tr>
+    {% for htlc in incoming_htlcs %}
+    <tr>
+      <td>{{ htlc.forwarding_channel }}</td>
+      <td>{{ htlc.alias }}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td>{{ htlc.expiration_height|intcomma }}</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}
