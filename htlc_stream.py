@@ -146,7 +146,7 @@ def main():
                 output.update({'wire_failure':wire_failure_str})
                 output.update({'failure_detail':failure_detail_str})
                 output.update({'failure_string':failure_string})
-                f.write(str(output))
+                f.write(str(output) + '\n')
     except Exception as e:
         print(str(e))
     finally:

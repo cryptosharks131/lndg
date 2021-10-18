@@ -126,24 +126,16 @@ def auto_schedule():
                             target_fee = int(target_value * (1 / value_per_fee))
                             if Rebalancer.objects.filter(last_hop_pubkey=inbound_pubkey.remote_pubkey).exclude(status=0).exists():
                                 last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=inbound_pubkey.remote_pubkey).exclude(status=0).order_by('-id')[0]
-                                if last_rebalance.value != target_value or last_rebalance.status in [2, 6] or (last_rebalance.status in [3, 4, 5, 7, 400, 408] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > 30)):
-                                    print('Creating Auto Rebalance Request')
-                                    print('Request for:', target.chan_id)
-                                    print('Request routing through:', outbound_cans)
-                                    print('Target % Of Value:', target_percent)
-                                    print('Target Value:', target_value)
-                                    print('Target Fee:', target_fee)
-                                    print('Target Time:', target_time)
-                                    Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
-                            else:
-                                print('Creating Auto Rebalance Request')
-                                print('Request for:', target.chan_id)
-                                print('Request routing through:', outbound_cans)
-                                print('Target % Of Value:', target_percent)
-                                print('Target Value:', target_value)
-                                print('Target Fee:', target_fee)
-                                print('Target Time:', target_time)
-                                Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
+                                if not (last_rebalance.value != target_value or last_rebalance.status in [2, 6] or (last_rebalance.status in [3, 4, 5, 7, 400, 408] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > 30))):
+                                    return
+                            print('Creating Auto Rebalance Request')
+                            print('Request for:', target.chan_id)
+                            print('Request routing through:', outbound_cans)
+                            print('Target % Of Value:', target_percent)
+                            print('Target Value:', target_value)
+                            print('Target Fee:', target_fee)
+                            print('Target Time:', target_time)
+                            Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
 
 def main():
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')
