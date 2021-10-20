@@ -156,8 +156,8 @@ def balances(request):
 def pending_htlcs(request):
     if request.method == 'GET':
         context = {
-            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True),
-            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False)
+            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True).order_by('hash_lock'),
+            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False).order_by('hash_lock')
         }
         return render(request, 'pending_htlcs.html', context)
     else:
