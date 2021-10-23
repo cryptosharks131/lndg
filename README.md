@@ -37,7 +37,7 @@ Recommend Setup With Supervisord or Systemd
   Option 1 - Bash script install `sudo bash systemd.sh`  
   Option 2 - [Manual Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)  
   
-Alternatively, you may also make your our task for these files with your preferred tool (task scheduler/cronjob/etc).  
+Alternatively, you may also make your own task for these files with your preferred tool (task scheduler/cronjob/etc).  
 
 ### Notes
 1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
