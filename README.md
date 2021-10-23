@@ -1,7 +1,19 @@
 # lndg
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
+## Docker Installation (requires docker and docker-compose be installed)
+### Build the image
+1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
+2. Change directory into the repo `cd lndg`
+3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
+4. LNDg should now be available on port `8889`
+
+### Notes
+1. Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
+2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes. `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`
+
 ## Manual Installation
+### Step 1 - Install lndg
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
 3. Make sure you have python virtualenv installed `apt install virtualenv`
@@ -12,42 +24,52 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
 9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8889`
 
-Notes:
-1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.
-2. You can also use `initialize.py` to setup supervisord to run your `jobs.py` and `rebalancer.py` files on a timer. This does require also installing `supervisord` with `.venv/bin/pip install supervisord` and starting the supervisord service with `supervisord`.
-3. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below).
+### Step 2 - Setup Backend Data and Automated Rebalancing
+The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.
 
-## Updating
+Recommend Setup With Supervisord or Systemd
+1. Supervisord  
+  a) Setup supervisord config `.venv/bin/python initialize.py -sd`  
+  b) Install Supervisord `.venv/bin/pip install supervisor`  
+  c) Start Supervisord `supervisord`  
+
+2. Systemd (2 options)  
+  Option 1 - Bash script install `sudo bash systemd.sh`  
+  Option 2 - [Manual Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)  
+  
+Alternatively, you may also make your our task for these files with your preferred tool (task scheduler/cronjob/etc).  
+
+### Notes
+1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
+2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue. you can use `initialize.py -wn` to setup whitenoise and install it with `.venv/bin/pip install whitenoise`.  
+3. If you want to recreatre a settings file, delete it from `lndg/lndg/settings.py` and rerun the `initialize.py` file.  
+4. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below).  
+
+### Setup lndg initialize.py options
+1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
+2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths - default: `~/.lnd`
+3. `-net` or `--network` - Network LND will run over - default: `mainnet`
+4. `-server` or `--rpcserver` - Server address to use for rpc communications with LND - default: `localhost:10009`
+5. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
+6. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
+7. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
+8. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
+
+### Updating
 1. Make sure you are in the lndg folder `cd lndg`
 2. Pull the new files `git pull`
 3. Migrate any database changes `.venv/bin/python manage.py migrate`
 
-## Backend Data Refreshes and Automated Rebalancing
-The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.
-
-You can find instructions on settings these files up to run in the background via systemd [here](https://github.com/cryptosharks131/lndg/blob/master/systemd.md). If you are familiar with crontab, this is also an option for setting up these files to run on a frequent basis, however it only has a resolution of 1 minute.
-
-A bash script has also been included to help aide in the setup of systemd. `sudo bash systemd.sh`
-
-## Nginx Webserver
+### Nginx Webserver
 If you would like to serve the dashboard at all times, it is recommended to setup a proper production webserver to host the site.  
 A bash script has been included to help aide in the setup of a nginx webserver. `sudo bash nginx.sh`
 
-## Docker Installation (this includes backend refreshes, rebalancing and webserver)
-1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-2. Change directory into the repo `cd lndg`
-3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
-4. LNDg should now be available on port `8889`
-
-Notes: 
-1. Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
-2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`.
-
-## API Backend
+## Key Features
+### API Backend
 The following data can be accessed at the /api endpoint:  
 `payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings`
 
-## Using The Rebalancer
+### Auto-Rebalancer
 Here are some notes to help you get started using the auto-rebalancer (AR).
 1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities.
 3. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts.
