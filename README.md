@@ -42,7 +42,7 @@ Alternatively, you may also make your own task for these files with your preferr
 ### Notes
 1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
 2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue. You can use `initialize.py -wn` to setup whitenoise and install it with `.venv/bin/pip install whitenoise`.  
-3. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun the `initialize.py` file.  
+3. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun. `initialize.py`  
 4. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below).  
 
 ### Setup lndg initialize.py options
