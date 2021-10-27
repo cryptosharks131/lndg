@@ -16,7 +16,8 @@
 <div class="w3-container w3-padding-small">
   <h4>Completed Payments: {{ total_payments }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }}</h4>
   <h4>Paid Invoices: {{ total_invoices }} | Sats Received: {{ total_received|intcomma }}</h4>
-  <h4>Payments Routed: {{ total_forwards }} | Value Routed: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }}</h4>
+  <h4>Lifetime Routed: {{ total_forwards }} | Value: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }}</h4>
+  <h4>7-Day Routed: {{ routed_7day }} | Value: {{ routed_7day_amt|intcomma }} | % Routed Out: {{ routed_7day_percent }}%</h4>
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }}</h4>
@@ -123,10 +124,10 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.local_base_fee|intcomma }}</td>
       <td>{{ channel.local_fee_rate|intcomma }}</td>
-      <td>{{ channel.remote_base_fee|intcomma }}</td>
+      <td>{{ channel.local_base_fee|intcomma }}</td>
       <td>{{ channel.remote_fee_rate|intcomma }}</td>
+      <td>{{ channel.remote_base_fee|intcomma }}</td>
       <td>{{ channel.initiator }}</td>
       <td>
         {% if channel.auto_rebalance == True %}

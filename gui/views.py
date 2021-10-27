@@ -38,9 +38,9 @@ def home(request):
         total_received = 0 if total_invoices == 0 else Invoices.objects.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
         forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
-        total_forwards = Forwards.objects.count()
-        total_value_forwards = 0 if total_forwards == 0 else int(Forwards.objects.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
-        total_earned = 0 if total_forwards == 0 else Forwards.objects.aggregate(Sum('fee'))['fee__sum']
+        total_forwards = forwards.count()
+        total_value_forwards = 0 if total_forwards == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
+        total_earned = 0 if total_forwards == 0 else forwards.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
         active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('outbound_percent')
         total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
@@ -49,6 +49,8 @@ def home(request):
         total_unsettled = 0 if total_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
         detailed_active_channels = []
         filter_7day = datetime.now() - timedelta(days=7)
+        routed_7day = forwards.filter(forward_date__gte=filter_7day).count()
+        routed_7day_amt = 0 if routed_7day == 0 else int(forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         for channel in active_channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -100,6 +102,9 @@ def home(request):
             'earned': round(total_earned, 3),
             'total_forwards': total_forwards,
             'total_value_forwards': total_value_forwards,
+            'routed_7day': routed_7day,
+            'routed_7day_amt': routed_7day_amt,
+            'routed_7day_percent': int((routed_7day_amt/total_outbound)*100),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
