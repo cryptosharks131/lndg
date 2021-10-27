@@ -86,6 +86,7 @@ def home(request):
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
+        inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
         #Grab local settings
@@ -108,7 +109,7 @@ def home(request):
             'routed_7day': routed_7day,
             'routed_7day_amt': routed_7day_amt,
             'earned_7day': round(total_earned_7day, 3),
-            'routed_7day_percent': int((routed_7day_amt/(total_outbound + pending_outbound))*100),
+            'routed_7day_percent': int((routed_7day_amt/(total_outbound + pending_outbound + inactive_outbound))*100),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
