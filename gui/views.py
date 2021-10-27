@@ -51,6 +51,7 @@ def home(request):
         filter_7day = datetime.now() - timedelta(days=7)
         routed_7day = forwards.filter(forward_date__gte=filter_7day).count()
         routed_7day_amt = 0 if routed_7day == 0 else int(forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
+        total_earned_7day = 0 if routed_7day == 0 else forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
         for channel in active_channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -104,6 +105,7 @@ def home(request):
             'total_value_forwards': total_value_forwards,
             'routed_7day': routed_7day,
             'routed_7day_amt': routed_7day_amt,
+            'earned_7day': round(total_earned_7day, 3),
             'routed_7day_percent': int((routed_7day_amt/total_outbound)*100),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
