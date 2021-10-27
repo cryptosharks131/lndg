@@ -85,7 +85,7 @@ Here are some notes to help you get started using the auto-rebalancer (AR).
 
 ## Preview Screens
 ### Main Dashboard
-![image](https://user-images.githubusercontent.com/38626122/137809242-5af2afc2-681a-43a4-b1c3-e7955b8744e5.png)
+![image](https://user-images.githubusercontent.com/38626122/138994482-245190b5-a492-4128-bb73-959034ffd879.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809328-c64c038b-8dbb-40a2-aeb3-a1bae5554d7a.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809356-ec46193a-478c-424b-a184-2b15cfbb5c52.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809433-b363fff1-31b6-4b0e-80e9-1916ef0af052.png)
