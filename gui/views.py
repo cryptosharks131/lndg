@@ -52,6 +52,8 @@ def home(request):
         routed_7day = forwards.filter(forward_date__gte=filter_7day).count()
         routed_7day_amt = 0 if routed_7day == 0 else int(forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned_7day = 0 if routed_7day == 0 else forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+        pending_htlc_count = PendingHTLCs.objects.all().count()
+        pending_outbound = 0 if pending_htlc_count == 0 else PendingHTLCs.objects.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
         for channel in active_channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -106,7 +108,7 @@ def home(request):
             'routed_7day': routed_7day,
             'routed_7day_amt': routed_7day_amt,
             'earned_7day': round(total_earned_7day, 3),
-            'routed_7day_percent': int((routed_7day_amt/total_outbound)*100),
+            'routed_7day_percent': int((routed_7day_amt/(total_outbound + pending_outbound))*100),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
@@ -122,7 +124,7 @@ def home(request):
             'rebalancer_form': RebalancerForm,
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
-            'pending_htlc_count': PendingHTLCs.objects.all().count(),
+            'pending_htlc_count': pending_htlc_count,
         }
         return render(request, 'home.html', context)
     else:
