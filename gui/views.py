@@ -91,6 +91,11 @@ def home(request):
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
         inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         sum_outbound = total_outbound + pending_outbound + inactive_outbound
+        onchain_txs = Onchain.objects.all()
+        onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
+        onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+        total_costs = total_fees + onchain_costs
+        total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
         #Grab local settings
@@ -100,23 +105,24 @@ def home(request):
             'node_info': node_info,
             'balances': balances,
             'payments': payments[:6],
-            'total_sent': total_sent,
-            'fees_paid': round(total_fees, 3),
+            'total_sent': int(total_sent),
+            'fees_paid': round(total_fees, 1),
             'total_payments': total_payments,
             'invoices': invoices[:6],
             'total_received': total_received,
             'total_invoices': total_invoices,
             'forwards': forwards[:15],
-            'earned': round(total_earned, 3),
+            'earned': round(total_earned, 1),
             'total_forwards': total_forwards,
             'total_value_forwards': total_value_forwards,
             'routed_7day': routed_7day,
             'routed_7day_amt': routed_7day_amt,
-            'earned_7day': round(total_earned_7day, 3),
+            'earned_7day': round(total_earned_7day, 1),
             'routed_7day_percent': 0 if sum_outbound == 0 else int((routed_7day_amt/sum_outbound)*100),
-            'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees) / (sum_outbound / 1000000)),
-            'percent_cost': 0 if total_earned == 0 else int((total_fees/total_earned)*100),
-            'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_7day_fees/total_earned_7day)*100),
+            'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day) / (sum_outbound / 1000000)),
+            'percent_cost': 0 if total_earned == 0 else int((total_costs/total_earned)*100),
+            'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
+            'onchain_costs': onchain_costs,
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
