@@ -16,8 +16,8 @@
 <div class="w3-container w3-padding-small">
   <h4>Completed Payments: {{ total_payments }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }}</h4>
   <h4>Paid Invoices: {{ total_invoices }} | Sats Received: {{ total_received|intcomma }}</h4>
-  <h4>Lifetime Routed: {{ total_forwards }} | Value: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }}</h4>
-  <h4>7-Day Routed: {{ routed_7day }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} | Profit/Outbound: {{ profit_per_outbound|intcomma }} | Outbound Utilization: {{ routed_7day_percent }}%</h4>
+  <h4>Lifetime Routed: {{ total_forwards }} | Value: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }} | Percent Cost: {{ percent_cost }}%</h4>
+  <h4>7-Day Routed: {{ routed_7day }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound|intcomma }} | Outbound Utilization: {{ routed_7day_percent }}%</h4>
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }}</h4>
