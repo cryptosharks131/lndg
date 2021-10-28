@@ -29,13 +29,13 @@ def home(request):
         waiting_for_close = pending_channels.waiting_close_channels
         #Get recorded payment events
         payments = Payments.objects.exclude(status=3).order_by('-creation_date')
-        total_payments = Payments.objects.filter(status=2).count()
-        total_sent = 0 if total_payments == 0 else Payments.objects.filter(status=2).aggregate(Sum('value'))['value__sum']
-        total_fees = 0 if total_payments == 0 else Payments.objects.aggregate(Sum('fee'))['fee__sum']
+        total_payments = payments.filter(status=2).count()
+        total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
+        total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
         #Get recorded invoice details
         invoices = Invoices.objects.exclude(state=2).order_by('-creation_date')
-        total_invoices = Invoices.objects.filter(state=1).count()
-        total_received = 0 if total_invoices == 0 else Invoices.objects.aggregate(Sum('amt_paid'))['amt_paid__sum']
+        total_invoices = invoices.filter(state=1).count()
+        total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
         forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
         total_forwards = forwards.count()
@@ -52,8 +52,11 @@ def home(request):
         routed_7day = forwards.filter(forward_date__gte=filter_7day).count()
         routed_7day_amt = 0 if routed_7day == 0 else int(forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned_7day = 0 if routed_7day == 0 else forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
-        pending_htlc_count = PendingHTLCs.objects.all().count()
-        pending_outbound = 0 if pending_htlc_count == 0 else PendingHTLCs.objects.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
+        payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day).count()
+        total_7day_fees = 0 if payments_7day == 0 else payments.filter(creation_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+        pending_htlcs = PendingHTLCs.objects.all()
+        pending_htlc_count = pending_htlcs.count()
+        pending_outbound = 0 if pending_htlc_count == 0 else pending_htlcs.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
         for channel in active_channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -80,7 +83,7 @@ def home(request):
             detailed_channel['routed_out_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).count()
             detailed_channel['amt_routed_in_7day'] = 0 if detailed_channel['routed_in_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
             detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
-            detailed_channel['htlc_count'] = PendingHTLCs.objects.filter(chan_id=channel.chan_id).count()
+            detailed_channel['htlc_count'] = pending_htlcs.filter(chan_id=channel.chan_id).count()
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_channel['ar_target'] = channel.ar_target
             detailed_active_channels.append(detailed_channel)
@@ -110,6 +113,7 @@ def home(request):
             'routed_7day_amt': routed_7day_amt,
             'earned_7day': round(total_earned_7day, 3),
             'routed_7day_percent': int((routed_7day_amt/(total_outbound + pending_outbound + inactive_outbound))*100),
+            'profit_per_outbound': int((total_earned_7day - total_7day_fees) / ((total_outbound + pending_outbound + inactive_outbound) / 1000000)),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
