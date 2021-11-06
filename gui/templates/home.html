@@ -28,13 +28,13 @@
   <h2>Active Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th width=15%>Peer PubKey</th>
       <th>Peer Alias</th>
       <th>Capacity</th>
       <th>Outbound Liquidity</th>
       <th width=10%></th>
       <th>Inbound Liquidity</th>
+      <th>Channel ID</th>
+      <th width=15%>Peer PubKey</th>
       <th>Unsettled</th>
       <th>oRate</th>
       <th>oBase</th>
@@ -49,17 +49,17 @@
     </tr>
     {% for channel in active_channels %}
     <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td>{{ channel.remote_pubkey }}</td>
       <td><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
       <td>
-		<div style="width:200px; height:1em;">
+		<div class="w3-round" style="width:200px; height:1em;">
 			<div style="width:{{ channel.outbound_percent }}%;height:100%;background-color:blue;display: inline-block;margin:0;"></div><div style="width:{{ channel.inbound_percent }}%;height:100%;background-color:orange;display: inline-block;margin:0"></div>
 		</div>
 	  </td>
       <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
+      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td>{{ channel.remote_pubkey }}</td>
       <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
       <td>{{ channel.local_fee_rate|intcomma }}</td>
       <td>{{ channel.local_base_fee|intcomma }}</td>
