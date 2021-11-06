@@ -10,7 +10,7 @@
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
   <body>
-    <div id="content">
+    <div id="content" style="overflow: scroll;">
         {% if messages %}
         <div class="w3-container w3-padding-small">
           {% for message in messages %}
