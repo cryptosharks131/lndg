@@ -42,7 +42,7 @@ def home(request):
         total_value_forwards = 0 if total_forwards == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned = 0 if total_forwards == 0 else forwards.aggregate(Sum('fee'))['fee__sum']
         #Get current active channels
-        active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('outbound_percent')
+        active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('outbound_percent')
         total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
         total_inbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
         total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
@@ -73,8 +73,8 @@ def home(request):
             detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
-            detailed_channel['outbound_percent'] = channel.outbound_percent
-            detailed_channel['inbound_percent'] = channel.inbound_percent
+            detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
+            detailed_channel['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
             detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
             detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100

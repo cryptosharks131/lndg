@@ -29,8 +29,8 @@ def main():
                 output = {}
                 in_chan_id = response.incoming_channel_id
                 out_chan_id = response.outgoing_channel_id
-                in_chan_alias = Channels.objects.filter(chan_id=in_chan_id)[0].alias
-                out_chan_alias = Channels.objects.filter(chan_id=out_chan_id)[0].alias
+                in_chan_alias = Channels.objects.filter(chan_id=in_chan_id)[0].alias if Channels.objects.filter(chan_id=in_chan_id).exists() else 'Unknown'
+                out_chan_alias = Channels.objects.filter(chan_id=out_chan_id)[0].alias if Channels.objects.filter(chan_id=out_chan_id).exists() else 'Unknown'
                 amount = response.link_fail_event.info.outgoing_amt_msat/1000
                 wire_failure = response.link_fail_event.wire_failure
                 if wire_failure == 0:
