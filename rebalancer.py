@@ -135,7 +135,7 @@ def auto_schedule():
                             print('Target Value:', target_value)
                             print('Target Fee:', target_fee)
                             print('Target Time:', target_time)
-                            Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, duration=target_time).save()
+                            Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, target_alias=inbound_pubkey.alias, duration=target_time).save()
 
 def main():
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')
