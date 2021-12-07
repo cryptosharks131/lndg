@@ -1,4 +1,4 @@
-# lndg
+# LNDg
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
 Start by choosing one of the following installation methods:  
@@ -21,7 +21,7 @@ Start by choosing one of the following installation methods:
 2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 3. Change directory into the repo `cd lndg`
 4. Initialize your database file: `touch db.sqlite3`
-5. Edit the `docker-compose.yaml` file and make sure it have the following lines:
+5. Copy and replace the contents of the `docker-compose.yaml` with the following:
 ```
 services:
   lndg:
@@ -41,7 +41,7 @@ networks:
     name: umbrel_main_network
 ```
 5. Deploy your docker image: `docker-compose up -d`
-6. LNDg should now be available on port `8889`
+6. You can now access LNDg via your browser on port 8889: `http://umbrel.local:8889`
 
 ## Manual Installation
 ### Step 1 - Install lndg
