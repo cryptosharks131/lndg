@@ -19,9 +19,9 @@ Start by choosing one of the following installation methods:
 ### Build and deploy
 1. Log into your umbrel via ssh
 2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-3. Change directory into the repo `cd lndg`
-4. Initialize your database file: `touch db.sqlite3`
-5. Copy and replace the contents of the `docker-compose.yaml` with the following:
+3. Change directory `cd lndg`
+4. Initialize the database file `touch db.sqlite3`
+5. Copy and replace the contents of the docker-compose.yaml with the below: `nano docker-compose.yaml`
 ```
 services:
   lndg:
