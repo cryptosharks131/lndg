@@ -1,7 +1,8 @@
 # lndg
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
-Start by choosing one of the following installation methods: [Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed), [Umbrel Installation](https://github.com/cryptosharks131/lndg#umbrel-installation), [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation)
+Start by choosing one of the following installation methods:  
+[Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed) | [Umbrel Installation](https://github.com/cryptosharks131/lndg#umbrel-installation) | [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation)
 
 ## Docker Installation (requires docker and docker-compose be installed)
 ### Build and deploy
