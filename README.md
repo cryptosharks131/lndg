@@ -1,8 +1,10 @@
 # lndg
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
+Start by choosing one of the following installation methods: [Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed), [Umbrel Installation](https://github.com/cryptosharks131/lndg#umbrel-installation), [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation)
+
 ## Docker Installation (requires docker and docker-compose be installed)
-### Build the image
+### Build and deploy
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
 3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
@@ -11,6 +13,34 @@ Lite GUI web interface to analyze lnd data and manage your node with automation.
 ### Notes
 1. Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
 2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes. `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`
+
+## Umbrel Installation
+### Build and deploy
+1. Log into your umbrel via ssh
+2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
+3. Change directory into the repo `cd lndg`
+4. Initialize your database file: `touch db.sqlite3`
+5. Edit the `docker-compose.yaml` file and make sure it have the following lines:
+```
+services:
+  lndg:
+    build: .
+    volumes:
+      - /home/umbrel/umbrel/lnd:/root/.lnd:ro
+      - /home/umbrel/lndg/db.sqlite3:/lndg/db.sqlite3:rw
+    command:
+      - sh
+      - -c
+      - python initialize.py -net 'mainnet' -server '10.21.21.9:10009' -d && python manage.py migrate && supervisord && python manage.py runserver 0.0.0.0:8000
+    ports:
+      - 8889:8000
+networks: 
+  default: 
+    external: true
+    name: umbrel_main_network
+```
+5. Deploy your docker image: `docker-compose up -d`
+6. LNDg should now be available on port `8889`
 
 ## Manual Installation
 ### Step 1 - Install lndg
