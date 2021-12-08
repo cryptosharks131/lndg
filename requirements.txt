@@ -3,3 +3,4 @@ djangorestframework
 django-qr-code
 grpcio
 protobuf
+pytz
