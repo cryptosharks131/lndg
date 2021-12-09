@@ -5,11 +5,9 @@ def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenois
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
-        sfl = '#'
         wnl = """
     'whitenoise.middleware.WhiteNoiseMiddleware',"""
     else:
-        sfl = ''
         wnl = ''
     settings_file = '''"""
 Django settings for lndg project.
@@ -51,7 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    %s'django.contrib.staticfiles',
+    'django.contrib.staticfiles',
     'django.contrib.humanize',
     'gui',
     'rest_framework',
@@ -141,7 +139,7 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, debug, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, sfl, wnl)
+''' % (secret, debug, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, wnl)
     try:
         f = open("lndg/settings.py", "x")
         f.close()

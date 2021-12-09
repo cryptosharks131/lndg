@@ -2,10 +2,10 @@ services:
   lndg:
     build: .
     volumes:
-      - /root/.lnd:/root/.lnd
+      - /root/.lnd:/root/.lnd:ro
     command:
       - sh
       - -c
-      - python initialize.py -net 'mainnet' -server 'localhost:10009' -d && python manage.py migrate && supervisord && python manage.py runserver 0.0.0.0:8000
+      - python initialize.py -net 'mainnet' -server 'localhost:10009' -d && python manage.py migrate && python manage.py collectstatic --no-input && supervisord && python manage.py runserver 0.0.0.0:8000
     ports:
       - 8889:8000
