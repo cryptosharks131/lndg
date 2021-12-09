@@ -11,6 +11,13 @@ Start by choosing one of the following installation methods:
 3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
 4. LNDg should now be available on port `8889`
 
+### Updating
+```
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 ### Notes
 1. Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
 2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes. `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`
@@ -42,6 +49,13 @@ networks:
 ```
 5. Deploy your docker image: `docker-compose up -d`
 6. You can now access LNDg via your browser on port 8889: `http://umbrel.local:8889`
+
+### Updating
+```
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
 
 ## Manual Installation
 ### Step 1 - Install lndg
