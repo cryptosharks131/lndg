@@ -32,7 +32,7 @@ services:
     command:
       - sh
       - -c
-      - python initialize.py -net 'mainnet' -server '10.21.21.9:10009' -d && python manage.py migrate && supervisord && python manage.py runserver 0.0.0.0:8000
+      - python initialize.py -net 'mainnet' -server '10.21.21.9:10009' -d && python manage.py migrate && python manage.py collectstatic --no-input && supervisord && python manage.py runserver 0.0.0.0:8000
     ports:
       - 8889:8000
 networks: 
