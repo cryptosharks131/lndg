@@ -157,9 +157,7 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
 3. Repeat Step-2 for each channel that you want to queue for rebalancing.  Try to keep always keep a rebalance active and searching.  
 4. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
 
-If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire. Enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.
-  
-
+If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire), enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.  
 
 ## Preview Screens
 ### Main Dashboard
