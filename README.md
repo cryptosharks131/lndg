@@ -115,18 +115,51 @@ The following data can be accessed at the /api endpoint:
 `payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings`
 
 ### Auto-Rebalancer
-Here are some notes to help you get started using the auto-rebalancer (AR).
+Here are some notes to help you get started using the Auto-Rebalancer (AR).
+
+The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucarative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
+
 1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities.
-3. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts.
-4. The AR variable `AR-Time` defines the maximum amount of time we will spend looking for a route.
-5. The AR variable `AR-MaxFeeRate` defines the maximum amount in ppm a rebalance attempt can ever use for a fee limit.
-7. The AR variable `AR-MaxCost%	` defines the maximum % of the ppm being charged on the `INBOUND` receving channel that will be used as the fee limit for the rebalance attempt.
-8. Rebalances will only consider any `OUTBOUND` channel that has more outbound liquidity than the current `AR-Outbound%` target and the channel is not currently being targeted as an `INBOUND` receving channel for rebalances.
-9. Channels need to be targeted in order to be refilled with outbound liquidity and in order to control costs as a first prioirty, all calculations are based on the specific `INBOUND` receving channel.
-10. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%` on the specific channel. Rebalance attempts will be made until inbound liquidity falls below this channel settting.
-11. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
-12. Successful and attempts with only incorrect payment information are tried again immediately.
-13. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time.
+2. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts. Example: If a channel size is 1M Sats and AR-Target% = 0.05 LNDg will select an amount of 5% of 1M = 50K for rebalancing.
+3. The AR variable `AR-Time` defines the maximum amount of time we will spend looking for a route. Example: 5 minutes
+4. The AR variable `AR-MaxFeeRate` defines the maximum amount in ppm a rebalance attempt can ever use for a fee limit. This is the maximum limit to ensure the total fee does not exceed this amount. Example: AR-MaxFeeRate = 800 will ensure the rebalance fee is always less than 800 sats.
+5. The AR variable `AR-MaxCost%	` defines the maximum % of the ppm being charged on the `INBOUND` receving channel that will be used as the fee limit for the rebalance attempt. Example: If your fee to node A is 1000ppm and AR-MaxCost% = 0.5 LNDg will use 50% of 1000ppm = 500ppm max fee limit for rebalancing.
+6. The AR variable `AR-Outbound%` helps identify all the channels that would be a candidate for rebalancing targetd channels. Rebalances will only consider any `OUTBOUND` channel that has more outbound liquidity than the current `AR-Outbound%` setting AND the channel is not currently being targeted as an `INBOUND` receving channel for rebalances.  Example: AR-Outboud% = 0.6 would make all channels with an outbound capacity of 60% or more AND not enabled under AR on the channel line to be a candidate for rebalancing. 
+7. Channels need to be targeted in order to be refilled with outbound liquidity and in order to control costs as a first prioirty, all calculations are based on the specific `INBOUND` receving channel.
+8. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%` on the specific channel. Rebalance attempts will be made until inbound liquidity falls below this channel settting.
+9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
+10. Attempts that are successful or attempts with only incorrect payment information are tried again immediately. Example: If a rebalancing for 50k was sucessful, AR will try another 50k immediately with the same parameters.
+11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed.
+
+#### Steps to start the Auto-Rebalancer:
+1. Update Global Settings  
+  a. Go to section Update Auto Rebalancer Settings  
+  b. Select the global settings (sample below):  
+  c. Click OK button to submit  
+  ```
+  Enabled: 1
+  Target Amount (%): 0.03
+  Target Time (min): 5
+  Target Outbound Above (%): 0.4
+  Global Max Fee Rate (ppm): 200
+  Max Cost (%): 0.5
+  ```
+
+2. Update Channel Specific Settings  
+  a. Go to Active Channels section  
+  b. Find the channel you would like to activate for rebalancing  
+  c. On far right column Click the Enable button to activate rebalancing  
+  d. The dashboard will refresh and show AR-Target 100%  
+  e. Adjust the AR-Target to desired % of liquidity you want to keep on remote INBOUND side. Example select 0.60 if you want 60% of the channel capacity on Remote/INBOUND side  which would mean that there is 40% on Local/OUTBOUND side  
+  f. Hit Enter  
+  g. Dashboard will refresh in the browser  
+
+3. Repeat Step-2 for each channel that you want to queue for rebalancing.  Try to keep always keep a rebalance active and searching.  
+4. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
+
+If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire. Enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.
+  
+
 
 ## Preview Screens
 ### Main Dashboard
