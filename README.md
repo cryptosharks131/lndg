@@ -132,10 +132,21 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
 11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed.
 
 #### Steps to start the Auto-Rebalancer:
-1. Update Global Settings  
+1. Update Channel Specific Settings  
+  a. Go to Active Channels section  
+  b. Find the channels you would like to activate for rebalancing (this refills its outbound)  
+  c. On far right column Click the Enable button to activate rebalancing  
+  d. The dashboard will refresh and show AR-Target 100%  
+  e. Adjust the AR-Target to desired % of liquidity you want to keep on remote INBOUND side. Example select 0.60 if you want 60% of the channel capacity on Remote/INBOUND side  which would mean that there is 40% on Local/OUTBOUND side  
+  f. Hit Enter  
+  g. Dashboard will refresh in the browser  
+  h. Make sure you enable all channels that are valuable outbound routes for you to ensure they are not used for filling up routes you have targeted (you can enable and target 100% in order to avoid any action on this channel from the rebalancer)  
+
+2. Update Global Settings  
   a. Go to section Update Auto Rebalancer Settings  
   b. Select the global settings (sample below):  
   c. Click OK button to submit  
+  d. Once enabled is set to 1 in the global settings - the rebalancer will become active
   ```
   Enabled: 1
   Target Amount (%): 0.03
@@ -144,18 +155,7 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
   Global Max Fee Rate (ppm): 200
   Max Cost (%): 0.5
   ```
-
-2. Update Channel Specific Settings  
-  a. Go to Active Channels section  
-  b. Find the channel you would like to activate for rebalancing  
-  c. On far right column Click the Enable button to activate rebalancing  
-  d. The dashboard will refresh and show AR-Target 100%  
-  e. Adjust the AR-Target to desired % of liquidity you want to keep on remote INBOUND side. Example select 0.60 if you want 60% of the channel capacity on Remote/INBOUND side  which would mean that there is 40% on Local/OUTBOUND side  
-  f. Hit Enter  
-  g. Dashboard will refresh in the browser  
-
-3. Repeat Step-2 for each channel that you want to queue for rebalancing.  Try to keep always keep a rebalance active and searching.  
-4. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
+3. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
 
 If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire), enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.  
 
