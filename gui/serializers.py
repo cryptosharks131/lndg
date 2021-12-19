@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -97,4 +97,16 @@ class LocalSettingsSerializer(serializers.HyperlinkedModelSerializer):
     key = serializers.ReadOnlyField()
     class Meta:
         model = LocalSettings
+        exclude = []
+
+class PendingHTLCSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    class Meta:
+        model = PendingHTLCs
+        exclude = []
+
+class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    class Meta:
+        model = FailedHTLCs
         exclude = []
