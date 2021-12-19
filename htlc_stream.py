@@ -33,8 +33,8 @@ def main():
                 amount = int(response.link_fail_event.info.outgoing_amt_msat/1000)
                 wire_failure = response.link_fail_event.wire_failure
                 failure_detail = response.link_fail_event.failure_detail
-                missed_fee = ((amount/1000000) * out_chan.local_fee_rate) + out_chan.local_base_fee
-                FailedHTLCs(amount=amount, chan_id_in=in_chan_id, chan_id_out=out_chan_id, chan_in_alias=in_chan_alias, chan_out_alias=out_chan_alias, wire_failure=wire_failure, failure_detail=failure_detail, missed_fee=missed_fee)
+                missed_fee = round(((amount/1000000) * out_chan.local_fee_rate) + out_chan.local_base_fee, 3)
+                FailedHTLCs(amount=amount, chan_id_in=in_chan_id, chan_id_out=out_chan_id, chan_in_alias=in_chan_alias, chan_out_alias=out_chan_alias, wire_failure=wire_failure, failure_detail=failure_detail, missed_fee=missed_fee).save()
     except Exception as e:
         print('Error while running failed HTLC stream: ' + str(e))
 
