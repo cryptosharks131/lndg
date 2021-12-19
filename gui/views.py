@@ -8,8 +8,8 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs
-from .serializers import ConnectPeerSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
@@ -140,6 +140,7 @@ def home(request):
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
             'pending_htlc_count': pending_htlc_count,
+            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:10]
         }
         return render(request, 'home.html', context)
     else:
@@ -450,6 +451,14 @@ class PeersViewSet(viewsets.ReadOnlyModelViewSet):
 class OnchainViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Onchain.objects.all()
     serializer_class = OnchainSerializer
+
+class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PendingHTLCs.objects.all()
+    serializer_class = PendingHTLCSerializer
+
+class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = FailedHTLCs.objects.all()
+    serializer_class = FailedHTLCSerializer
 
 class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LocalSettings.objects.all()

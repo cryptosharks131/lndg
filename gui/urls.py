@@ -12,6 +12,8 @@ router.register(r'peers', views.PeersViewSet)
 router.register(r'channels', views.ChannelsViewSet)
 router.register(r'rebalancer', views.RebalancerViewSet)
 router.register(r'settings', views.LocalSettingsViewSet)
+router.register(r'pendinghtlcs', views.PendingHTLCViewSet)
+router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
