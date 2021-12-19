@@ -134,3 +134,16 @@ class PendingHTLCs(models.Model):
     forwarding_alias = models.CharField(max_length=32)
     class Meta:
         app_label = 'gui'
+
+class FailedHTLCs(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    amount = models.IntegerField()
+    chan_id_in = models.IntegerField()
+    chan_id_out = models.IntegerField()
+    chan_in_alias = models.CharField(null=True, max_length=32)
+    chan_out_alias = models.CharField(null=True, max_length=32)
+    wire_failure = models.IntegerField()
+    failure_detail = models.IntegerField()
+    missed_fee = models.FloatField()
+    class Meta:
+        app_label = 'gui'

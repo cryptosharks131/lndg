@@ -187,7 +187,7 @@ process_name = lndg-jobs
 directory = %s
 autorestart = true
 redirect_stderr = true
-stdout_logfile = /var/log/lnd-jobs.log
+stdout_logfile = /var/log/lndg-jobs.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
 
@@ -197,10 +197,20 @@ process_name = lndg-rebalancer
 directory = %s
 autorestart = true
 redirect_stderr = true
-stdout_logfile = /var/log/lnd-rebalancer.log
+stdout_logfile = /var/log/lndg-rebalancer.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
-''' % (supervisord_secret, supervisord_secret, target_path, target_path)
+
+[program:htlc-stream]
+command = sh -c "python htlc_stream.py && sleep 15"
+process_name = lndg-htlc-stream
+directory = %s
+autorestart = true
+redirect_stderr = true
+stdout_logfile = /var/log/lndg-htlc-stream.log
+stdout_logfile_maxbytes = 150MB
+stdout_logfile_backups = 15
+''' % (supervisord_secret, supervisord_secret, target_path, target_path, target_path)
     try:
         f = open("/usr/local/etc/supervisord.conf", "x")
         f.close()
