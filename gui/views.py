@@ -125,7 +125,7 @@ def home(request):
             'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
             'onchain_costs': onchain_costs,
             'onchain_costs_7day': onchain_costs_7day,
-            'total_7day_fees': total_7day_fees,
+            'total_7day_fees': round(total_7day_fees, 1),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
