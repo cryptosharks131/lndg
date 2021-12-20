@@ -56,7 +56,7 @@ def home(request):
         total_7day_fees = 0 if payments_7day == 0 else payments.filter(creation_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
         pending_htlcs = PendingHTLCs.objects.all()
         pending_htlc_count = pending_htlcs.count()
-        pending_outbound = 0 if pending_htlc_count == 0 else pending_htlcs.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
+        pending_outbound = 0 if pending_htlcs.filter(incoming=False).count() == 0 else pending_htlcs.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
         for channel in active_channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -124,6 +124,8 @@ def home(request):
             'percent_cost': 0 if total_earned == 0 else int((total_costs/total_earned)*100),
             'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
             'onchain_costs': onchain_costs,
+            'onchain_costs_7day': onchain_costs_7day,
+            'total_7day_fees': total_7day_fees,
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
