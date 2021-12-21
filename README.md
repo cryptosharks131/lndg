@@ -114,6 +114,9 @@ A bash script has been included to help aide in the setup of a nginx webserver. 
 The following data can be accessed at the /api endpoint:  
 `payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings`
 
+### Peer Reconnection
+LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
+
 ### Auto-Rebalancer
 Here are some notes to help you get started using the Auto-Rebalancer (AR).
 
