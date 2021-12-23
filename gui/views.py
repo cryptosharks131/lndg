@@ -184,7 +184,7 @@ def suggested_opens(request):
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
         current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
-        open_list = PaymentHops.objects.exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(counter=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).order_by('-counter', 'fees', '-amount')[:20]
+        open_list = PaymentHops.objects.exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(fee_ratio=Sum('fee')/Sum('amt')).annotate(counter=Round(Count('id')/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).order_by('-count', 'fee_ratio')[:20]
         context = {
             'open_list': open_list
         }
