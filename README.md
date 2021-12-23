@@ -69,8 +69,8 @@ docker-compose up -d
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
 9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8889`
 
-### Step 2 - Setup Backend Data and Automated Rebalancing
-The files `jobs.py` and `rebalancer.py` inside lndg/gui/ serve to update the backend database with the most up to date information and rebalance any channels based on your lndg dashboard settings and requests. A refresh interval of at least 15-30 seconds is recommended for the best user experience.
+### Step 2 - Setup Backend Data, Automated Rebalancing and HTLC Stream Data
+The files `jobs.py`, `rebalancer.py` and `htlc_stream.py` inside lndg/gui/ serve to update the backend database with the most up to date information, rebalance any channels based on your lndg dashboard settings and to listen for any failure events in your htlc stream. A refresh interval of at least 10-20 seconds is recommended for the `jobs.py` and `rebalancer.py` files for the best user experience.
 
 Recommend Setup With Supervisord or Systemd
 1. Supervisord  
@@ -112,10 +112,13 @@ A bash script has been included to help aide in the setup of a nginx webserver. 
 ## Key Features
 ### API Backend
 The following data can be accessed at the /api endpoint:  
-`payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings`
+`payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings` `pendinghtlcs` `failedhtlcs`
 
 ### Peer Reconnection
 LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
+
+### HTLC Failure Stream
+LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.
 
 ### Auto-Rebalancer
 Here are some notes to help you get started using the Auto-Rebalancer (AR).
