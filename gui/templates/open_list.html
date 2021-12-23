@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if open_list %}
+<div class="w3-container w3-padding-small">
+  <h2>Suggested Open List</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Node Pubkey</th>
+      <th width=17%>Node Alias</th>
+      <th width=17%>Successful Payments Routed</th>
+      <th width=17%>Fees Paid</th>
+      <th width=17%>Amount Routed</th>
+    </tr>
+    {% for node in open_list %}
+    <tr>
+      <td>{{ node.node_pubkey }}</td>
+      <td>{{ node.alias }}</td>
+      <td>{{ node.counter }}</td>
+      <td>{{ node.fees|add:"0"|intcomma }}</td>
+      <td>{{ node.amount|add:"0"|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

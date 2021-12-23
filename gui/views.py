@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField
+from django.db.models import Sum, IntegerField, Count
 from django.db.models.functions import Round
 from django.conf import settings
 from datetime import datetime, timedelta
@@ -161,7 +161,6 @@ def route(request):
 
 def peers(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         context = {
             'peers': Peers.objects.filter(connected=True)
         }
@@ -177,6 +176,19 @@ def balances(request):
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height'))
         }
         return render(request, 'balances.html', context)
+    else:
+        return redirect('home')
+
+def suggested_opens(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+        current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
+        open_list = PaymentHops.objects.exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(counter=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).order_by('-counter', 'fees', '-amount')
+        context = {
+            'open_list': open_list
+        }
+        return render(request, 'open_list.html', context)
     else:
         return redirect('home')
 
