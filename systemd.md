@@ -3,14 +3,14 @@
 You will need to fill in the proper username below in the paths marked `<run_as_user>`. This assumes you have installed lndg on the home directory of the user. For example, user `mynode` will have a home directory of `/home/mynode/`.
 
 ## Backend Refreshes
-Create a simple bash file to call `jobs.py`, copying the contents below to the file.  
+Create a simple bash file to call `jobs.py`, copying the contents below to the file and filling in your user.  
 `nano /home/<run_as_user>/lndg/jobs.sh`
 ```
 #!/bin/bash
 
 /home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/jobs.py
 ```
-Create a service file for `jobs.py`, copying the contents below to the file and filling in the user you would like this to run under.  
+Create a service file for `jobs.sh`, copying the contents below to the file and filling in the user you would like this to run under.  
 `nano /etc/systemd/system/jobs-lndg.service`
 ```
 [Unit]
@@ -22,7 +22,7 @@ ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/jobs.sh
 StandardError=append:/var/log/lnd_jobs_error.log
 ```
 
-Create a timer file for `jobs.py`, copying the contents below to the file and change the 20s refresh if you like..  
+Create a timer file for `jobs.sh`, copying the contents below to the file and change the 20s refresh if you like..  
 `nano /etc/systemd/system/jobs-lndg.timer`
 ```
 [Unit]
@@ -39,14 +39,14 @@ Enable the timer to run the jobs service file at the specified interval.
 `sudo systemctl start jobs-lndg.timer`  
 
 ## Rebalancer Runs
-Create a simple bash file to call `rebalancer.py`, copying the contents below to the file.  
+Create a simple bash file to call `rebalancer.py`, copying the contents below to the file and filling in your user.  
 `nano /home/<run_as_user>/lndg/rebalancer.sh`
 ```
 #!/bin/bash
 
 /home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/rebalancer.py
 ```
-Create a service file for `rebalancer.py`, copying the contents below to the file and filling in the user you would like this to run under.  
+Create a service file for `rebalancer.sh`, copying the contents below to the file and filling in the user you would like this to run under.  
 `nano /etc/systemd/system/rebalancer-lndg.service`
 ```
 [Unit]
@@ -59,7 +59,7 @@ StandardError=append:/var/log/lnd_rebalancer_error.log
 RuntimeMaxSec=3600
 ```
 
-Create a timer file for `rebalancer.py`, copying the contents below to the file and change the 20s refresh if you like.  
+Create a timer file for `rebalancer.sh`, copying the contents below to the file and change the 20s refresh if you like.  
 `nano /etc/systemd/system/rebalancer-lndg.timer`
 ```
 [Unit]
@@ -75,6 +75,28 @@ Enable and start the timer to run the rebalancer service file at the specified i
 `sudo systemctl enable rebalancer-lndg.timer`  
 `sudo systemctl start rebalancer-lndg.timer`  
 
+## HTLC Failure Stream Data
+Create a simple bash file to call `htlc_stream.py`, copying the contents below to the file and filling in your user.  
+`nano /home/<run_as_user>/lndg/htlc_stream.sh`
+```
+#!/bin/bash
+
+/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/htlc_stream.py
+```
+Create a service file for `htlc_stream.sh`, copying the contents below to the file and filling in the user you would like this to run under.  
+`nano /etc/systemd/system/htlc-stream-lndg.service`
+```
+[Unit]
+Description=Run HTLC Stream For Lndg
+[Service]
+User=<run_as_user>
+Group=<run_as_user>
+ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/htlc_stream.sh
+StandardError=append:/var/log/lnd_htlc_stream_error.log
+```
+Enable and start the service to run the htlc failure stream service file.  
+`sudo systemctl enable htlc-stream-lndg.service`  
+`sudo systemctl start htlc-stream-lndg.service`
 
 ## Status Checks
 You can check on the status of your timers.  
@@ -90,3 +112,8 @@ You can disable your timers as well if you would like them to stop.
 `sudo systemctl stop jobs-lndg.timer`  
 `sudo systemctl disable rebalancer-lndg.timer`  
 `sudo systemctl stop rebalancer-lndg.timer`  
+
+You can also check on and disable your htlc stream data.  
+`sudo systemctl status htlc-stream-lndg.service`  
+`sudo systemctl disable htlc-stream-lndg.service`  
+`sudo systemctl stop htlc-stream-lndg.service`  
