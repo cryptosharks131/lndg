@@ -42,7 +42,7 @@ function configure_rebalancer() {
     cat << EOF > $HOME_DIR/lndg/rebalancer.sh
 #!/bin/bash
 
-$HOME_DIR/lndg/.venv/bin/python $HOME_DIR/lndg/jobs.py
+$HOME_DIR/lndg/.venv/bin/python $HOME_DIR/lndg/rebalancer.py
 EOF
 
     cat << EOF > /etc/systemd/system/rebalancer-lndg.service
@@ -68,6 +68,24 @@ WantedBy=timers.target
 EOF
 }
 
+function configure_htlc_stream() {
+    cat << EOF > $HOME_DIR/lndg/htlc_stream.sh
+#!/bin/bash
+
+$HOME_DIR/lndg/.venv/bin/python $HOME_DIR/lndg/htlc_stream.py
+EOF
+
+    cat << EOF > /etc/systemd/system/htlc-stream-lndg.service
+[Unit]
+Description=Run HTLC Stream For Lndg
+[Service]
+User=$INSTALL_USER
+Group=$INSTALL_USER
+ExecStart=/usr/bin/bash $HOME_DIR/lndg/htlc_stream.sh
+StandardError=append:/var/log/lnd_htlc_stream_error.log
+EOF
+}
+
 function enable_services() {
     systemctl daemon-reload
     sleep 3
@@ -75,6 +93,8 @@ function enable_services() {
     systemctl enable jobs-lndg.timer >/dev/null 2>&1
     systemctl start rebalancer-lndg.timer
     systemctl enable rebalancer-lndg.timer >/dev/null 2>&1
+    systemctl start htlc-stream-lndg.service
+    systemctl enable htlc-stream-lndg.service >/dev/null 2>&1
 }
 
 function report_information() {
@@ -84,6 +104,7 @@ function report_information() {
     echo -e ""
     echo -e "Jobs Timer Status: ${RED}sudo systemctl status jobs-lndg.timer${NC}"
     echo -e "Rebalancer Timer Status: ${RED}sudo systemctl status rebalancer-lndg.timer${NC}"
+    echo -e "HTLC Stream Status: ${RED}sudo systemctl status htlc-stream-lndg.service${NC}"
     echo -e ""
     echo -e "Last Jobs Status: ${RED}sudo systemctl status jobs-lndg.service${NC}"
     echo -e "Last Rebalancer Status: ${RED}sudo systemctl status rebalancer-lndg.service${NC}"
@@ -91,8 +112,10 @@ function report_information() {
     echo -e "To disable your backend services, use the following commands."
     echo -e "Disable Jobs Timer: ${RED}sudo systemctl disable jobs-lndg.timer${NC}"
     echo -e "Disable Rebalancer Timer: ${RED}sudo systemctl disable rebalancer-lndg.timer${NC}"
+    echo -e "Disable HTLC Stream: ${RED}sudo systemctl disable htlc-stream-lndg.service${NC}"
     echo -e "Stop Jobs Timer: ${RED}sudo systemctl stop jobs-lndg.timer${NC}"
     echo -e "Stop Rebalancer Timer: ${RED}sudo systemctl stop rebalancer-lndg.timer${NC}"
+    echo -e "Stop HTLC Stream: ${RED}sudo systemctl stop htlc-stream-lndg.service${NC}"
     echo -e ""
     echo -e "To re-enable these services, simply replace the disable/stop commands with enable/start."
     echo -e "================================================================================================================================"
@@ -102,5 +125,6 @@ function report_information() {
 echo -e "Setting up, this may take a few minutes..."
 configure_jobs
 configure_rebalancer
+configure_htlc_stream
 enable_services
 report_information
