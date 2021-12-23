@@ -22,8 +22,6 @@
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }}</h4>
   <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-</div>
-<div class="w3-container w3-padding-small">
   <h4><a href="/suggested_opens" target="_blank">Suggested Opens</a></h4>
 </div>
 {% if active_channels %}
