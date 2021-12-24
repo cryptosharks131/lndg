@@ -190,7 +190,9 @@ def suggested_opens(request):
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
         current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
-        open_list = PaymentHops.objects.exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).order_by('-score', 'ppm')[:20]
+        filter_60day = datetime.now() - timedelta(days=60)
+        payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
+        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).order_by('-score', 'ppm')[:20]
         context = {
             'open_list': open_list
         }
