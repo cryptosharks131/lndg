@@ -52,8 +52,9 @@ def home(request):
         routed_7day = forwards.filter(forward_date__gte=filter_7day).count()
         routed_7day_amt = 0 if routed_7day == 0 else int(forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_earned_7day = 0 if routed_7day == 0 else forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
-        payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day).count()
-        total_7day_fees = 0 if payments_7day == 0 else payments.filter(creation_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+        payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
+        payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
+        total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
         pending_htlcs = PendingHTLCs.objects.all()
         pending_htlc_count = pending_htlcs.count()
         pending_outbound = 0 if pending_htlcs.filter(incoming=False).count() == 0 else pending_htlcs.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
@@ -106,26 +107,26 @@ def home(request):
             'balances': balances,
             'payments': payments[:6],
             'total_sent': int(total_sent),
-            'fees_paid': round(total_fees, 1),
+            'fees_paid': int(total_fees),
             'total_payments': total_payments,
             'invoices': invoices[:6],
             'total_received': total_received,
             'total_invoices': total_invoices,
             'forwards': forwards[:15],
-            'earned': round(total_earned, 1),
+            'earned': int(total_earned),
             'total_forwards': total_forwards,
             'total_value_forwards': total_value_forwards,
             'routed_7day': routed_7day,
             'routed_7day_amt': routed_7day_amt,
-            'earned_7day': round(total_earned_7day, 1),
+            'earned_7day': int(total_earned_7day),
             'routed_7day_percent': 0 if sum_outbound == 0 else int((routed_7day_amt/sum_outbound)*100),
-            'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees) / (sum_outbound / 1000000)),
-            'profit_per_outbound_real': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day) / (sum_outbound / 1000000)),
+            'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees)/(sum_outbound/1000000)),
+            'profit_per_outbound_real': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day)/(sum_outbound/1000000)),
             'percent_cost': 0 if total_earned == 0 else int((total_costs/total_earned)*100),
             'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
             'onchain_costs': onchain_costs,
             'onchain_costs_7day': onchain_costs_7day,
-            'total_7day_fees': round(total_7day_fees, 1),
+            'total_7day_fees': int(total_7day_fees),
             'active_channels': detailed_active_channels,
             'capacity': total_capacity,
             'inbound': total_inbound,
@@ -142,7 +143,12 @@ def home(request):
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
             'pending_htlc_count': pending_htlc_count,
-            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:10]
+            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:10],
+            'payments_ppm': 0 if total_sent == 0 else int(total_fees/total_sent),
+            'routed_ppm': 0 if total_value_forwards == 0 else int(total_earned/total_value_forwards),
+            '7day_routed_ppm': 0 if routed_7day_amt == 0 else int(total_earned_7day/routed_7day_amt),
+            '7day_payments_ppm': 0 if payments_7day_amt == 0 else int(total_7day_fees/payments_7day_amt),
+            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/total_outbound)*100)
         }
         return render(request, 'home.html', context)
     else:
