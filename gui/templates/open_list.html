@@ -7,10 +7,12 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Node Pubkey</th>
-      <th width=17%>Node Alias</th>
-      <th width=17%>Successful Payments Routed</th>
-      <th width=17%>Fees Paid</th>
-      <th width=17%>Amount Routed</th>
+      <th width=15%>Node Alias</th>
+      <th width=15%>Successful Payments Routed</th>
+      <th width=12%>Fees Paid</th>
+      <th width=12%>Amount Routed</th>
+      <th width=12%>Volume Score</th>
+      <th width=12%>Effective PPM</th>
     </tr>
     {% for node in open_list %}
     <tr>
@@ -19,6 +21,8 @@
       <td>{{ node.count }}</td>
       <td>{{ node.fees|add:"0"|intcomma }}</td>
       <td>{{ node.amount|add:"0"|intcomma }}</td>
+      <td>{{ node.score }}</td>
+      <td>{{ node.ppm|add:"0"|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>
