@@ -148,7 +148,7 @@ def home(request):
             'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
-            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/total_outbound)*100)
+            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100)
         }
         return render(request, 'home.html', context)
     else:
