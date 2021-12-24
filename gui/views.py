@@ -144,10 +144,10 @@ def home(request):
             'local_settings': local_settings,
             'pending_htlc_count': pending_htlc_count,
             'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:10],
-            'payments_ppm': 0 if total_sent == 0 else int(total_fees/total_sent),
-            'routed_ppm': 0 if total_value_forwards == 0 else int(total_earned/total_value_forwards),
-            '7day_routed_ppm': 0 if routed_7day_amt == 0 else int(total_earned_7day/routed_7day_amt),
-            '7day_payments_ppm': 0 if payments_7day_amt == 0 else int(total_7day_fees/payments_7day_amt),
+            'payments_ppm': 0 if total_sent == 0 else int((total_fees/total_sent)*1000000),
+            'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
+            '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
+            '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/total_outbound)*100)
         }
         return render(request, 'home.html', context)
