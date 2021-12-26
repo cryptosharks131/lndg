@@ -397,7 +397,7 @@ def auto_rebalance(request):
                 try:
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 except:
-                    LocalSettings(key='AR-Outbound%', value='0.85').save()
+                    LocalSettings(key='AR-Outbound%', value='0.75').save()
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
