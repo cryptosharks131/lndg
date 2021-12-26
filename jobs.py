@@ -85,17 +85,17 @@ def update_payments(stub):
 def update_invoices(stub):
     #Remove anything open so we can get most up to date status
     Invoices.objects.filter(state=0).delete()
-    records = Invoices.objects.count()
-    invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=records, num_max_invoices=100)).invoices
+    last_index = 0 if Invoices.objects.aggregate(Max('index'))['index__max'] == None else Invoices.objects.aggregate(Max('index'))['index__max']
+    invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=last_index, num_max_invoices=100)).invoices
     for invoice in invoices:
         if invoice.state == 1:
             alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias if Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id).exists() else None
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:255] if 34349334 in records else None
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message).save()
+            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, index=invoice.add_index).save()
         else:
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state).save()
+            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, index=invoice.add_index).save()
 
 def update_forwards(stub):
     records = Forwards.objects.count()

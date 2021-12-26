@@ -12,7 +12,7 @@ def lnd_connect(LND_DIR_PATH, LND_NETWORK, LND_RPC_SERVER):
     cert_creds = grpc.ssl_channel_credentials(cert)
     auth_creds = grpc.metadata_call_credentials(metadata_callback)
     creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
-    channel = grpc.secure_channel(LND_RPC_SERVER, creds, options=[('grpc.max_send_message_length', 9999999), ('grpc.max_receive_message_length', 9999999),])
+    channel = grpc.secure_channel(LND_RPC_SERVER, creds, options=[('grpc.max_send_message_length', 29999999), ('grpc.max_receive_message_length', 29999999),])
     return channel
 
 def main():
