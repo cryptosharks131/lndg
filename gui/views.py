@@ -13,6 +13,7 @@ from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSetti
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
+from lndg.settings import LND_NETWORK
 
 # Create your views here.
 def home(request):
@@ -150,7 +151,10 @@ def home(request):
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100)
         }
-        return render(request, 'home.html', context)
+        if LND_NETWORK == 'testnet':
+            return render(request, 'testnet.html', context)
+        else:
+            return render(request, 'home.html', context)
     else:
         return redirect('home')
 
@@ -235,22 +239,27 @@ def close_channel_form(request):
         form = CloseChannelForm(request.POST)
         if form.is_valid():
             try:
-                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                funding_txid = form.cleaned_data['funding_txid']
-                output_index = form.cleaned_data['output_index']
-                target_fee = form.cleaned_data['target_fee']
-                channel_point = ln.ChannelPoint()
-                channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
-                channel_point.funding_txid_str = funding_txid
-                channel_point.output_index = output_index
-                if form.cleaned_data['force']:
-                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, force=True)):
-                        messages.success(request, 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
-                        break
+                chan_id = form.cleaned_data['chan_id']
+                if Channels.objects.filter(chan_id=chan_id).exists():
+                    target_channel = Channels.objects.filter(chan_id=chan_id).get()
+                    funding_txid = target_channel.funding_txid
+                    output_index = target_channel.output_index
+                    target_fee = form.cleaned_data['target_fee']
+                    channel_point = ln.ChannelPoint()
+                    channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
+                    channel_point.funding_txid_str = funding_txid
+                    channel_point.output_index = output_index
+                    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    if form.cleaned_data['force']:
+                        for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, force=True)):
+                            messages.success(request, 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
+                            break
+                    else:
+                        for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, sat_per_byte=target_fee)):
+                            messages.success(request, 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
+                            break
                 else:
-                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, sat_per_byte=target_fee)):
-                        messages.success(request, 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index))
-                        break
+                    messages.error(request, 'Channel ID is not valid. Please try again.')
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Channel close failed! Error: ' + error)
@@ -553,20 +562,25 @@ def close_channel(request):
     serializer = CloseChannelSerializer(data=request.data)
     if serializer.is_valid():
         try:
-            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-            funding_txid = serializer.validated_data['funding_txid']
-            output_index = serializer.validated_data['output_index']
-            target_fee = serializer.validated_data['target_fee']
-            channel_point = ln.ChannelPoint()
-            channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
-            channel_point.funding_txid_str = funding_txid
-            channel_point.output_index = output_index
-            if serializer.validated_data['force']:
-                for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, force=True)):
-                    return Response({'message': 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index)})
+            chan_id = serializer.validated_data['chan_id']
+            if Channels.objects.filter(chan_id=chan_id).exists():
+                target_channel = Channels.objects.filter(chan_id=chan_id).get()
+                funding_txid = target_channel.funding_txid
+                output_index = target_channel.output_index
+                target_fee = serializer.validated_data['target_fee']
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(funding_txid)
+                channel_point.funding_txid_str = funding_txid
+                channel_point.output_index = output_index
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                if serializer.validated_data['force']:
+                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, force=True)):
+                        return Response({'message': 'Channel force closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index)})
+                else:
+                    for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, sat_per_byte=target_fee)):
+                        return Response({'message': 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index)})
             else:
-                for response in stub.CloseChannel(ln.CloseChannelRequest(channel_point=channel_point, sat_per_byte=target_fee)):
-                    return Response({'message': 'Channel gracefully closed! Closing TXID: ' + str(response.close_pending.txid[::-1].hex()) + ':' + str(response.close_pending.output_index)})
+                return Response({'error': 'Channel ID is not valid.'})
         except Exception as e:
             error = str(e)
             return Response({'error': 'Channel close failed! Error: ' + error})
