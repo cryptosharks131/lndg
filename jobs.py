@@ -85,7 +85,7 @@ def update_payments(stub):
 def update_invoices(stub):
     #Remove anything open so we can get most up to date status
     Invoices.objects.filter(state=0).delete()
-    last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
+    last_index = 0 if Invoices.objects.aggregate(Max('index'))['index__max'] == None else Invoices.objects.aggregate(Max('index'))['index__max']
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=last_index, num_max_invoices=100)).invoices
     for invoice in invoices:
         if invoice.state == 1:
