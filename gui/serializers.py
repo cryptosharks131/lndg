@@ -64,8 +64,7 @@ class OpenChannelSerializer(serializers.Serializer):
     sat_per_byte = serializers.IntegerField(label='sat_per_btye')
 
 class CloseChannelSerializer(serializers.Serializer):
-    funding_txid = serializers.CharField(label='funding_txid', max_length=64)
-    output_index = serializers.IntegerField(label='output_index')
+    chan_id = serializers.IntegerField(label='chan_id')
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 

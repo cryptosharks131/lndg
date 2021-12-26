@@ -2,7 +2,7 @@
 {% block content %}
 {% load humanize %} 
 <div class="w3-container w3-padding-small">
-  <h3><a href="https://1ml.com/node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
+  <h3><a href="https://1ml.com/testnet/node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
   <h4>Capacity: {{ capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
   <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
 </div>
@@ -50,8 +50,8 @@
       </tr>
       {% for channel in active_channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/testnet/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/testnet/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
         <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
@@ -121,8 +121,8 @@
     </tr>
     {% for channel in inactive_channels %}
     <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/testnet/tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/testnet/node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
       <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
@@ -181,9 +181,9 @@
     {% for channel in pending_open %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/testnet/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+      <td><a href="https://1ml.com/testnet/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -209,9 +209,9 @@
     {% for channel in pending_closed %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/testnet/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+      <td><a href="https://1ml.com/testnet/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -239,15 +239,15 @@
     {% for channel in pending_force_closed %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/testnet/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+      <td><a href="https://1ml.com/testnet/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.blocks_til_maturity|intcomma }}</td>
-      <td><a href='https://mempool.space/tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+      <td><a href='https://mempool.space/testnet/tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
   </table>
@@ -269,9 +269,9 @@
     {% for channel in waiting_for_close %}
     <tr>
       {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+        <td><a href='https://mempool.space/testnet/tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="https://1ml.com/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+      <td><a href="https://1ml.com/testnet/node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
