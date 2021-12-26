@@ -89,26 +89,26 @@ def auto_schedule():
             if LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 outbound_percent = int(float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) * 100)
             else:
-                LocalSettings(key='AR-Outbound%', value='0.85').save()
-                outbound_percent = 0.85 * 100
+                LocalSettings(key='AR-Outbound%', value='0.75').save()
+                outbound_percent = 0.75 * 100
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=outbound_percent).values_list('chan_id', flat=True))
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if LocalSettings.objects.filter(key='AR-Target%').exists():
                     target_percent = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
                 else:
-                    LocalSettings(key='AR-Target%', value='0.35').save()
-                    target_percent = 0.35
+                    LocalSettings(key='AR-Target%', value='0.05').save()
+                    target_percent = 0.05
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
                 else:
-                    LocalSettings(key='AR-MaxFeeRate', value='10').save()
-                    max_fee_rate = 10
+                    LocalSettings(key='AR-MaxFeeRate', value='100').save()
+                    max_fee_rate = 100
                 if LocalSettings.objects.filter(key='AR-MaxCost%').exists():
                     max_cost = float(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
                 else:
-                    LocalSettings(key='AR-MaxCost%', value='0.25').save()
-                    max_cost = 0.25
+                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
+                    max_cost = 0.50
                 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance using the MaxFeerate to calculate sat fee intervals
                 for target in inbound_cans:
                     target_fee_rate = int(target.local_fee_rate * max_cost)
