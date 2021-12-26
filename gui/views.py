@@ -367,7 +367,7 @@ def auto_rebalance(request):
                 try:
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 except:
-                    LocalSettings(key='AR-Target%', value='0.35').save()
+                    LocalSettings(key='AR-Target%', value='0.05').save()
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
@@ -377,7 +377,7 @@ def auto_rebalance(request):
                 try:
                     db_time_target = LocalSettings.objects.get(key='AR-Time')
                 except:
-                    LocalSettings(key='AR-Time', value='10').save()
+                    LocalSettings(key='AR-Time', value='5').save()
                     db_time_target = LocalSettings.objects.get(key='AR-Time')
                 db_time_target.value = target_time
                 db_time_target.save()
@@ -402,22 +402,12 @@ def auto_rebalance(request):
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting to: ' + str(outbound_percent))
-            if form.cleaned_data['inbound_percent'] is not None:
-                inbound_percent = form.cleaned_data['inbound_percent']
-                try:
-                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
-                except:
-                    LocalSettings(key='AR-Inbound%', value='0.85').save()
-                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
-                db_inbound_target.value = inbound_percent
-                db_inbound_target.save()
-                messages.success(request, 'Updated auto rebalancer target inbound percent setting to: ' + str(inbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
                 try:
                     db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
                 except:
-                    LocalSettings(key='AR-MaxFeeRate', value='10').save()
+                    LocalSettings(key='AR-MaxFeeRate', value='100').save()
                     db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
                 db_fee_rate.value = fee_rate
                 db_fee_rate.save()
@@ -427,7 +417,7 @@ def auto_rebalance(request):
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.25').save()
+                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()

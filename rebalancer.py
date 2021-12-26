@@ -119,8 +119,8 @@ def auto_schedule():
                             if LocalSettings.objects.filter(key='AR-Time').exists():
                                 target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
                             else:
-                                LocalSettings(key='AR-Time', value='10').save()
-                                target_time = 10
+                                LocalSettings(key='AR-Time', value='5').save()
+                                target_time = 5
                             inbound_pubkey = Channels.objects.filter(chan_id=target.chan_id)[0]
                             # TLDR: willing to pay 1 sat for every value_per_fee sats moved
                             target_fee = int(target_value * (1 / value_per_fee))
