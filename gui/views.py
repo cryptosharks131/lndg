@@ -202,6 +202,57 @@ def suggested_opens(request):
     else:
         return redirect('home')
 
+def suggested_actions(request):
+    if request.method == 'GET':
+        channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity'))
+        filter_7day = datetime.now() - timedelta(days=7)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
+        action_list = []
+        for channel in channels:
+            result = {}
+            result['chan_id'] = channel.chan_id
+            result['alias'] = channel.alias
+            result['capacity'] = channel.capacity
+            result['local_balance'] = channel.local_balance
+            result['remote_balance'] = channel.remote_balance
+            result['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
+            result['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
+            result['unsettled_balance'] = channel.unsettled_balance
+            result['local_base_fee'] = channel.local_base_fee
+            result['local_fee_rate'] = channel.local_fee_rate
+            result['remote_base_fee'] = channel.remote_base_fee
+            result['remote_fee_rate'] = channel.remote_fee_rate
+            result['routed_in_7day'] = forwards.filter(chan_id_in=channel.chan_id).count()
+            result['routed_out_7day'] = forwards.filter(chan_id_out=channel.chan_id).count()
+            result['i7D'] = 0 if result['routed_in_7day'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
+            result['o7D'] = 0 if result['routed_out_7day'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
+            result['auto_rebalance'] = channel.auto_rebalance
+            result['ar_target'] = channel.ar_target
+            if result['o7D'] > result['i7D'] and result['outbound_percent'] > 75:
+                print('Case 1')
+                result['output'] = 'Pass'
+            elif result['o7D'] > result['i7D'] and result['inbound_percent'] > 75:
+                print('Case 2')
+                result['output'] = 'Enable AR'
+            elif result['o7D'] < result['i7D'] and result['outbound_percent'] > 75:
+                print('Case 3')
+                result['output'] = 'Disable AR'
+            elif result['o7D'] < result['i7D'] and result['inbound_percent'] > 75:
+                print('Case 4')
+                result['output'] = 'Pass'
+            else:
+                print('Case 5')
+                result['output'] = 'Pass'
+                continue
+            if len(result) > 0:
+                action_list.append(result) 
+        context = {
+            'action_list': action_list
+        }
+        return render(request, 'action_list.html', context)
+    else:
+        return redirect('home')
+
 def pending_htlcs(request):
     if request.method == 'GET':
         context = {

@@ -22,7 +22,7 @@
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
   <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-  <h4><a href="/suggested_opens" target="_blank">Suggested New Peers</a></h4>
+  <h4><a href="/suggested_opens" target="_blank">Suggested New Peers</a> | <a href="/suggested_actions" target="_blank">Suggested AR Actions</a></h4>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">

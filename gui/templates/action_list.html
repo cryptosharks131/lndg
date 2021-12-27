@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if action_list %}
+<div class="w3-container w3-padding-small">
+  <h2>Suggested Action List</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th>Capacity</th>
+      <th>Outbound Liquidity</th>
+      <th width=10%></th>
+      <th>Inbound Liquidity</th>
+      <th>Unsettled</th>
+      <th>oRate</th>
+      <th>oBase</th>
+      <th>o7D</th>
+      <th>i7D</th>
+      <th>iRate</th>
+      <th>iBase</th>
+      <th width=4%>AR</th>
+      <th>Action</th>
+    </tr>
+    {% for channel in action_list %}
+    <tr>
+      <td>{{ channel.chan_id }}</a></td>
+      <td>{{ channel.alias }}</a></td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
+      <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+      <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
+      <td>{{ channel.unsettled_balance|intcomma }}</td>
+      <td>{{ channel.local_fee_rate|intcomma }}</td>
+      <td>{{ channel.local_base_fee|intcomma }}</td>
+      <td>{{ channel.o7D|intcomma }} M ({{ channel.routed_out_7day }})</td>
+      <td>{{ channel.i7D|intcomma }} M ({{ channel.routed_in_7day }})</td>
+      <td>{{ channel.remote_fee_rate|intcomma }}</td>
+      <td>{{ channel.remote_base_fee|intcomma }}</td>
+      <td>
+        {% if channel.auto_rebalance == True %}
+        <form action="/autorebalance/" method="post">
+          {% csrf_token %}
+          <input type="submit" value="Disable">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+        </form>
+        {% else %}
+        <form action="/autorebalance/" method="post">
+          {% csrf_token %}
+          <input type="submit" value="Enable">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+        </form>
+        {% endif %}
+      </td>
+      <td>{{ channel.output }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not action_list %}
+<div class="w3-container w3-padding-small">
+  <center><h1>Nothing to see here! Great job!</h1></center>
+</div>
+{% endif %}
+{% endblock %}
