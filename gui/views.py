@@ -149,12 +149,10 @@ def home(request):
             'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
-            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100)
+            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else ''
         }
-        if LND_NETWORK == 'testnet':
-            return render(request, 'testnet.html', context)
-        else:
-            return render(request, 'home.html', context)
+        return render(request, 'home.html', context)
     else:
         return redirect('home')
 
@@ -318,11 +316,15 @@ def rebalance(request):
         form = RebalancerForm(request.POST)
         if form.is_valid():
             try:
-                chan_ids = []
-                for channel in form.cleaned_data['outgoing_chan_ids']:
-                    chan_ids.append(channel.chan_id)
-                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], duration=form.cleaned_data['duration']).save()
-                messages.success(request, 'Rebalancer request created!')
+                if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists():
+                    chan_ids = []
+                    for channel in form.cleaned_data['outgoing_chan_ids']:
+                        chan_ids.append(channel.chan_id)
+                    target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else None
+                    Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration']).save()
+                    messages.success(request, 'Rebalancer request created!')
+                else:
+                    messages.error(request, 'Target peer is invalid or unknown.')
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Error entering rebalancer request! Error: ' + error)
