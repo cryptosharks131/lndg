@@ -228,16 +228,18 @@ def suggested_actions(request):
             result['o7D'] = 0 if result['routed_out_7day'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
             result['auto_rebalance'] = channel.auto_rebalance
             result['ar_target'] = channel.ar_target
-            if result['o7D'] > result['i7D'] and result['outbound_percent'] > 75:
+            if result['o7D'] > (result['i7D']*1.10) and result['outbound_percent'] > 75:
                 print('Case 1: Pass')
                 continue
-            elif result['o7D'] > result['i7D'] and result['inbound_percent'] > 75:
+            elif result['o7D'] > (result['i7D']*1.10) and result['inbound_percent'] > 75 and channel.auto_rebalance == False:
                 print('Case 2: Enable AR')
                 result['output'] = 'Enable AR'
-            elif result['o7D'] < result['i7D'] and result['outbound_percent'] > 75:
+                result['reason'] = 'o7D > i7D AND Inbound Liq > 75%'
+            elif result['o7D'] < (result['i7D']*1.10) and result['outbound_percent'] > 75 and channel.auto_rebalance == True:
                 print('Case 3: Disable AR')
                 result['output'] = 'Disable AR'
-            elif result['o7D'] < result['i7D'] and result['inbound_percent'] > 75:
+                result['reason'] = 'o7D < i7D AND Outbound Liq > 75%'
+            elif result['o7D'] < (result['i7D']*1.10) and result['inbound_percent'] > 75:
                 print('Case 4: Pass')
                 continue
             else:
