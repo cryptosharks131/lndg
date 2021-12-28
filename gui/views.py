@@ -268,10 +268,27 @@ def open_channel_form(request):
         if form.is_valid():
             try:
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
-                for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
-                    messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
-                    break
+                peer_pubkey = form.cleaned_data['peer_pubkey']
+                connected = False
+                if Peers.objects.filter(pubkey=peer_pubkey, connected=True).exists():
+                    connected = True
+                else:
+                    try:
+                        node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                        host = node.addresses[0].addr
+                        ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
+                        response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+                        connected = True
+                    except Exception as e:
+                        error = str(e)
+                        details_index = error.find('details =') + 11
+                        debug_error_index = error.find('debug_error_string =') - 3
+                        error_msg = error[details_index:debug_error_index]
+                        messages.error(request, 'Error connecting to new peer: ' + error_msg)
+                if connected:
+                    for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=bytes.fromhex(peer_pubkey), local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
+                        messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
+                        break
             except Exception as e:
                 error = str(e)
                 details_index = error.find('details =') + 11
@@ -310,7 +327,10 @@ def close_channel_form(request):
                     messages.error(request, 'Channel ID is not valid. Please try again.')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Channel close failed! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Channel close failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -330,14 +350,15 @@ def connect_peer_form(request):
                     peer_pubkey, host = peer_id.split('@')
                 else:
                     raise Exception('Invalid peer pubkey or connection string.')
-                ln_addr = ln.LightningAddress()
-                ln_addr.pubkey = peer_pubkey
-                ln_addr.host = host
+                ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
                 response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
                 messages.success(request, 'Connection successful!' + str(response))
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Connection request failed! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Connection request failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -350,7 +371,10 @@ def new_address_form(request):
             messages.success(request, 'Deposit Address: ' + str(response.address))
         except Exception as e:
             error = str(e)
-            messages.error(request, 'Address request! Error: ' + error)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            messages.error(request, 'Address request failed! Error: ' + error_msg)
     return redirect('home')
 
 def add_invoice_form(request):
@@ -363,7 +387,10 @@ def add_invoice_form(request):
                 messages.success(request, 'Invoice created! ' + str(response.payment_request))
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Invoice creation failed! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Invoice creation failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -384,7 +411,10 @@ def rebalance(request):
                     messages.error(request, 'Target peer is invalid or unknown.')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error entering rebalancer request! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Error entering rebalancer request! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -410,7 +440,10 @@ def update_chan_policy(request):
                 messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error updating channel policies! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
             print(form.errors)
@@ -594,14 +627,15 @@ def connect_peer(request):
                 peer_pubkey, host = peer_id.split('@')
             else:
                 raise Exception('Invalid peer pubkey or connection string.')
-            ln_addr = ln.LightningAddress()
-            ln_addr.pubkey = peer_pubkey
-            ln_addr.host = host
+            ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
             response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
             return Response({'message': 'Connection successful!' + str(response)})
         except Exception as e:
             error = str(e)
-            return Response({'error': 'Connection request failed! Error: ' + error})
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Connection request failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
 
@@ -611,9 +645,26 @@ def open_channel(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-            pubkey_bytes = bytes.fromhex(serializer.validated_data['peer_pubkey'])
-            for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=serializer.validated_data['local_amt'], sat_per_byte=serializer.validated_data['sat_per_byte'])):
-                return Response({'message': 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index)})
+            peer_pubkey = serializer.validated_data['peer_pubkey']
+            connected = False
+            if Peers.objects.filter(pubkey=peer_pubkey, connected=True).exists():
+                connected = True
+            else:
+                try:
+                    node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                    host = node.addresses[0].addr
+                    ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
+                    response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+                    connected = True
+                except Exception as e:
+                    error = str(e)
+                    details_index = error.find('details =') + 11
+                    debug_error_index = error.find('debug_error_string =') - 3
+                    error_msg = error[details_index:debug_error_index]
+                    return Response({'error': 'Error connecting to new peer: ' + error_msg})
+            if connected:
+                for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=bytes.fromhex(peer_pubkey), local_funding_amount=serializer.validated_data['local_amt'], sat_per_byte=serializer.validated_data['sat_per_byte'])):
+                    return Response({'message': 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index)})
         except Exception as e:
             error = str(e)
             details_index = error.find('details =') + 11
@@ -649,7 +700,10 @@ def close_channel(request):
                 return Response({'error': 'Channel ID is not valid.'})
         except Exception as e:
             error = str(e)
-            return Response({'error': 'Channel close failed! Error: ' + error})
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Channel close failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
 
@@ -663,7 +717,10 @@ def add_invoice(request):
             return Response({'message': 'Invoice created!', 'data':str(response.payment_request)})
         except Exception as e:
             error = str(e)
-            return Response({'error': 'Invoice creation failed! Error: ' + error})
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Invoice creation failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
 
@@ -675,7 +732,10 @@ def new_address(request):
         return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
     except Exception as e:
         error = str(e)
-        return Response({'error': 'Address creation failed! Error: ' + error})
+        details_index = error.find('details =') + 11
+        debug_error_index = error.find('debug_error_string =') - 3
+        error_msg = error[details_index:debug_error_index]
+        return Response({'error': 'Address creation failed! Error: ' + error_msg})
 
 @api_view(['POST'])
 def update_alias(request):
@@ -693,7 +753,10 @@ def update_alias(request):
                 messages.success(request, 'Alias updated to: ' + str(new_alias))
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error updating alias: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Error updating alias: ' + error_msg)
         else:
             messages.error(request, 'Pubkey not in channels list.')
     else:
