@@ -229,20 +229,19 @@ def suggested_actions(request):
             result['auto_rebalance'] = channel.auto_rebalance
             result['ar_target'] = channel.ar_target
             if result['o7D'] > result['i7D'] and result['outbound_percent'] > 75:
-                print('Case 1')
-                result['output'] = 'Pass'
+                print('Case 1: Pass')
+                continue
             elif result['o7D'] > result['i7D'] and result['inbound_percent'] > 75:
-                print('Case 2')
+                print('Case 2: Enable AR')
                 result['output'] = 'Enable AR'
             elif result['o7D'] < result['i7D'] and result['outbound_percent'] > 75:
-                print('Case 3')
+                print('Case 3: Disable AR')
                 result['output'] = 'Disable AR'
             elif result['o7D'] < result['i7D'] and result['inbound_percent'] > 75:
-                print('Case 4')
-                result['output'] = 'Pass'
+                print('Case 4: Pass')
+                continue
             else:
-                print('Case 5')
-                result['output'] = 'Pass'
+                print('Case 5: Pass')
                 continue
             if len(result) > 0:
                 action_list.append(result) 
@@ -322,13 +321,20 @@ def connect_peer_form(request):
         if form.is_valid():
             try:
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                peer_pubkey = form.cleaned_data['peer_pubkey']
-                host = form.cleaned_data['host']
+                peer_id = form.cleaned_data['peer_id']
+                if peer_id.count('@') == 0 and len(peer_id) == 66:
+                    peer_pubkey = peer_id
+                    node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                    host = node.addresses[0].addr
+                elif peer_id.count('@') == 1 and len(peer_id.split('@')[0]) == 66:
+                    peer_pubkey, host = peer_id.split('@')
+                else:
+                    raise Exception('Invalid peer pubkey or connection string.')
                 ln_addr = ln.LightningAddress()
                 ln_addr.pubkey = peer_pubkey
                 ln_addr.host = host
                 response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
-                messages.success(request, 'Connection successful! ' + str(response))
+                messages.success(request, 'Connection successful!' + str(response))
             except Exception as e:
                 error = str(e)
                 messages.error(request, 'Connection request failed! Error: ' + error)
@@ -579,13 +585,20 @@ def connect_peer(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-            peer_pubkey = serializer.validated_data['peer_pubkey']
-            host = serializer.validated_data['host']
+            peer_id = serializer.validated_data['peer_id']
+            if peer_id.count('@') == 0 and len(peer_id) == 66:
+                peer_pubkey = peer_id
+                node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                host = node.addresses[0].addr
+            elif peer_id.count('@') == 1 and len(peer_id.split('@')[0]) == 66:
+                peer_pubkey, host = peer_id.split('@')
+            else:
+                raise Exception('Invalid peer pubkey or connection string.')
             ln_addr = ln.LightningAddress()
             ln_addr.pubkey = peer_pubkey
             ln_addr.host = host
             response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
-            return Response({'message': 'Connection successful! ' + str(response)})
+            return Response({'message': 'Connection successful!' + str(response)})
         except Exception as e:
             error = str(e)
             return Response({'error': 'Connection request failed! Error: ' + error})

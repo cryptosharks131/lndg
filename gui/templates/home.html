@@ -501,10 +501,8 @@
   <div class="w3-container w3-padding-32">
     <form action="/connectpeer/" method="post">
       {% csrf_token %}
-      <label for="peer_pubkey">Peer PubKey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <label for="host">Host IP/Onion: </label>
-      <input id="host" type="text" name="host">
+      <label for="peer_id">PubKey or Connection String: </label>
+      <input id="peer_id" type="text" name="peer_id">
       <input type="submit" value="OK">
     </form>
   </div>
