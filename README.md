@@ -11,7 +11,8 @@ Start by choosing one of the following installation methods:
 3. Initialize db and admin backup `touch db.sqlite3 && touch lndg-admin.txt`
 4. Update `docker-compose.yaml` if you are a non-root user and then build/deploy your docker image: `docker-compose up -d`
 5. LNDg should now be available on port `8889`
-6. Login with username `lndg-admin` and initial password: `nano lndg-admin.txt`
+6. Open and copy the password from output file: `nano lndg-admin.txt`
+7. Use the password from the output file and the username `lndg-admin` to login
 
 ### Updating
 ```
@@ -34,7 +35,7 @@ services:
     volumes:
       - /home/umbrel/umbrel/lnd:/root/.lnd:ro
       - /home/umbrel/lndg/db.sqlite3:/lndg/db.sqlite3:rw
-      - /home/umbrel/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:wo
+      - /home/umbrel/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:rw
     command:
       - sh
       - -c
@@ -48,7 +49,8 @@ networks:
 ```
 5. Deploy your docker image: `docker-compose up -d`
 6. You can now access LNDg via your browser on port 8889: `http://umbrel.local:8889`
-7. Login with username `lndg-admin` and initial password: `nano lndg-admin.txt`
+7. Open and copy the password from output file: `nano lndg-admin.txt`
+8. Use the password from the output file and the username `lndg-admin` to login
 
 ### Updating
 ```
@@ -65,7 +67,7 @@ docker-compose up -d
 4. Setup a python3 virtual environment `virtualenv -p python3 .venv`
 5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
 6. Initialize some settings for your django site (see notes below) `.venv/bin/python initialize.py`
-7. The initial login user is `lndg-admin` and the password is backed up here: `lndg-admin.txt`
+7. The initial login user is `lndg-admin` and the password is output here: `lndg-admin.txt`
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
 9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8889`
 Tip: If you plan to only use the development server, you will need to setup whitenoise (see note below).  
