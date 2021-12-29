@@ -123,7 +123,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 100
+    'PAGE_SIZE': 100,
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
 }
 
 # Internationalization
@@ -261,6 +264,7 @@ def main():
         write_supervisord_settings(sduser)
     try:
         settings.configure(
+            SECRET_KEY = secrets.token_urlsafe(64),
             DATABASES = {
                 'default':{
                     'ENGINE':'django.db.backends.sqlite3',
@@ -280,8 +284,8 @@ def main():
             STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
         )
         django.setup()
-        call_command('migrate')
-        call_command('collectstatic', interactive=False)
+        call_command('migrate', verbosity=0)
+        call_command('collectstatic', verbosity=0, interactive=False)
         try:
             call_command('createsuperuser', username='lndg-admin', email='admin@lndg.local', interactive=False)
             admin = get_user_model().objects.get(username='lndg-admin')

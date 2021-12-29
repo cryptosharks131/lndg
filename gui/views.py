@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count
 from django.db.models.functions import Round
+from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from datetime import datetime, timedelta
 from rest_framework import viewsets
@@ -15,7 +16,7 @@ from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK
 
-# Create your views here.
+@login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -156,6 +157,7 @@ def home(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def route(request):
     if request.method == 'GET':
         payment_hash = request.GET.urlencode()[1:]
@@ -167,6 +169,7 @@ def route(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def peers(request):
     if request.method == 'GET':
         context = {
@@ -176,6 +179,7 @@ def peers(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def balances(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -187,6 +191,7 @@ def balances(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def suggested_opens(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -202,6 +207,7 @@ def suggested_opens(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def suggested_actions(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity'))
@@ -254,6 +260,7 @@ def suggested_actions(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def pending_htlcs(request):
     if request.method == 'GET':
         context = {
@@ -264,6 +271,7 @@ def pending_htlcs(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
@@ -301,6 +309,7 @@ def open_channel_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def close_channel_form(request):
     if request.method == 'POST':
         form = CloseChannelForm(request.POST)
@@ -337,6 +346,7 @@ def close_channel_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def connect_peer_form(request):
     if request.method == 'POST':
         form = ConnectPeerForm(request.POST)
@@ -365,6 +375,7 @@ def connect_peer_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def new_address_form(request):
     if request.method == 'POST':
         try:
@@ -379,6 +390,7 @@ def new_address_form(request):
             messages.error(request, 'Address request failed! Error: ' + error_msg)
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def add_invoice_form(request):
     if request.method == 'POST':
         form = AddInvoiceForm(request.POST)
@@ -397,6 +409,7 @@ def add_invoice_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def rebalance(request):
     if request.method == 'POST':
         form = RebalancerForm(request.POST)
@@ -421,6 +434,7 @@ def rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def update_chan_policy(request):
     if request.method == 'POST':
         form = ChanPolicyForm(request.POST)
@@ -451,6 +465,7 @@ def update_chan_policy(request):
             print(form.errors)
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def auto_rebalance(request):
     if request.method == 'POST':
         form = AutoRebalanceForm(request.POST)
@@ -529,6 +544,7 @@ def auto_rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def ar_target(request):
     if request.method == 'POST':
         form = ARTarget(request.POST)
