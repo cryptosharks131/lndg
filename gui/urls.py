@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework import routers
+from django.contrib import admin
 from . import views
 
 router = routers.DefaultRouter()
@@ -39,4 +40,5 @@ urlpatterns = [
     path('api/createinvoice/', views.add_invoice, name='add-invoice'),
     path('api/newaddress/', views.new_address, name='new-address'),
     path('api/updatealias/', views.update_alias, name='update-alias'),
+    path('lndg-admin/', admin.site.urls),
 ]

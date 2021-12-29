@@ -8,8 +8,10 @@ Start by choosing one of the following installation methods:
 ### Build and deploy
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
-3. Customize `docker-compose.yaml` if you like and then build/deploy your docker image: `docker-compose up -d`
-4. LNDg should now be available on port `8889`
+3. Initialize db and admin backup `touch db.sqlite3 && touch lndg-admin.txt`
+4. Update `docker-compose.yaml` if you are a non-root user and then build/deploy your docker image: `docker-compose up -d`
+5. LNDg should now be available on port `8889`
+6. Login with username `lndg-admin` and initial password: `nano lndg-admin.txt`
 
 ### Updating
 ```
@@ -18,16 +20,12 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
-### Notes
-1. Unless you save your `db.sqlite3` file before destroying your container, this data will be lost and rebuilt when making a new container. However, some data such as rebalances from previous containers cannot be rebuilt.
-2. You can make this file persist by initializing it first locally `touch /root/lndg/db.sqlite3` and then mapping it locally in your docker-compose file under the volumes. `/root/lndg/db.sqlite3:/lndg/db.sqlite3:rw`
-
 ## Umbrel Installation
 ### Build and deploy
 1. Log into your umbrel via ssh
 2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 3. Change directory `cd lndg`
-4. Initialize the database file `touch db.sqlite3`
+4. Initialize db and admin backup `touch db.sqlite3 && touch lndg-admin.txt`
 5. Copy and replace the contents of the docker-compose.yaml with the below: `nano docker-compose.yaml`
 ```
 services:
@@ -36,10 +34,11 @@ services:
     volumes:
       - /home/umbrel/umbrel/lnd:/root/.lnd:ro
       - /home/umbrel/lndg/db.sqlite3:/lndg/db.sqlite3:rw
+      - /home/umbrel/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:wo
     command:
       - sh
       - -c
-      - python initialize.py -net 'mainnet' -server '10.21.21.9:10009' -d && python manage.py migrate && python manage.py collectstatic --no-input && supervisord && python manage.py runserver 0.0.0.0:8000
+      - python initialize.py -net 'mainnet' -server '10.21.21.9:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8000
     ports:
       - 8889:8000
 networks: 
@@ -49,6 +48,7 @@ networks:
 ```
 5. Deploy your docker image: `docker-compose up -d`
 6. You can now access LNDg via your browser on port 8889: `http://umbrel.local:8889`
+7. Login with username `lndg-admin` and initial password: `nano lndg-admin.txt`
 
 ### Updating
 ```
@@ -65,9 +65,10 @@ docker-compose up -d
 4. Setup a python3 virtual environment `virtualenv -p python3 .venv`
 5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
 6. Initialize some settings for your django site (see notes below) `.venv/bin/python initialize.py`
-7. Migrate all database objects `.venv/bin/python manage.py migrate`
+7. The initial login user is `lndg-admin` and the password is backed up here: `lndg-admin.txt`
 8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
 9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8889`
+Tip: If you plan to only use the development server, you will need to setup whitenoise (see note below).  
 
 ### Step 2 - Setup Backend Data, Automated Rebalancing and HTLC Stream Data
 The files `jobs.py`, `rebalancer.py` and `htlc_stream.py` inside lndg/gui/ serve to update the backend database with the most up to date information, rebalance any channels based on your lndg dashboard settings and to listen for any failure events in your htlc stream. A refresh interval of at least 10-20 seconds is recommended for the `jobs.py` and `rebalancer.py` files for the best user experience.
@@ -84,22 +85,6 @@ Recommend Setup With Supervisord or Systemd
   
 Alternatively, you may also make your own task for these files with your preferred tool (task scheduler/cronjob/etc).  
 
-### Notes
-1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
-2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue. You can use `initialize.py -wn` to setup whitenoise and install it with `.venv/bin/pip install whitenoise`.  
-3. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun. `initialize.py`  
-4. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below).  
-
-### Setup lndg initialize.py options
-1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
-2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths - default: `~/.lnd`
-3. `-net` or `--network` - Network LND will run over - default: `mainnet`
-4. `-server` or `--rpcserver` - Server address to use for rpc communications with LND - default: `localhost:10009`
-5. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
-6. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
-7. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
-8. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
-
 ### Updating
 1. Make sure you are in the lndg folder `cd lndg`
 2. Pull the new files `git pull`
@@ -109,6 +94,25 @@ Alternatively, you may also make your own task for these files with your preferr
 If you would like to serve the dashboard at all times, it is recommended to setup a proper production webserver to host the site.  
 A bash script has been included to help aide in the setup of a nginx webserver. `sudo bash nginx.sh`
 
+### Notes
+1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
+2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue. You can use `initialize.py -wn` to setup whitenoise and install it with `.venv/bin/pip install whitenoise`.  
+3. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun. `initialize.py`  
+4. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below). 
+5. You can manage your login credentials from the admin page. Example: `lndg.local/lndg-admin` 
+
+### Setup lndg initialize.py options
+1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
+2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths - default: `~/.lnd`
+3. `-net` or `--network` - Network LND will run over - default: `mainnet`
+4. `-server` or `--rpcserver` - Server address to use for rpc communications with LND - default: `localhost:10009`
+5. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
+6. `-sdu` or `--sduser` - Configure supervisord with a non-root user - default: `root`
+7. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
+8. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
+9. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
+10. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
+
 ## Key Features
 ### API Backend
 The following data can be accessed at the /api endpoint:  
@@ -116,6 +120,12 @@ The following data can be accessed at the /api endpoint:
 
 ### Peer Reconnection
 LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
+
+### Suggests New Peers
+LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
+
+### Suggests New Peers
+LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
 
 ### HTLC Failure Stream
 LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.

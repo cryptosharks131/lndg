@@ -3,9 +3,11 @@ services:
     build: .
     volumes:
       - /root/.lnd:/root/.lnd:ro
+      - /root/lndg/db.sqlite3:/lndg/db.sqlite3:rw
+      - /root/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:wo
     command:
       - sh
       - -c
-      - python initialize.py -net 'mainnet' -server 'localhost:10009' -d && python manage.py migrate && python manage.py collectstatic --no-input && supervisord && python manage.py runserver 0.0.0.0:8000
+      - python initialize.py -net 'mainnet' -server 'localhost:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8000
     ports:
       - 8889:8000
