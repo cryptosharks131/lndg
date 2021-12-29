@@ -34,6 +34,7 @@ urlpatterns = [
     path('suggested_opens/', views.suggested_opens, name='suggested-opens'),
     path('suggested_actions/', views.suggested_actions, name='suggested-actions'),
     path('api/', include(router.urls), name='api-root'),
+    path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
     path('api/openchannel/', views.open_channel, name='open-channel'),
     path('api/closechannel/', views.close_channel, name='close-channel'),
