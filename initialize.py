@@ -290,23 +290,26 @@ def main():
         django.setup()
         call_command('migrate', verbosity=0)
         call_command('collectstatic', verbosity=0, interactive=False)
-        try:
-            call_command('createsuperuser', username='lndg-admin', email='admin@lndg.local', interactive=False)
-            admin = get_user_model().objects.get(username='lndg-admin')
-            login_pw = secrets.token_urlsafe(16) if adminpw is None else adminpw
-            admin.set_password(login_pw)
-            admin.save()
+        if get_user_model().objects.count() == 0:
+            print('Setting up initial user...')
             try:
-                f = open("lndg-admin.txt", "w")
-                f.write(login_pw)
-                f.close()
+                call_command('createsuperuser', username='lndg-admin', email='admin@lndg.local', interactive=False)
+                admin = get_user_model().objects.get(username='lndg-admin')
+                login_pw = secrets.token_urlsafe(16) if adminpw is None else adminpw
+                admin.set_password(login_pw)
+                admin.save()
+                if adminpw is None:
+                    try:
+                        f = open("lndg-admin.txt", "w")
+                        f.write(login_pw)
+                        f.close()
+                    except Exception as e:
+                        print('Error writing password file:', str(e))
+                    print('FIRST TIME LOGIN PASSWORD:' + login_pw)
             except Exception as e:
-                print('Error writing password file:', str(e))
-            print('FIRST TIME LOGIN PASSWORD: ' + login_pw)
-        except:
-            print('User already created, skipping...')
+                print('Error setting up initial user:', str(e))
     except Exception as e:
-        print('Error initializing django: ', str(e))
+        print('Error initializing django:', str(e))
 
 if __name__ == '__main__':
     main()
