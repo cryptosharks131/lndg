@@ -4,7 +4,7 @@ services:
     volumes:
       - /root/.lnd:/root/.lnd:ro
       - /root/lndg/db.sqlite3:/lndg/db.sqlite3:rw
-      - /root/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:wo
+      - /root/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:rw
     command:
       - sh
       - -c
