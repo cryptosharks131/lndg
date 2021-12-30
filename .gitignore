@@ -3,3 +3,4 @@ db.sqlite3
 lndg/settings.py
 frontend
 node_modules
+lndg-admin.txt

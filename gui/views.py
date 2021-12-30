@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count
 from django.db.models.functions import Round
+from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from datetime import datetime, timedelta
 from rest_framework import viewsets
@@ -15,7 +16,7 @@ from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK
 
-# Create your views here.
+@login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -149,15 +150,14 @@ def home(request):
             'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
-            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100)
+            'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else ''
         }
-        if LND_NETWORK == 'testnet':
-            return render(request, 'testnet.html', context)
-        else:
-            return render(request, 'home.html', context)
+        return render(request, 'home.html', context)
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def route(request):
     if request.method == 'GET':
         payment_hash = request.GET.urlencode()[1:]
@@ -169,6 +169,7 @@ def route(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def peers(request):
     if request.method == 'GET':
         context = {
@@ -178,6 +179,7 @@ def peers(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def balances(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -189,6 +191,7 @@ def balances(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def suggested_opens(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -204,6 +207,60 @@ def suggested_opens(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
+def suggested_actions(request):
+    if request.method == 'GET':
+        channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity'))
+        filter_7day = datetime.now() - timedelta(days=7)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
+        action_list = []
+        for channel in channels:
+            result = {}
+            result['chan_id'] = channel.chan_id
+            result['alias'] = channel.alias
+            result['capacity'] = channel.capacity
+            result['local_balance'] = channel.local_balance
+            result['remote_balance'] = channel.remote_balance
+            result['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
+            result['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
+            result['unsettled_balance'] = channel.unsettled_balance
+            result['local_base_fee'] = channel.local_base_fee
+            result['local_fee_rate'] = channel.local_fee_rate
+            result['remote_base_fee'] = channel.remote_base_fee
+            result['remote_fee_rate'] = channel.remote_fee_rate
+            result['routed_in_7day'] = forwards.filter(chan_id_in=channel.chan_id).count()
+            result['routed_out_7day'] = forwards.filter(chan_id_out=channel.chan_id).count()
+            result['i7D'] = 0 if result['routed_in_7day'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
+            result['o7D'] = 0 if result['routed_out_7day'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
+            result['auto_rebalance'] = channel.auto_rebalance
+            result['ar_target'] = channel.ar_target
+            if result['o7D'] > (result['i7D']*1.10) and result['outbound_percent'] > 75:
+                print('Case 1: Pass')
+                continue
+            elif result['o7D'] > (result['i7D']*1.10) and result['inbound_percent'] > 75 and channel.auto_rebalance == False:
+                print('Case 2: Enable AR')
+                result['output'] = 'Enable AR'
+                result['reason'] = 'o7D > i7D AND Inbound Liq > 75%'
+            elif result['o7D'] < (result['i7D']*1.10) and result['outbound_percent'] > 75 and channel.auto_rebalance == True:
+                print('Case 3: Disable AR')
+                result['output'] = 'Disable AR'
+                result['reason'] = 'o7D < i7D AND Outbound Liq > 75%'
+            elif result['o7D'] < (result['i7D']*1.10) and result['inbound_percent'] > 75:
+                print('Case 4: Pass')
+                continue
+            else:
+                print('Case 5: Pass')
+                continue
+            if len(result) > 0:
+                action_list.append(result) 
+        context = {
+            'action_list': action_list
+        }
+        return render(request, 'action_list.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def pending_htlcs(request):
     if request.method == 'GET':
         context = {
@@ -214,16 +271,34 @@ def pending_htlcs(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
         if form.is_valid():
             try:
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                pubkey_bytes = bytes.fromhex(form.cleaned_data['peer_pubkey'])
-                for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
-                    messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
-                    break
+                peer_pubkey = form.cleaned_data['peer_pubkey']
+                connected = False
+                if Peers.objects.filter(pubkey=peer_pubkey, connected=True).exists():
+                    connected = True
+                else:
+                    try:
+                        node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                        host = node.addresses[0].addr
+                        ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
+                        response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+                        connected = True
+                    except Exception as e:
+                        error = str(e)
+                        details_index = error.find('details =') + 11
+                        debug_error_index = error.find('debug_error_string =') - 3
+                        error_msg = error[details_index:debug_error_index]
+                        messages.error(request, 'Error connecting to new peer: ' + error_msg)
+                if connected:
+                    for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=bytes.fromhex(peer_pubkey), local_funding_amount=form.cleaned_data['local_amt'], sat_per_byte=form.cleaned_data['sat_per_byte'])):
+                        messages.success(request, 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index))
+                        break
             except Exception as e:
                 error = str(e)
                 details_index = error.find('details =') + 11
@@ -234,6 +309,7 @@ def open_channel_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def close_channel_form(request):
     if request.method == 'POST':
         form = CloseChannelForm(request.POST)
@@ -262,31 +338,44 @@ def close_channel_form(request):
                     messages.error(request, 'Channel ID is not valid. Please try again.')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Channel close failed! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Channel close failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def connect_peer_form(request):
     if request.method == 'POST':
         form = ConnectPeerForm(request.POST)
         if form.is_valid():
             try:
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                peer_pubkey = form.cleaned_data['peer_pubkey']
-                host = form.cleaned_data['host']
-                ln_addr = ln.LightningAddress()
-                ln_addr.pubkey = peer_pubkey
-                ln_addr.host = host
+                peer_id = form.cleaned_data['peer_id']
+                if peer_id.count('@') == 0 and len(peer_id) == 66:
+                    peer_pubkey = peer_id
+                    node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                    host = node.addresses[0].addr
+                elif peer_id.count('@') == 1 and len(peer_id.split('@')[0]) == 66:
+                    peer_pubkey, host = peer_id.split('@')
+                else:
+                    raise Exception('Invalid peer pubkey or connection string.')
+                ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
                 response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
-                messages.success(request, 'Connection successful! ' + str(response))
+                messages.success(request, 'Connection successful!' + str(response))
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Connection request failed! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Connection request failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def new_address_form(request):
     if request.method == 'POST':
         try:
@@ -295,9 +384,13 @@ def new_address_form(request):
             messages.success(request, 'Deposit Address: ' + str(response.address))
         except Exception as e:
             error = str(e)
-            messages.error(request, 'Address request! Error: ' + error)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            messages.error(request, 'Address request failed! Error: ' + error_msg)
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def add_invoice_form(request):
     if request.method == 'POST':
         form = AddInvoiceForm(request.POST)
@@ -308,28 +401,40 @@ def add_invoice_form(request):
                 messages.success(request, 'Invoice created! ' + str(response.payment_request))
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Invoice creation failed! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Invoice creation failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def rebalance(request):
     if request.method == 'POST':
         form = RebalancerForm(request.POST)
         if form.is_valid():
             try:
-                chan_ids = []
-                for channel in form.cleaned_data['outgoing_chan_ids']:
-                    chan_ids.append(channel.chan_id)
-                Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], duration=form.cleaned_data['duration']).save()
-                messages.success(request, 'Rebalancer request created!')
+                if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists():
+                    chan_ids = []
+                    for channel in form.cleaned_data['outgoing_chan_ids']:
+                        chan_ids.append(channel.chan_id)
+                    target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else None
+                    Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration']).save()
+                    messages.success(request, 'Rebalancer request created!')
+                else:
+                    messages.error(request, 'Target peer is invalid or unknown.')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error entering rebalancer request! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Error entering rebalancer request! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def update_chan_policy(request):
     if request.method == 'POST':
         form = ChanPolicyForm(request.POST)
@@ -351,12 +456,16 @@ def update_chan_policy(request):
                 messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error updating channel policies! Error: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
             print(form.errors)
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def auto_rebalance(request):
     if request.method == 'POST':
         form = AutoRebalanceForm(request.POST)
@@ -435,6 +544,7 @@ def auto_rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
 def ar_target(request):
     if request.method == 'POST':
         form = ARTarget(request.POST)
@@ -526,16 +636,24 @@ def connect_peer(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-            peer_pubkey = serializer.validated_data['peer_pubkey']
-            host = serializer.validated_data['host']
-            ln_addr = ln.LightningAddress()
-            ln_addr.pubkey = peer_pubkey
-            ln_addr.host = host
+            peer_id = serializer.validated_data['peer_id']
+            if peer_id.count('@') == 0 and len(peer_id) == 66:
+                peer_pubkey = peer_id
+                node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                host = node.addresses[0].addr
+            elif peer_id.count('@') == 1 and len(peer_id.split('@')[0]) == 66:
+                peer_pubkey, host = peer_id.split('@')
+            else:
+                raise Exception('Invalid peer pubkey or connection string.')
+            ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
             response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
-            return Response({'message': 'Connection successful! ' + str(response)})
+            return Response({'message': 'Connection successful!' + str(response)})
         except Exception as e:
             error = str(e)
-            return Response({'error': 'Connection request failed! Error: ' + error})
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Connection request failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
 
@@ -545,9 +663,26 @@ def open_channel(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-            pubkey_bytes = bytes.fromhex(serializer.validated_data['peer_pubkey'])
-            for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=pubkey_bytes, local_funding_amount=serializer.validated_data['local_amt'], sat_per_byte=serializer.validated_data['sat_per_byte'])):
-                return Response({'message': 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index)})
+            peer_pubkey = serializer.validated_data['peer_pubkey']
+            connected = False
+            if Peers.objects.filter(pubkey=peer_pubkey, connected=True).exists():
+                connected = True
+            else:
+                try:
+                    node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+                    host = node.addresses[0].addr
+                    ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
+                    response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+                    connected = True
+                except Exception as e:
+                    error = str(e)
+                    details_index = error.find('details =') + 11
+                    debug_error_index = error.find('debug_error_string =') - 3
+                    error_msg = error[details_index:debug_error_index]
+                    return Response({'error': 'Error connecting to new peer: ' + error_msg})
+            if connected:
+                for response in stub.OpenChannel(ln.OpenChannelRequest(node_pubkey=bytes.fromhex(peer_pubkey), local_funding_amount=serializer.validated_data['local_amt'], sat_per_byte=serializer.validated_data['sat_per_byte'])):
+                    return Response({'message': 'Channel created! Funding TXID: ' + str(response.chan_pending.txid[::-1].hex()) + ':' + str(response.chan_pending.output_index)})
         except Exception as e:
             error = str(e)
             details_index = error.find('details =') + 11
@@ -583,7 +718,10 @@ def close_channel(request):
                 return Response({'error': 'Channel ID is not valid.'})
         except Exception as e:
             error = str(e)
-            return Response({'error': 'Channel close failed! Error: ' + error})
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Channel close failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
 
@@ -597,7 +735,10 @@ def add_invoice(request):
             return Response({'message': 'Invoice created!', 'data':str(response.payment_request)})
         except Exception as e:
             error = str(e)
-            return Response({'error': 'Invoice creation failed! Error: ' + error})
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Invoice creation failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
 
@@ -609,7 +750,10 @@ def new_address(request):
         return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
     except Exception as e:
         error = str(e)
-        return Response({'error': 'Address creation failed! Error: ' + error})
+        details_index = error.find('details =') + 11
+        debug_error_index = error.find('debug_error_string =') - 3
+        error_msg = error[details_index:debug_error_index]
+        return Response({'error': 'Address creation failed! Error: ' + error_msg})
 
 @api_view(['POST'])
 def update_alias(request):
@@ -627,7 +771,10 @@ def update_alias(request):
                 messages.success(request, 'Alias updated to: ' + str(new_alias))
             except Exception as e:
                 error = str(e)
-                messages.error(request, 'Error updating alias: ' + error)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Error updating alias: ' + error_msg)
         else:
             messages.error(request, 'Pubkey not in channels list.')
     else:

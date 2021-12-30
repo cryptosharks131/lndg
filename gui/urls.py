@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework import routers
+from django.contrib import admin
 from . import views
 
 router = routers.DefaultRouter()
@@ -31,11 +32,14 @@ urlpatterns = [
     path('autorebalance/', views.auto_rebalance, name='auto-rebalance'),
     path('ar_target/', views.ar_target, name='ar-target'),
     path('suggested_opens/', views.suggested_opens, name='suggested-opens'),
+    path('suggested_actions/', views.suggested_actions, name='suggested-actions'),
     path('api/', include(router.urls), name='api-root'),
+    path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
     path('api/openchannel/', views.open_channel, name='open-channel'),
     path('api/closechannel/', views.close_channel, name='close-channel'),
     path('api/createinvoice/', views.add_invoice, name='add-invoice'),
     path('api/newaddress/', views.new_address, name='new-address'),
     path('api/updatealias/', views.update_alias, name='update-alias'),
+    path('lndg-admin/', admin.site.urls),
 ]
