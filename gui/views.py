@@ -280,7 +280,7 @@ def pending_htlcs(request):
 def keysends(request):
     if request.method == 'GET':
         context = {
-            'keysends': Invoices.objects.filter(keysend__isnull=False).order_by('-settle_date')
+            'keysends': Invoices.objects.filter(keysend_preimage__isnull=False).order_by('-settle_date')
         }
         return render(request, 'keysends.html', context)
     else:
