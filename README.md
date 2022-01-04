@@ -126,8 +126,8 @@ LNDg will automatically try to resolve any channels that are seen as inactive, n
 ### Suggests New Peers
 LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
 
-### Suggests New Peers
-LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
+### Suggests AR Actions
+LNDg will make suggestions for actions to take around Auto-Rebalancing.
 
 ### HTLC Failure Stream
 LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.
