@@ -277,6 +277,16 @@ def pending_htlcs(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def keysends(request):
+    if request.method == 'GET':
+        context = {
+            'keysends': Invoices.objects.filter(keysend__isnull=False).order_by('-settle_date')
+        }
+        return render(request, 'keysends.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)

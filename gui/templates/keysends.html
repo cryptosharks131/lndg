@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if keysends %}
+<div class="w3-container w3-padding-small">
+  <h2>Received Keysends</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Settle Date</th>
+      <th>Payment TXID</th>
+      <th>Amount</th>
+      <th>Channel In Alias</th>
+      <th>Message</th>
+    </tr>
+    {% for keysend in keysends %}
+    <tr>
+      <td>{{ keysend.settle_date }}</td>
+      <td>{{ keysend.r_hash }}</td>
+      <td>{{ keysend.amt_paid }}</td>
+      <td>{{ keysend.chan_in_alias }}</td>
+      <td>{{ keysend.message }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not keysends %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any keysend messages here yet!</h1></center>
+</div>
+{% endif %}
+{% endblock %}
