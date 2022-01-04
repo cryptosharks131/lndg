@@ -7,17 +7,15 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Settle Date</th>
-      <th>Payment TXID</th>
-      <th>Amount</th>
       <th>Channel In Alias</th>
+      <th>Amount</th>
       <th>Message</th>
     </tr>
     {% for keysend in keysends %}
     <tr>
-      <td>{{ keysend.settle_date }}</td>
-      <td>{{ keysend.r_hash }}</td>
-      <td>{{ keysend.amt_paid }}</td>
+      <td title="{{ keysend.r_hash }}">{{ keysend.settle_date }}</td>
       <td>{{ keysend.chan_in_alias }}</td>
+      <td>{{ keysend.amt_paid }}</td>
       <td>{{ keysend.message }}</td>
     </tr>
     {% endfor %}
