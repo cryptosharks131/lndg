@@ -129,26 +129,26 @@ def update_channels(stub):
         try:
             chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
             if chan_data.node1_pub == channel.remote_pubkey:
-                local_policy = chan_data.node2_policy
-                remote_policy = chan_data.node1_policy
+                db_channel.local_base_fee = chan_data.node2_policy.fee_base_msat
+                db_channel.local_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
+                db_channel.remote_base_fee = chan_data.node1_policy.fee_base_msat
+                db_channel.remote_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
             else:
-                local_policy = chan_data.node1_policy
-                remote_policy = chan_data.node2_policy
+                db_channel.local_base_fee = chan_data.node1_policy.fee_base_msat
+                db_channel.local_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
+                db_channel.remote_base_fee = chan_data.node2_policy.fee_base_msat
+                db_channel.remote_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
         except:
-            local_policy = 0
-            remote_policy = 0
-            local_policy = 0
-            remote_policy = 0
+            db_channel.local_base_fee = 0
+            db_channel.local_fee_rate = 0
+            db_channel.remote_base_fee = 0
+            db_channel.remote_fee_rate = 0
         db_channel.capacity = channel.capacity
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
         db_channel.local_commit = channel.commit_fee
         db_channel.local_chan_reserve = channel.local_chan_reserve_sat
-        db_channel.local_base_fee = local_policy.fee_base_msat
-        db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
-        db_channel.remote_base_fee = remote_policy.fee_base_msat
-        db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
         db_channel.is_active = channel.active
         db_channel.is_open = True
         db_channel.save()
