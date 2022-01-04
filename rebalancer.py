@@ -112,7 +112,7 @@ def auto_schedule():
                 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance using the MaxFeerate to calculate sat fee intervals
                 for target in inbound_cans:
                     target_fee_rate = int(target.local_fee_rate * max_cost)
-                    if target_fee_rate > 0:
+                    if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
                         value_per_fee = int(1 / (target_fee_rate / 1000000)) if target_fee_rate <= max_fee_rate else int(1 / (max_fee_rate / 1000000))
                         target_value = int((target.capacity * target_percent) / value_per_fee) * value_per_fee
                         if target_value >= value_per_fee:

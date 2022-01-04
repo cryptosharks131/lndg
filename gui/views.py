@@ -238,6 +238,11 @@ def suggested_actions(request):
                 print('Case 1: Pass')
                 continue
             elif result['o7D'] > (result['i7D']*1.10) and result['inbound_percent'] > 75 and channel.auto_rebalance == False:
+                if channel.local_fee_rate < channel.remote_fee_rate:
+                    print('Case 6: Peer Fee Too High')
+                    result['output'] = 'Peer Fee Too High'
+                    result['reason'] = 'o7D > i7D AND Inbound Liq > 75% AND Local Fee < Remote Fee'
+                    continue
                 print('Case 2: Enable AR')
                 result['output'] = 'Enable AR'
                 result['reason'] = 'o7D > i7D AND Inbound Liq > 75%'

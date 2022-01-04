@@ -126,13 +126,19 @@ def update_channels(stub):
             db_channel.alias = alias
             db_channel.funding_txid = txid
             db_channel.output_index = index
-        chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
-        if chan_data.node1_pub == channel.remote_pubkey:
-            local_policy = chan_data.node2_policy
-            remote_policy = chan_data.node1_policy
-        else:
-            local_policy = chan_data.node1_policy
-            remote_policy = chan_data.node2_policy
+        try:
+            chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
+            if chan_data.node1_pub == channel.remote_pubkey:
+                local_policy = chan_data.node2_policy
+                remote_policy = chan_data.node1_policy
+            else:
+                local_policy = chan_data.node1_policy
+                remote_policy = chan_data.node2_policy
+        except:
+            local_policy = 0
+            remote_policy = 0
+            local_policy = 0
+            remote_policy = 0
         db_channel.capacity = channel.capacity
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
