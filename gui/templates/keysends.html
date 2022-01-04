@@ -13,7 +13,7 @@
     </tr>
     {% for keysend in keysends %}
     <tr>
-      <td title="{{ keysend.r_hash }}">{{ keysend.settle_date }}</td>
+      <td title="{{ keysend.r_hash }}">{{ keysend.settle_date|naturaltime }}</td>
       <td>{{ keysend.chan_in_alias }}</td>
       <td>{{ keysend.amt_paid }}</td>
       <td>{{ keysend.message }}</td>
