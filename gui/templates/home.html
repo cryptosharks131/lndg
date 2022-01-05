@@ -3,8 +3,9 @@
 {% load humanize %}
 <div class="w3-container w3-padding-small">
   <h3><a href="https://1ml.com/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Capacity: {{ capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
+  <h4>Capacity: {{ capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {{ db_size }} GB</h4>
   <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
+  <h4>Network Info: {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Wallet Balance: {{ balances.total_balance|intcomma }} | Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>

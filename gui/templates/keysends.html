@@ -15,7 +15,7 @@
     <tr>
       <td title="{{ keysend.r_hash }}">{{ keysend.settle_date|naturaltime }}</td>
       <td>{{ keysend.chan_in_alias }}</td>
-      <td>{{ keysend.amt_paid }}</td>
+      <td>{{ keysend.amt_paid|intcomma }}</td>
       <td>{{ keysend.message }}</td>
     </tr>
     {% endfor %}
