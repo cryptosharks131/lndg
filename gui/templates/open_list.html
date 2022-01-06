@@ -24,7 +24,7 @@
       <td>{{ node.fees|add:"0"|intcomma }}</td>
       <td>{{ node.ppm|add:"0"|intcomma }}</td>
       <td>{{ node.score }}</td>
-      <td>{{ node.sum_cost_to }}</td>
+      <td>{{ node.sum_cost_to|add:"0"|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>
