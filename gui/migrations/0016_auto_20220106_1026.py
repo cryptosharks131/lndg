@@ -12,6 +12,9 @@ def update_cost_to(apps, schedma_editor):
             hop.save()
             cost_to += hop.fee
 
+def revert_cost_to(apps, schedma_editor):
+    pass
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -30,7 +33,7 @@ class Migration(migrations.Migration):
             name='cost_to',
             field=models.FloatField(default=0),
         ),
-        migrations.RunPython(update_cost_to),
+        migrations.RunPython(update_cost_to, revert_cost_to),
         migrations.AlterField(
             model_name='paymenthops',
             name='cost_to',
