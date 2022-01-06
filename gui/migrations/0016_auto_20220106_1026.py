@@ -5,7 +5,7 @@ from django.db import migrations, models
 def update_cost_to(apps, schedma_editor):
     payments = apps.get_model('gui', 'payments')
     hops = apps.get_model('gui', 'paymenthops')
-    for payment in payments.objects.all().iterator():
+    for payment in payments.objects.filter(status=2).iterator():
         cost_to = 0
         for hop in hops.objects.filter(payment_hash=payment.payment_hash).order_by('step'):
             hop.cost_to = round(cost_to, 3)
