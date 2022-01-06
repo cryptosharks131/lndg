@@ -65,11 +65,14 @@ def update_payments(stub):
                     if attempt.status == 1:
                         hops = attempt.route.hops
                         hop_count = 0
+                        cost_to = 0
                         total_hops = len(hops)
                         for hop in hops:
                             hop_count += 1
                             alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
-                            PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(hop.fee_msat/1000, 3)).save()
+                            fee = hop.fee_msat/1000
+                            PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
+                            cost_to += fee
                             if hop_count == 1:
                                 db_payment.chan_out = hop.chan_id
                                 db_payment.chan_out_alias = alias
@@ -149,6 +152,7 @@ def update_channels(stub):
         db_channel.unsettled_balance = channel.unsettled_balance
         db_channel.local_commit = channel.commit_fee
         db_channel.local_chan_reserve = channel.local_chan_reserve_sat
+        db_channel.num_updates = channel.num_updates
         db_channel.is_active = channel.active
         db_channel.is_open = True
         db_channel.save()
