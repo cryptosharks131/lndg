@@ -2,7 +2,7 @@ import django, json, datetime
 from django.conf import settings
 from django.db.models import Sum
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -20,7 +20,7 @@ settings.configure(
 )
 django.setup()
 from lndg import settings
-from gui.models import Rebalancer, Channels, LocalSettings
+from gui.models import Rebalancer, Channels, LocalSettings, Forwards, Autopilot
 
 def run_rebalancer(rebalance):
     if Rebalancer.objects.filter(status=1).exists():
@@ -137,9 +137,44 @@ def auto_schedule():
                             print('Target Time:', target_time)
                             Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, target_alias=inbound_pubkey.alias, duration=target_time).save()
 
+def auto_enable():
+    if LocalSettings.objects.filter(key='AR-Autopilot').exists():
+        enabled = int(LocalSettings.objects.filter(key='AR-Autopilot')[0].value)
+    else:
+        LocalSettings(key='AR-Autopilot', value='0').save()
+        enabled = 0
+    if enabled == 1:
+        channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity'))
+        filter_7day = datetime.now() - timedelta(days=7)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
+        for channel in channels:
+            outbound_percent = int(round(channel.outbound_percent/10, 0))
+            inbound_percent = int(round(channel.inbound_percent/10, 0))
+            routed_in_7day = forwards.filter(chan_id_in=channel.chan_id).count()
+            routed_out_7day = forwards.filter(chan_id_out=channel.chan_id).count()
+            i7D = 0 if routed_in_7day == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
+            o7D = 0 if routed_out_7day == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
+            if o7D > (i7D*1.10) and outbound_percent > 75:
+                print('Case 1: Pass')
+            elif o7D > (i7D*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
+                print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
+                channel.auto_rebalance = True
+                channel.save()
+                Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=0, new_value=1).save()
+            elif o7D < (i7D*1.10) and outbound_percent > 75 and channel.auto_rebalance == True:
+                print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
+                channel.auto_rebalance = False
+                channel.save()
+                Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=1, new_value=0).save()
+            elif o7D < (i7D*1.10) and inbound_percent > 75:
+                print('Case 4: Pass')
+            else:
+                print('Case 5: Pass')
+
 def main():
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')
     if len(rebalances) == 0:
+        auto_enable()
         auto_schedule()
     else:
         run_rebalancer(rebalances[0])

@@ -150,3 +150,13 @@ class FailedHTLCs(models.Model):
     missed_fee = models.FloatField()
     class Meta:
         app_label = 'gui'
+
+class Autopilot(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    chan_id = models.IntegerField()
+    peer_alias = models.CharField(max_length=32)
+    setting = models.CharField(max_length=20)
+    old_value = models.IntegerField()
+    new_value = models.IntegerField()
+    class Meta:
+        app_label = 'gui'

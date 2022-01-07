@@ -9,7 +9,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs, Autopilot
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
@@ -104,7 +104,10 @@ def home(request):
         rebalances = Rebalancer.objects.all().order_by('-requested')
         #Grab local settings
         local_settings = LocalSettings.objects.all()
-        db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
+        try:
+            db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
+        except:
+            db_size = 0
         #Build context for front-end and render page
         context = {
             'node_info': node_info,
@@ -286,6 +289,16 @@ def keysends(request):
             'keysends': Invoices.objects.filter(keysend_preimage__isnull=False).order_by('-settle_date')
         }
         return render(request, 'keysends.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def autopilot(request):
+    if request.method == 'GET':
+        context = {
+            'autopilot': Autopilot.objects.all().order_by('-timestamp')
+        }
+        return render(request, 'autopilot.html', context)
     else:
         return redirect('home')
 
