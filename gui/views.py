@@ -102,7 +102,7 @@ def home(request):
         total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
-        #Grab local settings
+        total_channels = node_info.num_active_channels + node_info.num_inactive_channels
         local_settings = LocalSettings.objects.all()
         try:
             db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
@@ -111,6 +111,7 @@ def home(request):
         #Build context for front-end and render page
         context = {
             'node_info': node_info,
+            'total_channels': total_channels,
             'balances': balances,
             'payments': payments[:6],
             'total_sent': int(total_sent),

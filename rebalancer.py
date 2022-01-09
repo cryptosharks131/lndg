@@ -157,9 +157,6 @@ def auto_enable():
             if o7D > (i7D*1.10) and outbound_percent > 75:
                 print('Case 1: Pass')
             elif o7D > (i7D*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
-                if channel.local_fee_rate <= channel.remote_fee_rate:
-                    print('Case 6: Peer Fee Too High - o7D > i7D AND Inbound Liq > 75% AND Local Fee <= Remote Fee')
-                    continue
                 print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
                 channel.auto_rebalance = True
                 channel.save()
