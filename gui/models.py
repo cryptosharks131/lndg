@@ -26,6 +26,7 @@ class PaymentHops(models.Model):
     node_pubkey = models.CharField(max_length=66)
     amt = models.FloatField()
     fee = models.FloatField()
+    cost_to = models.FloatField()
     class Meta:
         app_label = 'gui'
         unique_together = (('payment_hash', 'attempt_id', 'step'),)
@@ -68,6 +69,7 @@ class Channels(models.Model):
     unsettled_balance = models.BigIntegerField()
     local_commit = models.IntegerField()
     local_chan_reserve = models.IntegerField()
+    num_updates = models.IntegerField()
     initiator = models.BooleanField()
     alias = models.CharField(max_length=32)
     local_base_fee = models.IntegerField()
@@ -146,5 +148,15 @@ class FailedHTLCs(models.Model):
     wire_failure = models.IntegerField()
     failure_detail = models.IntegerField()
     missed_fee = models.FloatField()
+    class Meta:
+        app_label = 'gui'
+
+class Autopilot(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    chan_id = models.IntegerField()
+    peer_alias = models.CharField(max_length=32)
+    setting = models.CharField(max_length=20)
+    old_value = models.IntegerField()
+    new_value = models.IntegerField()
     class Meta:
         app_label = 'gui'

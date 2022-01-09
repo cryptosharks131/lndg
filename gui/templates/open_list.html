@@ -13,6 +13,7 @@
       <th width=12%>Fees Paid</th>
       <th width=12%>Effective PPM</th>
       <th width=12%>Volume Score</th>
+      <th width=12%>Savings By Volume</th>
     </tr>
     {% for node in open_list %}
     <tr>
@@ -23,6 +24,7 @@
       <td>{{ node.fees|add:"0"|intcomma }}</td>
       <td>{{ node.ppm|add:"0"|intcomma }}</td>
       <td>{{ node.score }}</td>
+      <td>{{ node.sum_cost_to|add:"0"|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>

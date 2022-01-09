@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+{% load humanize %}
+{% if autopilot %}
+<div class="w3-container w3-padding-small">
+  <h2>Autopilot Logs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Timestamp</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th>Setting</th>
+      <th>Old Value</th>
+      <th>New Value</th>
+    </tr>
+    {% for log in autopilot %}
+    <tr>
+      <td>{{ log.timestamp|naturaltime }}</a></td>
+      <td>{{ log.chan_id }}</a></td>
+      <td>{{ log.peer_alias }}</td>
+      <td>{{ log.setting }}</td>
+      <td>{{ log.old_value }}</td>
+      <td>{{ log.new_value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not autopilot %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No autopilot logs to see here yet!</h1></center>
+  <center><h6>Experimental. Advanced users may activate via api.</h6></center>
+</div>
+{% endif %}
+{% endblock %}

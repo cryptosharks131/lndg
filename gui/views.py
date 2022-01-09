@@ -9,12 +9,13 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs, Autopilot
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
-from lndg.settings import LND_NETWORK
+from lndg.settings import LND_NETWORK, LND_DIR_PATH
+from os import path
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
@@ -101,11 +102,16 @@ def home(request):
         total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
-        #Grab local settings
+        total_channels = node_info.num_active_channels + node_info.num_inactive_channels
         local_settings = LocalSettings.objects.all()
+        try:
+            db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
+        except:
+            db_size = 0
         #Build context for front-end and render page
         context = {
             'node_info': node_info,
+            'total_channels': total_channels,
             'balances': balances,
             'payments': payments[:6],
             'total_sent': int(total_sent),
@@ -151,7 +157,8 @@ def home(request):
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
-            'network': 'testnet/' if LND_NETWORK == 'testnet' else ''
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'db_size': db_size
         }
         return render(request, 'home.html', context)
     else:
@@ -199,7 +206,7 @@ def suggested_opens(request):
         current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
         filter_60day = datetime.now() - timedelta(days=60)
         payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
-        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).order_by('-score', 'ppm')[:21]
+        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).order_by('-score', 'ppm')[:21]
         context = {
             'open_list': open_list
         }
@@ -238,6 +245,11 @@ def suggested_actions(request):
                 print('Case 1: Pass')
                 continue
             elif result['o7D'] > (result['i7D']*1.10) and result['inbound_percent'] > 75 and channel.auto_rebalance == False:
+                if channel.local_fee_rate <= channel.remote_fee_rate:
+                    print('Case 6: Peer Fee Too High')
+                    result['output'] = 'Peer Fee Too High'
+                    result['reason'] = 'o7D > i7D AND Inbound Liq > 75% AND Local Fee < Remote Fee'
+                    continue
                 print('Case 2: Enable AR')
                 result['output'] = 'Enable AR'
                 result['reason'] = 'o7D > i7D AND Inbound Liq > 75%'
@@ -268,6 +280,26 @@ def pending_htlcs(request):
             'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False).order_by('hash_lock')
         }
         return render(request, 'pending_htlcs.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def keysends(request):
+    if request.method == 'GET':
+        context = {
+            'keysends': Invoices.objects.filter(keysend_preimage__isnull=False).order_by('-settle_date')
+        }
+        return render(request, 'keysends.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def autopilot(request):
+    if request.method == 'GET':
+        context = {
+            'autopilot': Autopilot.objects.all().order_by('-timestamp')
+        }
+        return render(request, 'autopilot.html', context)
     else:
         return redirect('home')
 
