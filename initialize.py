@@ -282,6 +282,7 @@ def main():
                 'django.contrib.messages',
                 'django.contrib.staticfiles',
                 'django.contrib.admin',
+                'rest_framework',
                 'gui',
             ],
             STATIC_URL = 'static/', 
