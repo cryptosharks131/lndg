@@ -206,24 +206,18 @@ def channels(request):
             detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
             detailed_channel['amt_routed_in_30day'] = 0 if detailed_channel['routed_in_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/100000000)/10
             detailed_channel['amt_routed_out_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
-            detailed_invoices = invoices.filter(chan_in=channel.chan_id)
-            detailed_invoices_hashes = detailed_invoices.values_list('r_hash')
-            detailed_channel['rebal_in'] = detailed_invoices.count()
-            detailed_channel['rebal_out'] = payments.filter(payment_hash__in=detailed_invoices_hashes).count()
-            detailed_channel['amt_rebal_in'] = 0 if detailed_channel['rebal_in'] == 0 else int(detailed_invoices.aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['amt_rebal_out'] = 0 if detailed_channel['rebal_out'] == 0 else int(payments.filter(payment_hash__in=detailed_invoices_hashes).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_invoices_30d = invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id)
-            detailed_invoices_30d_hashes = detailed_invoices_30d.values_list('r_hash')
-            detailed_channel['rebal_in_30day'] = detailed_invoices_30d.count()
-            detailed_channel['rebal_out_30day'] = payments.filter(payment_hash__in=detailed_invoices_30d_hashes).count()
-            detailed_channel['amt_rebal_in_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(detailed_invoices_30d.aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['amt_rebal_out_30day'] = 0 if detailed_channel['rebal_out_30day'] == 0 else int(payments.filter(payment_hash__in=detailed_invoices_30d_hashes).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_invoices_7d = detailed_invoices_30d.filter(settle_date__gte=filter_7day)
-            detailed_invoices_7d_hashes = detailed_invoices_7d.values_list('r_hash')
-            detailed_channel['rebal_in_7day'] = detailed_invoices_7d.count()
-            detailed_channel['rebal_out_7day'] = payments.filter(payment_hash__in=detailed_invoices_7d_hashes).count()
-            detailed_channel['amt_rebal_in_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(detailed_invoices_7d.aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['amt_rebal_out_7day'] = 0 if detailed_channel['rebal_out_7day'] == 0 else int(payments.filter(payment_hash__in=detailed_invoices_7d_hashes).aggregate(Sum('value'))['value__sum']/100000)/10
+            detailed_channel['rebal_in'] = invoices.filter(chan_in=channel.chan_id).count()
+            detailed_channel['rebal_out'] = payments.filter(chan_out=channel.chan_id).count()
+            detailed_channel['amt_rebal_in'] = 0 if detailed_channel['rebal_in'] == 0 else int(invoices.filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            detailed_channel['amt_rebal_out'] = 0 if detailed_channel['rebal_out'] == 0 else int(payments.filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            detailed_channel['rebal_in_30day'] = invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).count()
+            detailed_channel['rebal_out_30day'] = payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).count()
+            detailed_channel['amt_rebal_in_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            detailed_channel['amt_rebal_out_30day'] = 0 if detailed_channel['rebal_out_30day'] == 0 else int(payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            detailed_channel['rebal_in_7day'] = invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).count()
+            detailed_channel['rebal_out_7day'] = payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).count()
+            detailed_channel['amt_rebal_in_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            detailed_channel['amt_rebal_out_7day'] = 0 if detailed_channel['rebal_out_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_channel['ar_target'] = channel.ar_target
             detailed_channel['num_updates'] = channel.num_updates
