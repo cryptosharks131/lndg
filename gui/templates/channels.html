@@ -10,9 +10,6 @@
         <th></th>
         <th></th>
         <th></th>
-        <th></th>
-        <th></th>
-        <th></th>
         <th colspan="2">Local Fees</th>
         <th colspan="2">7-Day Activity</th>
         <th colspan="2">7-Day Rebals</th>
@@ -27,9 +24,6 @@
         <th>Channel ID</th>
         <th>Peer Alias</th>
         <th>Capacity</th>
-        <th>Outbound Liquidity</th>
-        <th width=10%></th>
-        <th>Inbound Liquidity</th>
         <th>oRate</th>
         <th>oBase</th>
         <th>Out</th>
@@ -54,9 +48,6 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
         <td>{{ channel.local_fee_rate|intcomma }}</td>
         <td>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
@@ -79,6 +70,7 @@
       {% endfor %}
     </table>
   </div>
+  <h2>Timer: {{ timer }}s</h2>
 </div>
 {% endif %}
 {% if not channels %}
