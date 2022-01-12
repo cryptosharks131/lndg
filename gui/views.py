@@ -177,10 +177,17 @@ def channels(request):
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
         end = time.time()
         initial_time = round(end-start, 2)
-        start = time.time()
+        base_data = 0
+        forwards_data = 0
+        loop_30d = 0
+        loop_7d = 0
+        revenue = 0
+        costs = 0
+        profits = 0
         detailed_channels = []
         for channel in channels:
             detailed_channel = {}
+            start = time.time()
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
             detailed_channel['capacity'] = channel.capacity
@@ -192,6 +199,11 @@ def channels(request):
             detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
+            detailed_channel['num_updates'] = channel.num_updates
+            detailed_channel['is_active'] = channel.is_active
+            end = time.time()
+            base_data += round(end-start, 2)
+            start = time.time()
             detailed_channel['routed_in_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).count()
             detailed_channel['routed_in_30day'] = forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).count()
@@ -200,30 +212,51 @@ def channels(request):
             detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
             detailed_channel['amt_routed_in_30day'] = 0 if detailed_channel['routed_in_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/100000000)/10
             detailed_channel['amt_routed_out_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
+            end = time.time()
+            forwards_data += round(end-start, 2)
+            start = time.time()
             detailed_channel['rebal_in_30day'] = invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).count()
             detailed_channel['rebal_out_30day'] = payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).count()
             detailed_channel['amt_rebal_in_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
             detailed_channel['amt_rebal_out_30day'] = 0 if detailed_channel['rebal_out_30day'] == 0 else int(payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            end = time.time()
+            loop_30d += round(end-start, 2)
+            start = time.time()
             detailed_channel['rebal_in_7day'] = invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).count()
             detailed_channel['rebal_out_7day'] = payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).count()
             detailed_channel['amt_rebal_in_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
             detailed_channel['amt_rebal_out_7day'] = 0 if detailed_channel['rebal_out_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
+            end = time.time()
+            loop_7d += round(end-start, 2)
+            start = time.time()
             detailed_channel['revenue_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
             detailed_channel['revenue_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
+            end = time.time()
+            revenue += round(end-start, 2)
+            start = time.time()
             detailed_channel['costs_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(payment_hash__in=invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).values_list('r_hash')).aggregate(Sum('fee'))['fee__sum'])
             detailed_channel['costs_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(payments.filter(creation_date__gte=filter_30day).filter(payment_hash__in=invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).values_list('r_hash')).aggregate(Sum('fee'))['fee__sum'])
+            end = time.time()
+            costs += round(end-start, 2)
+            start = time.time()
             detailed_channel['profits_7day'] = 0 if detailed_channel['revenue_7day'] == 0 else detailed_channel['revenue_7day'] - detailed_channel['costs_7day']
             detailed_channel['profits_30day'] = 0 if detailed_channel['revenue_30day'] == 0 else detailed_channel['revenue_30day'] - detailed_channel['costs_30day']
-            detailed_channel['num_updates'] = channel.num_updates
-            detailed_channel['is_active'] = channel.is_active
+            end = time.time()
+            profits += round(end-start, 2)
+            start = time.time()
             detailed_channels.append(detailed_channel)
-        end = time.time()
         loop_time = round(end-start, 2)
         context = {
             'channels': detailed_channels,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'initial_time': initial_time,
-            'loop_time': loop_time
+            'base_data': base_data,
+            'forwards_data': forwards_data,
+            'loop_30d': loop_30d,
+            'loop_7d': loop_7d,
+            'revenue': revenue,
+            'costs': costs,
+            'profits': profits
         }
         return render(request, 'channels.html', context)
     else:
