@@ -21,11 +21,11 @@
         <th>Peer Alias</th>
         <th>Capacity</th>
         <th>Out</th>
-        <th>In</th>
         <th>Profit</th>
+        <th>In</th>
         <th>Out</th>
-        <th>In</th>
         <th>Profit</th>
+        <th>In</th>
         <th width=4%>Rate</th>
         <th width=4%>Base</th>
         <th width=4%>Rate</th>
@@ -40,11 +40,11 @@
         <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
         <td>{{ channel.profits_7day|intcomma }}</td>
+        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
         <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
-        <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
         <td>{{ channel.profits_30day|intcomma }}</td>
+        <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
         <td>{{ channel.local_fee_rate|intcomma }}</td>
         <td>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
@@ -56,14 +56,6 @@
       {% endfor %}
     </table>
   </div>
-  <h2>Initial Timer: {{ initial_time }}s</h2>
-  <h2>Base Timer: {{ base_data }}s</h2>
-  <h2>Forwards Timer: {{ forwards_data }}s</h2>
-  <h2>30d Timer: {{ loop_30d }}s</h2>
-  <h2>7d Timer: {{ loop_7d }}s</h2>
-  <h2>Revenue Timer: {{ revenue }}s</h2>
-  <h2>Costs Timer: {{ costs }}s</h2>
-  <h2>Profits Timer: {{ profits }}s</h2>
 </div>
 {% endif %}
 {% if not channels %}
