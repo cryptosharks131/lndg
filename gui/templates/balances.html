@@ -45,4 +45,9 @@
   </table>
 </div>
 {% endif %}
+{% if not utxos and not transactions %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No wallet transactions found!</h1></center>
+</div>
+{% endif %}
 {% endblock %}

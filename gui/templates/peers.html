@@ -24,4 +24,9 @@
   </table>
 </div>
 {% endif %}
+{% if not peers %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No connected peers found!</h1></center>
+</div>
+{% endif %}
 {% endblock %}

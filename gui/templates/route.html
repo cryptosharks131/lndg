@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 {% load humanize %}
+{% if route %}
 <div class="w3-container w3-padding-small">
   <h2>Route For Payment: {{ payment_hash }}</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
@@ -26,4 +27,10 @@
     {% endfor %}
   </table>
 </div>
+{% endif %}
+{% if not route %}
+<div class="w3-container w3-padding-small">
+  <center><h1>A route was not found for this payment hash!</h1></center>
+</div>
+{% endif %}
 {% endblock %}

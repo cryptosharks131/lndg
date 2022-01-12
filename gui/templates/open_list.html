@@ -30,4 +30,9 @@
   </table>
 </div>
 {% endif %}
+{% if not open_list %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No potential peers can be calculated yet, try waiting until you have some payment data.</h1></center>
+</div>
+{% endif %}
 {% endblock %}
