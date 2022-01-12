@@ -12,6 +12,7 @@
       <th>Alias</th>
       <th>Channel ID</th>
       <th>Channel Capacity</th>
+      <th>PPM</th>
       <th>Cost To</th>
     </tr>
     {% for hop in route %}
@@ -22,6 +23,7 @@
       <td>{{ hop.alias }}</td>
       <td>{{ hop.chan_id }}</td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
+      <td>{{ hop.ppm }}</td>
       <td>{{ hop.cost_to }}</td>
     </tr>
     {% endfor %}

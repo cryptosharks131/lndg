@@ -169,9 +169,9 @@ def channels(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
         filter_30day = datetime.now() - timedelta(days=30)
-        forwards = Forwards.objects.all()
-        payments = Payments.objects.filter(status=2).filter(payment_hash__in=Invoices.objects.filter(state=1).values_list('r_hash'))
-        invoices = Invoices.objects.filter(state=1).filter(r_hash__in=payments.values_list('payment_hash'))
+        forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
+        payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_30day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).values_list('r_hash'))
+        invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).filter(r_hash__in=payments.values_list('payment_hash'))
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
         detailed_channels = []
         import time
@@ -230,7 +230,7 @@ def route(request):
         payment_hash = request.GET.urlencode()[1:]
         context = {
             'payment_hash': payment_hash,
-            'route': PaymentHops.objects.filter(payment_hash=payment_hash)
+            'route': PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=(Sum('fee')/Sum('amt'))*1000000)
         }
         return render(request, 'route.html', context)
     else:
