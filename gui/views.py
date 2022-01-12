@@ -167,15 +167,18 @@ def home(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def channels(request):
     if request.method == 'GET':
+        import time
+        start = time.time()
         filter_7day = datetime.now() - timedelta(days=7)
         filter_30day = datetime.now() - timedelta(days=30)
         forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
         payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_30day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).values_list('r_hash'))
         invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).filter(r_hash__in=payments.values_list('payment_hash'))
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
-        detailed_channels = []
-        import time
+        end = time.time()
+        initial_time = round(end-start, 2)
         start = time.time()
+        detailed_channels = []
         for channel in channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
@@ -215,10 +218,12 @@ def channels(request):
             detailed_channel['is_active'] = channel.is_active
             detailed_channels.append(detailed_channel)
         end = time.time()
+        loop_time = round(end-start, 2)
         context = {
             'channels': detailed_channels,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'timer': round(end-start, 2)
+            'initial_time': initial_time,
+            'loop_time': loop_time
         }
         return render(request, 'channels.html', context)
     else:
