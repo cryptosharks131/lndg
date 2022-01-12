@@ -170,8 +170,8 @@ def channels(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_30day = datetime.now() - timedelta(days=30)
         forwards = Forwards.objects.all()
-        payments = Payments.objects.filter(status=2)
-        invoices = Invoices.objects.filter(state=1)
+        payments = Payments.objects.filter(status=2).filter(payment_hash__in=Invoices.objects.filter(state=1).values_list('r_hash'))
+        invoices = Invoices.objects.filter(state=1).filter(r_hash__in=payments.values_list('payment_hash'))
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
         detailed_channels = []
         import time
