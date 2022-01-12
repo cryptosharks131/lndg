@@ -230,7 +230,7 @@ def route(request):
         payment_hash = request.GET.urlencode()[1:]
         context = {
             'payment_hash': payment_hash,
-            'route': PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=(Sum('fee')/Sum('amt'))*1000000)
+            'route': PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
         }
         return render(request, 'route.html', context)
     else:
