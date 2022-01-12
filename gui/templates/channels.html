@@ -11,12 +11,12 @@
         <th></th>
         <th></th>
         <th colspan="2">Local Fees</th>
-        <th colspan="2">7-Day Activity</th>
-        <th colspan="2">7-Day Rebals</th>
-        <th colspan="2">30-Day Routed</th>
-        <th colspan="2">30-Day Rebals</th>
-        <th colspan="2">Lifetime Routed</th>
-        <th colspan="2">Lifetime Rebals</th>
+        <th colspan="2">7-Day Activity (Routed | Rebalanced)</th>
+        <!-- <th colspan="2">7-Day Rebals</th> -->
+        <th colspan="2">30-Day Activity (Routed | Rebalanced)</th>
+        <!-- <th colspan="2">30-Day Rebals</th> -->
+        <!-- <th colspan="2">Lifetime Routed</th>
+        <th colspan="2">Lifetime Rebals</th> -->
         <th colspan="2">Peer Fees</th>
         <th colspan="2"> Channel Health</th>
       </tr>
@@ -28,16 +28,16 @@
         <th>oBase</th>
         <th>Out</th>
         <th>In</th>
+        <!-- <th>Out</th>
+        <th>In</th> -->
         <th>Out</th>
         <th>In</th>
-        <th>Out</th>
+        <!-- <th>Out</th>
+        <th>In</th> -->
+        <!-- <th>Out</th>
         <th>In</th>
         <th>Out</th>
-        <th>In</th>
-        <th>Out</th>
-        <th>In</th>
-        <th>Out</th>
-        <th>In</th>
+        <th>In</th> -->
         <th>iRate</th>
         <th>iBase</th>
         <th>Updates</th>
@@ -50,18 +50,18 @@
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_fee_rate|intcomma }}</td>
         <td>{{ channel.local_base_fee|intcomma }}</td>
-        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
-        <td>{{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
-        <td>{{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
-        <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }})</td>
-        <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }})</td>
-        <td>{{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
-        <td>{{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
-        <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
+        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
+        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
+        <!-- <td>{{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
+        <td>{{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td> -->
+        <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
+        <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
+        <!-- <td>{{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
+        <td>{{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td> -->
+        <!-- <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
         <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
         <td>{{ channel.amt_rebal_out|intcomma }} M ({{ channel.rebal_out }})</td>
-        <td>{{ channel.amt_rebal_in|intcomma }} M ({{ channel.rebal_in }})</td>
+        <td>{{ channel.amt_rebal_in|intcomma }} M ({{ channel.rebal_in }})</td> -->
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
         <td>{{ channel.remote_base_fee|intcomma }}</td>
         <td>{{ channel.num_updates|intcomma }}</td>
