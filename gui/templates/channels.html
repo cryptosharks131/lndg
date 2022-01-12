@@ -10,62 +10,48 @@
         <th></th>
         <th></th>
         <th></th>
-        <th colspan="2">Local Fees</th>
-        <th colspan="2">7-Day Activity (Routed | Rebalanced)</th>
-        <!-- <th colspan="2">7-Day Rebals</th> -->
-        <th colspan="2">30-Day Activity (Routed | Rebalanced)</th>
-        <!-- <th colspan="2">30-Day Rebals</th> -->
-        <!-- <th colspan="2">Lifetime Routed</th>
-        <th colspan="2">Lifetime Rebals</th> -->
-        <th colspan="2">Peer Fees</th>
-        <th colspan="2"> Channel Health</th>
+        <th colspan="3">7-Day Activity (Routed | Rebalanced)</th>
+        <th colspan="3">30-Day Activity (Routed | Rebalanced)</th>
+        <th colspan="2">Local/Outgoing Fees</th>
+        <th colspan="2">Remote/Incoming Fees</th>
+        <th colspan="3"> Channel Health</th>
       </tr>
       <tr>
         <th>Channel ID</th>
         <th>Peer Alias</th>
         <th>Capacity</th>
-        <th>oRate</th>
-        <th>oBase</th>
         <th>Out</th>
         <th>In</th>
-        <!-- <th>Out</th>
-        <th>In</th> -->
+        <th>Profit</th>
         <th>Out</th>
         <th>In</th>
-        <!-- <th>Out</th>
-        <th>In</th> -->
-        <!-- <th>Out</th>
-        <th>In</th>
-        <th>Out</th>
-        <th>In</th> -->
-        <th>iRate</th>
-        <th>iBase</th>
+        <th>Profit</th>
+        <th width=4%>Rate</th>
+        <th width=4%>Base</th>
+        <th width=4%>Rate</th>
+        <th width=4%>Base</th>
         <th>Updates</th>
         <th>Active</th>
+        <th>Self Open</th>
       </tr>
       {% for channel in channels %}
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.local_fee_rate|intcomma }}</td>
-        <td>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
-        <!-- <td>{{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
-        <td>{{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td> -->
+        <td>{{ channel.revenue_7day|intcomma }} - {{ channel.costs_7day|intcomma }} = {{ channel.profits_7day|intcomma }}</td>
         <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
         <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
-        <!-- <td>{{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
-        <td>{{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td> -->
-        <!-- <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
-        <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
-        <td>{{ channel.amt_rebal_out|intcomma }} M ({{ channel.rebal_out }})</td>
-        <td>{{ channel.amt_rebal_in|intcomma }} M ({{ channel.rebal_in }})</td> -->
+        <td>{{ channel.revenue_30day|intcomma }} - {{ channel.costs_30day|intcomma }} = {{ channel.profits_30day|intcomma }}</td>
+        <td>{{ channel.local_fee_rate|intcomma }}</td>
+        <td>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
         <td>{{ channel.remote_base_fee|intcomma }}</td>
         <td>{{ channel.num_updates|intcomma }}</td>
         <td>{{ channel.is_active }}</td>
+        <td>{{ channel.initiator }}</td>
       </tr>
       {% endfor %}
     </table>

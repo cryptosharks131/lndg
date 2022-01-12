@@ -181,9 +181,6 @@ def channels(request):
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
             detailed_channel['capacity'] = channel.capacity
-            detailed_channel['local_balance'] = channel.local_balance
-            detailed_channel['remote_balance'] = channel.remote_balance
-            detailed_channel['unsettled_balance'] = channel.unsettled_balance
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = channel.alias
             detailed_channel['local_base_fee'] = channel.local_base_fee
@@ -192,12 +189,6 @@ def channels(request):
             detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
-            detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
-            detailed_channel['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
-            detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
-            detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
-            detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/100000000)/10
-            detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
             detailed_channel['routed_in_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).count()
             detailed_channel['routed_out_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).count()
             detailed_channel['routed_in_30day'] = forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).count()
@@ -206,10 +197,6 @@ def channels(request):
             detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
             detailed_channel['amt_routed_in_30day'] = 0 if detailed_channel['routed_in_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/100000000)/10
             detailed_channel['amt_routed_out_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
-            # detailed_channel['rebal_in'] = invoices.filter(chan_in=channel.chan_id).count()
-            # detailed_channel['rebal_out'] = payments.filter(chan_out=channel.chan_id).count()
-            # detailed_channel['amt_rebal_in'] = 0 if detailed_channel['rebal_in'] == 0 else int(invoices.filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
-            # detailed_channel['amt_rebal_out'] = 0 if detailed_channel['rebal_out'] == 0 else int(payments.filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
             detailed_channel['rebal_in_30day'] = invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).count()
             detailed_channel['rebal_out_30day'] = payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).count()
             detailed_channel['amt_rebal_in_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
@@ -218,8 +205,12 @@ def channels(request):
             detailed_channel['rebal_out_7day'] = payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).count()
             detailed_channel['amt_rebal_in_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
             detailed_channel['amt_rebal_out_7day'] = 0 if detailed_channel['rebal_out_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['auto_rebalance'] = channel.auto_rebalance
-            detailed_channel['ar_target'] = channel.ar_target
+            detailed_channel['revenue_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
+            detailed_channel['revenue_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
+            detailed_channel['costs_7day'] = 0 if detailed_channel['rebal_out_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
+            detailed_channel['costs_30day'] = 0 if detailed_channel['rebal_out_30day'] == 0 else int(payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
+            detailed_channel['profits_7day'] = 0 if detailed_channel['revenue_7day'] == 0 else detailed_channel['revenue_7day'] - detailed_channel['costs_7day']
+            detailed_channel['profits_30day'] = 0 if detailed_channel['revenue_30day'] == 0 else detailed_channel['revenue_30day'] - detailed_channel['costs_30day']
             detailed_channel['num_updates'] = channel.num_updates
             detailed_channel['is_active'] = channel.is_active
             detailed_channels.append(detailed_channel)
