@@ -33,6 +33,7 @@
         <th>Updates</th>
         <th>Active</th>
         <th>Self Open</th>
+        <th>Open Block</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -52,6 +53,7 @@
         <td>{{ channel.num_updates|intcomma }}</td>
         <td>{{ channel.is_active }}</td>
         <td>{{ channel.initiator }}</td>
+        <td>{{ channel.open_block }}</td>
       </tr>
       {% endfor %}
     </table>

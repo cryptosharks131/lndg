@@ -16,6 +16,7 @@ from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
+from pandas import DataFrame
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
@@ -172,9 +173,34 @@ def channels(request):
         forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
         payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_30day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).values_list('r_hash'))
         invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).filter(r_hash__in=payments.values_list('payment_hash'))
-        channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
+        channels = Channels.objects.filter(is_open=True)
+        channels_df = DataFrame.from_records(channels.values())
+        forwards_df_30d = DataFrame.from_records(forwards.values())
+        forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
+        forwards_df_in_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_in', as_index=True).sum()
+        forwards_df_out_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).sum()
+        forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
+        forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+        forwards_df_in_30d_count = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_in', as_index=True).count()
+        forwards_df_out_30d_count = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).count()
+        forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
+        forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
+        payments_df_30d = DataFrame.from_records(payments.values())
+        payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
+        payments_df_30d_sum = DataFrame() if payments_df_30d.empty else payments_df_30d.groupby('chan_out', as_index=True).sum()
+        payments_df_7d_sum = DataFrame() if payments_df_7d.empty else payments_df_7d.groupby('chan_out', as_index=True).sum()
+        payments_df_30d_count = DataFrame() if payments_df_30d.empty else payments_df_30d.groupby('chan_out', as_index=True).count()
+        payments_df_7d_count = DataFrame() if payments_df_7d.empty else payments_df_7d.groupby('chan_out', as_index=True).count()
+        invoices_df_30d = DataFrame.from_records(invoices.values())
+        invoices_df_7d = DataFrame.from_records(invoices.filter(settle_date__gte=filter_7day).values())
+        invoices_df_30d_sum = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).sum()
+        invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum()
+        invoices_df_30d_count = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).count()
+        invoices_df_7d_count = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).count()
+        invoice_hashes_7d = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
+        invoice_hashes_30d = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
         detailed_channels = []
-        for channel in channels:
+        for channel in channels_df.itertuples():
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
@@ -189,28 +215,29 @@ def channels(request):
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['num_updates'] = channel.num_updates
             detailed_channel['is_active'] = channel.is_active
-            detailed_channel['routed_in_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).count()
-            detailed_channel['routed_out_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).count()
-            detailed_channel['routed_in_30day'] = forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).count()
-            detailed_channel['routed_out_30day'] = forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).count()
-            detailed_channel['amt_routed_in_7day'] = 0 if detailed_channel['routed_in_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/100000000)/10
-            detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
-            detailed_channel['amt_routed_in_30day'] = 0 if detailed_channel['routed_in_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/100000000)/10
-            detailed_channel['amt_routed_out_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/100000000)/10
-            detailed_channel['rebal_in_30day'] = invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).count()
-            detailed_channel['rebal_out_30day'] = payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).count()
-            detailed_channel['amt_rebal_in_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['amt_rebal_out_30day'] = 0 if detailed_channel['rebal_out_30day'] == 0 else int(payments.filter(creation_date__gte=filter_30day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['rebal_in_7day'] = invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).count()
-            detailed_channel['rebal_out_7day'] = payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).count()
-            detailed_channel['amt_rebal_in_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['amt_rebal_out_7day'] = 0 if detailed_channel['rebal_out_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(chan_out=channel.chan_id).aggregate(Sum('value'))['value__sum']/100000)/10
-            detailed_channel['revenue_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
-            detailed_channel['revenue_30day'] = 0 if detailed_channel['routed_out_30day'] == 0 else int(forwards.filter(forward_date__gte=filter_30day).filter(chan_id_out=channel.chan_id).aggregate(Sum('fee'))['fee__sum'])
-            detailed_channel['costs_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(payments.filter(creation_date__gte=filter_7day).filter(payment_hash__in=invoices.filter(settle_date__gte=filter_7day).filter(chan_in=channel.chan_id).values_list('r_hash')).aggregate(Sum('fee'))['fee__sum'])
-            detailed_channel['costs_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(payments.filter(creation_date__gte=filter_30day).filter(payment_hash__in=invoices.filter(settle_date__gte=filter_30day).filter(chan_in=channel.chan_id).values_list('r_hash')).aggregate(Sum('fee'))['fee__sum'])
+            detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_in_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_in_30day'] = forwards_df_in_30d_count.loc[channel.chan_id].amt_in_msat if (forwards_df_in_30d_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_out_30day'] = forwards_df_out_30d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_30d_count.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_in_30day'] = int(forwards_df_in_30d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_30d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_out_30day'] = int(forwards_df_out_30d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_30d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['rebal_in_30day'] = invoices_df_30d_count.loc[channel.chan_id].amt_paid if invoices_df_30d_count.empty == False and (invoices_df_30d_count.index == channel.chan_id).any() else 0
+            detailed_channel['rebal_out_30day'] = payments_df_30d_count.loc[channel.chan_id].value if payments_df_30d_count.empty == False and (payments_df_30d_count.index == channel.chan_id).any() else 0
+            detailed_channel['amt_rebal_in_30day'] = int(invoices_df_30d_sum.loc[channel.chan_id].amt_paid/100000)/10 if invoices_df_30d_count.empty == False and (invoices_df_30d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_rebal_out_30day'] = int(payments_df_30d_sum.loc[channel.chan_id].value/100000)/10 if payments_df_30d_count.empty == False and (payments_df_30d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['rebal_in_7day'] = invoices_df_7d_count.loc[channel.chan_id].amt_paid if invoices_df_7d_count.empty == False and (invoices_df_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['rebal_out_7day'] = payments_df_7d_count.loc[channel.chan_id].value if payments_df_7d_count.empty == False and (payments_df_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['amt_rebal_in_7day'] = int(invoices_df_7d_sum.loc[channel.chan_id].amt_paid/100000)/10 if invoices_df_7d_count.empty == False and (invoices_df_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_rebal_out_7day'] = int(payments_df_7d_sum.loc[channel.chan_id].value/100000)/10 if payments_df_7d_count.empty == False and (payments_df_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['revenue_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['revenue_30day'] = int(forwards_df_out_30d_sum.loc[channel.chan_id].fee) if forwards_df_out_30d_sum.empty == False and (forwards_df_out_30d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['costs_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[channel.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == channel.chan_id).any() else []]['fee'].sum()
+            detailed_channel['costs_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else payments_df_30d.set_index('payment_hash', inplace=False).loc[invoice_hashes_30d[channel.chan_id] if invoice_hashes_30d.empty == False and (invoice_hashes_30d.index == channel.chan_id).any() else []]['fee'].sum()
             detailed_channel['profits_7day'] = 0 if detailed_channel['revenue_7day'] == 0 else detailed_channel['revenue_7day'] - detailed_channel['costs_7day']
             detailed_channel['profits_30day'] = 0 if detailed_channel['revenue_30day'] == 0 else detailed_channel['revenue_30day'] - detailed_channel['costs_30day']
+            detailed_channel['open_block'] = channel.chan_id>>40
             detailed_channels.append(detailed_channel)
         context = {
             'channels': detailed_channels,
@@ -503,11 +530,11 @@ def rebalance(request):
         form = RebalancerForm(request.POST)
         if form.is_valid():
             try:
-                if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists():
+                if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() or form.cleaned_data['last_hop_pubkey'] == '':
                     chan_ids = []
                     for channel in form.cleaned_data['outgoing_chan_ids']:
                         chan_ids.append(channel.chan_id)
-                    target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else None
+                    target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
                     Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration']).save()
                     messages.success(request, 'Rebalancer request created!')
                 else:
@@ -517,7 +544,7 @@ def rebalance(request):
                 details_index = error.find('details =') + 11
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
-                messages.error(request, 'Error entering rebalancer request! Error: ' + error_msg)
+                messages.error(request, 'Error entering rebalancer request! Error: ' + error)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
