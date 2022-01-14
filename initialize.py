@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 BASE_DIR = Path(__file__).resolve().parent
 
-def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug):
+def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug, graphlinks, networklinks):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
@@ -45,6 +45,8 @@ ALLOWED_HOSTS = ['%s']
 LND_DIR_PATH = '%s'
 LND_NETWORK = '%s'
 LND_RPC_SERVER = '%s'
+GRAPH_LINKS = '%s'
+NETWORK_LINKS = '%s'
 
 # Application definition
 
@@ -151,7 +153,7 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, debug, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, wnl)
+''' % (secret, debug, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, graphlinks, networklinks, wnl)
     try:
         f = open("lndg/settings.py", "x")
         f.close()
@@ -248,6 +250,8 @@ def main():
     parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
     parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')
     parser.add_argument('-pw', '--adminpw', help = 'Setup a custom admin password', default=None)
+    parser.add_argument('-lnlinks', '--graphlinks', help = 'Use a custom lightning graph explorer link', default='https://1ml.com')
+    parser.add_argument('-netlinks', '--networklinks', help = 'Use a custom network explorer link', default='https://mempool.space')
     args = parser.parse_args()
     node_ip = args.nodeip
     lnd_dir_path = args.lnddir
@@ -259,10 +263,12 @@ def main():
     docker = args.docker
     debug = args.debug
     adminpw = args.adminpw
+    graphlinks = args.graphlinks
+    networklinks = args.networklinks
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug)
+    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug, graphlinks, networklinks)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)

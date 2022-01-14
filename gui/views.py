@@ -14,7 +14,7 @@ from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSetti
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
-from lndg.settings import LND_NETWORK, LND_DIR_PATH
+from lndg.settings import LND_NETWORK, LND_DIR_PATH, GRAPH_LINKS, NETWORK_LINKS
 from os import path
 from pandas import DataFrame
 
@@ -159,6 +159,8 @@ def home(request):
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': GRAPH_LINKS,
+            'network_links': NETWORK_LINKS,
             'db_size': db_size
         }
         return render(request, 'home.html', context)
@@ -243,7 +245,9 @@ def channels(request):
             detailed_channels.append(detailed_channel)
         context = {
             'channels': detailed_channels,
-            'network': 'testnet/' if LND_NETWORK == 'testnet' else ''
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': GRAPH_LINKS,
+            'network_links': NETWORK_LINKS
         }
         return render(request, 'channels.html', context)
     else:
