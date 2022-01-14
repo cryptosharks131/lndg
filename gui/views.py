@@ -204,7 +204,7 @@ def channels(request):
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
-            detailed_channel['capacity'] = round(channel.capacity, 1)
+            detailed_channel['capacity'] = round(channel.capacity/1000, 1)
             detailed_channel['initiator'] = channel.initiator
             detailed_channel['alias'] = channel.alias
             detailed_channel['local_base_fee'] = channel.local_base_fee
