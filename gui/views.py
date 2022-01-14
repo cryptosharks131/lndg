@@ -32,37 +32,54 @@ def home(request):
         pending_force_closed = pending_channels.pending_force_closing_channels
         waiting_for_close = pending_channels.waiting_close_channels
         #Get recorded payment events
-        payments = Payments.objects.exclude(status=3).order_by('-creation_date')
-        total_payments = payments.filter(status=2).count()
-        total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
-        total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
+        payments = Payments.objects.exclude(status=3).filter(status=2).order_by('-creation_date')
+        payments_df = DataFrame.from_records(payments.values())
+        #payments_df_sum = DataFrame() if payments_df.empty else payments_df.groupby('chan_out', as_index=True).sum()
+        total_payments = payments_df.shape[0]
+        total_sent = 0 if total_payments == 0 else payments_df['value'].sum()
+        total_fees = 0 if total_payments == 0 else payments_df['fee'].sum()
         #Get recorded invoice details
-        invoices = Invoices.objects.exclude(state=2).order_by('-creation_date')
-        total_invoices = invoices.filter(state=1).count()
-        total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
+        invoices = Invoices.objects.exclude(state=2).filter(state=1).order_by('-creation_date')
+        invoices_df = DataFrame.from_records(invoices.values())
+        total_invoices = invoices_df.shape[0]
+        total_received = 0 if total_invoices == 0 else invoices_df['amt_paid'].sum()
         #Get recorded forwarding events
         forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
-        total_forwards = forwards.count()
-        total_value_forwards = 0 if total_forwards == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
-        total_earned = 0 if total_forwards == 0 else forwards.aggregate(Sum('fee'))['fee__sum']
+        forwards_df = DataFrame.from_records(forwards.values())
+        total_forwards = forwards_df.shape[0]
+        total_value_forwards = 0 if total_forwards == 0 else int(forwards_df['amt_out_msat'].sum()/1000)
+        total_earned = 0 if total_forwards == 0 else forwards_df['fee'].sum()
+        forwards_df_in_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).sum()
+        forwards_df_out_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).sum()
+        forwards_df_in_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).count()
+        forwards_df_out_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).count()
         #Get current active channels
         active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('outbound_percent')
-        total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
-        total_inbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
-        total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-        total_unsettled = 0 if total_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
-        detailed_active_channels = []
+        active_channels_df = DataFrame.from_records(active_channels.values())
+        total_capacity = 0 if active_channels_df.shape[0] == 0 else active_channels_df['capacity'].sum()
+        total_inbound = 0 if total_capacity == 0 else active_channels_df['remote_balance'].sum()
+        total_outbound = 0 if total_capacity == 0 else active_channels_df['local_balance'].sum()
+        total_unsettled = 0 if total_capacity == 0 else active_channels_df['unsettled_balance'].sum()
         filter_7day = datetime.now() - timedelta(days=7)
-        routed_7day = forwards.filter(forward_date__gte=filter_7day).count()
-        routed_7day_amt = 0 if routed_7day == 0 else int(forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
-        total_earned_7day = 0 if routed_7day == 0 else forwards.filter(forward_date__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
-        payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
-        payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
-        total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
+        forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
+        forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
+        forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+        forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
+        forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
+        routed_7day = forwards_df_7d.shape[0]
+        routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
+        total_earned_7day = 0 if routed_7day == 0 else forwards_df_7d['fee'].sum()
+        payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
+        payments_7day_amt = 0 if payments_df_7d.shape[0] == 0 else payments_df_7d['value'].sum()
+        total_7day_fees = 0 if payments_df_7d.shape[0] == 0 else payments_df_7d['fee'].sum()
         pending_htlcs = PendingHTLCs.objects.all()
-        pending_htlc_count = pending_htlcs.count()
-        pending_outbound = 0 if pending_htlcs.filter(incoming=False).count() == 0 else pending_htlcs.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
-        for channel in active_channels:
+        pending_htlcs_df = DataFrame.from_records(pending_htlcs.values())
+        pending_htlcs_out_df = DataFrame.from_records(pending_htlcs.filter(incoming=False).values())
+        pending_htlcs_df_count = DataFrame() if pending_htlcs_df.empty else pending_htlcs_df.groupby('chan_id', as_index=True).count()
+        pending_htlc_count = pending_htlcs_df.shape[0]
+        pending_outbound = 0 if pending_htlcs_out_df.shape[0] == 0 else pending_htlcs_out_df['amount'].sum()
+        detailed_active_channels = []
+        for channel in active_channels_df.itertuples():
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
@@ -80,25 +97,28 @@ def home(request):
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
             detailed_channel['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
-            detailed_channel['routed_in'] = forwards.filter(chan_id_in=channel.chan_id).count()
-            detailed_channel['routed_out'] = forwards.filter(chan_id_out=channel.chan_id).count()
-            detailed_channel['amt_routed_in'] = 0 if detailed_channel['routed_in'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
-            detailed_channel['amt_routed_out'] = 0 if detailed_channel['routed_out'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
-            detailed_channel['routed_in_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).count()
-            detailed_channel['routed_out_7day'] = forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).count()
-            detailed_channel['amt_routed_in_7day'] = 0 if detailed_channel['routed_in_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
-            detailed_channel['amt_routed_out_7day'] = 0 if detailed_channel['routed_out_7day'] == 0 else int(forwards.filter(forward_date__gte=filter_7day).filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
-            detailed_channel['htlc_count'] = pending_htlcs.filter(chan_id=channel.chan_id).count()
+            detailed_channel['routed_in'] = forwards_df_in_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_out'] = forwards_df_out_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_count.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_in'] = int(forwards_df_in_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_out'] = int(forwards_df_out_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_sum.index == channel.chan_id).any() else 0
+            detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
+            detailed_channel['htlc_count'] = pending_htlcs_df_count.loc[channel.chan_id].amount if (pending_htlcs_df_count.index == channel.chan_id).any() else 0
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_channel['ar_target'] = channel.ar_target
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
-        inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+        inactive_channels_df = DataFrame.from_records(inactive_channels.values())
+        inactive_outbound = 0 if inactive_channels_df.shape[0] else inactive_channels_df['local_balance'].sum()
         sum_outbound = total_outbound + pending_outbound + inactive_outbound
         onchain_txs = Onchain.objects.all()
-        onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
-        onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+        onchain_txs_df = DataFrame.from_records(onchain_txs.values())
+        onchain_costs = 0 if onchain_txs_df.shape[0] == 0 else onchain_txs_df['fee'].sum()
+        onchain_txs_7d_df = DataFrame.from_records(onchain_txs.filter(time_stamp__gte=filter_7day).values())
+        onchain_costs_7day = 0 if onchain_txs_7d_df.shape[0] == 0 else onchain_txs_7d_df['fee'].sum()
         total_costs = total_fees + onchain_costs
         total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
@@ -217,9 +237,9 @@ def channels(request):
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['num_updates'] = channel.num_updates
             detailed_channel['is_active'] = channel.is_active
-            detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_in_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
             detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['routed_in_30day'] = forwards_df_in_30d_count.loc[channel.chan_id].amt_in_msat if (forwards_df_in_30d_count.index == channel.chan_id).any() else 0
+            detailed_channel['routed_in_30day'] = forwards_df_in_30d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_30d_count.index == channel.chan_id).any() else 0
             detailed_channel['routed_out_30day'] = forwards_df_out_30d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_30d_count.index == channel.chan_id).any() else 0
             detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
             detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
