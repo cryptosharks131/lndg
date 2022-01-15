@@ -9,10 +9,25 @@ Start by choosing one of the following installation methods:
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
 3. Initialize db and admin backup `touch db.sqlite3 && touch lndg-admin.txt`
-4. Update `docker-compose.yaml` if you are a non-root user and then build/deploy your docker image: `docker-compose up -d`
-5. LNDg should now be available on port `8889`
-6. Open and copy the password from output file: `nano lndg-admin.txt`
-7. Use the password from the output file and the username `lndg-admin` to login
+5. Copy and replace the contents (adjust custom volume paths to LND and LNDg folders) of the `docker-compose.yaml` with the below: `nano docker-compose.yaml`
+```
+services:
+  lndg:
+    build: .
+    volumes:
+      - /home/<user>/.lnd:/root/.lnd:ro
+      - /home/<user>/<path-to>/lndg/db.sqlite3:/lndg/db.sqlite3:rw
+      - /home/<user>/<path-to/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:rw
+    command:
+      - sh
+      - -c
+      - python initialize.py -net 'mainnet' -server '127.0.0.1:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8889
+    network_mode: "host"
+```
+5. Deploy your docker image: `docker-compose up -d`
+6. LNDg should now be available on port `http://localhost:8889`
+7. Open and copy the password from output file: `nano lndg-admin.txt`
+8. Use the password from the output file and the username `lndg-admin` to login
 
 ### Updating
 ```
@@ -27,7 +42,7 @@ docker-compose up -d
 2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 3. Change directory `cd lndg`
 4. Initialize db and admin backup `touch db.sqlite3 && touch lndg-admin.txt`
-5. Copy and replace the contents of the docker-compose.yaml with the below: `nano docker-compose.yaml`
+5. Copy and replace the contents of the `docker-compose.yaml` with the below: `nano docker-compose.yaml`
 ```
 services:
   lndg:
