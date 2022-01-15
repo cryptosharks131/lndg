@@ -9,7 +9,7 @@ Start by choosing one of the following installation methods:
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
 3. Initialize db and admin backup `touch db.sqlite3 && touch lndg-admin.txt`
-5. Copy and replace the contents (adjust custom volume paths to LND and LNDg folders) of the `docker-compose.yaml` with the below: `nano docker-compose.yaml`
+4. Copy and replace the contents (adjust custom volume paths to LND and LNDg folders) of the `docker-compose.yaml` with the below: `nano docker-compose.yaml`
 ```
 services:
   lndg:
