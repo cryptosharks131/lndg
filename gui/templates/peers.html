@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %} {{ block.super }} - Peers{% endblock %}
 {% block content %}
 {% load humanize %}
 {% if peers %}
@@ -14,7 +15,7 @@
     </tr>
     {% for peer in peers %}
     <tr>
-      <td><a href="https://1ml.com/node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
+      <td><a href="{{ graph_links }}/{{ network }}node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
       <td>{{ peer.address }}</td>
       <td>{{ peer.inbound }}</td>
       <td>{{ peer.sat_sent|intcomma }}</td>

@@ -82,6 +82,24 @@ class Channels(models.Model):
     ar_amt_target = models.BigIntegerField(default=100000)
     ar_in_target = models.IntegerField(default=100)
     ar_out_target = models.IntegerField(default=75)
+
+    def save(self, *args, **kwargs):
+        if not self.ar_out_target:
+            if LocalSettings.objects.filter(key='AR-Outbound%').exists():
+                outbound_setting = float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
+            else:
+                LocalSettings(key='AR-Outbound%', value='0.75').save()
+                outbound_setting = 0.75
+            self.ar_out_target = int(outbound_setting * 100)
+        if not self.ar_amt_target:
+            if LocalSettings.objects.filter(key='AR-Target%').exists():
+                amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+            else:
+                LocalSettings(key='AR-Target%', value='0.05').save()
+                amt_setting = 0.05
+            self.ar_amt_target = int(amt_setting * self.capacity)
+        super(Channels, self).save(*args, **kwargs)
+
     class Meta:
         app_label = 'gui'
 

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %} {{ block.super }} - Channels{% endblock %}
 {% block content %}
 {% load humanize %}
 {% if channels %}
@@ -21,10 +22,10 @@
         <th>Peer Alias</th>
         <th width=1%>Capacity</th>
         <th>Out</th>
-        <th>Revenue (Out | In)</th>
+        <th>Revenue ( Out [Profit] | In )</th>
         <th>In</th>
         <th>Out</th>
-        <th>Revenue (Out | In)</th>
+        <th>Revenue ( Out [Profit] | In )</th>
         <th>In</th>
         <th width=1%>Rate</th>
         <th width=1%>Base</th>
@@ -35,14 +36,14 @@
       </tr>
       {% for channel in channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity }} M</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
-        <td>{{ channel.revenue_7day|intcomma }} ({{ channel.profits_7day|intcomma }}) | {{ channel.revenue_assist_7day|intcomma }}</td>
+        <td>{{ channel.revenue_7day|intcomma }} [{{ channel.profits_7day|intcomma }}] | {{ channel.revenue_assist_7day|intcomma }}</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
         <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
-        <td>{{ channel.revenue_30day|intcomma }} ({{ channel.profits_30day|intcomma }}) | {{ channel.revenue_assist_30day|intcomma }}</td>
+        <td>{{ channel.revenue_30day|intcomma }} [{{ channel.profits_30day|intcomma }}] | {{ channel.revenue_assist_30day|intcomma }}</td>
         <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
         <td>{{ channel.local_fee_rate|intcomma }}</td>
         <td>{{ channel.local_base_fee|intcomma }}</td>

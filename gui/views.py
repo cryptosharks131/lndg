@@ -211,50 +211,34 @@ def channels(request):
         invoices_df_7d_count = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).count()
         invoice_hashes_7d = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
         invoice_hashes_30d = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
-        detailed_channels = []
-        for channel in channels_df.itertuples():
-            detailed_channel = {}
-            detailed_channel['remote_pubkey'] = channel.remote_pubkey
-            detailed_channel['chan_id'] = channel.chan_id
-            detailed_channel['capacity'] = round(channel.capacity/1000000, 1)
-            detailed_channel['initiator'] = channel.initiator
-            detailed_channel['alias'] = channel.alias
-            detailed_channel['local_base_fee'] = channel.local_base_fee
-            detailed_channel['local_fee_rate'] = channel.local_fee_rate
-            detailed_channel['remote_base_fee'] = channel.remote_base_fee
-            detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
-            detailed_channel['funding_txid'] = channel.funding_txid
-            detailed_channel['output_index'] = channel.output_index
-            detailed_channel['num_updates'] = channel.num_updates
-            detailed_channel['is_active'] = channel.is_active
-            detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['routed_in_30day'] = forwards_df_in_30d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_30d_count.index == channel.chan_id).any() else 0
-            detailed_channel['routed_out_30day'] = forwards_df_out_30d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_30d_count.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_in_30day'] = int(forwards_df_in_30d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_30d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_out_30day'] = int(forwards_df_out_30d_sum.loc[channel.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_30d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['rebal_in_30day'] = invoices_df_30d_count.loc[channel.chan_id].amt_paid if invoices_df_30d_count.empty == False and (invoices_df_30d_count.index == channel.chan_id).any() else 0
-            detailed_channel['rebal_out_30day'] = payments_df_30d_count.loc[channel.chan_id].value if payments_df_30d_count.empty == False and (payments_df_30d_count.index == channel.chan_id).any() else 0
-            detailed_channel['amt_rebal_in_30day'] = int(invoices_df_30d_sum.loc[channel.chan_id].amt_paid/100000)/10 if invoices_df_30d_count.empty == False and (invoices_df_30d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_rebal_out_30day'] = int(payments_df_30d_sum.loc[channel.chan_id].value/100000)/10 if payments_df_30d_count.empty == False and (payments_df_30d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['rebal_in_7day'] = invoices_df_7d_count.loc[channel.chan_id].amt_paid if invoices_df_7d_count.empty == False and (invoices_df_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['rebal_out_7day'] = payments_df_7d_count.loc[channel.chan_id].value if payments_df_7d_count.empty == False and (payments_df_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['amt_rebal_in_7day'] = int(invoices_df_7d_sum.loc[channel.chan_id].amt_paid/100000)/10 if invoices_df_7d_count.empty == False and (invoices_df_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_rebal_out_7day'] = int(payments_df_7d_sum.loc[channel.chan_id].value/100000)/10 if payments_df_7d_count.empty == False and (payments_df_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['revenue_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['revenue_30day'] = int(forwards_df_out_30d_sum.loc[channel.chan_id].fee) if forwards_df_out_30d_sum.empty == False and (forwards_df_out_30d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['revenue_assist_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['revenue_assist_30day'] = int(forwards_df_in_30d_sum.loc[channel.chan_id].fee) if forwards_df_in_30d_sum.empty == False and (forwards_df_in_30d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['costs_7day'] = 0 if detailed_channel['rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[channel.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == channel.chan_id).any() else []]['fee'].sum())
-            detailed_channel['costs_30day'] = 0 if detailed_channel['rebal_in_30day'] == 0 else int(payments_df_30d.set_index('payment_hash', inplace=False).loc[invoice_hashes_30d[channel.chan_id] if invoice_hashes_30d.empty == False and (invoice_hashes_30d.index == channel.chan_id).any() else []]['fee'].sum())
-            detailed_channel['profits_7day'] = 0 if detailed_channel['revenue_7day'] == 0 else detailed_channel['revenue_7day'] - detailed_channel['costs_7day']
-            detailed_channel['profits_30day'] = 0 if detailed_channel['revenue_30day'] == 0 else detailed_channel['revenue_30day'] - detailed_channel['costs_30day']
-            detailed_channel['open_block'] = channel.chan_id>>40
-            detailed_channels.append(detailed_channel)
+        channels_df['capacity'] = channels_df.apply(lambda row: round(row.capacity/1000000, 1), axis=1)
+        channels_df['routed_in_7day'] = channels_df.apply(lambda row: forwards_df_in_7d_count.loc[row.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['routed_out_7day'] = channels_df.apply(lambda row: forwards_df_out_7d_count.loc[row.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['routed_in_30day'] = channels_df.apply(lambda row: forwards_df_in_30d_count.loc[row.chan_id].amt_out_msat if (forwards_df_in_30d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['routed_out_30day'] = channels_df.apply(lambda row: forwards_df_out_30d_count.loc[row.chan_id].amt_out_msat if (forwards_df_out_30d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_routed_in_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_routed_out_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_routed_in_30day'] = channels_df.apply(lambda row: int(forwards_df_in_30d_sum.loc[row.chan_id].amt_out_msat/100000000)/10 if (forwards_df_in_30d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_routed_out_30day'] = channels_df.apply(lambda row: int(forwards_df_out_30d_sum.loc[row.chan_id].amt_out_msat/100000000)/10 if (forwards_df_out_30d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['rebal_in_30day'] = channels_df.apply(lambda row: invoices_df_30d_count.loc[row.chan_id].amt_paid if invoices_df_30d_count.empty == False and (invoices_df_30d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['rebal_out_30day'] = channels_df.apply(lambda row: payments_df_30d_count.loc[row.chan_id].value if payments_df_30d_count.empty == False and (payments_df_30d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_rebal_in_30day'] = channels_df.apply(lambda row: int(invoices_df_30d_sum.loc[row.chan_id].amt_paid/100000)/10 if invoices_df_30d_count.empty == False and (invoices_df_30d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_rebal_out_30day'] = channels_df.apply(lambda row: int(payments_df_30d_sum.loc[row.chan_id].value/100000)/10 if payments_df_30d_count.empty == False and (payments_df_30d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['rebal_in_7day'] = channels_df.apply(lambda row: invoices_df_7d_count.loc[row.chan_id].amt_paid if invoices_df_7d_count.empty == False and (invoices_df_7d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['rebal_out_7day'] = channels_df.apply(lambda row: payments_df_7d_count.loc[row.chan_id].value if payments_df_7d_count.empty == False and (payments_df_7d_count.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid/100000)/10 if invoices_df_7d_count.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_rebal_out_7day'] = channels_df.apply(lambda row: int(payments_df_7d_sum.loc[row.chan_id].value/100000)/10 if payments_df_7d_count.empty == False and (payments_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['revenue_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['revenue_30day'] = channels_df.apply(lambda row: int(forwards_df_out_30d_sum.loc[row.chan_id].fee) if forwards_df_out_30d_sum.empty == False and (forwards_df_out_30d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['revenue_assist_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['revenue_assist_30day'] = channels_df.apply(lambda row: int(forwards_df_in_30d_sum.loc[row.chan_id].fee) if forwards_df_in_30d_sum.empty == False and (forwards_df_in_30d_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
+        channels_df['costs_30day'] = channels_df.apply(lambda row: 0 if row['rebal_in_30day'] == 0 else int(payments_df_30d.set_index('payment_hash', inplace=False).loc[invoice_hashes_30d[row.chan_id] if invoice_hashes_30d.empty == False and (invoice_hashes_30d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
+        channels_df['profits_7day'] = channels_df.apply(lambda row: 0 if row['revenue_7day'] == 0 else row['revenue_7day'] - row['costs_7day'], axis=1)
+        channels_df['profits_30day'] = channels_df.apply(lambda row: 0 if row['revenue_30day'] == 0 else row['revenue_30day'] - row['costs_30day'], axis=1)
+        channels_df['open_block'] = channels_df.apply(lambda row: row.chan_id>>40, axis=1)
         context = {
-            'channels': detailed_channels,
+            'channels': channels_df.to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': GRAPH_LINKS,
             'network_links': NETWORK_LINKS
@@ -266,9 +250,15 @@ def channels(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def advanced(request):
     if request.method == 'GET':
-        channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
+        channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
+        channels_df = DataFrame.from_records(channels.values())
+        channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
+        channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
         context = {
-            'channels': channels
+            'channels': channels_df.to_dict(orient='records'),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': GRAPH_LINKS,
+            'network_links': NETWORK_LINKS
         }
         return render(request, 'advanced.html', context)
     else:
@@ -290,7 +280,9 @@ def route(request):
 def peers(request):
     if request.method == 'GET':
         context = {
-            'peers': Peers.objects.filter(connected=True)
+            'peers': Peers.objects.filter(connected=True),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': GRAPH_LINKS
         }
         return render(request, 'peers.html', context)
     else:
@@ -302,7 +294,9 @@ def balances(request):
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         context = {
             'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
-            'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height'))
+            'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'network_links': NETWORK_LINKS
         }
         return render(request, 'balances.html', context)
     else:
@@ -318,7 +312,9 @@ def suggested_opens(request):
         payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
         open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).order_by('-score', 'ppm')[:21]
         context = {
-            'open_list': open_list
+            'open_list': open_list,
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': GRAPH_LINKS
         }
         return render(request, 'open_list.html', context)
     else:
@@ -376,7 +372,10 @@ def suggested_actions(request):
             if len(result) > 0:
                 action_list.append(result) 
         context = {
-            'action_list': action_list
+            'action_list': action_list,
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': GRAPH_LINKS,
+            'network_links': NETWORK_LINKS
         }
         return render(request, 'action_list.html', context)
     else:

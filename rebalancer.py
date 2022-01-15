@@ -86,20 +86,14 @@ def auto_schedule():
     if enabled == 1:
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target'))
         if len(auto_rebalance_channels) > 0:
-            # if LocalSettings.objects.filter(key='AR-Outbound%').exists():
-            #     outbound_percent = int(float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) * 100)
-            # else:
-            #     LocalSettings(key='AR-Outbound%', value='0.75').save()
-            #     outbound_percent = 0.75 * 100
+            if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
+                LocalSettings(key='AR-Outbound%', value='0.75').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
             print(outbound_cans)
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
-                # if LocalSettings.objects.filter(key='AR-Target%').exists():
-                #     target_percent = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
-                # else:
-                #     LocalSettings(key='AR-Target%', value='0.05').save()
-                #     target_percent = 0.05
+                if not LocalSettings.objects.filter(key='AR-Target%').exists():
+                    LocalSettings(key='AR-Target%', value='0.05').save()
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
                 else:
