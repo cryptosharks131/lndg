@@ -69,11 +69,8 @@ def home(request):
         payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
         total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
         pending_htlcs = PendingHTLCs.objects.all()
-        pending_htlcs_df = DataFrame.from_records(pending_htlcs.values())
-        pending_htlcs_out_df = DataFrame.from_records(pending_htlcs.filter(incoming=False).values())
-        pending_htlcs_df_count = DataFrame() if pending_htlcs_df.empty else pending_htlcs_df.groupby('chan_id', as_index=True).count()
-        pending_htlc_count = pending_htlcs_df.shape[0]
-        pending_outbound = 0 if pending_htlcs_out_df.shape[0] == 0 else pending_htlcs_out_df['amount'].sum()
+        pending_htlc_count = pending_htlcs.count()
+        pending_outbound = 0 if pending_htlcs.filter(incoming=False).count() == 0 else pending_htlcs.filter(incoming=False).aggregate(Sum('amount'))['amount__sum']
         detailed_active_channels = []
         for channel in active_channels:
             detailed_channel = {}
@@ -101,7 +98,7 @@ def home(request):
             detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
             detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
             detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['htlc_count'] = pending_htlcs_df_count.loc[channel.chan_id].amount if (pending_htlcs_df_count.index == channel.chan_id).any() else 0
+            detailed_channel['htlc_count'] = pending_htlcs.filter(chan_id=channel.chan_id).count()
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
             detailed_channel['ar_target'] = channel.ar_target
             detailed_active_channels.append(detailed_channel)
