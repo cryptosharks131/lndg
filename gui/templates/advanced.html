@@ -3,7 +3,7 @@
 {% load humanize %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
-  <h2>Channels List</h2>
+  <h2>Advanced Channel Settings</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
@@ -21,6 +21,7 @@
         <th>oTarget%</th>
         <th>iTarget%</th>
         <th>AR</th>
+        <th>Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -87,6 +88,7 @@
             </form>
           {% endif %}
         </td>
+        <td>{{ channel.is_active }}</td>
       </tr>
       {% endfor %}
     </table>
