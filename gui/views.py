@@ -32,17 +32,14 @@ def home(request):
         pending_force_closed = pending_channels.pending_force_closing_channels
         waiting_for_close = pending_channels.waiting_close_channels
         #Get recorded payment events
-        payments = Payments.objects.exclude(status=3).filter(status=2).order_by('-creation_date')
-        payments_df = DataFrame.from_records(payments.values())
-        #payments_df_sum = DataFrame() if payments_df.empty else payments_df.groupby('chan_out', as_index=True).sum()
-        total_payments = payments_df.shape[0]
-        total_sent = 0 if total_payments == 0 else payments_df['value'].sum()
-        total_fees = 0 if total_payments == 0 else payments_df['fee'].sum()
+        payments = Payments.objects.exclude(status=3).order_by('-creation_date')
+        total_payments = payments.filter(status=2).count()
+        total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
+        total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
         #Get recorded invoice details
-        invoices = Invoices.objects.exclude(state=2).filter(state=1).order_by('-creation_date')
-        invoices_df = DataFrame.from_records(invoices.values())
-        total_invoices = invoices_df.shape[0]
-        total_received = 0 if total_invoices == 0 else invoices_df['amt_paid'].sum()
+        invoices = Invoices.objects.exclude(state=2).order_by('-creation_date')
+        total_invoices = invoices.filter(state=1).count()
+        total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
         forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
         forwards_df = DataFrame.from_records(forwards.values())
@@ -69,9 +66,9 @@ def home(request):
         routed_7day = forwards_df_7d.shape[0]
         routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
         total_earned_7day = 0 if routed_7day == 0 else forwards_df_7d['fee'].sum()
-        payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
-        payments_7day_amt = 0 if payments_df_7d.shape[0] == 0 else payments_df_7d['value'].sum()
-        total_7day_fees = 0 if payments_df_7d.shape[0] == 0 else payments_df_7d['fee'].sum()
+        payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
+        payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
+        total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
         pending_htlcs = PendingHTLCs.objects.all()
         pending_htlcs_df = DataFrame.from_records(pending_htlcs.values())
         pending_htlcs_out_df = DataFrame.from_records(pending_htlcs.filter(incoming=False).values())
@@ -111,14 +108,11 @@ def home(request):
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
-        inactive_channels_df = DataFrame.from_records(inactive_channels.values())
-        inactive_outbound = 0 if inactive_channels_df.shape[0] else inactive_channels_df['local_balance'].sum()
+        inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         sum_outbound = total_outbound + pending_outbound + inactive_outbound
         onchain_txs = Onchain.objects.all()
-        onchain_txs_df = DataFrame.from_records(onchain_txs.values())
-        onchain_costs = 0 if onchain_txs_df.shape[0] == 0 else onchain_txs_df['fee'].sum()
-        onchain_txs_7d_df = DataFrame.from_records(onchain_txs.filter(time_stamp__gte=filter_7day).values())
-        onchain_costs_7day = 0 if onchain_txs_7d_df.shape[0] == 0 else onchain_txs_7d_df['fee'].sum()
+        onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
+        onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
         total_costs = total_fees + onchain_costs
         total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
@@ -134,11 +128,11 @@ def home(request):
             'node_info': node_info,
             'total_channels': total_channels,
             'balances': balances,
-            'payments': payments_df.head(6).to_dict(orient='records'),
+            'payments': payments[:6],
             'total_sent': int(total_sent),
             'fees_paid': int(total_fees),
             'total_payments': total_payments,
-            'invoices': invoices_df.head(6).to_dict(orient='records'),
+            'invoices': invoices[:6],
             'total_received': total_received,
             'total_invoices': total_invoices,
             'forwards': forwards_df.head(15).to_dict(orient='records'),
@@ -162,7 +156,7 @@ def home(request):
             'outbound': total_outbound,
             'unsettled': total_unsettled,
             'limbo_balance': limbo_balance,
-            'inactive_channels': inactive_channels_df.to_dict(orient='records'),
+            'inactive_channels': inactive_channels,
             'pending_open': pending_open,
             'pending_closed': pending_closed,
             'pending_force_closed': pending_force_closed,
