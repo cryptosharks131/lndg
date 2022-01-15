@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count
+from django.db.models import Sum, IntegerField, Count, F
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, ARTarget
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, UpdateTarget
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs, Autopilot
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
@@ -100,7 +100,7 @@ def home(request):
             detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
             detailed_channel['htlc_count'] = pending_htlcs.filter(chan_id=channel.chan_id).count()
             detailed_channel['auto_rebalance'] = channel.auto_rebalance
-            detailed_channel['ar_target'] = channel.ar_target
+            detailed_channel['ar_in_target'] = channel.ar_in_target
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
         inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
@@ -264,6 +264,17 @@ def channels(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def advanced(request):
+    if request.method == 'GET':
+        channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
+        context = {
+            'channels': channels
+        }
+        return render(request, 'advanced.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def route(request):
     if request.method == 'GET':
         payment_hash = request.GET.urlencode()[1:]
@@ -339,7 +350,7 @@ def suggested_actions(request):
             result['i7D'] = 0 if result['routed_in_7day'] == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
             result['o7D'] = 0 if result['routed_out_7day'] == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
             result['auto_rebalance'] = channel.auto_rebalance
-            result['ar_target'] = channel.ar_target
+            result['ar_target'] = channel.ar_in_target
             if result['o7D'] > (result['i7D']*1.10) and result['outbound_percent'] > 75:
                 print('Case 1: Pass')
                 continue
@@ -560,7 +571,7 @@ def rebalance(request):
                 details_index = error.find('details =') + 11
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
-                messages.error(request, 'Error entering rebalancer request! Error: ' + error)
+                messages.error(request, 'Error entering rebalancer request! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -620,7 +631,8 @@ def auto_rebalance(request):
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
-                messages.success(request, 'Updated auto rebalancer rebalance target percent setting to: ' + str(target_percent))
+                Channels.objects.all().update(ar_amt_target=(F('capacity')*target_percent))
+                messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
             if form.cleaned_data['target_time'] is not None:
                 target_time = form.cleaned_data['target_time']
                 try:
@@ -650,7 +662,8 @@ def auto_rebalance(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                messages.success(request, 'Updated auto rebalancer target outbound percent setting to: ' + str(outbound_percent))
+                Channels.objects.all().update(ar_out_target=(outbound_percent*100))
+                messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
                 try:
@@ -673,22 +686,53 @@ def auto_rebalance(request):
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-    return redirect('home')
+    return redirect(request.META.get('HTTP_REFERER'))
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def ar_target(request):
+def update_target(request):
     if request.method == 'POST':
-        form = ARTarget(request.POST)
+        form = UpdateTarget(request.POST)
         if form.is_valid() and Channels.objects.filter(chan_id=form.cleaned_data['chan_id']).exists():
             chan_id = form.cleaned_data['chan_id']
-            target = form.cleaned_data['ar_target']
+            target = form.cleaned_data['target']
+            update_target = int(form.cleaned_data['update_target'])
             db_channel = Channels.objects.filter(chan_id=chan_id)[0]
-            db_channel.ar_target = target
-            db_channel.save()
-            messages.success(request, 'Auto rebalancer inbound target for channel ' + str(chan_id) + ' updated to a value of: ' + str(target) + '%')
+            print(update_target)
+            if update_target == 0:
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=40))
+                db_channel.local_base_fee = target
+                db_channel.save()
+                messages.success(request, 'Channel policy updated! This will be broadcast during the next graph update!')
+            elif update_target == 1:
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
+                db_channel.local_fee_rate = target
+                db_channel.save()
+                messages.success(request, 'Channel policy updated! This will be broadcast during the next graph update!')
+            elif update_target == 2:
+                db_channel.ar_amt_target = target
+                db_channel.save()
+                messages.success(request, 'Auto rebalancer amount target for channel ' + str(chan_id) + ' updated to a value of: ' + str(target))
+            elif update_target == 3:
+                db_channel.ar_in_target = target
+                db_channel.save()
+                messages.success(request, 'Auto rebalancer inbound target for channel ' + str(chan_id) + ' updated to a value of: ' + str(target) + '%')
+            elif update_target == 4:
+                db_channel.ar_out_target = target
+                db_channel.save()
+                messages.success(request, 'Auto rebalancer outbound target for channel ' + str(chan_id) + ' updated to a value of: ' + str(target) + '%')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-    return redirect('home')
+    return redirect(request.META.get('HTTP_REFERER'))
 
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Payments.objects.all()

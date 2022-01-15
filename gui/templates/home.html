@@ -23,7 +23,7 @@
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
   <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-  <h4><a href="/suggested_opens" target="_blank">Suggested New Peers</a> | <a href="/suggested_actions" target="_blank">Suggested AR Actions</a> | <a href="/autopilot" target="_blank">Autopilot Logs</a> | <a href="/channels" target="_blank">Channel Analysis</a></h4>
+  <h4><a href="/suggested_opens" target="_blank">Suggested New Peers</a> | <a href="/suggested_actions" target="_blank">Suggested AR Actions</a> | <a href="/autopilot" target="_blank">Autopilot Logs</a> | <a href="/channels" target="_blank">Channel Analysis</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
@@ -68,10 +68,11 @@
         <td>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
           {% if channel.auto_rebalance == True %}
-            <form action="/ar_target/" method="post">
+            <form action="/update_target/" method="post">
               {% csrf_token %}
-              <input style="text-align:center" id="ar_target" type="number" min="0" max="100" name="ar_target" value="{{ channel.ar_target }}">
+              <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+              <input type="hidden" name="update_target" value="3">
             </form>
           {% else %}
             ---
@@ -138,10 +139,11 @@
       <td>{{ channel.initiator }}</td>
       <td>
         {% if channel.auto_rebalance == True %}
-          <form action="/ar_target/" method="post">
+          <form action="/update_target/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="ar_target" type="number" min="0" max="100" name="ar_target" value="{{ channel.ar_target }}">
+            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="3">
           </form>
         {% else %}
           ---
