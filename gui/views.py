@@ -52,11 +52,10 @@ def home(request):
         forwards_df_out_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).count()
         #Get current active channels
         active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('outbound_percent')
-        active_channels_df = DataFrame.from_records(active_channels.values())
-        total_capacity = 0 if active_channels_df.shape[0] == 0 else active_channels_df['capacity'].sum()
-        total_inbound = 0 if total_capacity == 0 else active_channels_df['remote_balance'].sum()
-        total_outbound = 0 if total_capacity == 0 else active_channels_df['local_balance'].sum()
-        total_unsettled = 0 if total_capacity == 0 else active_channels_df['unsettled_balance'].sum()
+        total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
+        total_inbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
+        total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+        total_unsettled = 0 if total_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
         filter_7day = datetime.now() - timedelta(days=7)
         forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
         forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
@@ -76,7 +75,7 @@ def home(request):
         pending_htlc_count = pending_htlcs_df.shape[0]
         pending_outbound = 0 if pending_htlcs_out_df.shape[0] == 0 else pending_htlcs_out_df['amount'].sum()
         detailed_active_channels = []
-        for channel in active_channels_df.itertuples():
+        for channel in active_channels:
             detailed_channel = {}
             detailed_channel['remote_pubkey'] = channel.remote_pubkey
             detailed_channel['chan_id'] = channel.chan_id
