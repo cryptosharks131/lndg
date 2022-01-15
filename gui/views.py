@@ -14,7 +14,7 @@ from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSetti
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
-from lndg.settings import LND_NETWORK, LND_DIR_PATH, GRAPH_LINKS, NETWORK_LINKS
+from lndg.settings import LND_NETWORK, LND_DIR_PATH, GRAPH_LINKS, NETWORK_LINKS, FAILED_HTLC_LIMIT
 from os import path
 from pandas import DataFrame
 
@@ -162,7 +162,8 @@ def home(request):
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
             'pending_htlc_count': pending_htlc_count,
-            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:10],
+            'failed_htlc_limit': FAILED_HTLC_LIMIT,
+            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:FAILED_HTLC_LIMIT],
             'payments_ppm': 0 if total_sent == 0 else int((total_fees/total_sent)*1000000),
             'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
