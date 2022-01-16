@@ -393,7 +393,7 @@ def pending_htlcs(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def failedhtlcs(request):
+def failed_htlcs(request):
     if request.method == 'GET':
         context = {
             'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:150],
