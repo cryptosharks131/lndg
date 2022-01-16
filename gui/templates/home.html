@@ -23,7 +23,7 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
-  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }} | <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h4>
+  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
   <h4><a href="/suggested_opens" target="_blank">Suggested New Peers</a> | <a href="/suggested_actions" target="_blank">Suggested AR Actions</a> | <a href="/autopilot" target="_blank">Autopilot Logs</a> | <a href="/channels" target="_blank">Channel Performance</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
 </div>
 {% if active_channels %}
@@ -410,7 +410,7 @@
 {% endif %}
 {% if failed_htlcs %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 10 Failed HTLCs</h2>
+  <h2>Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
