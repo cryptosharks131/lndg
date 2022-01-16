@@ -22,6 +22,7 @@ urlpatterns = [
     path('peers', views.peers, name='peers'),
     path('balances', views.balances, name='balances'),
     path('pending_htlcs', views.pending_htlcs, name='pending-htlcs'),
+    path('failed_htlcs', views.failed_htlcs, name='failed-htlcs'),
     path('openchannel/', views.open_channel_form, name='open-channel-form'),
     path('closechannel/', views.close_channel_form, name='close-channel-form'),
     path('connectpeer/', views.connect_peer_form, name='connect-peer-form'),

@@ -4,3 +4,4 @@ lndg/settings.py
 frontend
 node_modules
 lndg-admin.txt
+.vscode
