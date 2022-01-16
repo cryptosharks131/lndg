@@ -683,6 +683,16 @@ def auto_rebalance(request):
                 db_max_cost.value = max_cost
                 db_max_cost.save()
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
+            if form.cleaned_data['autopilot'] is not None:
+                autopilot = form.cleaned_data['autopilot']
+                try:
+                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
+                except:
+                    LocalSettings(key='AR-Autopilot', value='0').save()
+                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
+                db_autopilot.value = autopilot
+                db_autopilot.save()
+                messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
