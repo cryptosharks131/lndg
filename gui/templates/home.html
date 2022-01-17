@@ -2,583 +2,668 @@
 {% block content %}
 {% load humanize %}
 <div class="w3-container w3-padding-small">
-  <h3><a href="https://1ml.com/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Capacity: {{ capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {{ db_size }} GB</h4>
-  <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
-  <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
-</div>
-<div class="w3-container w3-padding-small">
-  <h4>Wallet Balance: {{ balances.total_balance|intcomma }} | Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>
-  <form action="/newaddress/" method="post">
-    {% csrf_token %}
-    <input type="submit" value="Get New Deposit Address">
-  </form>
-</div>
-<div class="w3-container w3-padding-small">
-  <h4>Completed Payments: {{ total_payments }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }} [{{ payments_ppm|intcomma }}]</h4>
-  <h4>Paid Invoices: {{ total_invoices }} | Sats Received: {{ total_received|intcomma }}</h4>
-  <h4>Lifetime Routed: {{ total_forwards|intcomma }} | Value: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }} [{{ routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs|intcomma }} | Percent Cost: {{ percent_cost }}%</h4>
-  <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound|intcomma }} [{{ profit_per_outbound_real|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
-</div>
-<div class="w3-container w3-padding-small">
-  <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
-  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-  <h4><a href="/suggested_opens" target="_blank">Suggested New Peers</a> | <a href="/suggested_actions" target="_blank">Suggested AR Actions</a> | <a href="/autopilot" target="_blank">Autopilot Logs</a></h4>
-</div>
-{% if active_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Active Channels</h2>
-  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
-        <th width=10%></th>
-        <th>Inbound Liquidity</th>
-        <th>Unsettled</th>
-        <th>oRate</th>
-        <th>oBase</th>
-        <th>o7D</th>
-        <th>i7D</th>
-        <th>oLife</th>
-        <th>iLife</th>
-        <th>iRate</th>
-        <th>iBase</th>
-        <th width=4%>iTarget%</th>
-        <th width=4%>AR</th>
-      </tr>
-      {% for channel in active_channels %}
-      <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
-        <td>{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
-        <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
-        <td>{{ channel.local_fee_rate|intcomma }}</td>
-        <td>{{ channel.local_base_fee|intcomma }}</td>
-        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
-        <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
-        <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
-        <td>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td>{{ channel.remote_base_fee|intcomma }}</td>
-        <td>
-          {% if channel.auto_rebalance == True %}
-            <form action="/ar_target/" method="post">
-              {% csrf_token %}
-              <input style="text-align:center" id="ar_target" type="number" min="0" max="100" name="ar_target" value="{{ channel.ar_target }}">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% else %}
-            ---
-          {% endif %}
-        </td>
-        <td>
-          {% if channel.auto_rebalance == True %}
-            <form action="/autorebalance/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="Disable">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% else %}
-            <form action="/autorebalance/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="Enable">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
-</div>
-{% endif %}
-{% if inactive_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Inactive Channels</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th width=9%>Outbound Liquidity</th>
-      <th width=10%></th>
-      <th width=9%>Inbound Liquidity</th>
-      <th width=6%>Unsettled</th>
-      <th width=4%>oRate</th>
-      <th width=4%>oBase</th>
-      <th width=4%>iRate</th>
-      <th width=4%>iBase</th>
-      <th width=5%>Local Commit</th>
-      <th width=5%>Local Reserve</th>
-      <th width=5%>Initiated By Me</th>
-      <th width=4%>iTarget%</th>
-      <th width=4%>AR</th>
-    </tr>
-    {% for channel in inactive_channels %}
-    <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td>{{ channel.local_fee_rate|intcomma }}</td>
-      <td>{{ channel.local_base_fee|intcomma }}</td>
-      <td>{{ channel.remote_fee_rate|intcomma }}</td>
-      <td>{{ channel.remote_base_fee|intcomma }}</td>
-      <td>{{ channel.local_commit|intcomma }}</td>
-      <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td>{{ channel.initiator }}</td>
-      <td>
-        {% if channel.auto_rebalance == True %}
-          <form action="/ar_target/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center" id="ar_target" type="number" min="0" max="100" name="ar_target" value="{{ channel.ar_target }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          </form>
-        {% else %}
-          ---
+    <div class="w3-container w3-threequarter">
+        <div class="w3-card">
+            <header class="w3-container w3-light-grey">
+                <h2><a href="https://1ml.com/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a></h2>
+            </header>
+            <div class="w3-container">
+                <div class="w3-row">
+                    <div class="w3-padding-small">Public Key: {{ node_info.identity_pubkey }}</div>
+                    <div class="w3-padding-small">Public Address: {% for info in node_info.uris %}{{ info }} {% endfor %}</div>
+                </div>
+                <div class="w3-row">
+                    <div class="w3-half">
+                        <div class="w3-padding-small">Capacity: {{ capacity|intcomma }}</div>
+                        <div class="w3-padding-small">Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }}</div>
+                        <div class="w3-padding-small"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</div>
+                        <div class="w3-padding-small">DB Size: {{ db_size }} GB</div>
+                        <div class="w3-padding-small">Block Hash: {{ node_info.block_hash }}</div>
+                    </div>
+                    <div class="w3-half">
+                        <div class="w3-padding-small">Lnd Sync: {{ node_info.synced_to_graph }}</div>
+                        <div class="w3-padding-small">Chain Sync: {{ node_info.synced_to_chain }}</div>
+                        <div class="w3-padding-small">{% for info in node_info.chains %}{{ info }}{% endfor %}</div>
+                        <div class="w3-padding-small">Block Height: {{ node_info.block_height }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w3-container w3-threequarter w3-margin-top">
+        <div class="w3-card">
+            <header class="w3-container w3-light-grey">
+                <h2>Wallet Balance: {{ balances.total_balance|intcomma }}</h2>
+            </header>
+            <div class="w3-container">
+                <div class="w3-row">
+                    <div class="w3-half">
+                        <div class="w3-padding-small">Wallet Balance: {{ balances.total_balance|intcomma }}</div>
+                        <div class="w3-padding-small">Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }}</div>
+                        <div class="w3-padding-small">Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }}</div>
+                    </div>
+                    <div class="w3-half">
+                        <div class="w3-padding-small">
+                            <a href="/balances" target="_blank" class="w3-button w3-blue"> Wallet Details</a>
+                        </div>
+                        <div class="w3-padding-small">
+                            <form action="/newaddress/" method="post">
+                                {% csrf_token %}
+                                <input type="submit" value="Get New Deposit Address" class="w3-button w3-blue">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w3-container w3-threequarter w3-margin-top">
+        <div class="w3-card">
+            <header class="w3-container w3-light-grey">
+                <h2>Payments</h2>
+            </header>
+            <div class="w3-container">
+                <div class="w3-row">
+                    <div class="w3-half">
+                        <div class="w3-padding-small">Completed Payments: {{ total_payments }}</div>
+                        <div class="w3-padding-small">Sats Sent: {{ total_sent|intcomma }}</div>
+                        <div class="w3-padding-small">Fees Paid: {{ fees_paid|intcomma }} [{{ payments_ppm|intcomma }}]</div>
+                        <div class="w3-padding-small">Paid Invoices: {{ total_invoices }}</div>
+                        <div class="w3-padding-small">Sats Received: {{ total_received|intcomma }}</div>
+                        <div class="w3-padding-small">Lifetime Routed: {{ total_forwards|intcomma }}</div>
+                        <div class="w3-padding-small">Value: {{ total_value_forwards|intcomma }}</div>
+                        <div class="w3-padding-small">Fees Earned: {{ earned|intcomma }} [{{ routed_ppm|intcomma }}]</div>
+                        <div class="w3-padding-small">Onchain Fees: {{ onchain_costs|intcomma }}</div>
+                        <div class="w3-padding-small">Percent Cost: {{ percent_cost }}%</div>
+                        <div class="w3-padding-small">7-Day Routed: {{ routed_7day|intcomma }}</div>
+                        <div class="w3-padding-small">Value: {{ routed_7day_amt|intcomma }}</div>
+                        <div class="w3-padding-small">Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}]</div>
+                        <div class="w3-padding-small">Onchain Fees: {{ onchain_costs_7day|intcomma }}</div>
+                        <div class="w3-padding-small">Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}]</div>
+                        <div class="w3-padding-small">Percent Cost: {{ percent_cost_7day }}%</div>
+                        <div class="w3-padding-small">Profit/Outbound: {{ profit_per_outbound|intcomma }} [{{ profit_per_outbound_real|intcomma }}]</div>
+                        <div class="w3-padding-small">Outbound Utilization: {{ routed_7day_percent }}%</div>
+                    </div>
+                    <div class="w3-half">
+                        <div class="w3-padding-small">Inbound Liquidity: {{ inbound|intcomma }}</div>
+                        <div class="w3-padding-small">Outbound Liquidity: {{ outbound|intcomma }}</div>
+                        <div class="w3-padding-small">Liquidity Ratio: {{ liq_ratio }}%</div>
+                        <div class="w3-padding-small">Balance In Limbo: {{ limbo_balance|intcomma }}</div>
+                        <div class="w3-padding-small">Unsettled Liquidity: {{ unsettled|intcomma }}</div>
+                        <div class="w3-padding-small"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="w3-container w3-threequarter w3-margin-top">
+        <div class="w3-card">
+            <header class="w3-container w3-light-grey">
+                <h2>Quick Actions</h2>
+            </header>
+            <div class="w3-container">
+                <div class="w3-row w3-margin-top w3-margin-bottom">
+                    <a href="/suggested_opens" target="_blank" class="w3-button w3-blue w3-margin-right">Suggested New Peers</a>
+                    <a href="/suggested_actions" target="_blank" class="w3-button w3-blue w3-margin-right">Suggested AR Actions</a>
+                    <a href="/autopilot" target="_blank" class="w3-button w3-blue w3-margin-right">Autopilot Logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+        {% if active_channels %}
+        <div class="w3-container w3-padding-small">
+            <h2>Active Channels</h2>
+            <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+                <table class="w3-table-all w3-centered w3-hoverable">
+                    <tr>
+                        <th>Channel ID</th>
+                        <th>Peer Alias</th>
+                        <th>Capacity</th>
+                        <th>Outbound Liquidity</th>
+                        <th width=10%></th>
+                        <th>Inbound Liquidity</th>
+                        <th>Unsettled</th>
+                        <th>oRate</th>
+                        <th>oBase</th>
+                        <th>o7D</th>
+                        <th>i7D</th>
+                        <th>oLife</th>
+                        <th>iLife</th>
+                        <th>iRate</th>
+                        <th>iBase</th>
+                        <th width=4%>iTarget%</th>
+                        <th width=4%>AR</th>
+                    </tr>
+                    {% for channel in active_channels %}
+                    <tr>
+                        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+                        <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+                        <td>{{ channel.capacity|intcomma }}</td>
+                        <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
+                        <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+                        <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
+                        <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
+                        <td>{{ channel.local_fee_rate|intcomma }}</td>
+                        <td>{{ channel.local_base_fee|intcomma }}</td>
+                        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
+                        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
+                        <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
+                        <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
+                        <td>{{ channel.remote_fee_rate|intcomma }}</td>
+                        <td>{{ channel.remote_base_fee|intcomma }}</td>
+                        <td>
+                            {% if channel.auto_rebalance == True %}
+                            <form action="/ar_target/" method="post">
+                                {% csrf_token %}
+                                <input style="text-align:center" id="ar_target" type="number" min="0" max="100" name="ar_target" value="{{ channel.ar_target }}">
+                                <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                            </form>
+                            {% else %}
+                            ---
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if channel.auto_rebalance == True %}
+                            <form action="/autorebalance/" method="post">
+                                {% csrf_token %}
+                                <input type="submit" value="Disable">
+                                <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                            </form>
+                            {% else %}
+                            <form action="/autorebalance/" method="post">
+                                {% csrf_token %}
+                                <input type="submit" value="Enable">
+                                <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
         {% endif %}
-      </td>
-      <td>
-        {% if channel.auto_rebalance == True %}
-          <form action="/autorebalance/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="Disable">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          </form>
-        {% else %}
-          <form action="/autorebalance/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="Enable">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          </form>
+        {% if inactive_channels %}
+        <div class="w3-container w3-padding-small">
+            <h2>Inactive Channels</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Channel ID</th>
+                    <th>Peer Alias</th>
+                    <th>Capacity</th>
+                    <th width=9%>Outbound Liquidity</th>
+                    <th width=10%></th>
+                    <th width=9%>Inbound Liquidity</th>
+                    <th width=6%>Unsettled</th>
+                    <th width=4%>oRate</th>
+                    <th width=4%>oBase</th>
+                    <th width=4%>iRate</th>
+                    <th width=4%>iBase</th>
+                    <th width=5%>Local Commit</th>
+                    <th width=5%>Local Reserve</th>
+                    <th width=5%>Initiated By Me</th>
+                    <th width=4%>iTarget%</th>
+                    <th width=4%>AR</th>
+                </tr>
+                {% for channel in inactive_channels %}
+                <tr>
+                    <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="https://mempool.space/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+                    <td title="{{ channel.remote_pubkey }}"><a href="https://1ml.com/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+                    <td>{{ channel.capacity|intcomma }}</td>
+                    <td>{{ channel.local_balance|intcomma }}</td>
+                    <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+                    <td>{{ channel.remote_balance|intcomma }}</td>
+                    <td>{{ channel.unsettled_balance|intcomma }}</td>
+                    <td>{{ channel.local_fee_rate|intcomma }}</td>
+                    <td>{{ channel.local_base_fee|intcomma }}</td>
+                    <td>{{ channel.remote_fee_rate|intcomma }}</td>
+                    <td>{{ channel.remote_base_fee|intcomma }}</td>
+                    <td>{{ channel.local_commit|intcomma }}</td>
+                    <td>{{ channel.local_chan_reserve|intcomma }}</td>
+                    <td>{{ channel.initiator }}</td>
+                    <td>
+                        {% if channel.auto_rebalance == True %}
+                        <form action="/ar_target/" method="post">
+                            {% csrf_token %}
+                            <input style="text-align:center" id="ar_target" type="number" min="0" max="100" name="ar_target" value="{{ channel.ar_target }}">
+                            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                        </form>
+                        {% else %}
+                        ---
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if channel.auto_rebalance == True %}
+                        <form action="/autorebalance/" method="post">
+                            {% csrf_token %}
+                            <input type="submit" value="Disable">
+                            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                        </form>
+                        {% else %}
+                        <form action="/autorebalance/" method="post">
+                            {% csrf_token %}
+                            <input type="submit" value="Enable">
+                            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
         {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if pending_open %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Open Channels</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th width=25%>Channel Point</th>
-      <th width=25%>Peer PubKey</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Commit Fee</th>
-    </tr>
-    {% for channel in pending_open %}
-    <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
-      {% endwith %}
-      <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.commit_fee }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if pending_closed %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Close Channels</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Local Commit Fee</th>
-    </tr>
-    {% for channel in pending_closed %}
-    <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
-      {% endwith %}
-      <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.commitments.local_commit_fee_sat }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if pending_force_closed %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Force Close Channels</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Blocks To Maturity</th>
-      <th>Closing TX</th>
-    </tr>
-    {% for channel in pending_force_closed %}
-    <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
-      {% endwith %}
-      <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.blocks_til_maturity|intcomma }}</td>
-      <td><a href='https://mempool.space/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if waiting_for_close %}
-<div class="w3-container w3-padding-small">
-  <h2>Channels Waiting To Close</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Local Commit Fee</th>
-    </tr>
-    {% for channel in waiting_for_close %}
-    <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
-      {% endwith %}
-      <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.commitments.local_commit_fee_sat }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if forwards %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 Payments Routed</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Amount In</th>
-      <th>Amount Out</th>
-      <th>Channel In Alias</th>
-      <th>Channel Out Alias</th>
-      <th>Channel In Id</th>
-      <th>Channel Out Id</th>
-      <th>Fees Earned</th>
-      <th>PPM Earned</th>
-    </tr>
-    {% for forward in forwards %}
-    <tr>
-      <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
-      <td>{{ forward.amt_in|intcomma }}</td>
-      <td>{{ forward.amt_out|intcomma }}</td>
-      <td>{{ forward.chan_in_alias }}</td>
-      <td>{{ forward.chan_out_alias }}</td>
-      <td>{{ forward.chan_id_in }}</td>
-      <td>{{ forward.chan_id_out }}</td>
-      <td>{{ forward.fee }}</td>
-      <td>{{ forward.ppm|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if rebalances %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 Rebalance Requests</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Requested</th>
-      <th>Start</th>
-      <th>Stop</th>
-      <th>Scheduled Duration</th>
-      <th>Value</th>
-      <th>Fee Limit</th>
-      <th>Last Hop Alias</th>
-      <th>Status</th>
-    </tr>
-    {% for rebalance in rebalances %}
-    <tr>
-      <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
-      <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
-      <td>{{ rebalance.duration }} minutes</td>
-      <td>{{ rebalance.value|intcomma }}</td>
-      <td>{{ rebalance.fee_limit|intcomma }}</td>
-      <td>{% if rebalance.target_alias == '' %}None Specified{% else %}{{ rebalance.target_alias }}{% endif %}</td>
-      <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if payments %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 5 Payments Sent</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th width=28%>Hash</th>
-      <th width=7%>Value</th>
-      <th width=7%>Fee Paid</th>
-      <th width=7%>Status</th>
-      <th width=12%>Chan Out Alias</th>
-      <th width=12%>Chan Out ID</th>
-      <th width=5%>Route</th>
-      <th width=8%>Keysend</th>
-    </tr>
-    {% for payment in payments %}
-    <tr>
-      <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td>{{ payment.payment_hash }}</td>
-      <td>{{ payment.value|add:"0"|intcomma }}</td>
-      <td>{{ payment.fee|intcomma }}</td>
-      <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
-      <td>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
-      <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if invoices %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 5 Payments Received</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Created</th>
-      <th>Settled</th>
-      <th width=25%>Payment Hash</th>
-      <th>Value</th>
-      <th>Amount Paid</th>
-      <th>State</th>
-      <th>Channel In Alias</th>
-      <th width=10%>Channel In</th>
-      <th><a href="/keysends" target="_blank">Keysend</a></th>
-    </tr>
-    {% for invoice in invoices %}
-    <tr>
-      <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
-      <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
-      <td>{{ invoice.r_hash }}</td>
-      <td>{{ invoice.value|add:"0"|intcomma }}</td>
-      <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
-      <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
-      <td>{{ invoice.chan_in_alias }}</td>
-      <td>{{ invoice.chan_in }}</td>
-      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if failed_htlcs %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 Failed HTLCs</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Chan In ID</th>
-      <th>Chan Out ID</th>
-      <th>Chan In Alias</th>
-      <th>Chan Out Alias</th>
-      <th>Forward Amount</th>
-      <th>Potential Fee</th>
-      <th>HTLC Failure</th>
-      <th>Failure Detail</th>
-    </tr>
-    {% for failed_htlc in failed_htlcs %}
-    <tr>
-      <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
-      <td>{{ failed_htlc.chan_id_in }}</td>
-      <td>{{ failed_htlc.chan_id_out }}</td>
-      <td>{{ failed_htlc.chan_in_alias }}</td>
-      <td>{{ failed_htlc.chan_out_alias }}</td>
-      <td>{{ failed_htlc.amount|intcomma }}</td>
-      <td>{{ failed_htlc.missed_fee|intcomma }}</td>
-      <td>{% if failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
-      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if local_settings %}
-<div class="w3-container w3-padding-small">
-  <h2>Auto-Rebalancer Settings</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Key</th>
-      <th>Value</th>
-    </tr>
-    {% for settings in local_settings %}
-    <tr>
-      <td>{{ settings.key }}</td>
-      <td>{{ settings.value|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-<div class="w3-container w3-padding-small">
-  <h2>Update Auto Rebalancer Settings</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/autorebalance/" method="post">
-      {% csrf_token %}
-      <label for="enabled">Enabled: </label>
-      <input id="enabled" type="number" min="0" max="1" name="enabled">
-      <label for="target_percent">Target Amount (%): </label>
-      <input id="target_percent" type="number" step="0.001" min="0" max="1" name="target_percent">
-      <label for="target_time">Target Time (min): </label>
-      <input id="target_time" type="number" min="0" max="60" name="target_time">
-      <label for="outbound_percent">Target Outbound Above (%): </label>
-      <input id="outbound_percent" type="number" step="0.01" min="0" max="1" name="outbound_percent">
-      <label for="fee_rate">Global Max Fee Rate (ppm): </label>
-      <input id="fee_rate" type="number" min="0" max="1500" name="fee_rate">
-      <label for="max_cost">Max Cost (%): </label>
-      <input id="max_cost" type="number" step="0.01" min="0" max="1" name="max_cost">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Manual Rebalancer Request</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
-      {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
-      <label for="value">Rebalance Amount: </label>
-      <input id="value" type="number" name="value">
-      <label for="fee_limit">Fee Limit: </label>
-      <input id="fee_limit" type="number" min="1" max="200" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Connect To A Peer</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/connectpeer/" method="post">
-      {% csrf_token %}
-      <label for="peer_id">PubKey or Connection String: </label>
-      <input id="peer_id" type="text" name="peer_id">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Open A Channel</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/openchannel/" method="post">
-      {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <label for="local_amt">Local Amount: </label>
-      <input id="local_amt" type="number" name="local_amt">
-      <label for="sat_per_byte">Target Fee (sats/byte): </label>
-      <input id="sat_per_byte" type="number" name="sat_per_byte">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Close A Channel</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/closechannel/" method="post">
-      {% csrf_token %}
-      <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="number" name="chan_id">
-      <label for="target_fee">Target Fee: </label>
-      <input id="target_fee" type="number" min="1" max="100" name="target_fee">
-      <label for="force">Force Close? </label>
-      <input id="force" type="checkbox" name="force">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Create Invoice</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/createinvoice/" method="post">
-      {% csrf_token %}
-      <label for="value">Invoice Amount: </label>
-      <input id="value" type="number" name="value">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Update Channel Policy</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/updatechanpolicy/" method="post">
-      {% csrf_token %}
-      <label for="new_base_fee">New Base Fee: </label>
-      <input id="new_base_fee" type="number" name="new_base_fee">
-      <label for="new_fee_rate">New Fee Rate: </label>
-      <input id="new_fee_rate" type="number" name="new_fee_rate">
-      <label for="target_all">Target All Channels? </label>
-      <input id="target_all" type="checkbox" name="target_all">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:35.2%">
-        <li><h3><label for="target_chans">Select Channels To Update: </label></h3></li>
-        {% for channel in chan_policy_form.target_chans %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Update Peer Alias</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/api/updatealias/" method="post">
-      {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-{% endblock %}
+        {% if pending_open %}
+        <div class="w3-container w3-padding-small">
+            <h2>Pending Open Channels</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th width=25%>Channel Point</th>
+                    <th width=25%>Peer PubKey</th>
+                    <th>Capacity</th>
+                    <th>Local Balance</th>
+                    <th>Remote Balance</th>
+                    <th>Commit Fee</th>
+                </tr>
+                {% for channel in pending_open %}
+                <tr>
+                    {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+                    <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+                    {% endwith %}
+                    <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+                    <td>{{ channel.channel.capacity|intcomma }}</td>
+                    <td>{{ channel.channel.local_balance|intcomma }}</td>
+                    <td>{{ channel.channel.remote_balance|intcomma }}</td>
+                    <td>{{ channel.commit_fee }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if pending_closed %}
+        <div class="w3-container w3-padding-small">
+            <h2>Pending Close Channels</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Channel Point</th>
+                    <th>Peer PubKey</th>
+                    <th>Capacity</th>
+                    <th>Local Balance</th>
+                    <th>Remote Balance</th>
+                    <th>Balance In Limbo</th>
+                    <th>Local Commit Fee</th>
+                </tr>
+                {% for channel in pending_closed %}
+                <tr>
+                    {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+                    <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+                    {% endwith %}
+                    <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+                    <td>{{ channel.channel.capacity|intcomma }}</td>
+                    <td>{{ channel.channel.local_balance|intcomma }}</td>
+                    <td>{{ channel.channel.remote_balance|intcomma }}</td>
+                    <td>{{ channel.limbo_balance|intcomma }}</td>
+                    <td>{{ channel.commitments.local_commit_fee_sat }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if pending_force_closed %}
+        <div class="w3-container w3-padding-small">
+            <h2>Pending Force Close Channels</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Channel Point</th>
+                    <th>Peer PubKey</th>
+                    <th>Capacity</th>
+                    <th>Local Balance</th>
+                    <th>Remote Balance</th>
+                    <th>Balance In Limbo</th>
+                    <th>Blocks To Maturity</th>
+                    <th>Closing TX</th>
+                </tr>
+                {% for channel in pending_force_closed %}
+                <tr>
+                    {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+                    <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+                    {% endwith %}
+                    <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+                    <td>{{ channel.channel.capacity|intcomma }}</td>
+                    <td>{{ channel.channel.local_balance|intcomma }}</td>
+                    <td>{{ channel.channel.remote_balance|intcomma }}</td>
+                    <td>{{ channel.limbo_balance|intcomma }}</td>
+                    <td>{{ channel.blocks_til_maturity|intcomma }}</td>
+                    <td><a href='https://mempool.space/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if waiting_for_close %}
+        <div class="w3-container w3-padding-small">
+            <h2>Channels Waiting To Close</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Channel Point</th>
+                    <th>Peer PubKey</th>
+                    <th>Capacity</th>
+                    <th>Local Balance</th>
+                    <th>Remote Balance</th>
+                    <th>Balance In Limbo</th>
+                    <th>Local Commit Fee</th>
+                </tr>
+                {% for channel in waiting_for_close %}
+                <tr>
+                    {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
+                    <td><a href='https://mempool.space/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+                    {% endwith %}
+                    <td><a href="https://1ml.com/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
+                    <td>{{ channel.channel.capacity|intcomma }}</td>
+                    <td>{{ channel.channel.local_balance|intcomma }}</td>
+                    <td>{{ channel.channel.remote_balance|intcomma }}</td>
+                    <td>{{ channel.limbo_balance|intcomma }}</td>
+                    <td>{{ channel.commitments.local_commit_fee_sat }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if forwards %}
+        <div class="w3-container w3-padding-small">
+            <h2>Last 10 Payments Routed</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Amount In</th>
+                    <th>Amount Out</th>
+                    <th>Channel In Alias</th>
+                    <th>Channel Out Alias</th>
+                    <th>Channel In Id</th>
+                    <th>Channel Out Id</th>
+                    <th>Fees Earned</th>
+                    <th>PPM Earned</th>
+                </tr>
+                {% for forward in forwards %}
+                <tr>
+                    <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
+                    <td>{{ forward.amt_in|intcomma }}</td>
+                    <td>{{ forward.amt_out|intcomma }}</td>
+                    <td>{{ forward.chan_in_alias }}</td>
+                    <td>{{ forward.chan_out_alias }}</td>
+                    <td>{{ forward.chan_id_in }}</td>
+                    <td>{{ forward.chan_id_out }}</td>
+                    <td>{{ forward.fee }}</td>
+                    <td>{{ forward.ppm|intcomma }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if rebalances %}
+        <div class="w3-container w3-padding-small">
+            <h2>Last 10 Rebalance Requests</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Requested</th>
+                    <th>Start</th>
+                    <th>Stop</th>
+                    <th>Scheduled Duration</th>
+                    <th>Value</th>
+                    <th>Fee Limit</th>
+                    <th>Last Hop Alias</th>
+                    <th>Status</th>
+                </tr>
+                {% for rebalance in rebalances %}
+                <tr>
+                    <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
+                    <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
+                    <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
+                    <td>{{ rebalance.duration }} minutes</td>
+                    <td>{{ rebalance.value|intcomma }}</td>
+                    <td>{{ rebalance.fee_limit|intcomma }}</td>
+                    <td>{% if rebalance.target_alias == '' %}None Specified{% else %}{{ rebalance.target_alias }}{% endif %}</td>
+                    <td>{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if payments %}
+        <div class="w3-container w3-padding-small">
+            <h2>Last 5 Payments Sent</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Timestamp</th>
+                    <th width=28%>Hash</th>
+                    <th width=7%>Value</th>
+                    <th width=7%>Fee Paid</th>
+                    <th width=7%>Status</th>
+                    <th width=12%>Chan Out Alias</th>
+                    <th width=12%>Chan Out ID</th>
+                    <th width=5%>Route</th>
+                    <th width=8%>Keysend</th>
+                </tr>
+                {% for payment in payments %}
+                <tr>
+                    <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
+                    <td>{{ payment.payment_hash }}</td>
+                    <td>{{ payment.value|add:"0"|intcomma }}</td>
+                    <td>{{ payment.fee|intcomma }}</td>
+                    <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
+                    <td>{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
+                    <td>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
+                    <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
+                    <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if invoices %}
+        <div class="w3-container w3-padding-small">
+            <h2>Last 5 Payments Received</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Created</th>
+                    <th>Settled</th>
+                    <th width=25%>Payment Hash</th>
+                    <th>Value</th>
+                    <th>Amount Paid</th>
+                    <th>State</th>
+                    <th>Channel In Alias</th>
+                    <th width=10%>Channel In</th>
+                    <th><a href="/keysends" target="_blank">Keysend</a></th>
+                </tr>
+                {% for invoice in invoices %}
+                <tr>
+                    <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
+                    <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}N/A{% endif %}</td>
+                    <td>{{ invoice.r_hash }}</td>
+                    <td>{{ invoice.value|add:"0"|intcomma }}</td>
+                    <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
+                    <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
+                    <td>{{ invoice.chan_in_alias }}</td>
+                    <td>{{ invoice.chan_in }}</td>
+                    <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if failed_htlcs %}
+        <div class="w3-container w3-padding-small">
+            <h2>Last 10 Failed HTLCs</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Chan In ID</th>
+                    <th>Chan Out ID</th>
+                    <th>Chan In Alias</th>
+                    <th>Chan Out Alias</th>
+                    <th>Forward Amount</th>
+                    <th>Potential Fee</th>
+                    <th>HTLC Failure</th>
+                    <th>Failure Detail</th>
+                </tr>
+                {% for failed_htlc in failed_htlcs %}
+                <tr>
+                    <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
+                    <td>{{ failed_htlc.chan_id_in }}</td>
+                    <td>{{ failed_htlc.chan_id_out }}</td>
+                    <td>{{ failed_htlc.chan_in_alias }}</td>
+                    <td>{{ failed_htlc.chan_out_alias }}</td>
+                    <td>{{ failed_htlc.amount|intcomma }}</td>
+                    <td>{{ failed_htlc.missed_fee|intcomma }}</td>
+                    <td>{% if failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
+                    <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        {% if local_settings %}
+        <div class="w3-container w3-padding-small">
+            <h2>Auto-Rebalancer Settings</h2>
+            <table class="w3-table-all w3-centered w3-hoverable">
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                </tr>
+                {% for settings in local_settings %}
+                <tr>
+                    <td>{{ settings.key }}</td>
+                    <td>{{ settings.value|intcomma }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+        <div class="w3-container w3-padding-small">
+            <h2>Update Auto Rebalancer Settings</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/autorebalance/" method="post">
+                    {% csrf_token %}
+                    <label for="enabled">Enabled: </label>
+                    <input id="enabled" type="number" min="0" max="1" name="enabled">
+                    <label for="target_percent">Target Amount (%): </label>
+                    <input id="target_percent" type="number" step="0.001" min="0" max="1" name="target_percent">
+                    <label for="target_time">Target Time (min): </label>
+                    <input id="target_time" type="number" min="0" max="60" name="target_time">
+                    <label for="outbound_percent">Target Outbound Above (%): </label>
+                    <input id="outbound_percent" type="number" step="0.01" min="0" max="1" name="outbound_percent">
+                    <label for="fee_rate">Global Max Fee Rate (ppm): </label>
+                    <input id="fee_rate" type="number" min="0" max="1500" name="fee_rate">
+                    <label for="max_cost">Max Cost (%): </label>
+                    <input id="max_cost" type="number" step="0.01" min="0" max="1" name="max_cost">
+                    <input type="submit" value="OK">
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Manual Rebalancer Request</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/rebalancer/" method="post">
+                    {% csrf_token %}
+                    <label for="duration">Run Time (min): </label>
+                    <input id="duration" type="number" name="duration">
+                    <label for="value">Rebalance Amount: </label>
+                    <input id="value" type="number" name="value">
+                    <label for="fee_limit">Fee Limit: </label>
+                    <input id="fee_limit" type="number" min="1" max="200" name="fee_limit">
+                    <label for="last_hop_pubkey">Last Hop Pubkey: </label>
+                    <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+                    <input type="submit" value="OK">
+                    <ul class="w3-ul w3-border" style="width:56.15%">
+                        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
+                        {% for channel in rebalancer_form.outgoing_chan_ids %}
+                        <li>{{ channel }}</li>
+                        {% endfor %}
+                    </ul>
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Connect To A Peer</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/connectpeer/" method="post">
+                    {% csrf_token %}
+                    <label for="peer_id">PubKey or Connection String: </label>
+                    <input id="peer_id" type="text" name="peer_id">
+                    <input type="submit" value="OK">
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Open A Channel</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/openchannel/" method="post">
+                    {% csrf_token %}
+                    <label for="peer_pubkey">Peer Pubkey: </label>
+                    <input id="peer_pubkey" type="text" name="peer_pubkey">
+                    <label for="local_amt">Local Amount: </label>
+                    <input id="local_amt" type="number" name="local_amt">
+                    <label for="sat_per_byte">Target Fee (sats/byte): </label>
+                    <input id="sat_per_byte" type="number" name="sat_per_byte">
+                    <input type="submit" value="OK">
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Close A Channel</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/closechannel/" method="post">
+                    {% csrf_token %}
+                    <label for="chan_id">Channel ID: </label>
+                    <input id="chan_id" type="number" name="chan_id">
+                    <label for="target_fee">Target Fee: </label>
+                    <input id="target_fee" type="number" min="1" max="100" name="target_fee">
+                    <label for="force">Force Close? </label>
+                    <input id="force" type="checkbox" name="force">
+                    <input type="submit" value="OK">
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Create Invoice</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/createinvoice/" method="post">
+                    {% csrf_token %}
+                    <label for="value">Invoice Amount: </label>
+                    <input id="value" type="number" name="value">
+                    <input type="submit" value="OK">
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Update Channel Policy</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/updatechanpolicy/" method="post">
+                    {% csrf_token %}
+                    <label for="new_base_fee">New Base Fee: </label>
+                    <input id="new_base_fee" type="number" name="new_base_fee">
+                    <label for="new_fee_rate">New Fee Rate: </label>
+                    <input id="new_fee_rate" type="number" name="new_fee_rate">
+                    <label for="target_all">Target All Channels? </label>
+                    <input id="target_all" type="checkbox" name="target_all">
+                    <input type="submit" value="OK">
+                    <ul class="w3-ul w3-border" style="width:35.2%">
+                        <li><h3><label for="target_chans">Select Channels To Update: </label></h3></li>
+                        {% for channel in chan_policy_form.target_chans %}
+                        <li>{{ channel }}</li>
+                        {% endfor %}
+                    </ul>
+                </form>
+            </div>
+        </div>
+        <div class="w3-container w3-padding-small">
+            <h2>Update Peer Alias</h2>
+            <div class="w3-container w3-padding-32">
+                <form action="/api/updatealias/" method="post">
+                    {% csrf_token %}
+                    <label for="peer_pubkey">Peer Pubkey: </label>
+                    <input id="peer_pubkey" type="text" name="peer_pubkey">
+                    <input type="submit" value="OK">
+                </form>
+            </div>
+        </div>
+    {% endblock %}
