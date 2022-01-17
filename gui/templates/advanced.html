@@ -33,7 +33,7 @@
         <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
         <td>
-          <form action="/update_target/" method="post">
+          <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -41,7 +41,7 @@
           </form>
         </td>
         <td>
-          <form action="/update_target/" method="post">
+          <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -51,7 +51,7 @@
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
         <td>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
-          <form action="/update_target/" method="post">
+          <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -59,7 +59,7 @@
           </form>
         </td>
         <td>
-            <form action="/update_target/" method="post">
+            <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -67,7 +67,7 @@
             </form>
         </td>
         <td>
-            <form action="/update_target/" method="post">
+            <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -75,25 +75,52 @@
             </form>
         </td>
         <td>
-          {% if channel.auto_rebalance == True %}
-            <form action="/autorebalance/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="Disable">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% else %}
-            <form action="/autorebalance/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="Enable">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% endif %}
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="5">
+            <input type="hidden" name="target" value="0">
+          </form>
         </td>
         <td>{{ channel.is_active }}</td>
       </tr>
       {% endfor %}
     </table>
   </div>
+</div>
+{% endif %}
+{% if local_settings %}
+<div class="w3-container w3-padding-small">
+  <h2>Update Local Settings</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Key</th>
+      <th>Value</th>
+    </tr>
+    {% for settings in local_settings %}
+    <tr>
+      <td>{{ settings.key }}</td>
+      <td>
+        <form action="/update_setting/" method="post">
+          {% csrf_token %}
+          {% if settings.key|slice:"-1:" == '%' %}
+            <input style="text-align:center" id="value" type="number" step="0.01" min="0" max="1" name="value" value="{{ settings.value }}">
+          {% elif settings.key == 'AR-Time' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="60" name="value" value="{{ settings.value }}">
+          {% elif settings.key == 'AR-MaxFeeRate' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="2500" name="value" value="{{ settings.value }}">
+          {% elif settings.key|slice:":3" == 'AR-' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
+          {% else %}
+            <input style="text-align:center" id="value" type="text" name="value" value="{{ settings.value }}">
+          {% endif %}
+          <input type="hidden" name="key" value="{{ settings.key }}">
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
 </div>
 {% endif %}
 {% if not channels %}

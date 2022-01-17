@@ -8,15 +8,31 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, AutoRebalanceForm, UpdateTarget
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs, Autopilot
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from .lnd_deps.lnd_connect import lnd_connect
-from lndg.settings import LND_NETWORK, LND_DIR_PATH, GRAPH_LINKS, NETWORK_LINKS
+from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
 from pandas import DataFrame
+
+def graph_links():
+    if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
+        graph_links = str(LocalSettings.objects.filter(key='GUI-GraphLinks')[0].value)
+    else:
+        LocalSettings(key='GUI-GraphLinks', value='https://1ml.com').save()
+        graph_links = 'https://1ml.com'
+    return graph_links
+
+def network_links():
+    if LocalSettings.objects.filter(key='GUI-NetLinks').exists():
+        network_links = str(LocalSettings.objects.filter(key='GUI-NetLinks')[0].value)
+    else:
+        LocalSettings(key='GUI-NetLinks', value='https://mempool.space').save()
+        network_links = 'https://mempool.space'
+    return network_links
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
@@ -114,7 +130,7 @@ def home(request):
         #Get list of recent rebalance requests
         rebalances = Rebalancer.objects.all().order_by('-requested')
         total_channels = node_info.num_active_channels + node_info.num_inactive_channels
-        local_settings = LocalSettings.objects.all()
+        local_settings = LocalSettings.objects.filter(key__contains='AR-')
         try:
             db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
         except:
@@ -169,8 +185,8 @@ def home(request):
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': GRAPH_LINKS,
-            'network_links': NETWORK_LINKS,
+            'graph_links': graph_links(),
+            'network_links': network_links(),
             'db_size': db_size
         }
         return render(request, 'home.html', context)
@@ -240,8 +256,8 @@ def channels(request):
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': GRAPH_LINKS,
-            'network_links': NETWORK_LINKS
+            'graph_links': graph_links(),
+            'network_links': network_links()
         }
         return render(request, 'channels.html', context)
     else:
@@ -250,15 +266,17 @@ def channels(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def advanced(request):
     if request.method == 'GET':
+        print(LocalSettings.objects.filter(key='AR-Time')[0].key[:2])
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
         channels_df = DataFrame.from_records(channels.values())
         channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
         channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
+            'local_settings': LocalSettings.objects.all(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': GRAPH_LINKS,
-            'network_links': NETWORK_LINKS
+            'graph_links': graph_links(),
+            'network_links': network_links()
         }
         return render(request, 'advanced.html', context)
     else:
@@ -282,7 +300,7 @@ def peers(request):
         context = {
             'peers': Peers.objects.filter(connected=True),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': GRAPH_LINKS
+            'graph_links': graph_links()
         }
         return render(request, 'peers.html', context)
     else:
@@ -296,7 +314,7 @@ def balances(request):
             'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'network_links': NETWORK_LINKS
+            'network_links': network_links()
         }
         return render(request, 'balances.html', context)
     else:
@@ -314,7 +332,7 @@ def suggested_opens(request):
         context = {
             'open_list': open_list,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': GRAPH_LINKS
+            'graph_links': graph_links()
         }
         return render(request, 'open_list.html', context)
     else:
@@ -374,8 +392,8 @@ def suggested_actions(request):
         context = {
             'action_list': action_list,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': GRAPH_LINKS,
-            'network_links': NETWORK_LINKS
+            'graph_links': graph_links(),
+            'network_links': network_links()
         }
         return render(request, 'action_list.html', context)
     else:
@@ -401,6 +419,37 @@ def failed_htlcs(request):
         return render(request, 'failed_htlcs.html', context)
     else:
         return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def payments(request):
+    if request.method == 'GET':
+        context = {
+            'payments': Payments.objects.filter(status=2).order_by('-creation_date')[:150],
+        }
+        return render(request, 'payments.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def invoices(request):
+    if request.method == 'GET':
+        context = {
+            'invoices': Invoices.objects.filter(state=1).order_by('-creation_date')[:150],
+        }
+        return render(request, 'invoices.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def forwards(request):
+    if request.method == 'GET':
+        context = {
+            'forwards': Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')[:150],
+        }
+        return render(request, 'forwards.html', context)
+    else:
+        return redirect('home')
+
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def keysends(request):
@@ -617,106 +666,14 @@ def update_chan_policy(request):
     return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def auto_rebalance(request):
+def update_channel(request):
     if request.method == 'POST':
-        form = AutoRebalanceForm(request.POST)
-        if form.is_valid():
-            if form.cleaned_data['chan_id'] is not None:
-                target_chan_id = form.cleaned_data['chan_id']
-                target_channel = Channels.objects.filter(chan_id=target_chan_id)
-                if len(target_channel) == 1:
-                    target_channel = target_channel[0]
-                    target_channel.auto_rebalance = True if target_channel.auto_rebalance == False else False
-                    target_channel.save()
-                    messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
-                else:
-                    messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
-            if form.cleaned_data['target_percent'] is not None:
-                target_percent = form.cleaned_data['target_percent']
-                try:
-                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
-                except:
-                    LocalSettings(key='AR-Target%', value='0.05').save()
-                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
-                db_percent_target.value = target_percent
-                db_percent_target.save()
-                Channels.objects.all().update(ar_amt_target=Round(F('capacity')*target_percent, output_field=IntegerField()))
-                messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
-            if form.cleaned_data['target_time'] is not None:
-                target_time = form.cleaned_data['target_time']
-                try:
-                    db_time_target = LocalSettings.objects.get(key='AR-Time')
-                except:
-                    LocalSettings(key='AR-Time', value='5').save()
-                    db_time_target = LocalSettings.objects.get(key='AR-Time')
-                db_time_target.value = target_time
-                db_time_target.save()
-                messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
-            if form.cleaned_data['enabled'] is not None:
-                enabled = form.cleaned_data['enabled']
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
-                except:
-                    LocalSettings(key='AR-Enabled', value='0').save()
-                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
-            if form.cleaned_data['outbound_percent'] is not None:
-                outbound_percent = form.cleaned_data['outbound_percent']
-                try:
-                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
-                except:
-                    LocalSettings(key='AR-Outbound%', value='0.75').save()
-                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
-                db_outbound_target.value = outbound_percent
-                db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=(outbound_percent*100))
-                messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
-            if form.cleaned_data['fee_rate'] is not None:
-                fee_rate = form.cleaned_data['fee_rate']
-                try:
-                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
-                except:
-                    LocalSettings(key='AR-MaxFeeRate', value='100').save()
-                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
-                db_fee_rate.value = fee_rate
-                db_fee_rate.save()
-                messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
-            if form.cleaned_data['max_cost'] is not None:
-                max_cost = form.cleaned_data['max_cost']
-                try:
-                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
-                except:
-                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
-                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
-                db_max_cost.value = max_cost
-                db_max_cost.save()
-                messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
-            if form.cleaned_data['autopilot'] is not None:
-                autopilot = form.cleaned_data['autopilot']
-                try:
-                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
-                except:
-                    LocalSettings(key='AR-Autopilot', value='0').save()
-                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
-                db_autopilot.value = autopilot
-                db_autopilot.save()
-                messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
-        else:
-            messages.error(request, 'Invalid Request. Please try again.')
-    return redirect(request.META.get('HTTP_REFERER'))
-
-@login_required(login_url='/lndg-admin/login/?next=/')
-def update_target(request):
-    if request.method == 'POST':
-        form = UpdateTarget(request.POST)
+        form = UpdateChannel(request.POST)
         if form.is_valid() and Channels.objects.filter(chan_id=form.cleaned_data['chan_id']).exists():
             chan_id = form.cleaned_data['chan_id']
             target = form.cleaned_data['target']
             update_target = int(form.cleaned_data['update_target'])
             db_channel = Channels.objects.filter(chan_id=chan_id)[0]
-            print(update_target)
             if update_target == 0:
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 channel_point = ln.ChannelPoint()
@@ -749,6 +706,115 @@ def update_target(request):
                 db_channel.ar_out_target = target
                 db_channel.save()
                 messages.success(request, 'Auto rebalancer outbound target for channel ' + str(chan_id) + ' updated to a value of: ' + str(target) + '%')
+            elif update_target == 5:
+                db_channel.auto_rebalance = True if db_channel.auto_rebalance == False else False
+                db_channel.save()
+                messages.success(request, 'Auto rebalancer status for chanel ' + str(chan_id) + ' updated to a value of: ' + str(target))
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def update_setting(request):
+    if request.method == 'POST':
+        form = UpdateSetting(request.POST)
+        if form.is_valid():
+            key = form.cleaned_data['key']
+            value = form.cleaned_data['value']
+            if key == 'AR-Target%':
+                target_percent = value
+                try:
+                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
+                except:
+                    LocalSettings(key='AR-Target%', value='0.05').save()
+                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
+                db_percent_target.value = target_percent
+                db_percent_target.save()
+                Channels.objects.all().update(ar_amt_target=Round(F('capacity')*target_percent, output_field=IntegerField()))
+                messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
+            elif key == 'AR-Time':
+                target_time = int(value)
+                try:
+                    db_time_target = LocalSettings.objects.get(key='AR-Time')
+                except:
+                    LocalSettings(key='AR-Time', value='5').save()
+                    db_time_target = LocalSettings.objects.get(key='AR-Time')
+                db_time_target.value = target_time
+                db_time_target.save()
+                messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
+            elif key == 'AR-Enabled':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
+                except:
+                    LocalSettings(key='AR-Enabled', value='0').save()
+                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
+            elif key == 'AR-Outbound%':
+                outbound_percent = float(value)
+                try:
+                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
+                except:
+                    LocalSettings(key='AR-Outbound%', value='0.75').save()
+                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
+                db_outbound_target.value = outbound_percent
+                db_outbound_target.save()
+                Channels.objects.all().update(ar_out_target=(outbound_percent*100))
+                messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
+            elif key == 'AR-MaxFeeRate':
+                fee_rate = int(value)
+                try:
+                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
+                except:
+                    LocalSettings(key='AR-MaxFeeRate', value='100').save()
+                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
+                db_fee_rate.value = fee_rate
+                db_fee_rate.save()
+                messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
+            elif key == 'AR-MaxCost%':
+                max_cost = float(value)
+                try:
+                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
+                except:
+                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
+                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
+                db_max_cost.value = max_cost
+                db_max_cost.save()
+                messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
+            elif key == 'AR-Autopilot':
+                autopilot = int(value)
+                try:
+                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
+                except:
+                    LocalSettings(key='AR-Autopilot', value='0').save()
+                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
+                db_autopilot.value = autopilot
+                db_autopilot.save()
+                messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
+            elif key == 'GUI-GraphLinks':
+                links = str(value)
+                try:
+                    db_links = LocalSettings.objects.get(key='GUI-GraphLinks')
+                except:
+                    LocalSettings(key='GUI-GraphLinks', value='0').save()
+                    db_links = LocalSettings.objects.get(key='GUI-GraphLinks')
+                db_links.value = links
+                db_links.save()
+                messages.success(request, 'Updated graph links to use: ' + str(links))
+            elif key == 'GUI-NetLinks':
+                links = str(value)
+                try:
+                    db_links = LocalSettings.objects.get(key='GUI-NetLinks')
+                except:
+                    LocalSettings(key='GUI-NetLinks', value='0').save()
+                    db_links = LocalSettings.objects.get(key='GUI-NetLinks')
+                db_links.value = links
+                db_links.save()
+                messages.success(request, 'Updated network links to use: ' + str(links))
+            else:
+                messages.error(request, 'Invalid Request. Please try again.')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))

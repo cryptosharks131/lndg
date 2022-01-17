@@ -69,7 +69,7 @@
         <td>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
           {% if channel.auto_rebalance == True %}
-            <form action="/update_target/" method="post">
+            <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -80,19 +80,13 @@
           {% endif %}
         </td>
         <td>
-          {% if channel.auto_rebalance == True %}
-            <form action="/autorebalance/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="Disable">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% else %}
-            <form action="/autorebalance/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="Enable">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            </form>
-          {% endif %}
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="5">
+            <input type="hidden" name="target" value="0">
+          </form>
         </td>
       </tr>
       {% endfor %}
@@ -140,7 +134,7 @@
       <td>{{ channel.initiator }}</td>
       <td>
         {% if channel.auto_rebalance == True %}
-          <form action="/update_target/" method="post">
+          <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
@@ -151,19 +145,13 @@
         {% endif %}
       </td>
       <td>
-        {% if channel.auto_rebalance == True %}
-          <form action="/autorebalance/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="Disable">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          </form>
-        {% else %}
-          <form action="/autorebalance/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="Enable">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          </form>
-        {% endif %}
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="5">
+          <input type="hidden" name="target" value="0">
+        </form>
       </td>
     </tr>
     {% endfor %}
@@ -288,7 +276,7 @@
 {% endif %}
 {% if forwards %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 10 Payments Routed</h2>
+  <h2>Last 10  <a href="/forwards" target="_blank">Payments Routed</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
@@ -348,7 +336,7 @@
 {% endif %}
 {% if payments %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 5 Payments Sent</h2>
+  <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
@@ -379,7 +367,7 @@
 {% endif %}
 {% if invoices %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 5 Payments Received</h2>
+  <h2>Last 5 <a href="/invoices" target="_blank">Payments Received</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Created</th>

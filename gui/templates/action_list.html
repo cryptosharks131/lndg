@@ -39,19 +39,13 @@
       <td>{{ channel.remote_fee_rate|intcomma }}</td>
       <td>{{ channel.remote_base_fee|intcomma }}</td>
       <td>
-        {% if channel.auto_rebalance == True %}
-        <form action="/autorebalance/" method="post">
+        <form action="/update_channel/" method="post">
           {% csrf_token %}
-          <input type="submit" value="Disable">
+          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
           <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="5">
+          <input type="hidden" name="target" value="0">
         </form>
-        {% else %}
-        <form action="/autorebalance/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="Enable">
-          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-        </form>
-        {% endif %}
       </td>
       <td title="{{ channel.reason }}">{{ channel.output }}</td>
     </tr>
