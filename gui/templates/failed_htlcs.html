@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Failed HTLCs{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if failed_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Last 150 Failed HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Timestamp</th>
+      <th>Chan In ID</th>
+      <th>Chan Out ID</th>
+      <th>Chan In Alias</th>
+      <th>Chan Out Alias</th>
+      <th>Forward Amount</th>
+      <th>Potential Fee</th>
+      <th>HTLC Failure</th>
+      <th>Failure Detail</th>
+    </tr>
+    {% for failed_htlc in failed_htlcs %}
+    <tr>
+      <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
+      <td>{{ failed_htlc.chan_id_in }}</td>
+      <td>{{ failed_htlc.chan_id_out }}</td>
+      <td>{{ failed_htlc.chan_in_alias }}</td>
+      <td>{{ failed_htlc.chan_out_alias }}</td>
+      <td>{{ failed_htlc.amount|intcomma }}</td>
+      <td>{{ failed_htlc.missed_fee|intcomma }}</td>
+      <td>{% if failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
+      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not failed_htlcs %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any failed HTLCs yet.</h1></center>
+</div>
+{% endif %}
+{% endblock %}
