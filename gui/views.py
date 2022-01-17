@@ -630,7 +630,7 @@ def auto_rebalance(request):
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
-                Channels.objects.all().update(ar_amt_target=(F('capacity')*target_percent))
+                Channels.objects.all().update(ar_amt_target=Round(F('capacity')*target_percent, output_field=IntegerField()))
                 messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
             if form.cleaned_data['target_time'] is not None:
                 target_time = form.cleaned_data['target_time']
