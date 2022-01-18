@@ -3,8 +3,7 @@ services:
     build: .
     volumes:
       - /root/.lnd:/root/.lnd:ro
-      - /root/lndg/db.sqlite3:/lndg/db.sqlite3:rw
-      - /root/lndg/lndg-admin.txt:/lndg/lndg-admin.txt:rw
+      - /root/lndg/data:/lndg/data:rw
     command:
       - sh
       - -c
