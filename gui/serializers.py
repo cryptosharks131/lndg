@@ -40,6 +40,7 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     remote_fee_rate = serializers.ReadOnlyField()
     is_active = serializers.ReadOnlyField()
     is_open = serializers.ReadOnlyField()
+    num_updates = serializers.ReadOnlyField()
     class Meta:
         model = Channels
         exclude = []

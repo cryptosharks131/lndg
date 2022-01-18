@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %} {{ block.super }} - HTLCs{% endblock %}
 {% block content %}
 {% load humanize %}
 {% if outgoing_htlcs %}
@@ -53,6 +54,11 @@
     </tr>
     {% endfor %}
   </table>
+</div>
+{% endif %}
+{% if not outgoing_htlcs and not incoming_htlcs %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No pending HTLCs were found!</h1></center>
 </div>
 {% endif %}
 {% endblock %}

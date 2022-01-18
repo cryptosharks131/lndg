@@ -1,5 +1,5 @@
 import django, json, datetime
-from django.db.models import Sum
+from django.db.models import Sum, F
 from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -74,21 +74,16 @@ def auto_schedule():
         LocalSettings(key='AR-Enabled', value='0').save()
         enabled = 0
     if enabled == 1:
-        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_target'))
+        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target'))
         if len(auto_rebalance_channels) > 0:
-            if LocalSettings.objects.filter(key='AR-Outbound%').exists():
-                outbound_percent = int(float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) * 100)
-            else:
+            if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 LocalSettings(key='AR-Outbound%', value='0.75').save()
-                outbound_percent = 0.75 * 100
-            outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=outbound_percent).values_list('chan_id', flat=True))
+            outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
+            print(outbound_cans)
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
-                if LocalSettings.objects.filter(key='AR-Target%').exists():
-                    target_percent = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
-                else:
+                if not LocalSettings.objects.filter(key='AR-Target%').exists():
                     LocalSettings(key='AR-Target%', value='0.05').save()
-                    target_percent = 0.05
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
                 else:
@@ -104,7 +99,7 @@ def auto_schedule():
                     target_fee_rate = int(target.local_fee_rate * max_cost)
                     if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
                         value_per_fee = int(1 / (target_fee_rate / 1000000)) if target_fee_rate <= max_fee_rate else int(1 / (max_fee_rate / 1000000))
-                        target_value = int((target.capacity * target_percent) / value_per_fee) * value_per_fee
+                        target_value = int(target.ar_amt_target / value_per_fee) * value_per_fee
                         if target_value >= value_per_fee:
                             if LocalSettings.objects.filter(key='AR-Time').exists():
                                 target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
@@ -121,8 +116,7 @@ def auto_schedule():
                             print('Creating Auto Rebalance Request')
                             print('Request for:', target.chan_id)
                             print('Request routing through:', outbound_cans)
-                            print('Target % Of Value:', target_percent)
-                            print('Target Value:', target_value)
+                            print('Target Value:', target.ar_amt_target)
                             print('Target Fee:', target_fee)
                             print('Target Time:', target_time)
                             Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, target_alias=inbound_pubkey.alias, duration=target_time).save()

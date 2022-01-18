@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %} {{ block.super }} - Balances{% endblock %}
 {% block content %}
 {% load humanize %}
 {% if utxos %}
@@ -13,9 +14,9 @@
     </tr>
     {% for uxto in utxos %}
     <tr>
-      <td>{{ uxto.address }}</td>
+      <td><a href="{{ network_links }}/{{ network }}address/{{ uxto.address }}" target="_blank">{{ uxto.address }}</a></td>
       <td>{{ uxto.amount_sat|intcomma }}</td>
-      <td>{{ uxto.outpoint.txid_str }}</td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ uxto.outpoint.txid_str }}" target="_blank">{{ uxto.outpoint.txid_str }}</a></td>
       <td>{{ uxto.confirmations|intcomma }}</td>
     </tr>
     {% endfor %}
@@ -35,14 +36,19 @@
     </tr>
     {% for transaction in transactions %}
     <tr>
-      <td>{{ transaction.tx_hash }}</td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ transaction.tx_hash }}" target="_blank">{{ transaction.tx_hash }}</a></td>
       <td>{{ transaction.amount }}</td>
-      <td>{{ transaction.block_height }}</td>
+      <td>{% if transaction.block_height == 0 %}{{ transaction.block_height }}{% else %}<a href="{{ network_links }}/{{ network }}block/{{ transaction.block_height }}" target="_blank">{{ transaction.block_height }}</a>{% endif %}</td>
       <td>{{ transaction.fee }}</td>
       <td>{{ transaction.label }}</td>
     </tr>
     {% endfor %}
   </table>
+</div>
+{% endif %}
+{% if not utxos and not transactions %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No wallet transactions found!</h1></center>
 </div>
 {% endif %}
 {% endblock %}

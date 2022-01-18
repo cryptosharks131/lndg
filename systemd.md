@@ -93,6 +93,8 @@ User=<run_as_user>
 Group=<run_as_user>
 ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/htlc_stream.sh
 StandardError=append:/var/log/lnd_htlc_stream_error.log
+Restart=on-failure
+RestartSec=60s
 ```
 Enable and start the service to run the htlc failure stream service file.  
 `sudo systemctl enable htlc-stream-lndg.service`  
