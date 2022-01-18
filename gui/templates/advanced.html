@@ -58,7 +58,7 @@
             <input type="hidden" name="update_target" value="2">
           </form>
         </td>
-        <td>
+        <td {% if channel.auto_rebalance == False %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
@@ -66,7 +66,7 @@
               <input type="hidden" name="update_target" value="4">
             </form>
         </td>
-        <td>
+        <td {% if channel.auto_rebalance == True %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
