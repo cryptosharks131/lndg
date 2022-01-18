@@ -1,25 +1,15 @@
 import django, json, datetime
-from django.conf import settings
 from django.db.models import Sum
-from pathlib import Path
 from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect
-
-BASE_DIR = Path(__file__).resolve().parent
-settings.configure(
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3'
-        }
-    }
-)
-django.setup()
 from lndg import settings
+from os import environ
+environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
+django.setup()
 from gui.models import Rebalancer, Channels, LocalSettings, Forwards, Autopilot
 
 def run_rebalancer(rebalance):
