@@ -33,6 +33,7 @@ urlpatterns = [
     path('createinvoice/', views.add_invoice_form, name='add-invoice-form'),
     path('rebalancer/', views.rebalance, name='rebalancer'),
     path('updatechanpolicy/', views.update_chan_policy, name='updatechanpolicy'),
+    path('autorebalance/', views.auto_rebalance, name='auto-rebalance'),
     path('update_channel/', views.update_channel, name='update-channel'),
     path('update_setting/', views.update_setting, name='update-setting'),
     path('suggested_opens/', views.suggested_opens, name='suggested-opens'),
