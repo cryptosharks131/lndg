@@ -98,7 +98,7 @@ WSGI_APPLICATION = 'lndg.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'data/db.sqlite3',
     }
 }
 
@@ -236,7 +236,7 @@ stdout_logfile_backups = 15
         print('Error creating the settings file:', str(e))
 
 def main():
-    help_msg = "LNDg Settings Initializer"
+    help_msg = "LNDg Initializer"
     parser = argparse.ArgumentParser(description = help_msg)
     parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
     parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default='~/.lnd')
@@ -267,12 +267,18 @@ def main():
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)
     try:
+        DATA_DIR = os.path.join(BASE_DIR, 'data')
+        try:
+            os.mkdir(DATA_DIR)
+        except:
+            print('Data directory already found...')
+        Path(os.path.join(DATA_DIR, 'db.sqlite3')).touch()
         settings.configure(
             SECRET_KEY = secrets.token_urlsafe(64),
             DATABASES = {
                 'default':{
                     'ENGINE':'django.db.backends.sqlite3',
-                    'NAME':BASE_DIR/'db.sqlite3'
+                    'NAME': BASE_DIR / 'data/db.sqlite3'
                 }
             },
             INSTALLED_APPS = [
@@ -301,7 +307,8 @@ def main():
                 admin.save()
                 if adminpw is None:
                     try:
-                        f = open("lndg-admin.txt", "w")
+                        Path(os.path.join(DATA_DIR, 'lndg-admin.txt')).touch()
+                        f = open('data/lndg-admin.txt', 'w')
                         f.write(login_pw)
                         f.close()
                     except Exception as e:
