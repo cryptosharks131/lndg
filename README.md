@@ -24,7 +24,7 @@ services:
 ```
 4. Deploy your docker image: `docker-compose up -d`
 5. LNDg should now be available on port `http://localhost:8889`
-6. Open and copy the password from output file: `nano lndg-admin.txt`
+6. Open and copy the password from output file: `nano data/lndg-admin.txt`
 7. Use the password from the output file and the username `lndg-admin` to login
 
 ### Updating
@@ -60,7 +60,7 @@ networks:
 ```
 5. Deploy your docker image: `docker-compose up -d`
 6. You can now access LNDg via your browser on port 8889: `http://umbrel.local:8889`
-7. Open and copy the password from output file: `nano lndg-admin.txt`
+7. Open and copy the password from output file: `nano data/lndg-admin.txt`
 8. Use the password from the output file and the username `lndg-admin` to login
 
 ### Updating
