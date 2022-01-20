@@ -12,9 +12,9 @@
       <th width=15%>Successful Payments Routed</th>
       <th width=12%>Amount Routed</th>
       <th width=12%>Fees Paid</th>
-      <th width=12%>Effective PPM</th>
-      <th width=12%>Volume Score</th>
-      <th width=12%>Savings By Volume</th>
+      <th title="Total fees paid to the peer over total routed through the peer." width=12%>Effective PPM</th>
+      <th title="A score factoring in both number of payments and volume of payments routed through the peer." width=12%>Volume Score</th>
+      <th title="The amount you could have potentially saved on rebalancing payments if you had been peered directly with this node over total volume routed through the peer." width=12%>Savings By Volume</th>
     </tr>
     {% for node in open_list %}
     <tr>

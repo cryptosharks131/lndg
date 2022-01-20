@@ -11,28 +11,28 @@
         <th></th>
         <th></th>
         <th></th>
-        <th colspan="3">7-Day Activity (Routed | Rebalanced) And Revenue</th>
-        <th colspan="3">30-Day Activity (Routed | Rebalanced) And Revenue</th>
+        <th colspan="3">7-Day Activity And Revenue </th>
+        <th colspan="3">30-Day Activity And Revenue </th>
         <th colspan="2">Local Fees</th>
-        <th colspan="2">Remote Fees</th>
+        <th colspan="2">Peer Fees</th>
         <th colspan="2"> Channel Health</th>
       </tr>
       <tr>
         <th width=1%>Channel ID</th>
         <th>Peer Alias</th>
         <th width=1%>Capacity</th>
-        <th>Outbound</th>
-        <th>Out [Profit] | In</th>
-        <th>Inbound</th>
-        <th>Outbound</th>
-        <th>Out [Profit] | In</th>
-        <th>Inbound</th>
+        <th title="Routed Out | Rebalanced In">Outbound Flow</th>
+        <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
+        <th title="Routed In | Rebalanced Out">Inbound Flow</th>
+        <th title="Routed Out | Rebalanced In">Outbound Flow</th>
+        <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
+        <th title="Routed In | Rebalanced Out">Inbound Flow</th>
         <th width=1%>Rate</th>
         <th width=1%>Base</th>
         <th width=1%>Rate</th>
         <th width=1%>Base</th>
-        <th width=1%>Updates</th>
-        <th width=1%>Opener</th>
+        <th title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
+        <th title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
       </tr>
       {% for channel in channels %}
       <tr>

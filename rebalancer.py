@@ -79,7 +79,6 @@ def auto_schedule():
             if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 LocalSettings(key='AR-Outbound%', value='0.75').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
-            print(outbound_cans)
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if not LocalSettings.objects.filter(key='AR-Target%').exists():
@@ -139,21 +138,24 @@ def auto_enable():
             i7D = 0 if routed_in_7day == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
             o7D = 0 if routed_out_7day == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
             if o7D > (i7D*1.10) and outbound_percent > 75:
-                print('Case 1: Pass')
+                #print('Case 1: Pass')
+                pass
             elif o7D > (i7D*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
-                print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
+                #print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
                 channel.auto_rebalance = True
                 channel.save()
                 Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=0, new_value=1).save()
             elif o7D < (i7D*1.10) and outbound_percent > 75 and channel.auto_rebalance == True:
-                print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
+                #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
                 channel.auto_rebalance = False
                 channel.save()
                 Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=1, new_value=0).save()
             elif o7D < (i7D*1.10) and inbound_percent > 75:
-                print('Case 4: Pass')
+                #print('Case 4: Pass')
+                pass
             else:
-                print('Case 5: Pass')
+                #print('Case 5: Pass')
+                pass
 
 def main():
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')

@@ -47,8 +47,8 @@
         <th>iLife</th>
         <th>iRate</th>
         <th>iBase</th>
-        <th width=4%>iTarget%</th>
-        <th width=4%>AR</th>
+        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
+        <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
       </tr>
       {% for channel in active_channels %}
       <tr>

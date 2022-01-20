@@ -18,10 +18,10 @@
         <th>oBase</th>
         <th>iRate</th>
         <th>iBase</th>
-        <th>Target Amt</th>
-        <th>oTarget%</th>
-        <th>iTarget%</th>
-        <th>AR</th>
+        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
+        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
+        <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
         <th>Active</th>
       </tr>
       {% for channel in channels %}
@@ -90,6 +90,11 @@
   </div>
 </div>
 {% endif %}
+{% if not channels %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any channels to setup yet!</h1></center>
+</div>
+{% endif %}
 {% if local_settings %}
 <div class="w3-container w3-padding-small">
   <h2>Update Local Settings</h2>
@@ -121,11 +126,6 @@
     </tr>
     {% endfor %}
   </table>
-</div>
-{% endif %}
-{% if not channels %}
-<div class="w3-container w3-padding-small">
-  <center><h1>You dont have any channels to setup yet!</h1></center>
 </div>
 {% endif %}
 {% endblock %}
