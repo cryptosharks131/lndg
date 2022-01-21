@@ -135,7 +135,17 @@ The following data can be accessed at the /api endpoint:
 LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
 
 ### Suggests New Peers
-LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
+LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.  
+#### There are two unique values in LNDg:
+1. Volume Score - A score based upon both the count of transactions and the volume of transactions routed through the peer
+2. Savings By Volume (ppm) - The amount of sats you could have saved during rebalances if you were peered directly with this node over the total amount routed through the peer
+
+### Channel Performance Metrics
+#### LNDg will aggregate your payment and forwarding data to provide the following metrics:
+1. Outbound Flow Details - This shows the amount routed outbound next to the amount rebalanced in
+2. Revenue Details - This shows the revenue earned on the left, the profit (revenue - cost) in the middle and the assisted revenue (amount earned due to this channel's inbound flow) on the right
+3. Inbound Flow Details - This shows the amount routed inbound next to the amount rebalanced out
+4. Updates - This is the number of updates the channel has had and is directly correlated to the space it takes up in channel.db
 
 ### Suggests AR Actions
 LNDg will make suggestions for actions to take around Auto-Rebalancing.
@@ -197,7 +207,8 @@ If you want a channel not to be picked for rebalancing (i.e. it is already full 
 ![image](https://user-images.githubusercontent.com/38626122/148699286-0b1d2c13-191a-4c6c-99ae-ce3d8b8ac64d.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809583-db743233-25c1-4d3e-aaec-2a7767de2c9f.png)
 
-### Peers, Balances, Routes, Keysends and Pending HTLCs All Open In Separate Screens
+### Channel Performance, Peers, Balances, Routes, Keysends and Pending HTLCs All Open In Separate Screens
+![image](https://user-images.githubusercontent.com/38626122/150556928-bb8772fb-14c4-4b7a-865e-a8350aac7f83.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809809-1ed40cfb-9d12-447a-8e5e-82ae79605895.png)
 ![image](https://user-images.githubusercontent.com/38626122/137810021-4f69dcb0-5fce-4062-bc49-e75f5dd0feda.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809882-4a87f86d-290c-456e-9606-ed669fd98561.png)
