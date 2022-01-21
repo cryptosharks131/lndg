@@ -195,10 +195,10 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
   ```
   Enabled: 1
   Target Amount (%): 0.03
-  Target Time (min): 5
+  Target Time (min): 3
   Target Outbound Above (%): 0.4
-  Global Max Fee Rate (ppm): 200
-  Max Cost (%): 0.5
+  Global Max Fee Rate (ppm): 500
+  Max Cost (%): 0.6
   ```
 3. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
 
