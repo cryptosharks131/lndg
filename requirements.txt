@@ -4,3 +4,4 @@ django-qr-code
 grpcio
 protobuf
 pytz
+pandas

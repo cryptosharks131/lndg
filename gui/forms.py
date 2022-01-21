@@ -70,7 +70,22 @@ class AutoRebalanceForm(forms.Form):
     fee_rate = forms.IntegerField(label='fee_rate', required=False)
     outbound_percent = forms.FloatField(label='outbound_percent', required=False)
     max_cost = forms.FloatField(label='max_cost', required=False)
+    autopilot = forms.IntegerField(label='autopilot', required=False)
 
-class ARTarget(forms.Form):
+updates_channel_codes = [
+    (0, 'base_fee'),
+    (1, 'fee_rate'),
+    (2, 'ar_amt_target'),
+    (3, 'ar_in_target'),
+    (4, 'ar_out_target'),
+    (5, 'ar_enabled'),
+]
+
+class UpdateChannel(forms.Form):
     chan_id = forms.IntegerField(label='chan_id')
-    ar_target = forms.IntegerField(label='ar_target')
+    target = forms.IntegerField(label='target')
+    update_target = forms.ChoiceField(label='update_target', choices=updates_channel_codes)
+
+class UpdateSetting(forms.Form):
+    key = forms.CharField(label='setting', max_length=20)
+    value = forms.CharField(label='value', max_length=50)

@@ -127,6 +127,31 @@ Alternatively, you may also make your own task for these files with your preferr
 You can serve the dashboard at all times using a webserver instead of the development server.  Using a webserver will serve your static files and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aide in the setup of a nginx webserver. `sudo bash nginx.sh`
 
 ## Key Features
+### Suggests New Peers
+LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.  
+#### There are two unique values in LNDg:
+1. Volume Score - A score based upon both the count of transactions and the volume of transactions routed through the peer
+2. Savings By Volume (ppm) - The amount of sats you could have saved during rebalances if you were peered directly with this node over the total amount routed through the peer
+
+### Channel Performance Metrics
+#### LNDg will aggregate your payment and forwarding data to provide the following metrics:
+1. Outbound Flow Details - This shows the amount routed outbound next to the amount rebalanced in
+2. Revenue Details - This shows the revenue earned on the left, the profit (revenue - cost) in the middle and the assisted revenue (amount earned due to this channel's inbound flow) on the right
+3. Inbound Flow Details - This shows the amount routed inbound next to the amount rebalanced out
+4. Updates - This is the number of updates the channel has had and is directly correlated to the space it takes up in channel.db
+
+### Password Protected Login
+The initial login username is `lndg-admin` but can be easily modified by going to the page found here: `/lndg-admin`
+
+### Suggests AR Actions
+LNDg will make suggestions for actions to take around Auto-Rebalancing.
+
+### AR-Autopilot Setting
+LNDg will automatically act upon the suggestions it makes on the Suggests AR Actions page.
+
+### HTLC Failure Stream
+LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.
+
 ### API Backend
 The following data can be accessed at the /api endpoint:  
 `payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings` `pendinghtlcs` `failedhtlcs`
@@ -134,17 +159,8 @@ The following data can be accessed at the /api endpoint:
 ### Peer Reconnection
 LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
 
-### Suggests New Peers
-LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
-
-### Suggests AR Actions
-LNDg will make suggestions for actions to take around Auto-Rebalancing.
-
-### HTLC Failure Stream
-LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.
-
-### Auto-Rebalancer
-Here are some notes to help you get started using the Auto-Rebalancer (AR).
+## Auto-Rebalancer
+### Here are some notes to help you get started using the Auto-Rebalancer (AR).
 
 The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucarative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
 
@@ -179,10 +195,10 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
   ```
   Enabled: 1
   Target Amount (%): 0.03
-  Target Time (min): 5
+  Target Time (min): 3
   Target Outbound Above (%): 0.4
-  Global Max Fee Rate (ppm): 200
-  Max Cost (%): 0.5
+  Global Max Fee Rate (ppm): 500
+  Max Cost (%): 0.6
   ```
 3. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
 
@@ -197,7 +213,8 @@ If you want a channel not to be picked for rebalancing (i.e. it is already full 
 ![image](https://user-images.githubusercontent.com/38626122/148699286-0b1d2c13-191a-4c6c-99ae-ce3d8b8ac64d.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809583-db743233-25c1-4d3e-aaec-2a7767de2c9f.png)
 
-### Peers, Balances, Routes, Keysends and Pending HTLCs All Open In Separate Screens
+### Channel Performance, Peers, Balances, Routes, Keysends and Pending HTLCs All Open In Separate Screens
+![image](https://user-images.githubusercontent.com/38626122/150556928-bb8772fb-14c4-4b7a-865e-a8350aac7f83.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809809-1ed40cfb-9d12-447a-8e5e-82ae79605895.png)
 ![image](https://user-images.githubusercontent.com/38626122/137810021-4f69dcb0-5fce-4062-bc49-e75f5dd0feda.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809882-4a87f86d-290c-456e-9606-ed669fd98561.png)

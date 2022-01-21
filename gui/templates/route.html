@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% block title %} {{ block.super }} - Routes{% endblock %}
 {% block content %}
 {% load humanize %}
+{% if route %}
 <div class="w3-container w3-padding-small">
   <h2>Route For Payment: {{ payment_hash }}</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
@@ -8,22 +10,30 @@
       <th>Step</th>
       <th>Amount</th>
       <th>Fee</th>
+      <th title="The fee in PPM paid on this hop.">PPM</th>
+      <th title="The cost to get the payment to this hop of the payment.">Cost To</th>
       <th>Alias</th>
       <th>Channel ID</th>
       <th>Channel Capacity</th>
-      <th>Cost To</th>
     </tr>
     {% for hop in route %}
     <tr>
       <td>{{ hop.step }}</td>
       <td>{{ hop.amt }}</td>
       <td>{{ hop.fee }}</td>
+      <td>{{ hop.ppm }}</td>
+      <td>{{ hop.cost_to }}</td>
       <td>{{ hop.alias }}</td>
       <td>{{ hop.chan_id }}</td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
-      <td>{{ hop.cost_to }}</td>
     </tr>
     {% endfor %}
   </table>
 </div>
+{% endif %}
+{% if not route %}
+<div class="w3-container w3-padding-small">
+  <center><h1>A route was not found for this payment hash!</h1></center>
+</div>
+{% endif %}
 {% endblock %}

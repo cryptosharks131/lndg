@@ -4,7 +4,7 @@
   </style>
   <head>
     <meta charset="utf-8">
-    <title>LNDg</title>
+    <title>{% block title %}LNDg{% endblock %}</title>
     {% load static %}
     {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
@@ -28,7 +28,7 @@
   <footer>
     <div id="footer">
       <div class="w3-container w3-padding-small">
-        <center>LNDg v1.0.1</center>
+        <center>LNDg v1.0.2</center>
       </div>
     </div>
   </footer>

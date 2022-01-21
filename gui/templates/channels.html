@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Channels{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if channels %}
+<div class="w3-container w3-padding-small">
+  <h2>Channel Performance</h2>
+  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <tr>
+        <th></th>
+        <th></th>
+        <th></th>
+        <th colspan="3">7-Day Activity And Revenue </th>
+        <th colspan="3">30-Day Activity And Revenue </th>
+        <th colspan="2">Local Fees</th>
+        <th colspan="2">Peer Fees</th>
+        <th colspan="2"> Channel Health</th>
+      </tr>
+      <tr>
+        <th width=1%>Channel ID</th>
+        <th>Peer Alias</th>
+        <th width=1%>Capacity</th>
+        <th title="Routed Out | Rebalanced In">Outbound Flow</th>
+        <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
+        <th title="Routed In | Rebalanced Out">Inbound Flow</th>
+        <th title="Routed Out | Rebalanced In">Outbound Flow</th>
+        <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
+        <th title="Routed In | Rebalanced Out">Inbound Flow</th>
+        <th width=1%>Rate</th>
+        <th width=1%>Base</th>
+        <th width=1%>Rate</th>
+        <th width=1%>Base</th>
+        <th title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
+        <th title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
+      </tr>
+      {% for channel in channels %}
+      <tr>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+        <td>{{ channel.capacity }} M</td>
+        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
+        <td>{{ channel.revenue_7day|intcomma }} [{{ channel.profits_7day|intcomma }}] | {{ channel.revenue_assist_7day|intcomma }}</td>
+        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
+        <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
+        <td>{{ channel.revenue_30day|intcomma }} [{{ channel.profits_30day|intcomma }}] | {{ channel.revenue_assist_30day|intcomma }}</td>
+        <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
+        <td>{{ channel.local_fee_rate|intcomma }}</td>
+        <td>{{ channel.local_base_fee|intcomma }}</td>
+        <td>{{ channel.remote_fee_rate|intcomma }}</td>
+        <td>{{ channel.remote_base_fee|intcomma }}</td>
+        <td>{{ channel.num_updates|intcomma }}</td>
+        <td title="Block Opened: {{ channel.open_block }}">{{ channel.initiator }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endif %}
+{% if not channels %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any channels to analyze yet!</h1></center>
+</div>
+{% endif %}
+{% endblock %}
