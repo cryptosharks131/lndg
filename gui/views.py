@@ -254,8 +254,12 @@ def channels(request):
             channels_df['profits_7day'] = channels_df.apply(lambda row: 0 if row['revenue_7day'] == 0 else row['revenue_7day'] - row['costs_7day'], axis=1)
             channels_df['profits_30day'] = channels_df.apply(lambda row: 0 if row['revenue_30day'] == 0 else row['revenue_30day'] - row['costs_30day'], axis=1)
             channels_df['open_block'] = channels_df.apply(lambda row: row.chan_id>>40, axis=1)
+        apy_7day = round((channels_df['profits_7day'].sum()*5214.2857)/channels_df['local_balance'].sum(), 2)
+        apy_30day = round((channels_df['profits_30day'].sum()*1216.6667)/channels_df['local_balance'].sum(), 2)
         context = {
             'channels': channels_df.to_dict(orient='records'),
+            'apy_7day': apy_7day,
+            'apy_30day': apy_30day,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
