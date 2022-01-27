@@ -19,6 +19,7 @@
         <th>iRate</th>
         <th>iBase</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
@@ -58,6 +59,14 @@
             <input type="hidden" name="update_target" value="2">
           </form>
         </td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_max_cost }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="6">
+          </form>
+        </td>
         <td {% if channel.auto_rebalance == False %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
@@ -83,7 +92,7 @@
             <input type="hidden" name="target" value="0">
           </form>
         </td>
-        <td>{{ channel.is_active }}</td>
+        <td title="{{ channel.last_update|naturaltime }}">{{ channel.is_active }}</td>
       </tr>
       {% endfor %}
     </table>

@@ -13,6 +13,7 @@ class Payments(models.Model):
     chan_out_alias = models.CharField(null=True, max_length=32)
     keysend_preimage = models.CharField(null=True, max_length=64)
     message = models.CharField(null=True, max_length=255)
+    cleaned = models.BooleanField(default=False)
     class Meta:
         app_label = 'gui'
 
@@ -41,7 +42,7 @@ class Invoices(models.Model):
     chan_in = models.IntegerField(null=True)
     chan_in_alias = models.CharField(null=True, max_length=32)
     keysend_preimage = models.CharField(null=True, max_length=64)
-    message = models.CharField(null=True, max_length=255)
+    message = models.CharField(null=True, max_length=500)
     index = models.IntegerField()
     class Meta:
         app_label = 'gui'
@@ -74,14 +75,18 @@ class Channels(models.Model):
     alias = models.CharField(max_length=32)
     local_base_fee = models.IntegerField()
     local_fee_rate = models.IntegerField()
+    local_disabled = models.BooleanField()
     remote_base_fee = models.IntegerField()
     remote_fee_rate = models.IntegerField()
+    remote_disabled = models.BooleanField()
     is_active = models.BooleanField()
     is_open = models.BooleanField()
+    last_update = models.DateTimeField()
     auto_rebalance = models.BooleanField(default=False)
     ar_amt_target = models.BigIntegerField()
     ar_in_target = models.IntegerField(default=100)
     ar_out_target = models.IntegerField()
+    ar_max_cost = models.IntegerField()
 
     def save(self, *args, **kwargs):
         if not self.ar_out_target:
@@ -98,6 +103,13 @@ class Channels(models.Model):
                 LocalSettings(key='AR-Target%', value='0.05').save()
                 amt_setting = 0.05
             self.ar_amt_target = int(amt_setting * self.capacity)
+        if not self.ar_max_cost:
+            if LocalSettings.objects.filter(key='AR-MaxCost%').exists():
+                cost_setting = float(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
+            else:
+                LocalSettings(key='AR-MaxCost%', value='0.65').save()
+                cost_setting = 0.65
+            self.ar_max_cost = int(cost_setting * 100)
         super(Channels, self).save(*args, **kwargs)
 
     class Meta:

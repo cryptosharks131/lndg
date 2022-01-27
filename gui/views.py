@@ -100,8 +100,10 @@ def home(request):
             detailed_channel['alias'] = channel.alias
             detailed_channel['local_base_fee'] = channel.local_base_fee
             detailed_channel['local_fee_rate'] = channel.local_fee_rate
+            detailed_channel['local_disabled'] = channel.local_disabled
             detailed_channel['remote_base_fee'] = channel.remote_base_fee
             detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
+            detailed_channel['remote_disabled'] = channel.remote_disabled
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
@@ -119,7 +121,7 @@ def home(request):
             detailed_channel['ar_in_target'] = channel.ar_in_target
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
-        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
+        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('outbound_percent')
         inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         sum_outbound = total_outbound + pending_outbound + inactive_outbound
         onchain_txs = Onchain.objects.all()
@@ -724,7 +726,7 @@ def auto_rebalance(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=(round(outbound_percent*100, 0)))
+                Channels.objects.all().update(ar_out_target=int(outbound_percent*100))
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
@@ -741,10 +743,11 @@ def auto_rebalance(request):
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
+                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()
+                Channels.objects.all().update(ar_max_cost=int(max_cost*100))
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
             if form.cleaned_data['autopilot'] is not None:
                 autopilot = form.cleaned_data['autopilot']
@@ -805,6 +808,12 @@ def update_channel(request):
                 db_channel.auto_rebalance = True if db_channel.auto_rebalance == False else False
                 db_channel.save()
                 messages.success(request, 'Auto rebalancer status for chanel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_rebalance))
+            elif update_target == 6:
+                db_channel.ar_max_cost = target
+                db_channel.save()
+                messages.success(request, 'Auto rebalancer max cost for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target) + '%')
+            else:
+                messages.error(request, 'Invalid target code. Please try again.')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
@@ -856,7 +865,7 @@ def update_setting(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=(round(outbound_percent*100, 0)))
+                Channels.objects.all().update(ar_out_target=int(outbound_percent*100))
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
             elif key == 'AR-MaxFeeRate':
                 fee_rate = int(value)
@@ -873,10 +882,11 @@ def update_setting(request):
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
+                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()
+                Channels.objects.all().update(ar_max_cost=int(max_cost*100))
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
             elif key == 'AR-Autopilot':
                 autopilot = int(value)

@@ -59,14 +59,14 @@
         <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
-        <td>{{ channel.local_fee_rate|intcomma }}</td>
-        <td>{{ channel.local_base_fee|intcomma }}</td>
+        <td {% if channel.local_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
+        <td {% if channel.local_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
         <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
         <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
-        <td>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td>{{ channel.remote_base_fee|intcomma }}</td>
+        <td {% if channel.remote_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
+        <td {% if channel.remote_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
           {% if channel.auto_rebalance == True %}
             <form action="/update_channel/" method="post">
@@ -125,10 +125,10 @@
       <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td>{{ channel.local_fee_rate|intcomma }}</td>
-      <td>{{ channel.local_base_fee|intcomma }}</td>
-      <td>{{ channel.remote_fee_rate|intcomma }}</td>
-      <td>{{ channel.remote_base_fee|intcomma }}</td>
+      <td {% if channel.local_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
+      <td {% if channel.local_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
+      <td {% if channel.remote_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
+      <td {% if channel.remote_disabled == True %}style="background-color: #f18973"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
       <td>{{ channel.local_commit|intcomma }}</td>
       <td>{{ channel.local_chan_reserve|intcomma }}</td>
       <td>{{ channel.initiator }}</td>
