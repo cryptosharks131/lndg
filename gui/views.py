@@ -104,6 +104,7 @@ def home(request):
             detailed_channel['remote_base_fee'] = channel.remote_base_fee
             detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
             detailed_channel['remote_disabled'] = channel.remote_disabled
+            detailed_channel['last_update'] = channel.last_update
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))

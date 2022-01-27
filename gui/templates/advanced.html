@@ -92,7 +92,7 @@
             <input type="hidden" name="target" value="0">
           </form>
         </td>
-        <td title="{{ channel.last_update|naturaltime }}">{{ channel.is_active }}</td>
+        <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}">{{ channel.is_active }}</td>
       </tr>
       {% endfor %}
     </table>
