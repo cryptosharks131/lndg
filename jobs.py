@@ -1,6 +1,6 @@
 import django
 from django.db.models import Max
-from datetime import datetime
+from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps.lnd_connect import lnd_connect
@@ -8,7 +8,7 @@ from lndg import settings
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, PendingHTLCs
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, PendingHTLCs, LocalSettings
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -240,6 +240,39 @@ def reconnect_peers(stub):
                     peer.last_reconnected = datetime.now()
                     peer.save()
 
+def clean_payments(stub):
+    if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
+        enabled = int(LocalSettings.objects.filter(key='LND-CleanPayments')[0].value)
+    else:
+        LocalSettings(key='LND-CleanPayments', value='0').save()
+        LocalSettings(key='LND-RetentionDays', value='30').save()
+        enabled = 0
+    if enabled == 1:
+        if LocalSettings.objects.filter(key='LND-RetentionDays').exists():
+            retention_days = int(LocalSettings.objects.filter(key='LND-RetentionDays')[0].value)
+        else:
+            LocalSettings(key='LND-RetentionDays', value='30').save()
+            retention_days = 30
+        time_filter = datetime.now() - timedelta(days=retention_days)
+        target_payments = Payments.objects.exclude(status=1).filter(cleaned=False).filter(creation_date__lte=time_filter).order_by('index')[:10]
+        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
+        stub = lnrpc.LightningStub(connection)
+        for payment in target_payments:
+            payment_hash = bytes.fromhex(payment.payment_hash)
+            htlcs_only = True if payment.status == 2 else False
+            try:
+                stub.DeletePayment(ln.DeletePaymentRequest(payment_hash=payment_hash, failed_htlcs_only=htlcs_only))
+            except Exception as e:
+                error = str(e)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                print('Error occured when cleaning payment: ' + payment.payment_hash)
+                print('Error: ' + error_msg)
+            finally:
+                payment.cleaned = True
+                payment.save()
+
 def main():
     stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
     #Update data
@@ -250,6 +283,7 @@ def main():
     update_forwards(stub)
     update_onchain(stub)
     reconnect_peers(stub)
+    clean_payments(stub)
 
 if __name__ == '__main__':
     main()

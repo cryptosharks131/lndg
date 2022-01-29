@@ -132,7 +132,7 @@
       <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
       <td>{{ channel.local_commit|intcomma }}</td>
       <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td>{{ channel.last_update|naturaltime|slice:":-4" }}</td>
+      <td title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
       <td>{{ channel.initiator }}</td>
       <td>
         {% if channel.auto_rebalance == True %}

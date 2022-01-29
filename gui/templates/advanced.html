@@ -124,6 +124,10 @@
             <input style="text-align:center" id="value" type="number" min="0" max="60" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AR-MaxFeeRate' %}
             <input style="text-align:center" id="value" type="number" min="0" max="2500" name="value" value="{{ settings.value }}">
+          {% elif settings.key == 'LND-CleanPayments' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
+          {% elif settings.key == 'LND-RetentionDays' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="1000" name="value" value="{{ settings.value }}">
           {% elif settings.key|slice:":3" == 'AR-' %}
             <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
           {% else %}
