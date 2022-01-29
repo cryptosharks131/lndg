@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Closures{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if closures %}
+<div class="w3-container w3-padding-small">
+  <h2>Closures</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Capacity</th>
+      <th width=20%>Closing TXID</th>
+      <th>Settled Balance</th>
+      <th>Locked Balance</th>
+      <th>Close Height</th>
+      <th>Close Type</th>
+      <th>Opener</th>
+      <th>Closer</th>
+    </tr>
+    {% for closure in closures %}
+    <tr>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.channel_point|slice:":-2" }}" target="_blank">{{ closure.chan_id }}</a></td>
+      <td>{{ closure.capacity|intcomma }}</td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx_hash }}" target="_blank">{{ closure.closing_tx_hash }}</a></td>
+      <td>{{ closure.settled_balance|intcomma }}</td>
+      <td>{{ closure.time_locked_balance|intcomma }}</td>
+      <td>{{ closure.close_height|intcomma }}</td>
+      <td>{% if closure.close_type == 0 %}Cooperative{% elif closure.close_type == 1 %}Local Force{% elif closure.close_type == 2 %}Remote Force{% elif closure.close_type == 3 %}Breach{% elif closure.close_type == 4 %}Funding Cancelled{% elif closure.close_type == 5 %}Abandoned{% else %}{{ closure.close_type }}{% endif %}</td>
+      <td>{% if closure.open_initiator == 1 %}Local{% elif closure.open_initiator == 2 %}Remote{% else %}{{ closure.open_initiator }}{% endif %}</td>
+      <td>{% if closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% else %}{{ closure.close_initiator }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not closures %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No channel closures found!</h1></center>
+</div>
+{% endif %}
+{% endblock %}

@@ -12,12 +12,12 @@
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
     </tr>
-    {% for uxto in utxos %}
+    {% for utxo in utxos %}
     <tr>
-      <td><a href="{{ network_links }}/{{ network }}address/{{ uxto.address }}" target="_blank">{{ uxto.address }}</a></td>
-      <td>{{ uxto.amount_sat|intcomma }}</td>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ uxto.outpoint.txid_str }}" target="_blank">{{ uxto.outpoint.txid_str }}</a></td>
-      <td>{{ uxto.confirmations|intcomma }}</td>
+      <td><a href="{{ network_links }}/{{ network }}address/{{ utxo.address }}" target="_blank">{{ utxo.address }}</a></td>
+      <td>{{ utxo.amount_sat|intcomma }}</td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ utxo.outpoint.txid_str }}" target="_blank">{{ utxo.outpoint.txid_str }}</a></td>
+      <td>{{ utxo.confirmations|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>

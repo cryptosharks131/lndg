@@ -187,6 +187,8 @@ def home(request):
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
+            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).filter(inbound_can__gte=1).count(),
+            'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links(),
@@ -325,6 +327,19 @@ def balances(request):
             'network_links': network_links()
         }
         return render(request, 'balances.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def closures(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        context = {
+            'closures': stub.ClosedChannels(ln.ClosedChannelsRequest()).channels[::-1],
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'network_links': network_links()
+        }
+        return render(request, 'closures.html', context)
     else:
         return redirect('home')
 
@@ -919,6 +934,26 @@ def update_setting(request):
                 db_links.value = links
                 db_links.save()
                 messages.success(request, 'Updated network links to use: ' + str(links))
+            elif key == 'LND-CleanPayments':
+                clean_payments = int(value)
+                try:
+                    db_clean_payments = LocalSettings.objects.get(key='LND-CleanPayments')
+                except:
+                    LocalSettings(key='LND-CleanPayments', value='0').save()
+                    db_clean_payments = LocalSettings.objects.get(key='LND-CleanPayments')
+                db_clean_payments.value = clean_payments
+                db_clean_payments.save()
+                messages.success(request, 'Updated auto payment cleanup setting to: ' + str(clean_payments))
+            elif key == 'LND-RetentionDays':
+                retention_days = int(value)
+                try:
+                    db_retention_days = LocalSettings.objects.get(key='LND-RetentionDays')
+                except:
+                    LocalSettings(key='LND-RetentionDays', value='0').save()
+                    db_retention_days = LocalSettings.objects.get(key='LND-RetentionDays')
+                db_retention_days.value = retention_days
+                db_retention_days.save()
+                messages.success(request, 'Updated payment cleanup retention days to: ' + str(retention_days))
             else:
                 messages.error(request, 'Invalid Request. Please try again.')
         else:
