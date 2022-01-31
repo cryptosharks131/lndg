@@ -49,7 +49,7 @@
         <td>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
         <td>{{ channel.remote_base_fee|intcomma }}</td>
-        <td>{{ channel.num_updates|intcomma }}</td>
+        <td title="Update Count: {{ channel.num_updates|intcomma }}">{{ channel.updates }}%</td>
         <td title="Block Opened: {{ channel.open_block }}">{{ channel.initiator }}</td>
       </tr>
       {% endfor %}

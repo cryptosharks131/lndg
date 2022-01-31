@@ -13,6 +13,8 @@ from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalan
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
+from gui.lnd_deps import router_pb2 as lnr
+from gui.lnd_deps import router_pb2_grpc as lnrouter
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
@@ -259,8 +261,10 @@ def channels(request):
             channels_df['profits_7day'] = channels_df.apply(lambda row: 0 if row['revenue_7day'] == 0 else row['revenue_7day'] - row['costs_7day'], axis=1)
             channels_df['profits_30day'] = channels_df.apply(lambda row: 0 if row['revenue_30day'] == 0 else row['revenue_30day'] - row['costs_30day'], axis=1)
             channels_df['open_block'] = channels_df.apply(lambda row: row.chan_id>>40, axis=1)
-        apy_7day = round((channels_df['profits_7day'].sum()*5214.2857)/channels_df['local_balance'].sum(), 2)
-        apy_30day = round((channels_df['profits_30day'].sum()*1216.6667)/channels_df['local_balance'].sum(), 2)
+            apy_7day = round((channels_df['profits_7day'].sum()*5214.2857)/channels_df['local_balance'].sum(), 2)
+            apy_30day = round((channels_df['profits_30day'].sum()*1216.6667)/channels_df['local_balance'].sum(), 2)
+            active_updates = channels_df['num_updates'].sum()
+            channels_df['updates'] = channels_df.apply(lambda row: 0 if active_updates == 0 else int(round((row['num_updates']/active_updates)*100, 0)), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'apy_7day': apy_7day,
@@ -828,6 +832,16 @@ def update_channel(request):
                 db_channel.ar_max_cost = target
                 db_channel.save()
                 messages.success(request, 'Auto rebalancer max cost for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target) + '%')
+            elif update_target == 7:
+                stub = lnrouter.RouterStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=0)) if target == 1 else stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=1))
+                db_channel.local_disabled = False if target == 1 else True
+                db_channel.save()
+                messages.success(request, 'Toggled channel state for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') to a value of: ' + ('Enabled' if target == 1 else 'Disabled'))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:

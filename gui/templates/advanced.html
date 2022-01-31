@@ -14,6 +14,7 @@
         <th>Outbound Liquidity</th>
         <th width=10%></th>
         <th>Inbound Liquidity</th>
+        <th>Channel State</th>
         <th>oRate</th>
         <th>oBase</th>
         <th>iRate</th>
@@ -33,7 +34,20 @@
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
         <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
-        <td>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>
+          {% if channel.is_active == True %}
+            <form action="/update_channel/" method="post">
+              {% csrf_token %}
+              <input type="submit" value="{% if channel.local_disabled == False %}Disable{% else %}Enable{% endif %}">
+              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+              <input type="hidden" name="update_target" value="7">
+              <input type="hidden" name="target" value="{% if channel.local_disabled == False %}0{% else %}1{% endif %}">
+            </form>
+          {% else %}
+            ---
+          {% endif %}
+        </td>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
@@ -41,7 +55,7 @@
             <input type="hidden" name="update_target" value="1">
           </form>
         </td>
-        <td>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
@@ -49,8 +63,8 @@
             <input type="hidden" name="update_target" value="0">
           </form>
         </td>
-        <td>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td>{{ channel.remote_base_fee|intcomma }}</td>
+        <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
+        <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
