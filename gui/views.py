@@ -278,6 +278,46 @@ def channels(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def suggested_fees(request):
+    if request.method == 'GET':
+        filter_7day = datetime.now() - timedelta(days=7)
+        filter_30day = datetime.now() - timedelta(days=30)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
+        channels = Channels.objects.filter(is_open=True)
+        channels_df = DataFrame.from_records(channels.values())
+        if channels_df.shape[0] > 0:
+            forwards_df_30d = DataFrame.from_records(forwards.values())
+            forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
+            forwards_df_in_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).sum()
+            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+            channels_df['amt_routed_in_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['amt_routed_out_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['amt_routed_in_30day'] = channels_df.apply(lambda row: int(forwards_df_in_30d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_30d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['amt_routed_out_30day'] = channels_df.apply(lambda row: int(forwards_df_out_30d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_30d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['net_routed_7day'] = channels_df.apply(lambda row: round((row['amt_routed_out_7day']-row['amt_routed_in_7day'])/row['capacity'], 1), axis=1)
+            channels_df['net_routed_30day'] = channels_df.apply(lambda row: round((row['amt_routed_out_30day']-row['amt_routed_in_30day'])/row['capacity'], 1), axis=1)
+            channels_df['revenue_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['revenue_30day'] = channels_df.apply(lambda row: int(forwards_df_out_30d_sum.loc[row.chan_id].fee) if forwards_df_out_30d_sum.empty == False and (forwards_df_out_30d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['revenue_assist_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['revenue_assist_30day'] = channels_df.apply(lambda row: int(forwards_df_in_30d_sum.loc[row.chan_id].fee) if forwards_df_in_30d_sum.empty == False and (forwards_df_in_30d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['volume_in_7day'] = channels_df.apply(lambda row: round(row['amt_routed_in_7day']/row['capacity'], 1), axis=1)
+            channels_df['volume_out_7day'] = channels_df.apply(lambda row: round(row['amt_routed_out_7day']/row['capacity'], 1), axis=1)
+            channels_df['volume_in_30day'] = channels_df.apply(lambda row: round(row['amt_routed_in_30day']/row['capacity'], 1), axis=1)
+            channels_df['volume_out_30day'] = channels_df.apply(lambda row: round(row['amt_routed_out_30day']/row['capacity'], 1), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: round(row['local_fee_rate']+row['net_routed_30day']*row['local_fee_rate']*0.05, 0), axis=1)
+        context = {
+            'channels': channels_df.to_dict(orient='records'),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': graph_links(),
+            'network_links': network_links()
+        }
+        return render(request, 'fee_rates.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def advanced(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')

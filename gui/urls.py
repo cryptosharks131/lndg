@@ -39,6 +39,7 @@ urlpatterns = [
     path('update_setting/', views.update_setting, name='update-setting'),
     path('suggested_opens/', views.suggested_opens, name='suggested-opens'),
     path('suggested_actions/', views.suggested_actions, name='suggested-actions'),
+    path('suggested_fees/', views.suggested_fees, name='suggested-fees'),
     path('keysends/', views.keysends, name='keysends'),
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
