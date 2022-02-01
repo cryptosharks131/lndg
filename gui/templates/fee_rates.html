@@ -14,7 +14,7 @@
         <th>7Day Flow</th>
         <th>Out Rate</th>
         <th>Rebal Rate</th>
-        <th>Costs | Amt</th>
+        <th>Adjustment</th>
         <th title="Routed In">Net Flow</th>
         <th title="Revenue Out | Assisted Revenue In">Revenue</th>
         <th>30Day Flow</th>
@@ -34,7 +34,7 @@
         <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}</td>
         <td>{{ channel.out_rate }}</td>
         <td>{{ channel.rebal_ppm }}</td>
-        <td>{{ channel.costs_7day }} | {{ channel.amt_rebal_in_7day }}</td>
+        <td>{{ channel.adjustment }}</td>
         <td>{{ channel.net_routed_7day }}</td>
         <td>{{ channel.revenue_7day|intcomma }} | {{ channel.revenue_assist_7day|intcomma }}</td>
         <td>{% if channel.net_routed_30day > 0 %}OUT{% elif channel.net_routed_30day < 0 %}IN{% else %}---{% endif %}</td>

@@ -307,7 +307,7 @@ def suggested_fees(request):
             channels_df['volume_in_30day'] = channels_df.apply(lambda row: round(row['amt_routed_in_30day']/row['capacity'], 1), axis=1)
             channels_df['volume_out_30day'] = channels_df.apply(lambda row: round(row['amt_routed_out_30day']/row['capacity'], 1), axis=1)
             channels_df['out_rate'] = channels_df.apply(lambda row: int((row['revenue_7day']/row['amt_routed_out_7day'])*1000000) if row['amt_routed_out_7day'] > 0 else 0, axis=1)
-            payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_7day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).values_list('r_hash'))
+            payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_7day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).values_list('r_hash'))
             invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).filter(r_hash__in=payments.values_list('payment_hash'))
             payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
             invoices_df_7d = DataFrame.from_records(invoices.filter(settle_date__gte=filter_7day).values())
@@ -316,6 +316,7 @@ def suggested_fees(request):
             channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_sum.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
             channels_df['rebal_ppm'] = channels_df.apply(lambda row: int((row['costs_7day']/row['amt_rebal_in_7day'])*1000000) if row['amt_rebal_in_7day'] > 0 else 0, axis=1)
+            channels_df['adjustment'] = channels_df.apply(lambda row: int(row['net_routed_7day']*row['local_fee_rate']*0.05), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: int((row['out_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05 if row['net_routed_7day'] < 0 else (row['rebal_ppm']+row['net_routed_7day']*row['local_fee_rate']*0.05 if row['rebal_ppm'] > 0 else (row['out_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05 if row['out_rate'] > 0 else row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05)))), axis=1)
 
         context = {
