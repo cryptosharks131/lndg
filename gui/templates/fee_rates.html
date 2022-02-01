@@ -8,23 +8,33 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
+        <th></th>
+        <th></th>
+        <th></th>
+        <th colspan="5">7-Day Activity</th>
+        <th colspan="3">30-Day Activity</th>
+        <th colspan="2">Suggested Values</th>
+        <th colspan="2">Local Fees</th>
+        <th colspan="2">Peer Fees</th>
+      </tr>
+      <tr>
         <th>Channel ID</th>
         <th>Peer Alias</th>
         <th>Capacity</th>
         <th>7Day Flow</th>
         <th>Out Rate</th>
         <th>Rebal Rate</th>
-        <th>Adjustment</th>
         <th title="Routed In">Net Flow</th>
         <th title="Revenue Out | Assisted Revenue In">Revenue</th>
         <th>30Day Flow</th>
         <th title="Routed In">Net Flow</th>
         <th title="Revenue Out | Assisted Revenue In">Revenue</th>
+        <th>Adjustment</th>
         <th>Suggested Rate</th>
-        <th>Rate</th>
-        <th>Base</th>
-        <th>Rate</th>
-        <th>Base</th>
+        <th>oRate</th>
+        <th>oBase</th>
+        <th>iRate</th>
+        <th>iBase</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -34,12 +44,12 @@
         <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}</td>
         <td>{{ channel.out_rate }}</td>
         <td>{{ channel.rebal_ppm }}</td>
-        <td>{{ channel.adjustment }}</td>
         <td>{{ channel.net_routed_7day }}</td>
         <td>{{ channel.revenue_7day|intcomma }} | {{ channel.revenue_assist_7day|intcomma }}</td>
         <td>{% if channel.net_routed_30day > 0 %}OUT{% elif channel.net_routed_30day < 0 %}IN{% else %}---{% endif %}</td>
         <td>{{ channel.net_routed_30day }}</td>
         <td>{{ channel.revenue_30day|intcomma }} | {{ channel.revenue_assist_30day|intcomma }}</td>
+        <td>{{ channel.adjustment }}</td>
         <td>{{ channel.new_rate|intcomma }}</td>
         <td>{{ channel.local_fee_rate|intcomma }}</td>
         <td>{{ channel.local_base_fee|intcomma }}</td>
