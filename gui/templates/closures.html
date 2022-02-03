@@ -26,8 +26,8 @@
       <td>{{ closure.time_locked_balance|intcomma }}</td>
       <td>{{ closure.close_height|intcomma }}</td>
       <td>{% if closure.close_type == 0 %}Cooperative{% elif closure.close_type == 1 %}Local Force{% elif closure.close_type == 2 %}Remote Force{% elif closure.close_type == 3 %}Breach{% elif closure.close_type == 4 %}Funding Cancelled{% elif closure.close_type == 5 %}Abandoned{% else %}{{ closure.close_type }}{% endif %}</td>
-      <td>{% if closure.open_initiator == 1 %}Local{% elif closure.open_initiator == 2 %}Remote{% else %}{{ closure.open_initiator }}{% endif %}</td>
-      <td>{% if closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% else %}{{ closure.close_initiator }}{% endif %}</td>
+      <td>{% if closure.close_initiator == 0 %}Unknown{% elif closure.close_initiator == 1 %}Local{% elif closure.open_initiator == 2 %}Remote{% elif closure.close_initiator == 3 %}Both{% else %}{{ closure.open_initiator }}{% endif %}</td>
+      <td>{% if closure.close_initiator == 0 %}Unknown{% elif closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% elif closure.close_initiator == 3 %}Both{% else %}{{ closure.close_initiator }}{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
