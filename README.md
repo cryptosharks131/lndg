@@ -34,7 +34,8 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
-## Umbrel Installation
+## Manual Umbrel Installation (now available directly from the Umbrel app store)
+
 ### Build and deploy
 1. Log into your umbrel via ssh
 2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
