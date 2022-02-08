@@ -323,7 +323,7 @@ def suggested_fees(request):
             channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['net_routed_7day']*row['profit_margin']), axis=1)
             channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02), axis=1)
             channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05), axis=1)
-            channels_df['new_rate'] = channels_df.apply(lambda row: int((row['out_rate']+row['net_routed_7day']*(row['revenue_assist_7day']-row['revenue_7day'])/1000 if row['net_routed_7day'] < 0 else (row['rebal_ppm']+(row['net_routed_7day']*5)*row['out_rate']*((100-row['ar_max_cost'])/100) if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02 if row['out_rate'] > 0 else row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05)))), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] < 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else row['fee_rate_only'])), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['max_suggestion'] if row['max_suggestion'] > 0 and row['new_rate'] > row['max_suggestion'] else row['new_rate'], axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
