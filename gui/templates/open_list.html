@@ -5,30 +5,32 @@
 {% if open_list %}
 <div class="w3-container w3-padding-small">
   <h2>Suggested Open List</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Node Pubkey</th>
-      <th width=15%>Node Alias</th>
-      <th width=15%>Successful Payments Routed</th>
-      <th width=12%>Amount Routed</th>
-      <th width=12%>Fees Paid</th>
-      <th title="Total fees paid to the peer over total routed through the peer." width=12%>Effective PPM</th>
-      <th title="A score factoring in both number of payments and volume of payments routed through the peer." width=12%>Volume Score</th>
-      <th title="The amount you could have potentially saved on rebalancing payments if you had been peered directly with this node over total volume routed through the peer." width=12%>Savings By Volume</th>
-    </tr>
-    {% for node in open_list %}
-    <tr>
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ node.node_pubkey }}" target="_blank">{{ node.node_pubkey }}</a></td>
-      <td>{{ node.alias }}</td>
-      <td>{{ node.count }}</td>
-      <td>{{ node.amount|add:"0"|intcomma }}</td>
-      <td>{{ node.fees|add:"0"|intcomma }}</td>
-      <td>{{ node.ppm|add:"0"|intcomma }}</td>
-      <td>{{ node.score }}</td>
-      <td>{{ node.sum_cost_to|add:"0"|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <tr>
+        <th>Node Pubkey</th>
+        <th width=15%>Node Alias</th>
+        <th width=15%>Successful Payments Routed</th>
+        <th width=12%>Amount Routed</th>
+        <th width=12%>Fees Paid</th>
+        <th title="Total fees paid to the peer over total routed through the peer." width=12%>Effective PPM</th>
+        <th title="A score factoring in both number of payments and volume of payments routed through the peer." width=12%>Volume Score</th>
+        <th title="The amount you could have potentially saved on rebalancing payments if you had been peered directly with this node over total volume routed through the peer." width=12%>Savings By Volume</th>
+      </tr>
+      {% for node in open_list %}
+      <tr>
+        <td><a href="{{ graph_links }}/{{ network }}node/{{ node.node_pubkey }}" target="_blank">{{ node.node_pubkey }}</a></td>
+        <td>{{ node.alias }}</td>
+        <td>{{ node.count }}</td>
+        <td>{{ node.amount|add:"0"|intcomma }}</td>
+        <td>{{ node.fees|add:"0"|intcomma }}</td>
+        <td>{{ node.ppm|add:"0"|intcomma }}</td>
+        <td>{{ node.score }}</td>
+        <td>{{ node.sum_cost_to|add:"0"|intcomma }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
 </div>
 {% endif %}
 {% if not open_list %}

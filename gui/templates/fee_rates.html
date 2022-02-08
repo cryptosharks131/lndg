@@ -13,7 +13,7 @@
         <th></th>
         <th colspan="5">7-Day Activity</th>
         <th colspan="3">30-Day Activity</th>
-        <th colspan="2">Suggested Values</th>
+        <th colspan="6">Suggested Values</th>
         <th colspan="2">Local Fees</th>
         <th colspan="2">Peer Fees</th>
       </tr>
@@ -29,6 +29,10 @@
         <th>30Day Flow</th>
         <th title="Routed In">Net Flow</th>
         <th title="Revenue Out | Assisted Revenue In">Revenue</th>
+        <th>Outgoings</th>
+        <th>Rebals</th>
+        <th>Out Fees</th>
+        <th>Fee Rate</th>
         <th>Adjustment</th>
         <th>Suggested Rate</th>
         <th>oRate</th>
@@ -49,6 +53,10 @@
         <td>{% if channel.net_routed_30day > 0 %}OUT{% elif channel.net_routed_30day < 0 %}IN{% else %}---{% endif %}</td>
         <td>{{ channel.net_routed_30day }}</td>
         <td>{{ channel.revenue_30day|intcomma }} | {{ channel.revenue_assist_30day|intcomma }}</td>
+        <td>{{ channel.adjusted_out_rate }}</td>
+        <td>{{ channel.adjusted_rebal_rate }}</td>
+        <td>{{ channel.out_rate_only }}</td>
+        <td>{{ channel.fee_rate_only }}</td>
         <td>{{ channel.adjustment }}</td>
         <td>{{ channel.new_rate|intcomma }}</td>
         <td>{{ channel.local_fee_rate|intcomma }}</td>
