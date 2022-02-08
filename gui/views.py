@@ -317,6 +317,7 @@ def suggested_fees(request):
             channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
             channels_df['rebal_ppm'] = channels_df.apply(lambda row: int((row['costs_7day']/row['amt_rebal_in_7day'])*1000000) if row['amt_rebal_in_7day'] > 0 else 0, axis=1)
             channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15), axis=1)
+            channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75), axis=1)
             channels_df['assisted_ratio'] = channels_df.apply(lambda row: row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day'], axis=1)
             channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
             channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']), axis=1)
@@ -326,6 +327,7 @@ def suggested_fees(request):
             channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else row['fee_rate_only'])), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['max_suggestion'] if row['max_suggestion'] > 0 and row['new_rate'] > row['max_suggestion'] else row['new_rate'], axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: row['min_suggestion'] if row['new_rate'] < row['min_suggestion'] else row['new_rate'], axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
 
         context = {
