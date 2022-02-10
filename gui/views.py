@@ -189,7 +189,7 @@ def home(request):
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
-            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=Sum('remote_balance')/Sum('capacity')).annotate(fee_ratio=Sum('remote_fee_rate')/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target')/100, fee_ratio__lte=F('ar_max_cost')/100).count(),
+            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=(Sum('remote_balance')*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
             'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
