@@ -349,7 +349,7 @@ def advanced(request):
         if channels_df.shape[0] > 0:
             channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
             channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
-            channels_df['fee_ratio'] = channels_df.apply(lambda row: round(row['remote_fee_rate']/row['local_fee_rate'], 2), axis=1)
+            channels_df['fee_ratio'] = channels_df.apply(lambda row: 0 if row['local_fee_rate'] == 0 else round(row['remote_fee_rate']/row['local_fee_rate'], 2), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'local_settings': LocalSettings.objects.all(),
