@@ -63,7 +63,7 @@
             <input type="hidden" name="update_target" value="0">
           </form>
         </td>
-        <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
+        <td title="Fee Ratio: {{ channel.fee_ratio }}" {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
         <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
           <form action="/update_channel/" method="post">

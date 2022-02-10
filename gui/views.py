@@ -189,7 +189,7 @@ def home(request):
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
-            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).filter(inbound_can__gte=1).count(),
+            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=Sum('remote_balance')/Sum('capacity')).annotate(fee_ratio=Sum('remote_fee_rate')/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target')/100, fee_ratio__lte=F('ar_max_cost')/100).count(),
             'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
@@ -282,7 +282,7 @@ def suggested_fees(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
         filter_30day = datetime.now() - timedelta(days=30)
-        forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_30day, amt_out_msat__gte=1000000)
         channels = Channels.objects.filter(is_open=True)
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
@@ -292,6 +292,7 @@ def suggested_fees(request):
             forwards_df_out_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).sum()
             forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
             forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+            channels_df['in_percent'] = channels_df.apply(lambda row: row['remote_balance']/row['capactiy'], axis=1)
             channels_df['amt_routed_in_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['amt_routed_out_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['amt_routed_in_30day'] = channels_df.apply(lambda row: int(forwards_df_in_30d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_30d_sum.index == row.chan_id).any() else 0, axis=1)
@@ -324,7 +325,7 @@ def suggested_fees(request):
             channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
             channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02), axis=1)
             channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05), axis=1)
-            channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else row['fee_rate_only'])), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else (row['min_suggestion'] if row['net_routed_7day'] == 0 and row['in_percent'] < 0.25 else row['fee_rate_only']))), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['max_suggestion'] if row['max_suggestion'] > 0 and row['new_rate'] > row['max_suggestion'] else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['min_suggestion'] if row['new_rate'] < row['min_suggestion'] else row['new_rate'], axis=1)
@@ -348,6 +349,7 @@ def advanced(request):
         if channels_df.shape[0] > 0:
             channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
             channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
+            channels_df['fee_ratio'] = channels_df.apply(lambda row: round(row['remote_fee_rate']/row['local_fee_rate'], 2), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'local_settings': LocalSettings.objects.all(),
