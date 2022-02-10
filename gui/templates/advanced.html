@@ -97,7 +97,7 @@
               <input type="hidden" name="update_target" value="3">
             </form>
         </td>
-        <td>
+        <td {% if channel.auto_rebalance == True %}{% if channel.liq_test == False or channel.fee_test == False %}style="background-color: #fadbd5"{% endif %}{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
