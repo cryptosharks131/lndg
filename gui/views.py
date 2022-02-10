@@ -189,7 +189,7 @@ def home(request):
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
-            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True, local_fee_rate__gt=0).annotate(inbound_can=Sum('remote_balance')/Sum('capacity')).annotate(fee_ratio=Sum('remote_fee_rate')/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target')/100, fee_ratio__lte=F('ar_max_cost')/100).count(),
+            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=Sum('remote_balance')/Sum('capacity')).annotate(fee_ratio=Sum('remote_fee_rate')/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target')/100, fee_ratio__lte=F('ar_max_cost')/100).count(),
             'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
@@ -349,7 +349,9 @@ def advanced(request):
         if channels_df.shape[0] > 0:
             channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
             channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
-            channels_df['fee_ratio'] = channels_df.apply(lambda row: 0 if row['local_fee_rate'] == 0 else round(row['remote_fee_rate']/row['local_fee_rate'], 2), axis=1)
+            channels_df['fee_ratio'] = channels_df.apply(lambda row: 0 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
+            channels_df['liq_test'] = channels_df.apply(lambda row: row['in_percent'] > row['ar_in_target'], axis=1)
+            channels_df['fee_test'] = channels_df.apply(lambda row: row['fee_ratio'] < row['ar_max_cost'], axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'local_settings': LocalSettings.objects.all(),
