@@ -278,7 +278,7 @@ def channels(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def suggested_fees(request):
+def fees(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
         forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
@@ -401,7 +401,7 @@ def closures(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def suggested_opens(request):
+def opens(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
@@ -419,7 +419,7 @@ def suggested_opens(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def suggested_actions(request):
+def actions(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity'))
         filter_7day = datetime.now() - timedelta(days=7)

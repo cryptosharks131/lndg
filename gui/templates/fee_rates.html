@@ -31,9 +31,9 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.out_percent }}%</td>
+        <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
         <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
-        <td>{{ channel.in_percent }}%</td>
+        <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
         <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}{% if channel.net_routed_7day != 0 %} | {{ channel.net_routed_7day }}{% endif %}</td>
         <td>{{ channel.out_rate }}</td>
         <td>{{ channel.rebal_ppm }}</td>
