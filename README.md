@@ -128,7 +128,7 @@ You can serve the dashboard at all times using a webserver instead of the develo
 
 ## Key Features
 ### Suggests Fee Rates
-LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel based on the last 7 days of flow.  
+LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions.
 
 You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal and you should wait ~24 hours before changing the fee rate again on any given channel.
 
