@@ -255,8 +255,6 @@ def clean_payments(stub):
             retention_days = 30
         time_filter = datetime.now() - timedelta(days=retention_days)
         target_payments = Payments.objects.exclude(status=1).filter(cleaned=False).filter(creation_date__lte=time_filter).order_by('index')[:10]
-        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
-        stub = lnrpc.LightningStub(connection)
         for payment in target_payments:
             payment_hash = bytes.fromhex(payment.payment_hash)
             htlcs_only = True if payment.status == 2 else False
@@ -274,16 +272,19 @@ def clean_payments(stub):
                 payment.save()
 
 def main():
-    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-    #Update data
-    update_channels(stub)
-    update_peers(stub)
-    update_payments(stub)
-    update_invoices(stub)
-    update_forwards(stub)
-    update_onchain(stub)
-    reconnect_peers(stub)
-    clean_payments(stub)
+    try:
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        #Update data
+        update_channels(stub)
+        update_peers(stub)
+        update_payments(stub)
+        update_invoices(stub)
+        update_forwards(stub)
+        update_onchain(stub)
+        reconnect_peers(stub)
+        clean_payments(stub)
+    except Exception as e:
+        print('Error processing background data: ' + str(e))
 
 if __name__ == '__main__':
     main()
