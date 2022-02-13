@@ -1,6 +1,6 @@
 import django
 from django.db.models import Max
-from datetime import datetime
+from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps.lnd_connect import lnd_connect
@@ -8,7 +8,7 @@ from lndg import settings
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, PendingHTLCs
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, PendingHTLCs, LocalSettings
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -95,7 +95,7 @@ def update_invoices(stub):
             alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias if Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id).exists() else None
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
-            message = records[34349334].decode('utf-8', errors='ignore')[:255] if 34349334 in records else None
+            message = records[34349334].decode('utf-8', errors='ignore')[:500] if 34349334 in records else None
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, index=invoice.add_index).save()
         else:
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, index=invoice.add_index).save()
@@ -134,18 +134,24 @@ def update_channels(stub):
             if chan_data.node1_pub == channel.remote_pubkey:
                 db_channel.local_base_fee = chan_data.node2_policy.fee_base_msat
                 db_channel.local_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
+                db_channel.local_disabled = chan_data.node2_policy.disabled
                 db_channel.remote_base_fee = chan_data.node1_policy.fee_base_msat
                 db_channel.remote_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
+                db_channel.remote_disabled = chan_data.node1_policy.disabled
             else:
                 db_channel.local_base_fee = chan_data.node1_policy.fee_base_msat
                 db_channel.local_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
+                db_channel.local_disabled = chan_data.node1_policy.disabled
                 db_channel.remote_base_fee = chan_data.node2_policy.fee_base_msat
                 db_channel.remote_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
+                db_channel.remote_disabled = chan_data.node2_policy.disabled
         except:
             db_channel.local_base_fee = 0
             db_channel.local_fee_rate = 0
+            db_channel.local_disabled = False
             db_channel.remote_base_fee = 0
             db_channel.remote_fee_rate = 0
+            db_channel.remote_disabled = False
         db_channel.capacity = channel.capacity
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
@@ -153,6 +159,7 @@ def update_channels(stub):
         db_channel.local_commit = channel.commit_fee
         db_channel.local_chan_reserve = channel.local_chan_reserve_sat
         db_channel.num_updates = channel.num_updates
+        db_channel.last_update = datetime.now() if db_channel.is_active != channel.active else db_channel.last_update
         db_channel.is_active = channel.active
         db_channel.is_open = True
         db_channel.save()
@@ -233,16 +240,51 @@ def reconnect_peers(stub):
                     peer.last_reconnected = datetime.now()
                     peer.save()
 
+def clean_payments(stub):
+    if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
+        enabled = int(LocalSettings.objects.filter(key='LND-CleanPayments')[0].value)
+    else:
+        LocalSettings(key='LND-CleanPayments', value='0').save()
+        LocalSettings(key='LND-RetentionDays', value='30').save()
+        enabled = 0
+    if enabled == 1:
+        if LocalSettings.objects.filter(key='LND-RetentionDays').exists():
+            retention_days = int(LocalSettings.objects.filter(key='LND-RetentionDays')[0].value)
+        else:
+            LocalSettings(key='LND-RetentionDays', value='30').save()
+            retention_days = 30
+        time_filter = datetime.now() - timedelta(days=retention_days)
+        target_payments = Payments.objects.exclude(status=1).filter(cleaned=False).filter(creation_date__lte=time_filter).order_by('index')[:10]
+        for payment in target_payments:
+            payment_hash = bytes.fromhex(payment.payment_hash)
+            htlcs_only = True if payment.status == 2 else False
+            try:
+                stub.DeletePayment(ln.DeletePaymentRequest(payment_hash=payment_hash, failed_htlcs_only=htlcs_only))
+            except Exception as e:
+                error = str(e)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                print('Error occured when cleaning payment: ' + payment.payment_hash)
+                print('Error: ' + error_msg)
+            finally:
+                payment.cleaned = True
+                payment.save()
+
 def main():
-    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-    #Update data
-    update_channels(stub)
-    update_peers(stub)
-    update_payments(stub)
-    update_invoices(stub)
-    update_forwards(stub)
-    update_onchain(stub)
-    reconnect_peers(stub)
+    try:
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        #Update data
+        update_channels(stub)
+        update_peers(stub)
+        update_payments(stub)
+        update_invoices(stub)
+        update_forwards(stub)
+        update_onchain(stub)
+        reconnect_peers(stub)
+        clean_payments(stub)
+    except Exception as e:
+        print('Error processing background data: ' + str(e))
 
 if __name__ == '__main__':
     main()

@@ -41,6 +41,9 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     is_active = serializers.ReadOnlyField()
     is_open = serializers.ReadOnlyField()
     num_updates = serializers.ReadOnlyField()
+    local_disabled = serializers.ReadOnlyField()
+    remote_disabled = serializers.ReadOnlyField()
+    last_update = serializers.ReadOnlyField()
     class Meta:
         model = Channels
         exclude = []

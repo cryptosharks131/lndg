@@ -13,6 +13,8 @@ from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalan
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
+from gui.lnd_deps import router_pb2 as lnr
+from gui.lnd_deps import router_pb2_grpc as lnrouter
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
@@ -100,8 +102,11 @@ def home(request):
             detailed_channel['alias'] = channel.alias
             detailed_channel['local_base_fee'] = channel.local_base_fee
             detailed_channel['local_fee_rate'] = channel.local_fee_rate
+            detailed_channel['local_disabled'] = channel.local_disabled
             detailed_channel['remote_base_fee'] = channel.remote_base_fee
             detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
+            detailed_channel['remote_disabled'] = channel.remote_disabled
+            detailed_channel['last_update'] = channel.last_update
             detailed_channel['funding_txid'] = channel.funding_txid
             detailed_channel['output_index'] = channel.output_index
             detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
@@ -119,7 +124,7 @@ def home(request):
             detailed_channel['ar_in_target'] = channel.ar_in_target
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
-        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('-local_fee_rate').order_by('outbound_percent')
+        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*100)/Sum('capacity')).order_by('outbound_percent')
         inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         sum_outbound = total_outbound + pending_outbound + inactive_outbound
         onchain_txs = Onchain.objects.all()
@@ -184,6 +189,8 @@ def home(request):
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
+            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=(Sum('remote_balance')*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
+            'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links(),
@@ -254,13 +261,71 @@ def channels(request):
             channels_df['profits_7day'] = channels_df.apply(lambda row: 0 if row['revenue_7day'] == 0 else row['revenue_7day'] - row['costs_7day'], axis=1)
             channels_df['profits_30day'] = channels_df.apply(lambda row: 0 if row['revenue_30day'] == 0 else row['revenue_30day'] - row['costs_30day'], axis=1)
             channels_df['open_block'] = channels_df.apply(lambda row: row.chan_id>>40, axis=1)
+            apy_7day = round((channels_df['profits_7day'].sum()*5214.2857)/channels_df['local_balance'].sum(), 2)
+            apy_30day = round((channels_df['profits_30day'].sum()*1216.6667)/channels_df['local_balance'].sum(), 2)
+            active_updates = channels_df['num_updates'].sum()
+            channels_df['updates'] = channels_df.apply(lambda row: 0 if active_updates == 0 else int(round((row['num_updates']/active_updates)*100, 0)), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
+            'apy_7day': apy_7day,
+            'apy_30day': apy_30day,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
         }
         return render(request, 'channels.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def fees(request):
+    if request.method == 'GET':
+        filter_7day = datetime.now() - timedelta(days=7)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
+        channels = Channels.objects.filter(is_open=True)
+        channels_df = DataFrame.from_records(channels.values())
+        if channels_df.shape[0] > 0:
+            forwards_df_7d = DataFrame.from_records(forwards.values())
+            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+            channels_df['in_percent'] = channels_df.apply(lambda row: int(round((row['remote_balance']/row['capacity'])*100, 0)), axis=1)
+            channels_df['out_percent'] = channels_df.apply(lambda row: int(round((row['local_balance']/row['capacity'])*100, 0)), axis=1)
+            channels_df['amt_routed_in_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['amt_routed_out_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['net_routed_7day'] = channels_df.apply(lambda row: round((row['amt_routed_out_7day']-row['amt_routed_in_7day'])/row['capacity'], 1), axis=1)
+            channels_df['revenue_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['revenue_assist_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['out_rate'] = channels_df.apply(lambda row: int((row['revenue_7day']/row['amt_routed_out_7day'])*1000000) if row['amt_routed_out_7day'] > 0 else 0, axis=1)
+            payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_7day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).values_list('r_hash'))
+            invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).filter(r_hash__in=payments.values_list('payment_hash'))
+            payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
+            invoices_df_7d = DataFrame.from_records(invoices.filter(settle_date__gte=filter_7day).values())
+            invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum()
+            invoice_hashes_7d = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
+            channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_sum.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
+            channels_df['rebal_ppm'] = channels_df.apply(lambda row: int((row['costs_7day']/row['amt_rebal_in_7day'])*1000000) if row['amt_rebal_in_7day'] > 0 else 0, axis=1)
+            channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15), axis=1)
+            channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75), axis=1)
+            channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
+            channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
+            channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']), axis=1)
+            channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
+            channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02), axis=1)
+            channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else (row['min_suggestion'] if row['net_routed_7day'] == 0 and row['in_percent'] < 25 else row['fee_rate_only']))), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: row['max_suggestion'] if row['max_suggestion'] > 0 and row['new_rate'] > row['max_suggestion'] else row['new_rate'], axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: row['min_suggestion'] if row['new_rate'] < row['min_suggestion'] else row['new_rate'], axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/5, 0)*5), axis=1)
+            channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
+        context = {
+            'channels': channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': graph_links(),
+            'network_links': network_links()
+        }
+        return render(request, 'fee_rates.html', context)
     else:
         return redirect('home')
 
@@ -272,6 +337,7 @@ def advanced(request):
         if channels_df.shape[0] > 0:
             channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
             channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
+            channels_df['fee_ratio'] = channels_df.apply(lambda row: 0 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'local_settings': LocalSettings.objects.all(),
@@ -322,14 +388,27 @@ def balances(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def suggested_opens(request):
+def closures(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        context = {
+            'closures': stub.ClosedChannels(ln.ClosedChannelsRequest()).channels[::-1],
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'network_links': network_links()
+        }
+        return render(request, 'closures.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def opens(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
         current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
         filter_60day = datetime.now() - timedelta(days=60)
         payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
-        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).order_by('-score', 'ppm')[:21]
+        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).exclude(score=0).order_by('-score', 'ppm')[:21]
         context = {
             'open_list': open_list,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
@@ -340,7 +419,7 @@ def suggested_opens(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
-def suggested_actions(request):
+def actions(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=(Sum('local_balance')*1000)/Sum('capacity')).annotate(inbound_percent=(Sum('remote_balance')*1000)/Sum('capacity'))
         filter_7day = datetime.now() - timedelta(days=7)
@@ -720,7 +799,7 @@ def auto_rebalance(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=(round(outbound_percent*100, 0)))
+                Channels.objects.all().update(ar_out_target=int(outbound_percent*100))
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
@@ -737,10 +816,11 @@ def auto_rebalance(request):
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
+                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()
+                Channels.objects.all().update(ar_max_cost=int(max_cost*100))
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
             if form.cleaned_data['autopilot'] is not None:
                 autopilot = form.cleaned_data['autopilot']
@@ -801,6 +881,24 @@ def update_channel(request):
                 db_channel.auto_rebalance = True if db_channel.auto_rebalance == False else False
                 db_channel.save()
                 messages.success(request, 'Auto rebalancer status for chanel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_rebalance))
+            elif update_target == 6:
+                db_channel.ar_max_cost = target
+                db_channel.save()
+                messages.success(request, 'Auto rebalancer max cost for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target) + '%')
+            elif update_target == 7:
+                stub = lnrouter.RouterStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=0)) if target == 1 else stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=1))
+                db_channel.local_disabled = False if target == 1 else True
+                db_channel.save()
+                messages.success(request, 'Toggled channel state for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') to a value of: ' + ('Enabled' if target == 1 else 'Disabled'))
+                if target == 0:
+                    messages.warning(request, 'Use with caution, while a channel is disabled (local fees highlighted in red) it will not route out.')
+            else:
+                messages.error(request, 'Invalid target code. Please try again.')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
@@ -852,7 +950,7 @@ def update_setting(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=(round(outbound_percent*100, 0)))
+                Channels.objects.all().update(ar_out_target=int(outbound_percent*100))
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
             elif key == 'AR-MaxFeeRate':
                 fee_rate = int(value)
@@ -869,10 +967,11 @@ def update_setting(request):
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
+                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()
+                Channels.objects.all().update(ar_max_cost=int(max_cost*100))
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
             elif key == 'AR-Autopilot':
                 autopilot = int(value)
@@ -904,6 +1003,26 @@ def update_setting(request):
                 db_links.value = links
                 db_links.save()
                 messages.success(request, 'Updated network links to use: ' + str(links))
+            elif key == 'LND-CleanPayments':
+                clean_payments = int(value)
+                try:
+                    db_clean_payments = LocalSettings.objects.get(key='LND-CleanPayments')
+                except:
+                    LocalSettings(key='LND-CleanPayments', value='0').save()
+                    db_clean_payments = LocalSettings.objects.get(key='LND-CleanPayments')
+                db_clean_payments.value = clean_payments
+                db_clean_payments.save()
+                messages.success(request, 'Updated auto payment cleanup setting to: ' + str(clean_payments))
+            elif key == 'LND-RetentionDays':
+                retention_days = int(value)
+                try:
+                    db_retention_days = LocalSettings.objects.get(key='LND-RetentionDays')
+                except:
+                    LocalSettings(key='LND-RetentionDays', value='0').save()
+                    db_retention_days = LocalSettings.objects.get(key='LND-RetentionDays')
+                db_retention_days.value = retention_days
+                db_retention_days.save()
+                messages.success(request, 'Updated payment cleanup retention days to: ' + str(retention_days))
             else:
                 messages.error(request, 'Invalid Request. Please try again.')
         else:

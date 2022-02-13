@@ -128,6 +128,11 @@ Alternatively, you may also make your own task for these files with your preferr
 You can serve the dashboard at all times using a webserver instead of the development server.  Using a webserver will serve your static files and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aide in the setup of a nginx webserver. `sudo bash nginx.sh`
 
 ## Key Features
+### Suggests Fee Rates
+LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions.
+
+You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal and you should wait ~24 hours before changing the fee rate again on any given channel.
+
 ### Suggests New Peers
 LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.  
 #### There are two unique values in LNDg:

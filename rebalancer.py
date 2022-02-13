@@ -81,21 +81,18 @@ def auto_schedule():
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
-                if not LocalSettings.objects.filter(key='AR-Target%').exists():
-                    LocalSettings(key='AR-Target%', value='0.05').save()
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
                 else:
                     LocalSettings(key='AR-MaxFeeRate', value='100').save()
                     max_fee_rate = 100
-                if LocalSettings.objects.filter(key='AR-MaxCost%').exists():
-                    max_cost = float(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
-                else:
-                    LocalSettings(key='AR-MaxCost%', value='0.50').save()
-                    max_cost = 0.50
+                if not LocalSettings.objects.filter(key='AR-Target%').exists():
+                    LocalSettings(key='AR-Target%', value='0.05').save()
+                if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
+                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
                 # TLDR: lets target a custom % of the amount that would bring us back to a 50/50 channel balance using the MaxFeerate to calculate sat fee intervals
                 for target in inbound_cans:
-                    target_fee_rate = int(target.local_fee_rate * max_cost)
+                    target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
                     if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
                         value_per_fee = int(1 / (target_fee_rate / 1000000)) if target_fee_rate <= max_fee_rate else int(1 / (max_fee_rate / 1000000))
                         target_value = int(target.ar_amt_target / value_per_fee) * value_per_fee
