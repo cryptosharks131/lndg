@@ -75,7 +75,7 @@ docker-compose up -d
 ### Step 1 - Install lndg
 1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change directory into the repo `cd lndg`
-3. Make sure you have python virtualenv installed `apt install virtualenv`
+3. Make sure you have python virtualenv installed `sudo apt install virtualenv`
 4. Setup a python3 virtual environment `virtualenv -p python3 .venv`
 5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
 6. Initialize some settings for your django site (see notes below) `.venv/bin/python initialize.py`
@@ -106,11 +106,13 @@ Alternatively, you may also make your own task for these files with your preferr
 
 ### Notes
 1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
-2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue. You can use `initialize.py -wn` to setup whitenoise and install it with `.venv/bin/pip install whitenoise`.  
-3. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun. `initialize.py`  
-4. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below). 
-5. You can manage your login credentials from the admin page. Example: `lndg.local/lndg-admin` 
-6. If you have issues reaching the site, verify the firewall is open on port 8889 where LNDg is running
+2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue.
+   You can use the following to install and setup whitenoise:  
+   `.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn`   
+4. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun. `initialize.py`  
+5. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below). 
+6. You can manage your login credentials from the admin page. Example: `lndg.local/lndg-admin` 
+7. If you have issues reaching the site, verify the firewall is open on port 8889 where LNDg is running
 
 ### Setup lndg initialize.py options
 1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
@@ -125,7 +127,11 @@ Alternatively, you may also make your own task for these files with your preferr
 10. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
 
 ### Using A Webserver
-You can serve the dashboard at all times using a webserver instead of the development server.  Using a webserver will serve your static files and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aide in the setup of a nginx webserver. `sudo bash nginx.sh`
+You can serve the dashboard at all times using a webserver instead of the development server.  Using a webserver will serve your static files and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aide in the setup of a nginx webserver.  
+`sudo bash nginx.sh`  
+
+When updating, follow the same steps as above. You will also need to restart the uwsgi service for changes to take affect on the UI.  
+`sudo systemctl restart uwsgi.service`  
 
 ## Key Features
 ### Suggests Fee Rates
