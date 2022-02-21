@@ -2,7 +2,31 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
+from gui.lnd_deps import lightning_pb2 as ln
+from gui.lnd_deps import lightning_pb2_grpc as lnrpc
+from gui.lnd_deps.lnd_connect import lnd_connect
+from lndg import settings
 
+def update_messages(apps, schedma_editor):
+    invoices = apps.get_model('gui', 'invoices')
+    try:
+        messages = invoices.objects.exclude(message=None)
+        if len(messages) > 0:
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            for message in messages:
+                records = stub.LookupInvoice(ln.PaymentHash(r_hash=bytes.fromhex(message.r_hash))).htlcs[0].custom_records
+                if 34349337 in records and 34349339 in records:
+                    valid = stub.VerifyMessage(ln.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
+                    sender = records[34349339].hex() if valid == True else None
+                else:
+                    sender = None
+                message.message = records[34349334].decode('utf-8', errors='ignore')[:500]
+                message.sender = sender
+    except Exception as e:
+        print('Migration step failed:', str(e))
+
+def revert_messages(apps, schedma_editor):
+    pass
 
 class Migration(migrations.Migration):
 
@@ -100,4 +124,5 @@ class Migration(migrations.Migration):
                 ('chan_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='gui.closures')),
             ],
         ),
+        migrations.RunPython(update_messages, revert_messages),
     ]
