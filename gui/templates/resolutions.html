@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Resolutions{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if resolutions %}
+<div class="w3-container w3-padding-small">
+  <h2>Resolutions For Channel: {{ chan_id }}</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Resolution Type</th>
+      <th>Outcome</th>
+      <th>Outpoint</th>
+      <th>Amount</th>
+      <th>Sweep TX</th>
+    </tr>
+    {% for resolution in resolutions %}
+    <tr>
+      <td>{{ resolution.chan_id.chan_id }}</td>
+      <td>{% if resolution.resolution_type == 0 %}Unknown{% elif resolution.resolution_type == 1 %}Anchor{% elif resolution.resolution_type == 2 %}Incoming HTLC{% elif resolution.resolution_type == 3 %}Outgoing HTLC{% elif resolution.resolution_type == 4 %}Commit{% else %}{{ resolution.resolution_type }}{% endif %}</td>
+      <td>{% if resolution.outcome == 0 %}Unknown{% elif resolution.outcome == 1 %}Claimed{% elif resolution.outcome == 2 %}Unclaimed{% elif resolution.outcome == 3 %}Abandoned{% elif resolution.outcome == 4 %}First Stage{% elif resolution.outcome == 5 %}Timeout{% else %}{{ resolution.outcome }}{% endif %}</td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ resolution.outpoint_tx }}" target="_blank">{{ resolution.outpoint_tx }}:{{ resolution.outpoint_index }}</a></td>
+      <td>{{ resolution.amount_sat|intcomma }}</td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ resolution.sweep_txid }}" target="_blank">{{ resolution.sweep_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not resolutions %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No resolutions were found for this channel!</h1></center>
+</div>
+{% endif %}
+{% endblock %}

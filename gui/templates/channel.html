@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Channel Info{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if channel %}
+<div class="w3-container w3-padding-small">
+  <h2>Details For Channel: {{ chan_id }}</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Alias</th>
+      <th>Capacity</th>
+      <th>Is Open</th>
+      <th>Is Active</th>
+      <th>Lifetime In</th>
+      <th>Lifetime Out</th>
+    </tr>
+    <tr>
+      <td>{{ channel.chan_id }}</td>
+      <td>{{ channel.alias }}</td>
+      <td>{{ channel.capacity }}</td>
+      <td>{{ channel.is_open }}</td>
+      <td>{{ channel.is_active }}</td>
+      <td>{{ channel.amt_routed_in|intcomma }}</td>
+      <td>{{ channel.amt_routed_out|intcomma }}</td>
+    </tr>
+  </table>
+</div>
+{% endif %}
+{% if not channel %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No data found for this channel!</h1></center>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count, F
+from django.db.models import Sum, IntegerField, Count, F, Q
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -9,7 +9,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, PendingHTLCs, FailedHTLCs, Autopilot
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, PendingHTLCs, FailedHTLCs
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
@@ -18,7 +18,7 @@ from gui.lnd_deps import router_pb2_grpc as lnrouter
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
-from pandas import DataFrame
+from pandas import DataFrame, merge
 
 def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
@@ -390,13 +390,53 @@ def balances(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def closures(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        closures_df = DataFrame.from_records(Closures.objects.all().values())
+        channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
+        merged = merge(closures_df, channels_df, on='chan_id', how='left')
+        merged['alias'] = merged['alias'].fillna('---')
         context = {
-            'closures': stub.ClosedChannels(ln.ClosedChannelsRequest()).channels[::-1],
+            'closures': merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'network_links': network_links(),
+            'graph_links': graph_links()
+        }
+        return render(request, 'closures.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def resolutions(request):
+    if request.method == 'GET':
+        chan_id = request.GET.urlencode()[1:]
+        context = {
+            'chan_id': chan_id,
+            'resolutions': Resolutions.objects.filter(chan_id=chan_id),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'network_links': network_links()
         }
-        return render(request, 'closures.html', context)
+        return render(request, 'resolutions.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def channel(request):
+    if request.method == 'GET':
+        chan_id = request.GET.urlencode()[1:]
+        if Channels.objects.filter(chan_id=chan_id).exists():
+            channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
+            forwards_df = DataFrame.from_records(Forwards.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).values())
+            forwards_df_in_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).sum()
+            channels_df['amt_routed_in'] = channels_df.apply(lambda row: int(forwards_df_in_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_sum.index == row.chan_id).any() else 0, axis=1)
+            channels_df['amt_routed_out'] = channels_df.apply(lambda row: int(forwards_df_out_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_sum.index == row.chan_id).any() else 0, axis=1)
+            channel = channels_df.to_dict(orient='records')
+        else:
+            channel = None
+        context = {
+            'chan_id': chan_id,
+            'channel': channel[0]
+        }
+        return render(request, 'channel.html', context)
     else:
         return redirect('home')
 

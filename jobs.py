@@ -8,7 +8,7 @@ from lndg import settings
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, PendingHTLCs, LocalSettings
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -42,7 +42,7 @@ def update_payments(stub):
                                 new_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:255] if 34349334 in records else None
+                                message = records[34349334].decode('utf-8', errors='ignore')[:500] if 34349334 in records else None
                                 new_payment.keysend_preimage = records[5482373484].hex()
                                 new_payment.message = message
                                 new_payment.save()
@@ -79,7 +79,7 @@ def update_payments(stub):
                                 db_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:255] if 34349334 in records else None
+                                message = records[34349334].decode('utf-8', errors='ignore')[:500] if 34349334 in records else None
                                 db_payment.keysend_preimage = records[5482373484].hex()
                                 db_payment.message = message
                                 db_payment.save()
@@ -96,7 +96,12 @@ def update_invoices(stub):
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:500] if 34349334 in records else None
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, index=invoice.add_index).save()
+            if 34349337 in records and 34349339 in records:
+                valid = stub.VerifyMessage(ln.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
+                sender = records[34349339].hex() if valid == True else None
+            else:
+                sender = None
+            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, sender=sender, index=invoice.add_index).save()
         else:
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, index=invoice.add_index).save()
 
@@ -219,6 +224,21 @@ def update_onchain(stub):
     for tx in onchain_txs:
         Onchain(tx_hash=tx.tx_hash, time_stamp=datetime.fromtimestamp(tx.time_stamp), amount=tx.amount, fee=tx.total_fees, block_hash=tx.block_hash, block_height=tx.block_height, label=tx.label[:100]).save()
 
+def update_closures(stub):
+    closures = stub.ClosedChannels(ln.ClosedChannelsRequest()).channels
+    if len(closures) > Closures.objects.all().count():
+        counter = 0
+        skip = Closures.objects.all().count()
+        for closure in closures:
+            counter += 1
+            if counter > skip:
+                resolution_count = len(closure.resolutions)
+                db_closure = Closures(chan_id=closure.chan_id, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
+                db_closure.save()
+                if resolution_count > 0:
+                    for resolution in closure.resolutions:
+                        Resolutions(chan_id=db_closure, resolution_type=resolution.resolution_type, outcome=resolution.outcome, outpoint_tx=resolution.outpoint.txid_str, outpoint_index=resolution.outpoint.output_index, amount_sat=resolution.amount_sat, sweep_txid=resolution.sweep_txid).save()
+
 def reconnect_peers(stub):
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
@@ -281,6 +301,7 @@ def main():
         update_invoices(stub)
         update_forwards(stub)
         update_onchain(stub)
+        update_closures(stub)
         reconnect_peers(stub)
         clean_payments(stub)
     except Exception as e:
