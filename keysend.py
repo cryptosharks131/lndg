@@ -23,7 +23,7 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout, sign):
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
-                signature = signerstub.SignMessage(lns.SignMessageReq(msg=bytes.fromhex(secret), key_loc=lns.KeyLocator(key_family=6, key_index=0))).signature
+                signature = signerstub.SignMessage(lns.SignMessageReq(msg=secret, key_loc=lns.KeyLocator(key_family=6, key_index=0))).signature
                 custom_records.append((34349337, signature))
                 custom_records.append((34349339, bytes.fromhex(self_pubkey)))
         for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(dest=bytes.fromhex(target_pubkey), dest_custom_records=custom_records, fee_limit_sat=fee_limit, timeout_seconds=timeout, amt=amount, payment_hash=bytes.fromhex(hashed_secret))):
