@@ -4,6 +4,8 @@ from django.db import migrations, models
 import django.db.models.deletion
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
+from gui.lnd_deps import signer_pb2 as lns
+from gui.lnd_deps import signer_pb2_grpc as lnsigner
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 
@@ -16,7 +18,8 @@ def update_messages(apps, schedma_editor):
             for message in messages:
                 records = stub.LookupInvoice(ln.PaymentHash(r_hash=bytes.fromhex(message.r_hash))).htlcs[0].custom_records
                 if 34349337 in records and 34349339 in records:
-                    valid = stub.VerifyMessage(ln.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
+                    signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
                     sender = records[34349339].hex() if valid == True else None
                 else:
                     sender = None
