@@ -25,6 +25,7 @@ def update_messages(apps, schedma_editor):
                     sender = None
                 message.message = records[34349334].decode('utf-8', errors='ignore')[:500]
                 message.sender = sender
+                message.save()
     except Exception as e:
         print('Migration step failed:', str(e))
 
