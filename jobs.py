@@ -3,6 +3,8 @@ from django.db.models import Max
 from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
+from gui.lnd_deps import signer_pb2 as lns
+from gui.lnd_deps import signer_pb2_grpc as lnsigner
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import environ
@@ -97,7 +99,8 @@ def update_invoices(stub):
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:500] if 34349334 in records else None
             if 34349337 in records and 34349339 in records:
-                valid = stub.VerifyMessage(ln.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
+                signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
                 sender = records[34349339].hex() if valid == True else None
             else:
                 sender = None
