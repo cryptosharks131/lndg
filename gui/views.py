@@ -467,11 +467,11 @@ def channel(request):
                 channels_df['amt_routed_in_1day'] = channels_df.apply(lambda row: int(forwards_df_in_1d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_1d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_routed_out_1day'] = channels_df.apply(lambda row: int(forwards_df_out_1d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_1d_sum.index == row.chan_id).any() else 0, axis=1)
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(payment_hash__in=Invoices.objects.filter(state=1).values_list('r_hash')).values())
-            payments_df_30d = payments_df.loc[payments_df['creation_date'] >= filter_30day]
-            payments_df_7d = payments_df_30d.loc[payments_df_30d['creation_date'] >= filter_7day]
-            payments_df_1d = payments_df_7d.loc[payments_df_7d['creation_date'] >= filter_1day]
             if payments_df.shape[0]> 0:
                 invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=payments_df['payment_hash'].to_list()).values())
+                payments_df_30d = payments_df.loc[payments_df['creation_date'] >= filter_30day]
+                payments_df_7d = payments_df_30d.loc[payments_df_30d['creation_date'] >= filter_7day]
+                payments_df_1d = payments_df_7d.loc[payments_df_7d['creation_date'] >= filter_1day]
                 payments_df_count = DataFrame() if payments_df.empty else payments_df.groupby('chan_out', as_index=True).count()
                 payments_df_30d_count = DataFrame() if payments_df_30d.empty else payments_df_30d.groupby('chan_out', as_index=True).count()
                 payments_df_7d_count = DataFrame() if payments_df_7d.empty else payments_df_7d.groupby('chan_out', as_index=True).count()
