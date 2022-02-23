@@ -17,7 +17,7 @@
       <td title="{{ keysend.r_hash }}">{{ keysend.settle_date|naturaltime }}</td>
       <td>{{ keysend.chan_in_alias }}</td>
       <td>{{ keysend.amt_paid|intcomma }}</td>
-      <td>{{ keysend.message }}{% if keysend.sender != None %} | Signed By: {{ keysend.sender }}{% endif %}</td>
+      <td>{{ keysend.message }}{% if keysend.sender != None %} | Signed By: {% if keysend.sender_alias != None %}{{ keysend.sender_alias }}{% else %}{{ keysend.sender }}{% endif %}{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
