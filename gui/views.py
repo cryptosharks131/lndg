@@ -490,6 +490,14 @@ def channel(request):
                 channels_df['amt_rebal_out_1day'] = channels_df.apply(lambda row: int(payments_df_1d_sum.loc[row.chan_id].value) if payments_df_1d_count.empty == False and (payments_df_1d_sum.index == row.chan_id).any() else 0, axis=1)
             else:
                 invoices_df = DataFrame()
+                channels_df['rebal_out'] = 0
+                channels_df['rebal_out_30day'] = 0
+                channels_df['rebal_out_7day'] = 0
+                channels_df['rebal_out_1day'] = 0
+                channels_df['amt_rebal_out'] = 0
+                channels_df['amt_rebal_out_30day'] = 0
+                channels_df['amt_rebal_out_7day'] = 0
+                channels_df['amt_rebal_out_1day'] = 0
             if invoices_df.shape[0]> 0:
                 invoices_df_30d = invoices_df.loc[invoices_df['settle_date'] >= filter_30day]
                 invoices_df_7d = invoices_df_30d.loc[invoices_df_30d['settle_date'] >= filter_7day]
@@ -510,6 +518,15 @@ def channel(request):
                 channels_df['amt_rebal_in_30day'] = channels_df.apply(lambda row: int(invoices_df_30d_sum.loc[row.chan_id].amt_paid) if invoices_df_30d_count.empty == False and (invoices_df_30d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_count.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_rebal_in_1day'] = channels_df.apply(lambda row: int(invoices_df_1d_sum.loc[row.chan_id].amt_paid) if invoices_df_1d_count.empty == False and (invoices_df_1d_sum.index == row.chan_id).any() else 0, axis=1)
+            else:
+                channels_df['rebal_in'] = 0
+                channels_df['rebal_in_30day'] = 0
+                channels_df['rebal_in_7day'] = 0
+                channels_df['rebal_in_1day'] = 0
+                channels_df['amt_rebal_in'] = 0
+                channels_df['amt_rebal_in_30day'] = 0
+                channels_df['amt_rebal_in_7day'] = 0
+                channels_df['amt_rebal_in_1day'] = 0
             channel = channels_df.to_dict(orient='records')
         else:
             channel = None
