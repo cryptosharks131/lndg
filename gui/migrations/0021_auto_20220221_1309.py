@@ -24,7 +24,7 @@ def update_messages(apps, schedma_editor):
                     sender = records[34349339].hex() if valid == True else None
                 else:
                     sender = None
-                message.message = records[34349334].decode('utf-8', errors='ignore')[:500]
+                message.message = records[34349334].decode('utf-8', errors='ignore')[:800]
                 message.sender = sender
                 message.save()
     except Exception as e:
