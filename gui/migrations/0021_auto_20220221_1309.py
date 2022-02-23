@@ -15,11 +15,12 @@ def update_messages(apps, schedma_editor):
         messages = invoices.objects.exclude(message=None)
         if len(messages) > 0:
             stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
             for message in messages:
                 records = stub.LookupInvoice(ln.PaymentHash(r_hash=bytes.fromhex(message.r_hash))).htlcs[0].custom_records
                 if 34349337 in records and 34349339 in records:
-                    signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
+                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
                     sender = records[34349339].hex() if valid == True else None
                 else:
                     sender = None

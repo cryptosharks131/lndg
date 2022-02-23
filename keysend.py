@@ -1,4 +1,4 @@
-import secrets
+import secrets, time, struct
 from hashlib import sha256
 from lndg import settings
 from gui.lnd_deps import lightning_pb2 as ln
@@ -23,9 +23,11 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout, sign):
                 stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
-                signature = signerstub.SignMessage(lns.SignMessageReq(msg=secret, key_loc=lns.KeyLocator(key_family=6, key_index=0))).signature
+                timestamp = struct.pack(">i", int(time.time()))
+                signature = signerstub.SignMessage(lns.SignMessageReq(msg=(bytes.fromhex(self_pubkey)+bytes.fromhex(target_pubkey)+timestamp+bytes.fromhex(msg.encode('utf-8').hex())), key_loc=lns.KeyLocator(key_family=6, key_index=0))).signature
                 custom_records.append((34349337, signature))
                 custom_records.append((34349339, bytes.fromhex(self_pubkey)))
+                custom_records.append((34349343, timestamp))
         for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(dest=bytes.fromhex(target_pubkey), dest_custom_records=custom_records, fee_limit_sat=fee_limit, timeout_seconds=timeout, amt=amount, payment_hash=bytes.fromhex(hashed_secret))):
             if response.status == 1:
                 print('In-flight')

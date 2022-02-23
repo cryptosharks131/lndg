@@ -100,7 +100,8 @@ def update_invoices(stub):
             message = records[34349334].decode('utf-8', errors='ignore')[:500] if 34349334 in records else None
             if 34349337 in records and 34349339 in records:
                 signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=records[5482373484], signature=records[34349337], pubkey=records[34349339])).valid
+                self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+                valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
                 sender = records[34349339].hex() if valid == True else None
             else:
                 sender = None
