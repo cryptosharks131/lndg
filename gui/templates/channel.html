@@ -4,28 +4,72 @@
 {% load humanize %}
 {% if channel %}
 <div class="w3-container w3-padding-small">
-  <h2>Details For Channel: {{ chan_id }}</h2>
+  <h2>Details For Channel: {{ chan_id }} | Alias: {{ channel.alias }}</h2>
+  <h3>Capacity: {{ channel.capacity|intcomma }} | Is Open: {{ channel.is_open }} | Is Active: {{ channel.is_active }}</h3>
+  <h4>Outbound Liquidity: {{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%) | Inbound Liquidity: {{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</h4>
+</div>
+<div class="w3-container w3-padding-small">
+  <h3>Routing Events</h3>
+  <h4>1-Day Routed Out {{ channel.amt_routed_out_1day|intcomma }}  ({{ channel.routed_out_1day }}) | Routed In: {{ channel.amt_routed_in_1day|intcomma }} ({{ channel.routed_in_1day }})</h4>
+  <h4>7-Day Routed Out {{ channel.amt_routed_out_7day|intcomma }}  ({{ channel.routed_out_7day }}) | Routed In: {{ channel.amt_routed_in_7day|intcomma }} ({{ channel.routed_in_7day }})</h4>
+  <h4>30-Day Routed Out {{ channel.amt_routed_out_30day|intcomma }}  ({{ channel.routed_out_30day }}) | Routed In: {{ channel.amt_routed_in_30day|intcomma }} ({{ channel.routed_in_30day }})</h4>
+  <h4>Lifetime Routed Out {{ channel.amt_routed_out|intcomma }}  ({{ channel.routed_out }}) | Routed In: {{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in }})</h4>
+</div>
+<div class="w3-container w3-padding-small">
+  <h3>Rebalancing Events</h3>
+  <h4>1-Day Rebalanced Out {{ channel.amt_rebal_out_1day|intcomma }}  ({{ channel.rebal_out_1day }}) | Routed In: {{ channel.amt_rebal_in_1day|intcomma }} ({{ channel.rebal_in_1day }})</h4>
+  <h4>7-Day Rebalanced Out {{ channel.amt_rebal_out_7day|intcomma }}  ({{ channel.rebal_out_7day }}) | Routed In: {{ channel.amt_rebal_in_7day|intcomma }} ({{ channel.rebal_in_7day }})</h4>
+  <h4>30-Day Rebalanced Out {{ channel.amt_rebal_out_30day|intcomma }}  ({{ channel.rebal_out_30day }}) | Routed In: {{ channel.amt_rebal_in_30day|intcomma }} ({{ channel.rebal_in_30day }})</h4>
+  <h4>Lifetime Rebalanced Out {{ channel.amt_rebal_out|intcomma }}  ({{ channel.rebal_out }}) | Routed In: {{ channel.amt_rebal_in|intcomma }} ({{ channel.rebal_in }})</h4>
+</div>
+{% if outgoing_htlcs %}
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Channel ID</th>
-      <th>Alias</th>
-      <th>Capacity</th>
-      <th>Is Open</th>
-      <th>Is Active</th>
-      <th>Lifetime In</th>
-      <th>Lifetime Out</th>
+      <th width=10%>Channel Alias</th>
+      <th>Forwarding Channel</th>
+      <th width=10%>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration Height</th>
+      <th width=25%>Hash Lock</th>
     </tr>
+    {% for htlc in outgoing_htlcs %}
     <tr>
-      <td>{{ channel.chan_id }}</td>
-      <td>{{ channel.alias }}</td>
-      <td>{{ channel.capacity }}</td>
-      <td>{{ channel.is_open }}</td>
-      <td>{{ channel.is_active }}</td>
-      <td>{{ channel.amt_routed_in|intcomma }}</td>
-      <td>{{ channel.amt_routed_out|intcomma }}</td>
+      <td>{{ htlc.chan_id }}</td>
+      <td>{{ htlc.alias }}</td>
+      <td>{{ htlc.forwarding_channel }}</td>
+      <td>{{ htlc.forwarding_alias }}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td>{{ htlc.expiration_height|intcomma }}</td>
+      <td>{{ htlc.hash_lock }}</td>
     </tr>
+    {% endfor %}
   </table>
-</div>
+{% endif %}
+{% if incoming_htlcs %}
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th width=10%>Channel Alias</th>
+      <th>Forwarding Channel</th>
+      <th width=10%>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration Height</th>
+      <th width=25%>Hash Lock</th>
+    </tr>
+    {% for htlc in incoming_htlcs %}
+    <tr>
+      <td>{{ htlc.chan_id }}</td>
+      <td>{{ htlc.alias }}</td>
+      <td>{{ htlc.forwarding_channel }}</td>
+      <td>{{ htlc.forwarding_alias }}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td>{{ htlc.expiration_height|intcomma }}</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endif %}
 {% endif %}
 {% if not channel %}
 <div class="w3-container w3-padding-small">
