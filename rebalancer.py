@@ -26,7 +26,7 @@ def run_rebalancer(rebalance):
         connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
         stub = lnrpc.LightningStub(connection)
         routerstub = lnrouter.RouterStub(connection)
-        chan_ids = json.loads(rebalance.outgoing_chan_ids)
+        chan_ids = json.loads(rebalance.outgoing_chan_ids.replace('\'', ''))
         timeout = rebalance.duration * 60
         response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
         for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
@@ -115,7 +115,7 @@ def auto_schedule():
                             print('Target Value:', target.ar_amt_target)
                             print('Target Fee:', target_fee)
                             print('Target Time:', target_time)
-                            Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=outbound_cans, last_hop_pubkey=inbound_pubkey.remote_pubkey, target_alias=inbound_pubkey.alias, duration=target_time).save()
+                            Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=inbound_pubkey.remote_pubkey, target_alias=inbound_pubkey.alias, duration=target_time).save()
 
 def auto_enable():
     if LocalSettings.objects.filter(key='AR-Autopilot').exists():
