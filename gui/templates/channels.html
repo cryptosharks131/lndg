@@ -36,7 +36,7 @@
       </tr>
       {% for channel in channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity }} M</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>

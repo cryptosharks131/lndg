@@ -534,7 +534,10 @@ def channel(request):
             'chan_id': chan_id,
             'channel': channel[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
-            'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock')
+            'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': graph_links(),
+            'network_links': network_links()
         }
         return render(request, 'channel.html', context)
     else:

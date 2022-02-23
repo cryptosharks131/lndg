@@ -28,7 +28,7 @@
       </tr>
       {% for channel in channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>

@@ -7,7 +7,6 @@
   <h2>Closures</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Analyze</th>
       <th>Channel ID</th>
       <th>Alias</th>
       <th>Capacity</th>
@@ -22,8 +21,7 @@
     </tr>
     {% for closure in closures %}
     <tr>
-      <td><a href="/channel?={{ closure.chan_id }}" target="_blank">Open</a></td>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.channel_point|slice:":-2" }}" target="_blank">{{ closure.chan_id }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ closure.chan_id }}</a></td>
       <td>{% if closure.alias != '---' %}<a href="{{ graph_links }}/{{ network }}node/{{ closure.remote_pubkey }}" target="_blank">{{ closure.alias }}</a>{% else %}{{ closure.alias }}{% endif %}</td>
       <td>{{ closure.capacity|intcomma }}</td>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx_hash }}" target="_blank">{{ closure.closing_tx }}</a></td>
