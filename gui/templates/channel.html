@@ -23,6 +23,8 @@
   <h4>Lifetime Rebalanced Out {{ channel.amt_rebal_out|intcomma }}  ({{ channel.rebal_out|intcomma }}) | Routed In: {{ channel.amt_rebal_in|intcomma }} ({{ channel.rebal_in|intcomma }})</h4>
 </div>
 {% if outgoing_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Outgoing HTLCs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Channel ID</th>
@@ -45,8 +47,11 @@
     </tr>
     {% endfor %}
   </table>
+</div>
 {% endif %}
 {% if incoming_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Incoming HTLCs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Channel ID</th>
@@ -69,6 +74,7 @@
     </tr>
     {% endfor %}
   </table>
+</div>
 {% endif %}
 {% endif %}
 {% if not channel %}
