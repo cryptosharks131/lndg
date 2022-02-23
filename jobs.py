@@ -44,7 +44,7 @@ def update_payments(stub):
                                 new_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:800] if 34349334 in records else None
+                                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
                                 new_payment.keysend_preimage = records[5482373484].hex()
                                 new_payment.message = message
                                 new_payment.save()
@@ -81,7 +81,7 @@ def update_payments(stub):
                                 db_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:800] if 34349334 in records else None
+                                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
                                 db_payment.keysend_preimage = records[5482373484].hex()
                                 db_payment.message = message
                                 db_payment.save()
@@ -97,7 +97,7 @@ def update_invoices(stub):
             alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias if Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id).exists() else None
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
-            message = records[34349334].decode('utf-8', errors='ignore')[:800] if 34349334 in records else None
+            message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
             if 34349337 in records and 34349339 in records:
                 signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey

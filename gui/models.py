@@ -12,7 +12,7 @@ class Payments(models.Model):
     chan_out = models.CharField(max_length=20, null=True)
     chan_out_alias = models.CharField(null=True, max_length=32)
     keysend_preimage = models.CharField(null=True, max_length=64)
-    message = models.CharField(null=True, max_length=800)
+    message = models.CharField(null=True, max_length=1000)
     cleaned = models.BooleanField(default=False)
     class Meta:
         app_label = 'gui'
@@ -42,7 +42,7 @@ class Invoices(models.Model):
     chan_in = models.CharField(max_length=20, null=True)
     chan_in_alias = models.CharField(null=True, max_length=32)
     keysend_preimage = models.CharField(null=True, max_length=64)
-    message = models.CharField(null=True, max_length=800)
+    message = models.CharField(null=True, max_length=1000)
     sender = models.CharField(null=True, max_length=66)
     index = models.IntegerField()
     class Meta:
