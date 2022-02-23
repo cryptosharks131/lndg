@@ -26,7 +26,7 @@ def run_rebalancer(rebalance):
         connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
         stub = lnrpc.LightningStub(connection)
         routerstub = lnrouter.RouterStub(connection)
-        chan_ids = json.loads(rebalance.outgoing_chan_ids.replace('\'', ''))
+        chan_ids = json.loads(rebalance.outgoing_chan_ids)
         timeout = rebalance.duration * 60
         response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
         for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
