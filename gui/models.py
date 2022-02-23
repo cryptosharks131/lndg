@@ -119,6 +119,7 @@ class Channels(models.Model):
 
 class Peers(models.Model):
     pubkey = models.CharField(max_length=66, primary_key=True)
+    alias = models.CharField(null=True, max_length=32)
     address = models.CharField(max_length=100)
     sat_sent = models.BigIntegerField()
     sat_recv = models.BigIntegerField()

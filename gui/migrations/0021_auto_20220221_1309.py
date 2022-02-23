@@ -71,6 +71,11 @@ class Migration(migrations.Migration):
             name='sender_alias',
             field=models.CharField(max_length=32, null=True),
         ),
+        migrations.AddField(
+            model_name='peers',
+            name='alias',
+            field=models.CharField(max_length=32, null=True),
+        ),
         migrations.AlterField(
             model_name='autopilot',
             name='chan_id',
