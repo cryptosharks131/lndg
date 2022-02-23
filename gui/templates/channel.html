@@ -27,8 +27,6 @@
   <h2>Outgoing HTLCs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th width=10%>Channel Alias</th>
       <th>Forwarding Channel</th>
       <th width=10%>Forwarding Alias</th>
       <th>Amount</th>
@@ -37,8 +35,6 @@
     </tr>
     {% for htlc in outgoing_htlcs %}
     <tr>
-      <td>{{ htlc.chan_id }}</td>
-      <td>{{ htlc.alias }}</td>
       <td>{{ htlc.forwarding_channel }}</td>
       <td>{{ htlc.forwarding_alias }}</td>
       <td>{{ htlc.amount|intcomma }}</td>
@@ -54,8 +50,6 @@
   <h2>Incoming HTLCs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th width=10%>Channel Alias</th>
       <th>Forwarding Channel</th>
       <th width=10%>Forwarding Alias</th>
       <th>Amount</th>
@@ -64,8 +58,6 @@
     </tr>
     {% for htlc in incoming_htlcs %}
     <tr>
-      <td>{{ htlc.chan_id }}</td>
-      <td>{{ htlc.alias }}</td>
       <td>{{ htlc.forwarding_channel }}</td>
       <td>{{ htlc.forwarding_alias }}</td>
       <td>{{ htlc.amount|intcomma }}</td>
