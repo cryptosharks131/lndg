@@ -44,6 +44,7 @@ class Invoices(models.Model):
     keysend_preimage = models.CharField(null=True, max_length=64)
     message = models.CharField(null=True, max_length=1000)
     sender = models.CharField(null=True, max_length=66)
+    sender_alias = models.CharField(null=True, max_length=32)
     index = models.IntegerField()
     class Meta:
         app_label = 'gui'

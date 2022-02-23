@@ -24,8 +24,13 @@ def update_messages(apps, schedma_editor):
                     sender = records[34349339].hex() if valid == True else None
                 else:
                     sender = None
+                try:
+                    alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=sender, include_channels=False)).node.alias if sender != None else None
+                except:
+                    alias = None
                 message.message = records[34349334].decode('utf-8', errors='ignore')[:1000]
                 message.sender = sender
+                message.sender_alias = alias
                 message.save()
     except Exception as e:
         print('Migration step failed:', str(e))
@@ -60,6 +65,11 @@ class Migration(migrations.Migration):
             model_name='invoices',
             name='sender',
             field=models.CharField(max_length=66, null=True),
+        ),
+        migrations.AddField(
+            model_name='invoices',
+            name='sender_alias',
+            field=models.CharField(max_length=32, null=True),
         ),
         migrations.AlterField(
             model_name='autopilot',
