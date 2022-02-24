@@ -29,40 +29,41 @@ def run_rebalancer(rebalance):
         routerstub = lnrouter.RouterStub(connection)
         chan_ids = json.loads(rebalance.outgoing_chan_ids)
         timeout = rebalance.duration * 60
-        response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
-        for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True, no_inflight_updates=True), timeout=(timeout+60)):
-            if response.status == 1 and rebalance.status == 0:
-                #IN-FLIGHT
-                rebalance.status = 1
-                rebalance.save()
-            elif response.status == 2:
-                #SUCCESSFUL
-                rebalance.status = 2
-            elif response.status == 3:
-                #FAILURE
-                if response.failure_reason == 1:
-                    #FAILURE_REASON_TIMEOUT
-                    rebalance.status = 3
-                elif response.failure_reason == 2:
-                    #FAILURE_REASON_NO_ROUTE
-                    rebalance.status = 4
-                elif response.failure_reason == 3:
-                    #FAILURE_REASON_ERROR
-                    rebalance.status = 5
-                elif response.failure_reason == 4:
-                    #FAILURE_REASON_INCORRECT_PAYMENT_DETAILS
-                    rebalance.status = 6
-                elif response.failure_reason == 5:
-                    #FAILURE_REASON_INSUFFICIENT_BALANCE
-                    rebalance.status = 7
-            rebalance.payment_hash = response.payment_hash
-    except Exception as e:
-        if str(e.code()) == 'StatusCode.DEADLINE_EXCEEDED':
-            rebalance.status = 408
+        invoice_response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
+        payment_response = routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_sat=rebalance.fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True, no_inflight_updates=True), timeout=(timeout+60))
+        rebalance.payment_hash = payment_response.payment_hash
+        if payment_response.status == 2:
+            #SUCCESSFUL
+            rebalance.status = 2
+        elif payment_response.status == 3:
+            #FAILURE
+            if payment_response.failure_reason == 1:
+                #FAILURE_REASON_TIMEOUT
+                rebalance.status = 3
+            elif payment_response.failure_reason == 2:
+                #FAILURE_REASON_NO_ROUTE
+                rebalance.status = 4
+            elif payment_response.failure_reason == 3:
+                #FAILURE_REASON_ERROR
+                rebalance.status = 5
+            elif payment_response.failure_reason == 4:
+                #FAILURE_REASON_INCORRECT_PAYMENT_DETAILS
+                rebalance.status = 6
+            elif payment_response.failure_reason == 5:
+                #FAILURE_REASON_INSUFFICIENT_BALANCE
+                rebalance.status = 7
         else:
             rebalance.status = 400
-            error = str(e)
-            print(error)
+    except Exception as e:
+        try:
+            rebalance.payment_hash = payment_response.payment_hash
+        finally:
+            if str(e.code()) == 'StatusCode.DEADLINE_EXCEEDED':
+                rebalance.status = 408
+            else:
+                rebalance.status = 400
+                error = str(e)
+                print(error)
     finally:
         rebalance.stop = datetime.now()
         rebalance.save()
