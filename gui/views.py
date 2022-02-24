@@ -363,8 +363,10 @@ def route(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def peers(request):
     if request.method == 'GET':
+        peers = Peers.objects.filter(connected=True)
         context = {
-            'peers': Peers.objects.filter(connected=True),
+            'peers': peers,
+            'num_peers': len(peers),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
