@@ -55,7 +55,7 @@ def run_rebalancer(rebalance):
                 elif response.failure_reason == 5:
                     #FAILURE_REASON_INSUFFICIENT_BALANCE
                     rebalance.status = 7
-        rebalance.payment_hash = response.payment_hash
+            rebalance.payment_hash = response.payment_hash
     except Exception as e:
         if str(e.code()) == 'StatusCode.DEADLINE_EXCEEDED':
             rebalance.status = 408
