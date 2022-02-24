@@ -72,6 +72,8 @@ def run_rebalancer(rebalance):
                 outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
                 next_rebalance = Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=rebalance.duration)
                 next_rebalance.save()
+            else:
+                next_rebalance = None
         else:
             next_rebalance = None
         return next_rebalance
