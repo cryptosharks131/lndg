@@ -309,7 +309,7 @@
 {% endif %}
 {% if rebalances %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 10 Rebalance Requests (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing)</h2>
+  <h2>Last 10 <a href="/rebalancing" target="_blank">Rebalance Requests</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing)</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Requested</th>
@@ -431,7 +431,7 @@
 {% endif %}
 {% if local_settings %}
 <div class="w3-container w3-padding-small">
-  <h2>Auto-Rebalancer Settings</h2>
+  <h2><a href="/rebalancing" target="_blank">Auto-Rebalancer</a> Settings</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Key</th>
@@ -466,29 +466,6 @@
       <label for="autopilot">Autopilot: </label>
       <input id="autopilot" type="number" min="0" max="1" name="autopilot">
       <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Manual Rebalancer Request</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
-      {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
-      <label for="value">Rebalance Amount: </label>
-      <input id="value" type="number" name="value">
-      <label for="fee_limit">Fee Limit: </label>
-      <input id="fee_limit" type="number" min="1" max="200" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
     </form>
   </div>
 </div>
@@ -545,6 +522,17 @@
   </div>
 </div>
 <div class="w3-container w3-padding-small">
+  <h2>Update Peer Alias</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/api/updatealias/" method="post">
+      {% csrf_token %}
+      <label for="peer_pubkey">Peer Pubkey: </label>
+      <input id="peer_pubkey" type="text" name="peer_pubkey">
+      <input type="submit" value="OK">
+    </form>
+  </div>
+</div>
+<div class="w3-container w3-padding-small">
   <h2>Update Channel Policy</h2>
   <div class="w3-container w3-padding-32">
     <form action="/updatechanpolicy/" method="post">
@@ -562,17 +550,6 @@
           <li>{{ channel }}</li>
         {% endfor %}
       </ul>
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Update Peer Alias</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/api/updatealias/" method="post">
-      {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <input type="submit" value="OK">
     </form>
   </div>
 </div>

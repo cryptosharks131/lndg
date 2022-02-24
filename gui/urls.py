@@ -29,6 +29,7 @@ urlpatterns = [
     path('payments', views.payments, name='payments'),
     path('invoices', views.invoices, name='invoices'),
     path('forwards', views.forwards, name='forwards'),
+    path('rebalancing', views.rebalancing, name='rebalancing'),
     path('openchannel/', views.open_channel_form, name='open-channel-form'),
     path('closechannel/', views.close_channel_form, name='close-channel-form'),
     path('connectpeer/', views.connect_peer_form, name='connect-peer-form'),

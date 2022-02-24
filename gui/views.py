@@ -673,6 +673,17 @@ def forwards(request):
     else:
         return redirect('home')
 
+@login_required(login_url='/lndg-admin/login/?next=/')
+def rebalancing(request):
+    if request.method == 'GET':
+        context = {
+            'channels': Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).order_by('percent_outbound'),
+            'rebalancer': Rebalancer.objects.all().order_by('-id')[:20],
+            'rebalancer_form': RebalancerForm
+        }
+        return render(request, 'rebalancing.html', context)
+    else:
+        return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def keysends(request):
