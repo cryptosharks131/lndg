@@ -68,6 +68,7 @@ def run_rebalancer(rebalance):
         rebalance.stop = datetime.now()
         rebalance.save()
         if rebalance.status == 2:
+            update_channel(stub, rebalance.last_hop_pubkey)
             auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target'))
             inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0:
@@ -79,6 +80,13 @@ def run_rebalancer(rebalance):
         else:
             next_rebalance = None
         return next_rebalance
+
+def update_channel(stub, peer_pubkey):
+    channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(peer_pubkey))).channels[0]
+    db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
+    db_channel.local_balance = channel.local_balance
+    db_channel.remote_balance = channel.remote_balance
+    db_channel.save()
 
 def auto_schedule():
     #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
