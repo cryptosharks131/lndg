@@ -20,6 +20,7 @@ def run_rebalancer(rebalance):
             unknown_error.stop = datetime.now()
             unknown_error.save()
     rebalance.start = datetime.now()
+    rebalance.status = 1
     rebalance.save()
     try:
         #Open connection with lnd via grpc
@@ -33,7 +34,6 @@ def run_rebalancer(rebalance):
             if response.status == 1 and rebalance.status == 0:
                 #IN-FLIGHT
                 rebalance.status = 1
-                rebalance.payment_hash = response.payment_hash
                 rebalance.save()
             elif response.status == 2:
                 #SUCCESSFUL
@@ -55,6 +55,7 @@ def run_rebalancer(rebalance):
                 elif response.failure_reason == 5:
                     #FAILURE_REASON_INSUFFICIENT_BALANCE
                     rebalance.status = 7
+        rebalance.payment_hash = response.payment_hash
     except Exception as e:
         if str(e.code()) == 'StatusCode.DEADLINE_EXCEEDED':
             rebalance.status = 408
