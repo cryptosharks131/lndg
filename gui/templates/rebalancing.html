@@ -37,6 +37,11 @@
   </div>
 </div>
 {% endif %}
+{% if not channels %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any channels to rebalance yet.</h1></center>
+</div>
+{% endif %}
 {% if rebalancer %}
 <div class="w3-container w3-padding-small">
   <h2>Last 20 Rebalance Requests</h2>
@@ -71,7 +76,23 @@
   <center><h1>You dont have any rebalancer requests yet.</h1></center>
 </div>
 {% endif %}
-{% if channels %}
+{% if local_settings %}
+<div class="w3-container w3-padding-small">
+  <h2><a href="/rebalancing" target="_blank">Auto-Rebalancer</a> Settings</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Key</th>
+      <th>Value</th>
+    </tr>
+    {% for settings in local_settings %}
+    <tr>
+      <td>{{ settings.key }}</td>
+      <td>{{ settings.value|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 <div class="w3-container w3-padding-small">
   <h2>Update Auto Rebalancer Settings</h2>
   <div class="w3-container w3-padding-32">
@@ -95,6 +116,7 @@
     </form>
   </div>
 </div>
+{% if channels %}
 <div class="w3-container w3-padding-small">
   <h2>Manual Rebalancer Request</h2>
   <div class="w3-container w3-padding-32">
