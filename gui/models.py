@@ -14,6 +14,7 @@ class Payments(models.Model):
     keysend_preimage = models.CharField(null=True, max_length=64)
     message = models.CharField(null=True, max_length=1000)
     cleaned = models.BooleanField(default=False)
+    rebal_chan = models.CharField(max_length=20, null=True)
     class Meta:
         app_label = 'gui'
 

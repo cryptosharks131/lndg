@@ -18,6 +18,7 @@ def update_payments(stub):
     #Get the number of records in the database currently
     last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
+    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     for payment in payments:
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
@@ -41,13 +42,14 @@ def update_payments(stub):
                             if hop_count == 1:
                                 new_payment.chan_out = hop.chan_id
                                 new_payment.chan_out_alias = alias
-                                new_payment.save()
                             if hop_count == total_hops and 5482373484 in hop.custom_records:
                                 records = hop.custom_records
                                 message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
                                 new_payment.keysend_preimage = records[5482373484].hex()
                                 new_payment.message = message
-                                new_payment.save()
+                            if hop_count == total_hops and hop.pub_key == self_pubkey:
+                                new_payment.rebal_chan = hop.chan_id
+                        new_payment.save()
                         break
         except:
             #Error inserting, try to update instead

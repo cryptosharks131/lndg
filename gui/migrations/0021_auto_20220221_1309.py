@@ -38,6 +38,20 @@ def update_messages(apps, schedma_editor):
 def revert_messages(apps, schedma_editor):
     pass
 
+def update_rebal_channel(apps, schedma_editor):
+    payments = apps.get_model('gui', 'payments')
+    hops = apps.get_model('gui', 'paymenthops')
+    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+    for payment in payments.objects.filter(status=2).iterator():
+        last_hop = hops.objects.filter(payment_hash=payment.payment_hash).order_by('-step')[0] if hops.objects.filter(payment_hash=payment.payment_hash).exists() else None
+        if last_hop.node_pubkey == self_pubkey:
+            payment.rebal_chan = last_hop.chan_id
+            payment.save()
+
+def revert_rebal_channel(apps, schedma_editor):
+    pass
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -106,6 +120,11 @@ class Migration(migrations.Migration):
             model_name='invoices',
             name='sender_alias',
             field=models.CharField(max_length=32, null=True),
+        ),
+        migrations.AddField(
+            model_name='payments',
+            name='rebal_chan',
+            field=models.CharField(max_length=20, null=True),
         ),
         migrations.AddField(
             model_name='peers',
@@ -186,4 +205,5 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.RunPython(update_messages, revert_messages),
+        migrations.RunPython(update_rebal_channel, revert_rebal_channel),
     ]
