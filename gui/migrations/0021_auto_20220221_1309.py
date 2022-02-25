@@ -62,6 +62,42 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.AddField(
+            model_name='channels',
+            name='htlc_count',
+            field=models.IntegerField(default=0),
+            preserve_default=False,
+        ),
+        migrations.AddField(
+            model_name='channels',
+            name='pending_inbound',
+            field=models.BigIntegerField(default=0),
+            preserve_default=False,
+        ),
+        migrations.AddField(
+            model_name='channels',
+            name='pending_outbound',
+            field=models.BigIntegerField(default=0),
+            preserve_default=False,
+        ),
+        migrations.AddField(
+            model_name='channels',
+            name='private',
+            field=models.BooleanField(default=False),
+            preserve_default=False,
+        ),
+        migrations.AddField(
+            model_name='channels',
+            name='total_received',
+            field=models.BigIntegerField(default=0),
+            preserve_default=False,
+        ),
+        migrations.AddField(
+            model_name='channels',
+            name='total_sent',
+            field=models.BigIntegerField(default=0),
+            preserve_default=False,
+        ),
+        migrations.AddField(
             model_name='invoices',
             name='sender',
             field=models.CharField(max_length=66, null=True),

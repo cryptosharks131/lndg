@@ -142,6 +142,8 @@ def update_channels(stub):
             db_channel.alias = alias
             db_channel.funding_txid = txid
             db_channel.output_index = index
+            db_channel.capacity = channel.capacity
+            db_channel.private = channel.private
         try:
             chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
             if chan_data.node1_pub == channel.remote_pubkey:
@@ -165,7 +167,6 @@ def update_channels(stub):
             db_channel.remote_base_fee = 0
             db_channel.remote_fee_rate = 0
             db_channel.remote_disabled = False
-        db_channel.capacity = channel.capacity
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
@@ -175,9 +176,11 @@ def update_channels(stub):
         db_channel.last_update = datetime.now() if db_channel.is_active != channel.active else db_channel.last_update
         db_channel.is_active = channel.active
         db_channel.is_open = True
-        db_channel.save()
-        counter += 1
-        chan_list.append(channel.chan_id)
+        db_channel.total_sent = channel.total_satoshis_sent
+        db_channel.total_received = channel.total_satoshis_received
+        pending_out = 0
+        pending_in = 0
+        htlc_counter = 0
         if len(channel.pending_htlcs) > 0:
             for htlc in channel.pending_htlcs:
                 pending_htlc = PendingHTLCs()
@@ -190,6 +193,17 @@ def update_channels(stub):
                 pending_htlc.forwarding_channel = htlc.forwarding_channel
                 pending_htlc.forwarding_alias = Channels.objects.filter(chan_id=htlc.forwarding_channel)[0].alias if Channels.objects.filter(chan_id=htlc.forwarding_channel).exists() else '---'
                 pending_htlc.save()
+                if htlc.incoming == True:
+                    pending_in += htlc.amount
+                else:
+                    pending_out += htlc.amount
+                htlc_counter += 1
+        db_channel.pending_outbound = pending_out
+        db_channel.pending_inbound = pending_in
+        db_channel.htlc_count = htlc_counter
+        db_channel.save()
+        counter += 1
+        chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()
     if records > counter:
         #A channel must have been closed, mark it as closed
