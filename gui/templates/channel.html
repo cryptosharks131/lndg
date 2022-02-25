@@ -18,10 +18,10 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h3>Rebalancing Events</h3>
-  <h4>1-Day Rebalanced Out {{ channel.amt_rebal_out_1day|intcomma }}  ({{ channel.rebal_out_1day|intcomma }}) | Routed In: {{ channel.amt_rebal_in_1day|intcomma }} ({{ channel.rebal_in_1day|intcomma }})</h4>
-  <h4>7-Day Rebalanced Out {{ channel.amt_rebal_out_7day|intcomma }}  ({{ channel.rebal_out_7day|intcomma }}) | Routed In: {{ channel.amt_rebal_in_7day|intcomma }} ({{ channel.rebal_in_7day|intcomma }})</h4>
-  <h4>30-Day Rebalanced Out {{ channel.amt_rebal_out_30day|intcomma }}  ({{ channel.rebal_out_30day|intcomma }}) | Routed In: {{ channel.amt_rebal_in_30day|intcomma }} ({{ channel.rebal_in_30day|intcomma }})</h4>
-  <h4>Lifetime Rebalanced Out {{ channel.amt_rebal_out|intcomma }}  ({{ channel.rebal_out|intcomma }}) | Routed In: {{ channel.amt_rebal_in|intcomma }} ({{ channel.rebal_in|intcomma }})</h4>
+  <h4>1-Day Rebalanced Out {{ channel.amt_rebal_out_1day|intcomma }}  ({{ channel.rebal_out_1day|intcomma }}) | Rebalanced In: {{ channel.amt_rebal_in_1day|intcomma }} ({{ channel.rebal_in_1day|intcomma }})</h4>
+  <h4>7-Day Rebalanced Out {{ channel.amt_rebal_out_7day|intcomma }}  ({{ channel.rebal_out_7day|intcomma }}) | Rebalanced In: {{ channel.amt_rebal_in_7day|intcomma }} ({{ channel.rebal_in_7day|intcomma }})</h4>
+  <h4>30-Day Rebalanced Out {{ channel.amt_rebal_out_30day|intcomma }}  ({{ channel.rebal_out_30day|intcomma }}) | Rebalanced In: {{ channel.amt_rebal_in_30day|intcomma }} ({{ channel.rebal_in_30day|intcomma }})</h4>
+  <h4>Lifetime Rebalanced Out {{ channel.amt_rebal_out|intcomma }}  ({{ channel.rebal_out|intcomma }}) | Rebalanced In: {{ channel.amt_rebal_in|intcomma }} ({{ channel.rebal_in|intcomma }})</h4>
 </div>
 {% if outgoing_htlcs %}
 <div class="w3-container w3-padding-small">

@@ -475,8 +475,7 @@ def channel(request):
                 channels_df['amt_routed_in_1day'] = channels_df.apply(lambda row: int(forwards_df_in_1d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_1d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_routed_out_1day'] = channels_df.apply(lambda row: int(forwards_df_out_1d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_1d_sum.index == row.chan_id).any() else 0, axis=1)
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(payment_hash__in=Invoices.objects.filter(state=1).values_list('r_hash')).values())
-            if payments_df.shape[0]> 0:
-                invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=payments_df['payment_hash'].to_list()).values())
+            if payments_df.shape[0] > 0:
                 payments_df_30d = payments_df.loc[payments_df['creation_date'] >= filter_30day]
                 payments_df_7d = payments_df_30d.loc[payments_df_30d['creation_date'] >= filter_7day]
                 payments_df_1d = payments_df_7d.loc[payments_df_7d['creation_date'] >= filter_1day]
@@ -497,7 +496,6 @@ def channel(request):
                 channels_df['amt_rebal_out_7day'] = channels_df.apply(lambda row: int(payments_df_7d_sum.loc[row.chan_id].value) if payments_df_7d_count.empty == False and (payments_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_rebal_out_1day'] = channels_df.apply(lambda row: int(payments_df_1d_sum.loc[row.chan_id].value) if payments_df_1d_count.empty == False and (payments_df_1d_sum.index == row.chan_id).any() else 0, axis=1)
             else:
-                invoices_df = DataFrame()
                 channels_df['rebal_out'] = 0
                 channels_df['rebal_out_30day'] = 0
                 channels_df['rebal_out_7day'] = 0
@@ -506,6 +504,7 @@ def channel(request):
                 channels_df['amt_rebal_out_30day'] = 0
                 channels_df['amt_rebal_out_7day'] = 0
                 channels_df['amt_rebal_out_1day'] = 0
+            invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(payment_hash__in=Invoices.objects.filter(state=1).values_list('r_hash'))).values())
             if invoices_df.shape[0]> 0:
                 invoices_df_30d = invoices_df.loc[invoices_df['settle_date'] >= filter_30day]
                 invoices_df_7d = invoices_df_30d.loc[invoices_df_30d['settle_date'] >= filter_7day]
