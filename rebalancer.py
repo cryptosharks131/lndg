@@ -117,14 +117,14 @@ def auto_schedule():
                     if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
                         value_per_fee = int(1 / (target_fee_rate / 1000000)) if target_fee_rate <= max_fee_rate else int(1 / (max_fee_rate / 1000000))
                         target_value = int(target.ar_amt_target / value_per_fee) * value_per_fee
-                        if target_value >= value_per_fee:
+                        target_fee = int(target_value * (1 / value_per_fee))
+                        if target_value >= value_per_fee and target_fee > 0:
                             if LocalSettings.objects.filter(key='AR-Time').exists():
                                 target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
                             else:
                                 LocalSettings(key='AR-Time', value='5').save()
                                 target_time = 5
                             # TLDR: willing to pay 1 sat for every value_per_fee sats moved
-                            target_fee = int(target_value * (1 / value_per_fee))
                             if Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).exists():
                                 last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
                                 if not (last_rebalance.value != target_value or last_rebalance.status in [2, 6] or (last_rebalance.status in [3, 4, 5, 7, 400, 408] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > 30))):
