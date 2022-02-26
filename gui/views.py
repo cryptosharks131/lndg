@@ -204,7 +204,7 @@ def channels(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_30day = datetime.now() - timedelta(days=30)
         forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
-        payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_30day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).values_list('r_hash'))
+        payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_30day).filter(rebal_chan__isnull=False)
         invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).filter(r_hash__in=payments.values_list('payment_hash'))
         channels = Channels.objects.filter(is_open=True)
         channels_df = DataFrame.from_records(channels.values())
@@ -298,7 +298,7 @@ def fees(request):
             channels_df['revenue_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['revenue_assist_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['out_rate'] = channels_df.apply(lambda row: int((row['revenue_7day']/row['amt_routed_out_7day'])*1000000) if row['amt_routed_out_7day'] > 0 else 0, axis=1)
-            payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_7day).filter(payment_hash__in=Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).values_list('r_hash'))
+            payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_7day).filter(rebal_chan__isnull=False)
             invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).filter(r_hash__in=payments.values_list('payment_hash'))
             payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
             invoices_df_7d = DataFrame.from_records(invoices.filter(settle_date__gte=filter_7day).values())
@@ -684,7 +684,7 @@ def forwards(request):
 def rebalancing(request):
     if request.method == 'GET':
         context = {
-            'channels': Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).order_by('percent_outbound'),
+            'channels': Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).annotate(fee_ratio=(Sum('ar_max_cost')*Sum('local_fee_rate'))/Sum('remote_fee_rate')).order_by('percent_outbound'),
             'rebalancer': Rebalancer.objects.all().order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': LocalSettings.objects.filter(key__contains='AR-')
