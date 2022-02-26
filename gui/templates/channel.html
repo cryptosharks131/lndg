@@ -25,10 +25,10 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h3>Profitability</h3>
-  <h4>1-Day Revenue: {{ channel.revenue_1day|intcomma }} | Costs: {{ channel.costs_1day|intcomma }} | Profits: {{ channel.amt_rebal_in_1day|intcomma }} [{{ channel.apy_1day }}%] | Assisted Revenues: {{ channel.revenue_assist_1day|intcomma }}</h4>
-  <h4>7-Day Revenue: {{ channel.revenue_7day|intcomma }} | Costs: {{ channel.costs_7day|intcomma }} | Profits: {{ channel.amt_rebal_in_7day|intcomma }} [{{ channel.apy_7day }}%] | Assisted Revenues: {{ channel.revenue_assist_7day|intcomma }}</h4>
-  <h4>30-Day Revenue: {{ channel.revenue_30day|intcomma }} | Costs: {{ channel.costs_30day|intcomma }} | Profits: {{ channel.amt_rebal_in_30day|intcomma }} [{{ channel.apy_30day }}%] | Assisted Revenues: {{ channel.revenue_assist_30day|intcomma }}</h4>
-  <h4>Lifetime Revenue: {{ channel.revenue|intcomma }} | Costs: {{ channel.costs|intcomma }} | Profits: {{ channel.amt_rebal_in|intcomma }} [{{ channel.apy }}%] | Assisted Revenues: {{ channel.revenue_assist|intcomma }}</h4>
+  <h4>1-Day Revenue: {{ channel.revenue_1day|intcomma }} | Costs: {{ channel.costs_1day|intcomma }} | Profits: {{ channel.profits_1day|intcomma }} [{{ channel.apy_1day }}%] | Assisted Revenues: {{ channel.revenue_assist_1day|intcomma }}</h4>
+  <h4>7-Day Revenue: {{ channel.revenue_7day|intcomma }} | Costs: {{ channel.costs_7day|intcomma }} | Profits: {{ channel.profits_7day|intcomma }} [{{ channel.apy_7day }}%] | Assisted Revenues: {{ channel.revenue_assist_7day|intcomma }}</h4>
+  <h4>30-Day Revenue: {{ channel.revenue_30day|intcomma }} | Costs: {{ channel.costs_30day|intcomma }} | Profits: {{ channel.profits_30day|intcomma }} [{{ channel.apy_30day }}%] | Assisted Revenues: {{ channel.revenue_assist_30day|intcomma }}</h4>
+  <h4>Lifetime Revenue: {{ channel.revenue|intcomma }} | Costs: {{ channel.costs|intcomma }} | Profits: {{ channel.profits|intcomma }} [{{ channel.apy }}%] | Assisted Revenues: {{ channel.revenue_assist|intcomma }}</h4>
 </div>
 {% if outgoing_htlcs %}
 <div class="w3-container w3-padding-small">
