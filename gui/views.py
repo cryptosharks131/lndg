@@ -592,10 +592,10 @@ def channel(request):
             if start_date is not None:
                 time_delta = datetime.now() - start_date.to_pydatetime()
                 days_routing = time_delta.days + (time_delta.seconds/86400)
-                channels_df['apy'] = round(((channels_df['profits'].sum()/days_routing)*365)/channels_df['local_balance'].sum(), 2)
-            channels_df['apy_30day'] = round((channels_df['profits_30day'].sum()*1216.6667)/channels_df['local_balance'].sum(), 2)
-            channels_df['apy_7day'] = round((channels_df['profits_7day'].sum()*5214.2857)/channels_df['local_balance'].sum(), 2)
-            channels_df['apy_1day'] = round((channels_df['profits_1day'].sum()*365)/channels_df['local_balance'].sum(), 2)
+                channels_df['apy'] = round(((channels_df['profits']/days_routing)*36500)/channels_df['capacity'], 2)
+            channels_df['apy_30day'] = round((channels_df['profits_30day']*1216.6667)/channels_df['capacity'], 2)
+            channels_df['apy_7day'] = round((channels_df['profits_7day']*5214.2857)/channels_df['capacity'], 2)
+            channels_df['apy_1day'] = round((channels_df['profits_1day']*36500)/channels_df['capacity'], 2)
             channel = channels_df.to_dict(orient='records')
         else:
             channel = None
