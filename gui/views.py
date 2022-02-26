@@ -571,7 +571,7 @@ def channel(request):
                 channels_df['amt_rebal_in_30day'] = channels_df.apply(lambda row: int(invoices_df_30d_sum.loc[row.chan_id].amt_paid) if invoices_df_30d_count.empty == False and (invoices_df_30d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_count.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
                 channels_df['amt_rebal_in_1day'] = channels_df.apply(lambda row: int(invoices_df_1d_sum.loc[row.chan_id].amt_paid) if invoices_df_1d_count.empty == False and (invoices_df_1d_sum.index == row.chan_id).any() else 0, axis=1)
-                rebal_payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(rebal_chan__isnull=chan_id).values())
+                rebal_payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(rebal_chan=chan_id).values())
                 if rebal_payments_df.shape[0] > 0:
                     rebal_payments_df_30d = rebal_payments_df.loc[rebal_payments_df['creation_date'] >= filter_30day]
                     rebal_payments_df_7d = rebal_payments_df_30d.loc[rebal_payments_df_30d['creation_date'] >= filter_7day]
