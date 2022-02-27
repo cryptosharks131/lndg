@@ -588,6 +588,10 @@ def channel(request):
             channels_df['profits_30day'] = channels_df.apply(lambda row: row['revenue_30day'] - row['costs_30day'], axis=1)
             channels_df['profits_7day'] = channels_df.apply(lambda row: row['revenue_7day'] - row['costs_7day'], axis=1)
             channels_df['profits_1day'] = channels_df.apply(lambda row: row['revenue_1day'] - row['costs_1day'], axis=1)
+            channels_df['profits_vol'] = channels_df.apply(lambda row: row['profits'] / (row['amt_routed_out']/1000000), axis=1)
+            channels_df['profits_vol_30day'] = channels_df.apply(lambda row: row['profits_30day'] / (row['amt_routed_out_30day']/1000000), axis=1)
+            channels_df['profits_vol_7day'] = channels_df.apply(lambda row: row['profits_7day'] / (row['amt_routed_out_7day']/1000000), axis=1)
+            channels_df['profits_vol_1day'] = channels_df.apply(lambda row: row['profits_1day'] / (row['amt_routed_out_1day']/1000000), axis=1)
             channels_df['apy'] = 0.0
             if start_date is not None:
                 time_delta = datetime.now() - start_date.to_pydatetime()
@@ -601,7 +605,7 @@ def channel(request):
             channel = None
         context = {
             'chan_id': chan_id,
-            'channel': channel[0],
+            'channel': [] if channel == None else channel[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
