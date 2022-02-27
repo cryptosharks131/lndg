@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %} {{ block.super }} - Channel Info{% endblock %}
+{% block title %} {{ block.super }} - Channel Card{% endblock %}
 {% block content %}
 {% load humanize %}
 {% if channel %}
@@ -11,10 +11,10 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Routing Events</h2>
-  <h4>1-Day Routed Out: {{ channel.amt_routed_out_1day|intcomma }}  ({{ channel.routed_out_1day|intcomma }}) | Routed In: {{ channel.amt_routed_in_1day|intcomma }} ({{ channel.routed_in_1day|intcomma }})</h4>
-  <h4>7-Day Routed Out: {{ channel.amt_routed_out_7day|intcomma }}  ({{ channel.routed_out_7day|intcomma }}) | Routed In: {{ channel.amt_routed_in_7day|intcomma }} ({{ channel.routed_in_7day|intcomma }})</h4>
-  <h4>30-Day Routed Out: {{ channel.amt_routed_out_30day|intcomma }}  ({{ channel.routed_out_30day|intcomma }}) | Routed In: {{ channel.amt_routed_in_30day|intcomma }} ({{ channel.routed_in_30day|intcomma }})</h4>
-  <h4>Lifetime Routed Out: {{ channel.amt_routed_out|intcomma }}  ({{ channel.routed_out|intcomma }}) | Routed In: {{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in|intcomma }})</h4>
+  <h4>1-Day Routed Out: {{ channel.amt_routed_out_1day|intcomma }}  ({{ channel.routed_out_1day|intcomma }}) | Routed In: {{ channel.amt_routed_in_1day|intcomma }} ({{ channel.routed_in_1day|intcomma }}) | Average Out: {{ channel.average_out_1day|intcomma }} | Average In: {{ channel.average_in_1day|intcomma }}</h4>
+  <h4>7-Day Routed Out: {{ channel.amt_routed_out_7day|intcomma }}  ({{ channel.routed_out_7day|intcomma }}) | Routed In: {{ channel.amt_routed_in_7day|intcomma }} ({{ channel.routed_in_7day|intcomma }}) | Average Out: {{ channel.average_out_7day|intcomma }} | Average In: {{ channel.average_in_7day|intcomma }}</h4>
+  <h4>30-Day Routed Out: {{ channel.amt_routed_out_30day|intcomma }}  ({{ channel.routed_out_30day|intcomma }}) | Routed In: {{ channel.amt_routed_in_30day|intcomma }} ({{ channel.routed_in_30day|intcomma }}) | Average Out: {{ channel.average_out_30day|intcomma }} | Average In: {{ channel.average_in_30day|intcomma }}</h4>
+  <h4>Lifetime Routed Out: {{ channel.amt_routed_out|intcomma }}  ({{ channel.routed_out|intcomma }}) | Routed In: {{ channel.amt_routed_in|intcomma }} ({{ channel.routed_in|intcomma }}) | Average Out: {{ channel.average_out|intcomma }} | Average In: {{ channel.average_in|intcomma }}</h4>
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Rebalancing Events</h2>
@@ -29,6 +29,99 @@
   <h4>7-Day Revenue: {{ channel.revenue_7day|intcomma }} | Costs: {{ channel.costs_7day|intcomma }} | Profits: {{ channel.profits_7day|intcomma }} [{{ channel.profits_vol_7day }}] | Assisted Revenues: {{ channel.revenue_assist_7day|intcomma }} | APY: {{ channel.apy_7day }}%</h4>
   <h4>30-Day Revenue: {{ channel.revenue_30day|intcomma }} | Costs: {{ channel.costs_30day|intcomma }} | Profits: {{ channel.profits_30day|intcomma }} [{{ channel.profits_vol_30day }}] | Assisted Revenues: {{ channel.revenue_assist_30day|intcomma }} | APY: {{ channel.apy_30day }}%</h4>
   <h4>Lifetime Revenue: {{ channel.revenue|intcomma }} | Costs: {{ channel.costs|intcomma }} | Profits: {{ channel.profits|intcomma }} [{{ channel.profits_vol }}] | Assisted Revenues: {{ channel.revenue_assist|intcomma }} | APY: {{ channel.apy }}%</h4>
+</div>
+<div class="w3-container w3-padding-small" style="overflow-x: scroll">
+  <h2>Channel Settings</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel State</th>
+      <th>oRate</th>
+      <th>oBase</th>
+      <th>iRate</th>
+      <th>iBase</th>
+      <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+      <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
+      <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
+      <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
+      <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
+      <th>Active</th>
+    </tr>
+    <tr>
+      <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
+        {% if channel.is_active == True %}
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="{% if channel.local_disabled == False %}Disable{% else %}Enable{% endif %}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="7">
+            <input type="hidden" name="target" value="{% if channel.local_disabled == False %}0{% else %}1{% endif %}">
+          </form>
+        {% else %}
+          ---
+        {% endif %}
+      </td>
+      <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="1">
+        </form>
+      </td>
+      <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="0">
+        </form>
+      </td>
+      <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
+      <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
+      <td>
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="2">
+        </form>
+      </td>
+      <td>
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_max_cost }}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="6">
+        </form>
+      </td>
+      <td {% if channel.auto_rebalance == False %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="4">
+          </form>
+      </td>
+      <td {% if channel.auto_rebalance == True %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="3">
+          </form>
+      </td>
+      <td {% if channel.auto_rebalance == True %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="5">
+          <input type="hidden" name="target" value="0">
+        </form>
+      </td>
+      <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
+    </tr>
+  </table>
 </div>
 {% if outgoing_htlcs %}
 <div class="w3-container w3-padding-small">
@@ -200,7 +293,7 @@
 {% endif %}
 {% if failed_htlcs %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
+  <h2>Last 5 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
