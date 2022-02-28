@@ -718,16 +718,21 @@ def channel(request):
                 channels_df['apy_1day'] = round((channels_df['profits_1day']*36500)/(channels_df['capacity']*outbound_ratio), 2)
         else:
             channels_df = DataFrame()
+            forwards_df = DataFrame()
+            payments_df = DataFrame()
+            invoices_df = DataFrame()
+            rebalancer_df = DataFrame()
+            failed_htlc_df = DataFrame()
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
-            'forwards': [] if channels_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
-            'payments': [] if channels_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
-            'invoices': [] if channels_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
-            'rebalances': [] if channels_df.empty else rebalancer_df.to_dict(orient='records')[:5],
-            'failed_htlcs': [] if channels_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
+            'forwards': [] if forwards_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
+            'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
+            'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
+            'rebalances': [] if rebalancer_df.empty else rebalancer_df.to_dict(orient='records')[:5],
+            'failed_htlcs': [] if failed_htlc_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
