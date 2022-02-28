@@ -557,6 +557,9 @@ def channel(request):
                 forwards_df['amt_in'] = (forwards_df['amt_in_msat']/1000).astype(int)
                 forwards_df['amt_out'] = (forwards_df['amt_out_msat']/1000).astype(int)
                 forwards_df['ppm'] = (forwards_df['fee']/(forwards_df['amt_out']/1000000)).astype(int)
+            else:
+                forwards_in_df = DataFrame()
+                forwards_out_df = DataFrame()
             if forwards_in_df.shape[0]> 0:
                 forwards_in_df_count = forwards_in_df.groupby('chan_id_in', as_index=True).count()
                 forwards_in_df_sum = forwards_in_df.groupby('chan_id_in', as_index=True).sum()
