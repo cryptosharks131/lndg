@@ -207,6 +207,6 @@ class Migration(migrations.Migration):
                 ('chan_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='gui.closures')),
             ],
         ),
-        migrations.RunPython(update_messages, revert_messages),
         migrations.RunPython(update_rebal_channel, revert_rebal_channel),
+        migrations.RunPython(update_messages, revert_messages),
     ]
