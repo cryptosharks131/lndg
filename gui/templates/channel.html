@@ -229,8 +229,8 @@
     {% for rebalance in rebalances %}
     <tr>
       <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
-      <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
+      <td {% if rebalance.status == 0 %}>N/A{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
+      <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>N/A{% endif %}</td>
       <td>{{ rebalance.duration }} minutes</td>
       <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit|intcomma }}</td>
