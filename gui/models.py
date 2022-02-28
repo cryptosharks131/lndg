@@ -213,6 +213,8 @@ class FailedHTLCs(models.Model):
     chan_id_out = models.CharField(max_length=20)
     chan_in_alias = models.CharField(null=True, max_length=32)
     chan_out_alias = models.CharField(null=True, max_length=32)
+    chan_out_liq = models.BigIntegerField(null=True)
+    chan_out_pending = models.BigIntegerField(null=True)
     wire_failure = models.IntegerField()
     failure_detail = models.IntegerField()
     missed_fee = models.FloatField()

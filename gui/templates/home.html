@@ -296,8 +296,8 @@
       <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
       <td>{{ forward.amt_in|intcomma }}</td>
       <td>{{ forward.amt_out|intcomma }}</td>
-      <td>{{ forward.chan_in_alias }}</td>
-      <td>{{ forward.chan_out_alias }}</td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ forward.chan_in_alias }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ forward.chan_out_alias }}</a></td>
       <td>{{ forward.chan_id_in }}</td>
       <td>{{ forward.chan_id_out }}</td>
       <td>{{ forward.fee }}</td>
@@ -359,7 +359,7 @@
       <td>{{ payment.fee|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
-      <td>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
+      <td>{% if payment.status == 2 %}<a href="/channel?={{ channel.chan_id }}" target="_blank">{{ payment.chan_out }}</a>{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
       <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
@@ -391,7 +391,7 @@
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
       <td>{{ invoice.chan_in_alias }}</td>
-      <td>{{ invoice.chan_in }}</td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ invoice.chan_in }}</a></td>
       <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
     {% endfor %}
