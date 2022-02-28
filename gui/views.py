@@ -439,8 +439,6 @@ def channel(request):
             filter_7day = datetime.now() - timedelta(days=7)
             filter_30day = datetime.now() - timedelta(days=30)
             forwards_df = DataFrame.from_records(Forwards.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).values())
-            forwards_in_df = forwards_df[forwards_df['chan_id_in'] == chan_id]
-            forwards_out_df = forwards_df[forwards_df['chan_id_out'] == chan_id]
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).values())
             invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
             channels_df = DataFrame.from_records(Channels.objects.all().values())
@@ -554,6 +552,8 @@ def channel(request):
                             channels_df['success_1day'] = len(rebalancer_df_1d[rebalancer_df_1d['status']==2])
                             channels_df['success_rate_1day'] = 0 if channels_df['attempts_1day'][0] == 0 else int((channels_df['success_1day']/channels_df['attempts_1day'])*100)
             if forwards_df.shape[0]> 0:
+                forwards_in_df = forwards_df[forwards_df['chan_id_in'] == chan_id]
+                forwards_out_df = forwards_df[forwards_df['chan_id_out'] == chan_id]
                 forwards_df['amt_in'] = (forwards_df['amt_in_msat']/1000).astype(int)
                 forwards_df['amt_out'] = (forwards_df['amt_out_msat']/1000).astype(int)
                 forwards_df['ppm'] = (forwards_df['fee']/(forwards_df['amt_out']/1000000)).astype(int)
