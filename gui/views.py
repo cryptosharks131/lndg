@@ -535,17 +535,17 @@ def channel(request):
                 if rebalancer_df_30d.shape[0]> 0:
                     channels_df['attempts_30day'] = 0 if rebalancer_df_30d.empty else len(rebalancer_df_30d[rebalancer_df_30d['status']>=2][rebalancer_df_30d['status']<400])
                     channels_df['success_30day'] = 0 if rebalancer_df_30d.empty else len(rebalancer_df_30d[rebalancer_df_30d['status']==2])
-                    channels_df['success_rate_30day'] = 0 if channels_df['attempts_30day'][0] == 0 else int((channels_df['success_30d']/channels_df['attempts_30d'])*100)
+                    channels_df['success_rate_30day'] = 0 if channels_df['attempts_30day'][0] == 0 else int((channels_df['success_30day']/channels_df['attempts_30day'])*100)
                     rebalancer_df_7d = rebalancer_df_30d.loc[rebalancer_df_30d['stop'] >= filter_7day]
                     if rebalancer_df_7d.shape[0]> 0:
                         channels_df['attempts_7day'] = 0 if rebalancer_df_7d.empty else len(rebalancer_df_7d[rebalancer_df_7d['status']>=2][rebalancer_df_7d['status']<400])
                         channels_df['success_7day'] = 0 if rebalancer_df_7d.empty else len(rebalancer_df_7d[rebalancer_df_7d['status']==2])
-                        channels_df['success_rate_7day'] = 0 if channels_df['attempts_7day'][0] == 0 else int((channels_df['success_7d']/channels_df['attempts_7d'])*100)
+                        channels_df['success_rate_7day'] = 0 if channels_df['attempts_7day'][0] == 0 else int((channels_df['success_7day']/channels_df['attempts_7day'])*100)
                         rebalancer_df_1d = rebalancer_df_7d.loc[rebalancer_df_7d['stop'] >= filter_1day]
                         if rebalancer_df_1d.shape[0]> 0:
                             channels_df['attempts_1day'] = 0 if rebalancer_df_1d.empty else len(rebalancer_df_1d[rebalancer_df_1d['status']>=2][rebalancer_df_1d['status']<400])
                             channels_df['success_1day'] = 0 if rebalancer_df_1d.empty else len(rebalancer_df_1d[rebalancer_df_1d['status']==2])
-                            channels_df['success_rate_1day'] = 0 if channels_df['attempts_1day'][0] == 0 else int((channels_df['success_1d']/channels_df['attempts_1d'])*100)
+                            channels_df['success_rate_1day'] = 0 if channels_df['attempts_1day'][0] == 0 else int((channels_df['success_1day']/channels_df['attempts_1day'])*100)
             if forwards_df.shape[0]> 0:
                 forwards_df['amt_in'] = (forwards_df['amt_in_msat']/1000).astype(int)
                 forwards_df['amt_out'] = (forwards_df['amt_out_msat']/1000).astype(int)
