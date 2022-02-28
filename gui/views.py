@@ -517,34 +517,34 @@ def channel(request):
             channels_df['failed_out_1day'] = 0
             start_date = None
             if failed_htlc_df.shape[0]> 0:
-                channels_df['failed_out'] = 0 if failed_htlc_df.empty else len(failed_htlc_df[failed_htlc_df['chan_id_out']==chan_id][failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']<failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']])
+                channels_df['failed_out'] = len(failed_htlc_df[failed_htlc_df['chan_id_out']==chan_id][failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']<failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']])
                 failed_htlc_df_30d = failed_htlc_df.loc[failed_htlc_df['timestamp'] >= filter_30day]
                 if failed_htlc_df_30d.shape[0]< 0:
-                    channels_df['failed_out_30day'] = 0 if failed_htlc_df_30d.empty else len(failed_htlc_df_30d[failed_htlc_df_30d['chan_id_out']==chan_id][failed_htlc_df_30d['wire_failure']==15][failed_htlc_df_30d['failure_detail']==6][failed_htlc_df_30d['amount']<failed_htlc_df_30d['chan_out_liq']+failed_htlc_df_30d['chan_out_pending']])
+                    channels_df['failed_out_30day'] = len(failed_htlc_df_30d[failed_htlc_df_30d['chan_id_out']==chan_id][failed_htlc_df_30d['wire_failure']==15][failed_htlc_df_30d['failure_detail']==6][failed_htlc_df_30d['amount']<failed_htlc_df_30d['chan_out_liq']+failed_htlc_df_30d['chan_out_pending']])
                     failed_htlc_df_7d = failed_htlc_df_30d.loc[failed_htlc_df_30d['timestamp'] >= filter_7day]
                     if failed_htlc_df_7d.shape[0]> 0:
-                        channels_df['failed_out_7day'] = 0 if failed_htlc_df_7d.empty else len(failed_htlc_df_7d[failed_htlc_df_7d['chan_id_out']==chan_id][failed_htlc_df_7d['wire_failure']==15][failed_htlc_df_7d['failure_detail']==6][failed_htlc_df_7d['amount']<failed_htlc_df_7d['chan_out_liq']+failed_htlc_df_7d['chan_out_pending']])
+                        channels_df['failed_out_7day'] = len(failed_htlc_df_7d[failed_htlc_df_7d['chan_id_out']==chan_id][failed_htlc_df_7d['wire_failure']==15][failed_htlc_df_7d['failure_detail']==6][failed_htlc_df_7d['amount']<failed_htlc_df_7d['chan_out_liq']+failed_htlc_df_7d['chan_out_pending']])
                         failed_htlc_df_1d = failed_htlc_df_7d.loc[failed_htlc_df_7d['timestamp'] >= filter_1day]
                         if failed_htlc_df_1d.shape[0]> 0:
-                            channels_df['failed_out_1day'] = 0 if failed_htlc_df_1d.empty else len(failed_htlc_df_1d[failed_htlc_df_1d['chan_id_out']==chan_id][failed_htlc_df_1d['wire_failure']==15][failed_htlc_df_1d['failure_detail']==6][failed_htlc_df_1d['amount']<failed_htlc_df_1d['chan_out_liq']+failed_htlc_df_1d['chan_out_pending']])
+                            channels_df['failed_out_1day'] = len(failed_htlc_df_1d[failed_htlc_df_1d['chan_id_out']==chan_id][failed_htlc_df_1d['wire_failure']==15][failed_htlc_df_1d['failure_detail']==6][failed_htlc_df_1d['amount']<failed_htlc_df_1d['chan_out_liq']+failed_htlc_df_1d['chan_out_pending']])
             if rebalancer_df.shape[0]> 0:
-                channels_df['attempts'] = 0 if rebalancer_df.empty else len(rebalancer_df[rebalancer_df['status']>=2][rebalancer_df['status']<400])
-                channels_df['success'] = 0 if rebalancer_df.empty else len(rebalancer_df[rebalancer_df['status']==2])
+                channels_df['attempts'] = len(rebalancer_df[rebalancer_df['status']>=2][rebalancer_df['status']<400])
+                channels_df['success'] = len(rebalancer_df[rebalancer_df['status']==2])
                 channels_df['success_rate'] = 0 if channels_df['attempts'][0] == 0 else int((channels_df['success']/channels_df['attempts'])*100)
                 rebalancer_df_30d = rebalancer_df.loc[rebalancer_df['stop'] >= filter_30day]
                 if rebalancer_df_30d.shape[0]> 0:
-                    channels_df['attempts_30day'] = 0 if rebalancer_df_30d.empty else len(rebalancer_df_30d[rebalancer_df_30d['status']>=2][rebalancer_df_30d['status']<400])
-                    channels_df['success_30day'] = 0 if rebalancer_df_30d.empty else len(rebalancer_df_30d[rebalancer_df_30d['status']==2])
+                    channels_df['attempts_30day'] = len(rebalancer_df_30d[rebalancer_df_30d['status']>=2][rebalancer_df_30d['status']<400])
+                    channels_df['success_30day'] = len(rebalancer_df_30d[rebalancer_df_30d['status']==2])
                     channels_df['success_rate_30day'] = 0 if channels_df['attempts_30day'][0] == 0 else int((channels_df['success_30day']/channels_df['attempts_30day'])*100)
                     rebalancer_df_7d = rebalancer_df_30d.loc[rebalancer_df_30d['stop'] >= filter_7day]
                     if rebalancer_df_7d.shape[0]> 0:
-                        channels_df['attempts_7day'] = 0 if rebalancer_df_7d.empty else len(rebalancer_df_7d[rebalancer_df_7d['status']>=2][rebalancer_df_7d['status']<400])
-                        channels_df['success_7day'] = 0 if rebalancer_df_7d.empty else len(rebalancer_df_7d[rebalancer_df_7d['status']==2])
+                        channels_df['attempts_7day'] = len(rebalancer_df_7d[rebalancer_df_7d['status']>=2][rebalancer_df_7d['status']<400])
+                        channels_df['success_7day'] = len(rebalancer_df_7d[rebalancer_df_7d['status']==2])
                         channels_df['success_rate_7day'] = 0 if channels_df['attempts_7day'][0] == 0 else int((channels_df['success_7day']/channels_df['attempts_7day'])*100)
                         rebalancer_df_1d = rebalancer_df_7d.loc[rebalancer_df_7d['stop'] >= filter_1day]
                         if rebalancer_df_1d.shape[0]> 0:
-                            channels_df['attempts_1day'] = 0 if rebalancer_df_1d.empty else len(rebalancer_df_1d[rebalancer_df_1d['status']>=2][rebalancer_df_1d['status']<400])
-                            channels_df['success_1day'] = 0 if rebalancer_df_1d.empty else len(rebalancer_df_1d[rebalancer_df_1d['status']==2])
+                            channels_df['attempts_1day'] = len(rebalancer_df_1d[rebalancer_df_1d['status']>=2][rebalancer_df_1d['status']<400])
+                            channels_df['success_1day'] = len(rebalancer_df_1d[rebalancer_df_1d['status']==2])
                             channels_df['success_rate_1day'] = 0 if channels_df['attempts_1day'][0] == 0 else int((channels_df['success_1day']/channels_df['attempts_1day'])*100)
             if forwards_df.shape[0]> 0:
                 forwards_df['amt_in'] = (forwards_df['amt_in_msat']/1000).astype(int)
