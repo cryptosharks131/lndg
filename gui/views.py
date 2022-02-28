@@ -669,7 +669,7 @@ def channel(request):
             'forwards': [] if forwards_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
             'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
-            'rebalances': Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-requested')[:5],
+            'rebalances': [] if channels_df.empty else Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-requested')[:5],
             'failed_htlcs': FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-timestamp')[:5],
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
