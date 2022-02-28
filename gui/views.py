@@ -882,7 +882,7 @@ def rebalancing(request):
         channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'rebalancer': rebalancer_df.to_dict(orient='records')[:20],
+            'rebalancer': Rebalancer.objects.all().order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': LocalSettings.objects.filter(key__contains='AR-'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
