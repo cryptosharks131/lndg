@@ -17,6 +17,7 @@
         <th>Rebalance Out?</th>
         <th>Enabled?</th>
         <th>Rebalance In?</th>
+        <th>iTarget%</th>
         <th>AR</th>
         <th>Active</th>
       </tr>
@@ -37,6 +38,15 @@
             <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="3">
+          </form>
+        </td>
+        <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="5">
+            <input type="hidden" name="target" value="0">
           </form>
         </td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
