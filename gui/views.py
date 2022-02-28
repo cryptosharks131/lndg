@@ -308,7 +308,9 @@ def fees(request):
             channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
             channels_df['rebal_ppm'] = channels_df.apply(lambda row: int((row['costs_7day']/row['amt_rebal_in_7day'])*1000000) if row['amt_rebal_in_7day'] > 0 else 0, axis=1)
             channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15) if row['in_percent'] > 25 else int(row['local_fee_rate']), axis=1)
+            channels_df['max_suggestion'] = channels_df.apply(lambda row: row['local_fee_rate']+25 if row['max_suggestion'] > (row['local_fee_rate']+25) else row['max_suggestion'], axis=1)
             channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75) if row['out_percent'] > 25 else int(row['local_fee_rate']), axis=1)
+            channels_df['min_suggestion'] = channels_df.apply(lambda row: row['local_fee_rate']-50 if row['min_suggestion'] < (row['local_fee_rate']-50) else row['min_suggestion'], axis=1)
             channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
             channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
             channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']), axis=1)
@@ -496,9 +498,11 @@ def channel(request):
             channels_df['costs_7day'] = 0
             channels_df['costs_1day'] = 0
             start_date = None
+            if forwards_df.shape[0]> 0:
+                forwards_df['amt_in'] = (forwards_df['amt_in_msat']/1000).astype(int)
+                forwards_df['amt_out'] = (forwards_df['amt_out_msat']/1000).astype(int)
+                forwards_df['ppm'] = (forwards_df['fee']/(forwards_df['amt_out']/1000000)).astype(int)
             if forwards_in_df.shape[0]> 0:
-                print(forwards_in_df)
-                forwards_in_df['amt_in'] = (forwards_in_df['amt_in_msat']/1000).astype(int)
                 forwards_in_df_count = forwards_in_df.groupby('chan_id_in', as_index=True).count()
                 forwards_in_df_sum = forwards_in_df.groupby('chan_id_in', as_index=True).sum()
                 channels_df['routed_in'] = forwards_in_df_count.loc[chan_id].amt_out_msat
@@ -531,8 +535,6 @@ def channel(request):
                             channels_df['revenue_assist_1day'] = int(forwards_in_df_1d_sum.loc[chan_id].fee)
             if forwards_out_df.shape[0]> 0:
                 start_date = forwards_out_df['forward_date'].min()
-                forwards_out_df['amt_out'] = (forwards_out_df['amt_out_msat']/1000).astype(int)
-                forwards_out_df['ppm'] = (forwards_out_df['fee']/(forwards_out_df['amt_out']/1000000)).astype(int)
                 forwards_out_df_out_count = forwards_out_df.groupby('chan_id_out', as_index=True).count()
                 forwards_out_df_out_sum = forwards_out_df.groupby('chan_id_out', as_index=True).sum()
                 channels_df['routed_out'] = forwards_out_df_out_count.loc[chan_id].amt_out_msat
@@ -628,6 +630,25 @@ def channel(request):
             channels_df['profits_vol_7day'] = 0 if channels_df['amt_routed_out_7day'][0] == 0 else int(channels_df['profits_7day'] / (channels_df['amt_routed_out_7day']/1000000))
             channels_df['profits_vol_1day'] = 0 if channels_df['amt_routed_out_1day'][0] == 0 else int(channels_df['profits_1day'] / (channels_df['amt_routed_out_1day']/1000000))
             channels_df['apy'] = 0.0
+            channels_df['net_routed_7day'] = round((channels_df['amt_routed_out_7day']-channels_df['amt_routed_in_7day'])/channels_df['capacity'], 1)
+            channels_df['out_rate'] = int((channels_df['revenue_7day']/channels_df['amt_routed_out_7day'])*1000000) if channels_df['amt_routed_out_7day'][0] > 0 else 0
+            channels_df['rebal_ppm'] = int((channels_df['costs_7day']/channels_df['amt_rebal_in_7day'])*1000000) if channels_df['amt_rebal_in_7day'][0] > 0 else 0
+            channels_df['max_suggestion'] = int((channels_df['out_rate'] if channels_df['out_rate'][0] > 0 else channels_df['local_fee_rate'])*1.15) if channels_df['in_percent'][0] > 25 else int(channels_df['local_fee_rate'])
+            channels_df['max_suggestion'] = channels_df['local_fee_rate']+25 if channels_df['max_suggestion'][0] > (channels_df['local_fee_rate'][0]+25) else channels_df['max_suggestion']
+            channels_df['min_suggestion'] = int((channels_df['out_rate'] if channels_df['out_rate'][0] > 0 else channels_df['local_fee_rate'])*0.75) if channels_df['out_percent'][0] > 25 else int(channels_df['local_fee_rate'])
+            channels_df['min_suggestion'] = channels_df['local_fee_rate']-50 if channels_df['min_suggestion'][0] < (channels_df['local_fee_rate'][0]-50) else channels_df['min_suggestion']
+            channels_df['assisted_ratio'] = round((channels_df['revenue_assist_7day'] if channels_df['revenue_7day'][0] == 0 else channels_df['revenue_assist_7day']/channels_df['revenue_7day']), 2)
+            channels_df['profit_margin'] = channels_df['out_rate']*((100-channels_df['ar_max_cost'])/100)
+            channels_df['adjusted_out_rate'] = int(channels_df['out_rate']+channels_df['net_routed_7day']*channels_df['assisted_ratio'])
+            channels_df['adjusted_rebal_rate'] = int(channels_df['rebal_ppm']+channels_df['profit_margin'])
+            channels_df['out_rate_only'] = int(channels_df['out_rate']+channels_df['net_routed_7day']*channels_df['out_rate']*0.02)
+            channels_df['fee_rate_only'] = int(channels_df['local_fee_rate']+channels_df['net_routed_7day']*channels_df['local_fee_rate']*0.05)
+            channels_df['new_rate'] = channels_df['adjusted_out_rate'] if channels_df['net_routed_7day'][0] != 0 else (channels_df['adjusted_rebal_rate'] if channels_df['rebal_ppm'][0] > 0 and channels_df['out_rate'][0] > 0 else (channels_df['out_rate_only'] if channels_df['out_rate'][0] > 0 else (channels_df['min_suggestion'] if channels_df['net_routed_7day'][0] == 0 and channels_df['in_percent'][0] < 25 else channels_df['fee_rate_only'])))
+            channels_df['new_rate'] = 0 if channels_df['new_rate'][0] < 0 else channels_df['new_rate']
+            channels_df['new_rate'] = channels_df['max_suggestion'] if channels_df['max_suggestion'][0] > 0 and channels_df['new_rate'][0] > channels_df['max_suggestion'][0] else channels_df['new_rate']
+            channels_df['new_rate'] = channels_df['min_suggestion'] if channels_df['new_rate'][0] < channels_df['min_suggestion'][0] else channels_df['new_rate']
+            channels_df['new_rate'] = int(round(channels_df['new_rate']/5, 0)*5)
+            channels_df['adjustment'] = int(channels_df['new_rate']-channels_df['local_fee_rate'])
             if start_date is not None:
                 time_delta = datetime.now() - start_date.to_pydatetime()
                 days_routing = time_delta.days + (time_delta.seconds/86400)

@@ -34,6 +34,12 @@
   <h2>Channel Settings</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
+      <th title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
+      <th title="The average rate earned outgoing on this channel">Out Rate</th>
+      <th title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
+      <th title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
+      <th>Adjustment</th>
+      <th title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
       <th>Channel State</th>
       <th>oRate</th>
       <th>oBase</th>
@@ -47,6 +53,12 @@
       <th>Active</th>
     </tr>
     <tr>
+      <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}{% if channel.net_routed_7day != 0 %} | {{ channel.net_routed_7day }}{% endif %}</td>
+      <td>{{ channel.out_rate }}</td>
+      <td>{{ channel.rebal_ppm }}</td>
+      <td>{{ channel.assisted_ratio }}</td>
+      <td>{{ channel.adjustment }}</td>
+      <td>{{ channel.new_rate|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
         {% if channel.is_active == True %}
           <form action="/update_channel/" method="post">
