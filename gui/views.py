@@ -658,6 +658,9 @@ def channel(request):
             channels_df['apy_1day'] = round((channels_df['profits_1day']*36500)/channels_df['capacity'], 2)
         else:
             channels_df = DataFrame()
+            forwards_df = DataFrame()
+            payments_df = DataFrame()
+            invoices_df = DataFrame()
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
