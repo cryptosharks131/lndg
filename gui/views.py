@@ -875,8 +875,7 @@ def forwards(request):
 def rebalancing(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
-        rebalancer_df = DataFrame.from_records(Rebalancer.objects.all().order_by('-id').values())
-        rebalancer_7d_df = rebalancer_df.loc[rebalancer_df['stop'] >= filter_7day]
+        rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
         channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).annotate(fee_ratio=(Sum('ar_max_cost')*Sum('local_fee_rate'))/Sum('remote_fee_rate')).order_by('percent_outbound').values())
         channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]), axis=1)
         channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']==2]), axis=1)
