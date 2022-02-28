@@ -440,6 +440,8 @@ def channel(request):
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).values())
             invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
+            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-requested').values())
+            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-timestamp').values())
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
             channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
             channels_df['in_percent'] = int(round((channels_df['remote_balance']/channels_df['capacity'])*100, 0))
@@ -497,7 +499,53 @@ def channel(request):
             channels_df['costs_30day'] = 0
             channels_df['costs_7day'] = 0
             channels_df['costs_1day'] = 0
+            channels_df['attempts'] = 0
+            channels_df['attempts_30day'] = 0
+            channels_df['attempts_7day'] = 0
+            channels_df['attempts_1day'] = 0
+            channels_df['success'] = 0
+            channels_df['success_30day'] = 0
+            channels_df['success_7day'] = 0
+            channels_df['success_1day'] = 0
+            channels_df['success_rate'] = 0
+            channels_df['success_rate_30day'] = 0
+            channels_df['success_rate_7day'] = 0
+            channels_df['success_rate_1day'] = 0
+            channels_df['failed_out'] = 0
+            channels_df['failed_out_30day'] = 0
+            channels_df['failed_out_7day'] = 0
+            channels_df['failed_out_1day'] = 0
             start_date = None
+            if failed_htlc_df.shape[0]> 0:
+                channels_df['failed_out'] = 0 if failed_htlc_df.empty else len(failed_htlc_df[failed_htlc_df['chan_id_out']==chan_id][failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']])
+                failed_htlc_df_30d = failed_htlc_df.loc[failed_htlc_df['timestamp'] >= filter_30day]
+                if failed_htlc_df_30d.shape[0]> 0:
+                    channels_df['failed_out_30day'] = 0 if failed_htlc_df_30d.empty else len(failed_htlc_df_30d[failed_htlc_df_30d['chan_id_out']==chan_id][failed_htlc_df_30d['wire_failure']==15][failed_htlc_df_30d['failure_detail']==6][failed_htlc_df_30d['amount']>failed_htlc_df_30d['chan_out_liq']+failed_htlc_df_30d['chan_out_pending']])
+                    failed_htlc_df_7d = failed_htlc_df_30d.loc[failed_htlc_df_30d['timestamp'] >= filter_7day]
+                    if failed_htlc_df_7d.shape[0]> 0:
+                        channels_df['failed_out_7day'] = 0 if failed_htlc_df_7d.empty else len(failed_htlc_df_7d[failed_htlc_df_7d['chan_id_out']==chan_id][failed_htlc_df_7d['wire_failure']==15][failed_htlc_df_7d['failure_detail']==6][failed_htlc_df_7d['amount']>failed_htlc_df_7d['chan_out_liq']+failed_htlc_df_7d['chan_out_pending']])
+                        failed_htlc_df_1d = failed_htlc_df_7d.loc[failed_htlc_df_7d['timestamp'] >= filter_1day]
+                        if failed_htlc_df_1d.shape[0]> 0:
+                            channels_df['failed_out_1day'] = 0 if failed_htlc_df_1d.empty else len(failed_htlc_df_1d[failed_htlc_df_1d['chan_id_out']==chan_id][failed_htlc_df_1d['wire_failure']==15][failed_htlc_df_1d['failure_detail']==6][failed_htlc_df_1d['amount']>failed_htlc_df_1d['chan_out_liq']+failed_htlc_df_1d['chan_out_pending']])
+            if rebalancer_df.shape[0]> 0:
+                channels_df['attempts'] = 0 if rebalancer_df.empty else len(rebalancer_df[rebalancer_df['status']>=2][rebalancer_df['status']<400])
+                channels_df['success'] = 0 if rebalancer_df.empty else len(rebalancer_df[rebalancer_df['status']==2])
+                channels_df['success_rate'] = 0 if channels_df['attempts'][0] == 0 else int((channels_df['success']/channels_df['attempts'])*100)
+                rebalancer_df_30d = rebalancer_df.loc[rebalancer_df['stop'] >= filter_30day]
+                if rebalancer_df_30d.shape[0]> 0:
+                    channels_df['attempts_30day'] = 0 if rebalancer_df_30d.empty else len(rebalancer_df_30d[rebalancer_df_30d['status']>=2][rebalancer_df_30d['status']<400])
+                    channels_df['success_30day'] = 0 if rebalancer_df_30d.empty else len(rebalancer_df_30d[rebalancer_df_30d['status']==2])
+                    channels_df['success_rate_30day'] = 0 if channels_df['attempts_30d'][0] == 0 else int((channels_df['success_30d']/channels_df['attempts_30d'])*100)
+                    rebalancer_df_7d = rebalancer_df_30d.loc[rebalancer_df_30d['stop'] >= filter_7day]
+                    if rebalancer_df_7d.shape[0]> 0:
+                        channels_df['attempts_7day'] = 0 if rebalancer_df_7d.empty else len(rebalancer_df_7d[rebalancer_df_7d['status']>=2][rebalancer_df_7d['status']<400])
+                        channels_df['success_7day'] = 0 if rebalancer_df_7d.empty else len(rebalancer_df_7d[rebalancer_df_7d['status']==2])
+                        channels_df['success_rate_7day'] = 0 if channels_df['attempts_7d'][0] == 0 else int((channels_df['success_7d']/channels_df['attempts_7d'])*100)
+                        rebalancer_df_1d = rebalancer_df_7d.loc[rebalancer_df_7d['stop'] >= filter_1day]
+                        if rebalancer_df_1d.shape[0]> 0:
+                            channels_df['attempts_1day'] = 0 if rebalancer_df_1d.empty else len(rebalancer_df_1d[rebalancer_df_1d['status']>=2][rebalancer_df_1d['status']<400])
+                            channels_df['success_1day'] = 0 if rebalancer_df_1d.empty else len(rebalancer_df_1d[rebalancer_df_1d['status']==2])
+                            channels_df['success_rate_1day'] = 0 if channels_df['attempts_1d'][0] == 0 else int((channels_df['success_1d']/channels_df['attempts_1d'])*100)
             if forwards_df.shape[0]> 0:
                 forwards_df['amt_in'] = (forwards_df['amt_in_msat']/1000).astype(int)
                 forwards_df['amt_out'] = (forwards_df['amt_out_msat']/1000).astype(int)
@@ -669,8 +717,8 @@ def channel(request):
             'forwards': [] if forwards_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
             'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
-            'rebalances': [] if channels_df.empty else Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-requested')[:5],
-            'failed_htlcs': FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-timestamp')[:5],
+            'rebalances': [] if rebalancer_df.empty else rebalancer_df.to_dict(orient='records')[:5],
+            'failed_htlcs': [] if failed_htlc_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -812,11 +860,20 @@ def forwards(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def rebalancing(request):
     if request.method == 'GET':
+        filter_7day = datetime.now() - timedelta(days=7)
+        rebalancer_df = DataFrame.from_records(Rebalancer.objects.all().order_by('-id').values())
+        rebalancer_7d_df = rebalancer_df.loc[rebalancer_df['stop'] >= filter_7day]
+        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).annotate(fee_ratio=(Sum('ar_max_cost')*Sum('local_fee_rate'))/Sum('remote_fee_rate')).order_by('percent_outbound').values())
+        channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]), axis=1)
+        channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']==2]), axis=1)
+        channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
         context = {
-            'channels': Channels.objects.filter(is_active=True, is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).annotate(fee_ratio=(Sum('ar_max_cost')*Sum('local_fee_rate'))/Sum('remote_fee_rate')).order_by('percent_outbound'),
-            'rebalancer': Rebalancer.objects.all().order_by('-id')[:20],
+            'channels': channels_df.to_dict(orient='records'),
+            'rebalancer': rebalancer_df.to_dict(orient='records')[:20],
             'rebalancer_form': RebalancerForm,
-            'local_settings': LocalSettings.objects.filter(key__contains='AR-')
+            'local_settings': LocalSettings.objects.filter(key__contains='AR-'),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': graph_links()
         }
         return render(request, 'rebalancing.html', context)
     else:

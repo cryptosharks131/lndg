@@ -17,8 +17,12 @@
         <th>Rebalance Out?</th>
         <th>Enabled?</th>
         <th>Rebalance In?</th>
+        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
+        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th>iTarget%</th>
         <th>AR</th>
+        <th>7-Day Success Rate</th>
         <th>Active</th>
       </tr>
       {% for channel in channels %}
@@ -32,6 +36,30 @@
         <td {% if channel.percent_outbound >= channel.ar_out_target and channel.auto_rebalance == False %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
         <td {% if channel.auto_rebalance  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
         <td {% if channel.inbound_can >= 1 and channel.fee_ratio >= 1 and channel.auto_rebalance == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="2">
+          </form>
+        </td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_max_cost }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="6">
+          </form>
+        </td>
+        <td {% if channel.auto_rebalance == False %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="4">
+          </form>
+        </td>
         <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
@@ -49,6 +77,7 @@
             <input type="hidden" name="target" value="0">
           </form>
         </td>
+        <td>{{ channel.success_rate }}% ({{ channel.success }}/{{ channel.attempts }})</td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
       </tr>
       {% endfor %}
