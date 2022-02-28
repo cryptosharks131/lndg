@@ -441,7 +441,7 @@ def channel(request):
             forwards_df = DataFrame.from_records(Forwards.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).values())
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).values())
             invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
-            channels_df = DataFrame.from_records(Channels.objects.all().values())
+            channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).values())
             node_outbound = channels_df['local_balance'].sum()
             node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
