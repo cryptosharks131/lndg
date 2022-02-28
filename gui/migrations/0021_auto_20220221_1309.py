@@ -7,7 +7,6 @@ from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import signer_pb2 as lns
 from gui.lnd_deps import signer_pb2_grpc as lnsigner
 from gui.lnd_deps.lnd_connect import lnd_connect
-from time import sleep
 from lndg import settings
 
 def update_messages(apps, schedma_editor):
@@ -33,7 +32,6 @@ def update_messages(apps, schedma_editor):
                 message.sender = sender
                 message.sender_alias = alias
                 message.save()
-                sleep(0.5)
     except Exception as e:
         print('Migration step failed:', str(e))
 
