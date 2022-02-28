@@ -518,7 +518,7 @@ def channel(request):
             start_date = None
             if failed_htlc_df.shape[0]> 0:
                 channels_df['failed_out'] = 0 if failed_htlc_df.empty else len(failed_htlc_df[failed_htlc_df['chan_id_out']==chan_id][failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']<failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']])
-                failed_htlc_df_30d = failed_htlc_df.loc[failed_htlc_df['timestamp'] <= filter_30day]
+                failed_htlc_df_30d = failed_htlc_df.loc[failed_htlc_df['timestamp'] >= filter_30day]
                 if failed_htlc_df_30d.shape[0]< 0:
                     channels_df['failed_out_30day'] = 0 if failed_htlc_df_30d.empty else len(failed_htlc_df_30d[failed_htlc_df_30d['chan_id_out']==chan_id][failed_htlc_df_30d['wire_failure']==15][failed_htlc_df_30d['failure_detail']==6][failed_htlc_df_30d['amount']<failed_htlc_df_30d['chan_out_liq']+failed_htlc_df_30d['chan_out_pending']])
                     failed_htlc_df_7d = failed_htlc_df_30d.loc[failed_htlc_df_30d['timestamp'] >= filter_7day]
