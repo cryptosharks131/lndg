@@ -45,7 +45,7 @@ def update_rebal_channel(apps, schedma_editor):
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     for payment in payments.objects.filter(status=2).iterator():
         last_hop = hops.objects.filter(payment_hash=payment.payment_hash).order_by('-step')[0] if hops.objects.filter(payment_hash=payment.payment_hash).exists() else None
-        if last_hop.node_pubkey == self_pubkey:
+        if last_hop != None and last_hop.node_pubkey == self_pubkey:
             payment.rebal_chan = last_hop.chan_id
             payment.save()
 

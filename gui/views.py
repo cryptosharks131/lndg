@@ -281,10 +281,13 @@ def channels(request):
 def fees(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
-        forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
         channels = Channels.objects.filter(is_open=True)
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
+            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_7day).order_by('-timestamp').values())
+            if failed_htlc_df.shape[0] > 0:
+                failed_htlc_df = failed_htlc_df[failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']]
+            forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
             forwards_df_7d = DataFrame.from_records(forwards.values())
             forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
             forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
@@ -298,6 +301,7 @@ def fees(request):
             channels_df['revenue_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['revenue_assist_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['out_rate'] = channels_df.apply(lambda row: int((row['revenue_7day']/row['amt_routed_out_7day'])*1000000) if row['amt_routed_out_7day'] > 0 else 0, axis=1)
+            channels_df['failed_out_7day'] = 0 if failed_htlc_df.empty else channels_df.apply(lambda row: len(failed_htlc_df[failed_htlc_df['chan_id_out']==row.chan_id]), axis=1)
             payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_7day).filter(rebal_chan__isnull=False)
             invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).filter(r_hash__in=payments.values_list('payment_hash'))
             payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
@@ -439,6 +443,9 @@ def channel(request):
             forwards_out_df = forwards_df[forwards_df['chan_id_out'] == chan_id]
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).values())
             invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
+            channels_df = DataFrame.from_records(Channels.objects.all().values())
+            node_outbound = channels_df['local_balance'].sum()
+            node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-requested').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-timestamp').values())
@@ -697,13 +704,15 @@ def channel(request):
             channels_df['new_rate'] = channels_df['min_suggestion'] if channels_df['new_rate'][0] < channels_df['min_suggestion'][0] else channels_df['new_rate']
             channels_df['new_rate'] = int(round(channels_df['new_rate']/5, 0)*5)
             channels_df['adjustment'] = int(channels_df['new_rate']-channels_df['local_fee_rate'])
-            if start_date is not None:
-                time_delta = datetime.now() - start_date.to_pydatetime()
-                days_routing = time_delta.days + (time_delta.seconds/86400)
-                channels_df['apy'] = round(((channels_df['profits']/days_routing)*36500)/channels_df['capacity'], 2)
-            channels_df['apy_30day'] = round((channels_df['profits_30day']*1216.6667)/channels_df['capacity'], 2)
-            channels_df['apy_7day'] = round((channels_df['profits_7day']*5214.2857)/channels_df['capacity'], 2)
-            channels_df['apy_1day'] = round((channels_df['profits_1day']*36500)/channels_df['capacity'], 2)
+            if node_capacity > 0:
+                outbound_ratio = node_outbound/node_capacity
+                if start_date is not None:
+                    time_delta = datetime.now() - start_date.to_pydatetime()
+                    days_routing = time_delta.days + (time_delta.seconds/86400)
+                    channels_df['apy'] = round(((channels_df['profits']/days_routing)*36500)/(channels_df['capacity']*outbound_ratio), 2)
+                channels_df['apy_30day'] = round((channels_df['profits_30day']*1216.6667)/(channels_df['capacity']*outbound_ratio), 2)
+                channels_df['apy_7day'] = round((channels_df['profits_7day']*5214.2857)/(channels_df['capacity']*outbound_ratio), 2)
+                channels_df['apy_1day'] = round((channels_df['profits_1day']*36500)/(channels_df['capacity']*outbound_ratio), 2)
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
