@@ -11,8 +11,8 @@
         <th></th>
         <th></th>
         <th></th>
-        <th colspan="4">7-Day Activity And Revenue | {{ apy_7day }}% APY</th>
-        <th colspan="4">30-Day Activity And Revenue | {{ apy_30day }}% APY </th>
+        <th colspan="5">7-Day Activity And Revenue | {{ apy_7day }}% APY</th>
+        <th colspan="5">30-Day Activity And Revenue | {{ apy_30day }}% APY </th>
         <th colspan="2"> Channel Health</th>
       </tr>
       <tr>
@@ -39,12 +39,12 @@
         <td>{{ channel.capacity }} M</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
         <td>{{ channel.revenue_7day|intcomma }} [{{ channel.profits_7day|intcomma }}] | {{ channel.revenue_assist_7day|intcomma }}</td>
-        <td>{{ channel.apy_7day }}</td>
+        <td>{{ channel.apy_7day }}%</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
         <td>{{ channel.success_rate_7day }}%</td>
         <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
         <td>{{ channel.revenue_30day|intcomma }} [{{ channel.profits_30day|intcomma }}] | {{ channel.revenue_assist_30day|intcomma }}</td>
-        <td>{{ channel.apy_30day }}</td>
+        <td>{{ channel.apy_30day }}%</td>
         <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
         <td>{{ channel.success_rate_30day }}%</td>
         <td title="Update Count: {{ channel.num_updates|intcomma }}">{{ channel.updates }}%</td>
