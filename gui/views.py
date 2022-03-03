@@ -265,6 +265,29 @@ def channels(request):
             apy_30day = round((channels_df['profits_30day'].sum()*1216.6667)/channels_df['local_balance'].sum(), 2)
             active_updates = channels_df['num_updates'].sum()
             channels_df['updates'] = channels_df.apply(lambda row: 0 if active_updates == 0 else int(round((row['num_updates']/active_updates)*100, 0)), axis=1)
+            node_outbound = channels_df['local_balance'].sum()
+            node_capacity = channels_df['capacity'].sum()
+            if node_capacity > 0:
+                outbound_ratio = node_outbound/node_capacity
+                channels_df['apy_7day'] = channels_df.apply(lambda row: round((row['profits_7day']*5214.2857)/(row['capacity']*outbound_ratio), 2), axis=1)
+                channels_df['apy_30day'] = channels_df.apply(lambda row: round((row['profits_30day']*5214.2857)/(row['capacity']*outbound_ratio), 2), axis=1)
+            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_30day).order_by('-requested').values()) #, last_hop_pubkey=channels_df['remote_pubkey'][0]
+            if rebalancer_df.shape[0]> 0:
+                channels_df['attempts_30day'] = channels_df.apply(lambda row: len(rebalancer_df[rebalancer_df['status']>=2][rebalancer_df['status']<400][rebalancer_df['last_hop_pubkey']==row['remote_pubkey']]), axis=1)
+                channels_df['success_30day'] = channels_df.apply(lambda row: len(rebalancer_df[rebalancer_df['status']==2][rebalancer_df['last_hop_pubkey']==row['remote_pubkey']]), axis=1)
+                channels_df['success_rate_30day'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
+                rebalancer_df_7d = rebalancer_df.loc[rebalancer_df['stop'] >= filter_7day]
+                if rebalancer_df_7d.shape[0]> 0:
+                    channels_df['attempts_7day'] = channels_df.apply(lambda row: len(rebalancer_df_7d[rebalancer_df_7d['status']>=2][rebalancer_df_7d['status']<400][rebalancer_df['last_hop_pubkey']==row['remote_pubkey']]), axis=1)
+                    channels_df['success_7day'] = channels_df.apply(lambda row: len(rebalancer_df_7d[rebalancer_df_7d['status']==2][rebalancer_df['last_hop_pubkey']==row['remote_pubkey']]), axis=1)
+                    channels_df['success_rate_7day'] = channels_df.apply(lambda row: 0 if row['attempts_7day'] == 0 else int((row['success_7day']/row['attempts_7day'])*100), axis=1)
+            else:
+                channels_df['attempts_30day'] = 0
+                channels_df['success_30day'] = 0
+                channels_df['success_rate_30day'] = 0
+                channels_df['attempts_7day'] = 0
+                channels_df['success_7day'] = 0
+                channels_df['success_rate_7day'] = 0
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'apy_7day': apy_7day,
