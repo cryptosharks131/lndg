@@ -11,21 +11,21 @@
         <th></th>
         <th></th>
         <th></th>
-        <th colspan="5">7-Day Activity And Revenue | {{ apy_7day }}% APY</th>
-        <th colspan="5">30-Day Activity And Revenue | {{ apy_30day }}% APY </th>
+        <th colspan="4">7-Day Activity And Revenue | {{ apy_7day }}% APY</th>
+        <th colspan="4">30-Day Activity And Revenue | {{ apy_30day }}% APY </th>
         <th colspan="2"> Channel Health</th>
       </tr>
       <tr>
         <th width=1%>Channel ID</th>
         <th>Peer Alias</th>
         <th width=1%>Capacity</th>
-        <th title="Routed Out | Rebalanced In">Outbound Flow</th>
-        <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th title="Routed In | Rebalanced Out">Inbound Flow</th>
+        <th title="7-Day Routed Out | Rebalanced In">Outbound Flow</th>
+        <th title="7-Day Revenue Out | Assisted Revenue In | APY">Out [Profit] | In</th>
+        <th title="7-Day Routed In | Rebalanced Out">Inbound Flow</th>
         <th title="7-Day Rebalance Rate: {{ channel.attempts_7day|intcomma }}/{{ channel.success_7day|intcomma }}">Rebals</th>
-        <th title="Routed Out | Rebalanced In">Outbound Flow</th>
-        <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th title="Routed In | Rebalanced Out">Inbound Flow</th>
+        <th title="30-Day Routed Out | Rebalanced In">Outbound Flow</th>
+        <th title="30-Day Revenue Out | Assisted Revenue In | APY">Out | In | APY</th>
+        <th title="30-Day Routed In | Rebalanced Out">Inbound Flow</th>
         <th title="30-Day Rebalance Rate: {{ channel.attempts_30day|intcomma }}/{{ channel.success_30day|intcomma }}">Rebals</th>
         <th title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
         <th title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
