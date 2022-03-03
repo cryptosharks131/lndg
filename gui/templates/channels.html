@@ -21,12 +21,10 @@
         <th width=1%>Capacity</th>
         <th title="Routed Out | Rebalanced In">Outbound Flow</th>
         <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th title="APR Using 7-Day Revenue">APY</th>
         <th title="Routed In | Rebalanced Out">Inbound Flow</th>
-        <th title="30-Day Rebalance Rate: {{ channel.attempts_7day|intcomma }}/{{ channel.success_7day|intcomma }}">Rebals</th>
+        <th title="7-Day Rebalance Rate: {{ channel.attempts_7day|intcomma }}/{{ channel.success_7day|intcomma }}">Rebals</th>
         <th title="Routed Out | Rebalanced In">Outbound Flow</th>
         <th title="Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th title="APR Using 30-Day Revenue">APY</th>
         <th title="Routed In | Rebalanced Out">Inbound Flow</th>
         <th title="30-Day Rebalance Rate: {{ channel.attempts_30day|intcomma }}/{{ channel.success_30day|intcomma }}">Rebals</th>
         <th title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
@@ -38,15 +36,13 @@
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
         <td>{{ channel.capacity }} M</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
-        <td>{{ channel.revenue_7day|intcomma }} [{{ channel.profits_7day|intcomma }}] | {{ channel.revenue_assist_7day|intcomma }}</td>
-        <td>{{ channel.apy_7day }}%</td>
+        <td>{{ channel.revenue_7day|intcomma }} | {{ channel.revenue_assist_7day|intcomma }} | {{ channel.apy_7day }}%</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
-        <td>{{ channel.success_rate_7day }}%</td>
+        <td title="{{ channel.attempts_7day|intcomma }}/{{ channel.success_7day|intcomma }}">{{ channel.success_rate_7day }}%</td>
         <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
-        <td>{{ channel.revenue_30day|intcomma }} [{{ channel.profits_30day|intcomma }}] | {{ channel.revenue_assist_30day|intcomma }}</td>
-        <td>{{ channel.apy_30day }}%</td>
+        <td>{{ channel.revenue_30day|intcomma }} | {{ channel.revenue_assist_30day|intcomma }} | {{ channel.apy_30day }}%</td>
         <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
-        <td>{{ channel.success_rate_30day }}%</td>
+        <td title="{{ channel.attempts_30day|intcomma }}/{{ channel.success_30day|intcomma }}">{{ channel.success_rate_30day }}%</td>
         <td title="Update Count: {{ channel.num_updates|intcomma }}">{{ channel.updates }}%</td>
         <td title="Block Opened: {{ channel.open_block }}">{{ channel.initiator }}</td>
       </tr>
