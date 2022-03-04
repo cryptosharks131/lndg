@@ -360,7 +360,7 @@ def advanced(request):
             channels_df['in_percent'] = channels_df.apply(lambda row: int(round(row['inbound_percent']/10, 0)), axis=1)
             channels_df['local_balance'] = channels_df.apply(lambda row: row.local_balance + row.pending_outbound, axis=1)
             channels_df['remote_balance'] = channels_df.apply(lambda row: row.remote_balance + row.pending_inbound, axis=1)
-            channels_df['fee_ratio'] = channels_df.apply(lambda row: 0 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
+            channels_df['fee_ratio'] = channels_df.apply(lambda row: 1 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'local_settings': LocalSettings.objects.all(),
@@ -889,7 +889,9 @@ def rebalancing(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
-        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).annotate(fee_ratio=(Sum('ar_max_cost')*Sum('local_fee_rate'))/Sum('remote_fee_rate')).order_by('percent_outbound').values())
+        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).order_by('-is_active', 'percent_outbound').values())
+        channels_df['fee_ratio'] = channels_df.apply(lambda row: 1 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
+        channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
         channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]), axis=1)
         channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']==2]), axis=1)
         channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
