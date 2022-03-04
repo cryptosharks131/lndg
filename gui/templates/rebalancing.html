@@ -14,16 +14,16 @@
         <th>Outbound Liquidity</th>
         <th width=10%></th>
         <th>Inbound Liquidity</th>
-        <th>Rebalance Out?</th>
+        <th>Rebal Out?</th>
         <th>Enabled?</th>
-        <th>Fee Ratio</th>
-        <th>Rebalance In?</th>
+        <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+        <th>Rebal In?</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th>iTarget%</th>
         <th>AR</th>
-        <th>7-Day Success Rate</th>
+        <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
         <th>Active</th>
       </tr>
       {% for channel in channels %}
