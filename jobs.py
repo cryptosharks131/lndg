@@ -100,10 +100,14 @@ def update_invoices(stub):
             records = invoice.htlcs[0].custom_records
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
-            if 34349337 in records and 34349339 in records:
+            if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
                 signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
-                valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
+                try:
+                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
+                except:
+                    print('Unable to validate signature on invoice: ' + invoice.r_hash.hex())
+                    valid = False
                 sender = records[34349339].hex() if valid == True else None
                 try:
                     alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=sender, include_channels=False)).node.alias if sender != None else None
