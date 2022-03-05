@@ -69,7 +69,7 @@ def home(request):
         forwards_df_in_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).count()
         forwards_df_out_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).count()
         #Get current active channels
-        active_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
+        active_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
         total_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
         total_inbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
         total_outbound = 0 if total_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
@@ -123,9 +123,11 @@ def home(request):
             detailed_channel['ar_in_target'] = channel.ar_in_target
             detailed_active_channels.append(detailed_channel)
         #Get current inactive channels
-        inactive_channels = Channels.objects.filter(is_active=False, is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
+        inactive_channels = Channels.objects.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
+        private_channels = Channels.objects.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
         inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-        sum_outbound = total_outbound + pending_outbound + inactive_outbound
+        private_outbound = 0 if private_channels.count() == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+        sum_outbound = total_outbound + pending_outbound + inactive_outbound + private_outbound
         onchain_txs = Onchain.objects.all()
         onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
@@ -173,6 +175,7 @@ def home(request):
             'unsettled': total_unsettled,
             'limbo_balance': limbo_balance,
             'inactive_channels': inactive_channels,
+            'private_channels': private_channels,
             'pending_open': pending_open,
             'pending_closed': pending_closed,
             'pending_force_closed': pending_force_closed,
