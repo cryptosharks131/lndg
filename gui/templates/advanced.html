@@ -29,12 +29,12 @@
       {% for channel in channels %}
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
         <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
           {% if channel.is_active == True %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
@@ -47,7 +47,7 @@
             ---
           {% endif %}
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
@@ -55,7 +55,7 @@
             <input type="hidden" name="update_target" value="1">
           </form>
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
