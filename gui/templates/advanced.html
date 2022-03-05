@@ -35,7 +35,7 @@
         <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
         <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
-          {% if channel.is_active == True %}
+          {% if channel.is_active == True and channel.private == False %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input type="submit" value="{% if channel.local_disabled == False %}Disable{% else %}Enable{% endif %}">
