@@ -19,8 +19,12 @@ def update_messages(apps, schedma_editor):
             self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
             for message in messages:
                 records = stub.LookupInvoice(ln.PaymentHash(r_hash=bytes.fromhex(message.r_hash))).htlcs[0].custom_records
-                if 34349337 in records and 34349339 in records:
-                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
+                if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
+                    try:
+                        valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
+                    except:
+                        print('Unable to validate signature on invoice: ' + message.r_hash)
+                        valid = False
                     sender = records[34349339].hex() if valid == True else None
                 else:
                     sender = None
