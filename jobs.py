@@ -134,7 +134,10 @@ def update_channels(stub):
             db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
         else:
             #Create a record for this new channel
-            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey, include_channels=False)).node.alias
+            try:
+                alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=channel.remote_pubkey, include_channels=False)).node.alias
+            except:
+                alias = ''
             channel_point = channel.channel_point
             txid, index = channel_point.split(':')
             db_channel = Channels()
