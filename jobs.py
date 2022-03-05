@@ -235,14 +235,14 @@ def update_peers(stub):
                 try:
                     db_peer.alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer.pub_key, include_channels=False)).node.alias
                 except:
-                    db_peer.alias = None
+                    db_peer.alias = ''
             db_peer.connected = True
             db_peer.save()
         elif exists == 0:
             try:
                 alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer.pub_key, include_channels=False)).node.alias
             except:
-                alias = None
+                alias = ''
             Peers(pubkey = peer.pub_key, address = peer.address, sat_sent = peer.sat_sent, sat_recv = peer.sat_recv, inbound = peer.inbound, alias=alias, connected = True).save()
         counter += 1
         peer_list.append(peer.pub_key)
@@ -276,7 +276,7 @@ def update_closures(stub):
                         Resolutions(chan_id=db_closure, resolution_type=resolution.resolution_type, outcome=resolution.outcome, outpoint_tx=resolution.outpoint.txid_str, outpoint_index=resolution.outpoint.output_index, amount_sat=resolution.amount_sat, sweep_txid=resolution.sweep_txid).save()
 
 def reconnect_peers(stub):
-    inactive_peers = Channels.objects.filter(is_open=True, is_active=False).values_list('remote_pubkey', flat=True).distinct()
+    inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
         peers = Peers.objects.all()
         for inactive_peer in inactive_peers:
@@ -289,8 +289,12 @@ def reconnect_peers(stub):
                         peer.connected = False
                         peer.save()
                     print('Attempting connection to:', inactive_peer)
-                    node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
-                    host = node.addresses[0].addr
+                    try:
+                        node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
+                        host = node.addresses[0].addr
+                    except:
+                        print('Unable to find node info on graph, using last known value')
+                        host = peer.address
                     address = ln.LightningAddress(pubkey=inactive_peer, host=host)
                     stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
                     peer.last_reconnected = datetime.now()
