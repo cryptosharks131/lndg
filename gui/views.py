@@ -723,6 +723,10 @@ def channel(request):
             channels_df['new_rate'] = channels_df['min_suggestion'] if channels_df['new_rate'][0] < channels_df['min_suggestion'][0] else channels_df['new_rate']
             channels_df['new_rate'] = int(round(channels_df['new_rate']/5, 0)*5)
             channels_df['adjustment'] = int(channels_df['new_rate']-channels_df['local_fee_rate'])
+            channels_df['inbound_can'] = ((channels_df['remote_balance']*100)/channels_df['capacity'])/channels_df['ar_in_target']
+            channels_df['fee_ratio'] = 1 if channels_df['local_fee_rate'][0] == 0 else int(round(((channels_df['remote_fee_rate']/channels_df['local_fee_rate'])*1000)/10, 0))
+            channels_df['fee_check'] = 1 if channels_df['ar_max_cost'][0] == 0 else int(round(((channels_df['fee_ratio']/channels_df['ar_max_cost'])*1000)/10, 0))
+            channels_df['steps'] = 0 if channels_df['inbound_can'][0] < 1 else int(((channels_df['in_percent']-channels_df['ar_in_target'])/((channels_df['ar_amt_target']/channels_df['capacity'])*100))+0.999)
             if node_capacity > 0:
                 outbound_ratio = node_outbound/node_capacity
                 if start_date is not None:

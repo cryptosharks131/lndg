@@ -50,6 +50,7 @@
       <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
       <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
       <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
+      <th>Rebal In?</th>
       <th>Active</th>
     </tr>
     <tr>
@@ -131,6 +132,7 @@
           <input type="hidden" name="target" value="0">
         </form>
       </td>
+      <td {% if channel.inbound_can >= 1 and channel.fee_check < 100 and channel.auto_rebalance == True %}style="background-color: #a6dce2">True ({{ channel.steps }}){% else %}style="background-color: #fadbd5">False{% endif %}</td>
       <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
     </tr>
   </table>
