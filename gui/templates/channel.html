@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if channel %}
 <div class="w3-container w3-padding-small">
-  <h2>Details For Channel: {{ chan_id }} | Peer: <a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias != "" %}{{ channel.alias }} ({{ channel.remote_pubkey }}){% else %}{{ channel.remote_pubkey }}{% endif %}</a></h2>
+  <h2>Details For Channel: {{ chan_id }} | Peer: <a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias != "" %}{{ channel.alias }}</a> ({{ channel.remote_pubkey }}){% else %}{{ channel.remote_pubkey }}</a>{% endif %}</h2>
   <h3>Capacity: {{ channel.capacity|intcomma }} | Is Open: {{ channel.is_open }} | Is Active: {{ channel.is_active }} | Is Private: {{ channel.private }}</h3>
   <h4>Channel Point: <a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a> | Opened In: <a href="{{ network_links }}/{{ network }}block/{{ channel.open_block }}" target="_blank">{{ channel.open_block|intcomma }}</a></h4>
   <h4>Outbound Liquidity: {{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%) | Inbound Liquidity: {{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</h4>
