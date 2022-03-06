@@ -29,7 +29,7 @@
       {% for channel in channels %}
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{{ channel.alias }}</a></td>
+        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</td>
         <td><div class="w3-orange w3-round">{% if channel.percent_inbound == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.percent_outbound == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.percent_outbound }}%"></div>{% endif %}</div></td>

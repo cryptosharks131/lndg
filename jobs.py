@@ -96,26 +96,36 @@ def update_invoices(stub):
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=last_index, num_max_invoices=100)).invoices
     for invoice in invoices:
         if invoice.state == 1:
-            alias = Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id)[0].alias if Channels.objects.filter(chan_id=invoice.htlcs[0].chan_id).exists() else None
-            records = invoice.htlcs[0].custom_records
-            keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
-            message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
-            if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
-                signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
-                try:
-                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
-                except:
-                    print('Unable to validate signature on invoice: ' + invoice.r_hash.hex())
-                    valid = False
-                sender = records[34349339].hex() if valid == True else None
-                try:
-                    alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=sender, include_channels=False)).node.alias if sender != None else None
-                except:
-                    alias = None
+            if len(invoice.htlcs) > 0:
+                chan_in_id = invoice.htlcs[0].chan_id
+                alias = Channels.objects.filter(chan_id=chan_in_id)[0].alias if Channels.objects.filter(chan_id=chan_in_id).exists() else None
+                records = invoice.htlcs[0].custom_records
+                keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
+                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
+                if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
+                    signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+                    try:
+                        valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
+                    except:
+                        print('Unable to validate signature on invoice: ' + invoice.r_hash.hex())
+                        valid = False
+                    sender = records[34349339].hex() if valid == True else None
+                    try:
+                        sender_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=sender, include_channels=False)).node.alias if sender != None else None
+                    except:
+                        sender_alias = None
+                else:
+                    sender = None
+                    sender_alias = None
             else:
+                chan_in_id = None
+                alias = None
+                keysend_preimage = None
+                message = None
                 sender = None
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=invoice.htlcs[0].chan_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, sender=sender, sender_alias=alias, index=invoice.add_index).save()
+                sender_alias = None
+            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=chan_in_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, sender=sender, sender_alias=sender_alias, index=invoice.add_index).save()
         else:
             Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, index=invoice.add_index).save()
 

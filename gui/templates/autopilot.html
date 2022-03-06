@@ -18,7 +18,7 @@
     <tr>
       <td>{{ log.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
-      <td>{{ log.peer_alias }}</td>
+      <td>{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</td>
       <td>{{ log.setting }}</td>
       <td>{{ log.old_value }}</td>
       <td>{{ log.new_value }}</td>

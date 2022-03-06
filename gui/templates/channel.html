@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if channel %}
 <div class="w3-container w3-padding-small">
-  <h2>Details For Channel: {{ chan_id }} | Peer: <a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias != "" %}{{ channel.alias }}{% else %}{{ channel.remote_pubkey }}{% endif %}</a></h2>
+  <h2>Details For Channel: {{ chan_id }} | Peer: <a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias != "" %}{{ channel.alias }} ({{ channel.remote_pubkey }}){% else %}{{ channel.remote_pubkey }}{% endif %}</a></h2>
   <h3>Capacity: {{ channel.capacity|intcomma }} | Is Open: {{ channel.is_open }} | Is Active: {{ channel.is_active }} | Is Private: {{ channel.private }}</h3>
   <h4>Channel Point: <a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a> | Opened In: <a href="{{ network_links }}/{{ network }}block/{{ channel.open_block }}" target="_blank">{{ channel.open_block|intcomma }}</a></h4>
   <h4>Outbound Liquidity: {{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%) | Inbound Liquidity: {{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</h4>
@@ -151,7 +151,7 @@
     {% for htlc in outgoing_htlcs %}
     <tr>
       <td>{{ htlc.forwarding_channel }}</td>
-      <td>{{ htlc.forwarding_alias }}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
       <td>{{ htlc.hash_lock }}</td>
@@ -174,7 +174,7 @@
     {% for htlc in incoming_htlcs %}
     <tr>
       <td>{{ htlc.forwarding_channel }}</td>
-      <td>{{ htlc.forwarding_alias }}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
       <td>{{ htlc.hash_lock }}</td>
@@ -203,8 +203,8 @@
       <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
       <td>{{ forward.amt_in|intcomma }}</td>
       <td>{{ forward.amt_out|intcomma }}</td>
-      <td>{{ forward.chan_in_alias }}</td>
-      <td>{{ forward.chan_out_alias }}</td>
+      <td>{% if forward.chan_in_alias == '' %}---{% else %}{{ forward.chan_in_alias }}{% endif %}</td>
+      <td>{% if forward.chan_out_alias == '' %}---{% else %}{{ forward.chan_out_alias }}{% endif %}</td>
       <td>{{ forward.chan_id_in }}</td>
       <td>{{ forward.chan_id_out }}</td>
       <td>{{ forward.fee }}</td>
@@ -265,7 +265,7 @@
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}{{ payment.chan_out_alias }}{% else %}N/A{% endif %}</td>
+      <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
       <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
@@ -297,7 +297,7 @@
       <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}N/A{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
-      <td>{{ invoice.chan_in_alias }}</td>
+      <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{{ invoice.chan_in }}</td>
       <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
@@ -325,8 +325,8 @@
       <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
       <td>{{ failed_htlc.chan_id_in }}</td>
       <td>{{ failed_htlc.chan_id_out }}</td>
-      <td>{{ failed_htlc.chan_in_alias }}</td>
-      <td>{{ failed_htlc.chan_out_alias }}</td>
+      <td>{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</td>
+      <td>{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</td>
       <td>{{ failed_htlc.amount|intcomma }}</td>
       <td>{{ failed_htlc.missed_fee|intcomma }}</td>
       <td>{% if failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>

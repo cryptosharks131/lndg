@@ -23,7 +23,7 @@
       <td>{{ hop.fee }}</td>
       <td>{{ hop.ppm }}</td>
       <td>{{ hop.cost_to }}</td>
-      <td>{{ hop.alias }}</td>
+      <td>{% if hop.alias == '' %}---{% else %}{{ hop.alias }}{% endif %}</td>
       <td>{{ hop.chan_id }}</td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
     </tr>

@@ -134,7 +134,7 @@ def home(request):
         total_costs = total_fees + onchain_costs
         total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
-        rebalances = Rebalancer.objects.all().order_by('-requested')
+        rebalances = Rebalancer.objects.all().order_by('-id')
         total_channels = node_info.num_active_channels + node_info.num_inactive_channels
         local_settings = LocalSettings.objects.filter(key__contains='AR-')
         try:
@@ -184,13 +184,13 @@ def home(request):
             'chan_policy_form': ChanPolicyForm,
             'local_settings': local_settings,
             'pending_htlc_count': pending_htlc_count,
-            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:10],
+            'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
             'payments_ppm': 0 if total_sent == 0 else int((total_fees/total_sent)*1000000),
             'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
             '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
             '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
             'liq_ratio': 0 if total_outbound == 0 else int((total_inbound/sum_outbound)*100),
-            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, auto_rebalance=True).annotate(inbound_can=(Sum('remote_balance')*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
+            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=(Sum('remote_balance')*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
             'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
@@ -209,7 +209,7 @@ def channels(request):
         forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
         payments = Payments.objects.filter(status=2).filter(creation_date__gte=filter_30day).filter(rebal_chan__isnull=False)
         invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_30day).filter(r_hash__in=payments.values_list('payment_hash'))
-        channels = Channels.objects.filter(is_open=True)
+        channels = Channels.objects.filter(is_open=True, private=False)
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
             forwards_df_30d = DataFrame.from_records(forwards.values())
@@ -300,7 +300,7 @@ def fees(request):
         channels = Channels.objects.filter(is_open=True)
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
-            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_7day).order_by('-timestamp').values())
+            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_7day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
                 failed_htlc_df = failed_htlc_df[failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']]
             forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
@@ -461,8 +461,8 @@ def channel(request):
             node_outbound = channels_df['local_balance'].sum()
             node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
-            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-requested').values())
-            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-timestamp').values())
+            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).order_by('-id').values())
+            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
             channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
             channels_df['in_percent'] = int(round((channels_df['remote_balance']/channels_df['capacity'])*100, 0))
@@ -782,7 +782,7 @@ def opens(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def actions(request):
     if request.method == 'GET':
-        channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
+        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
         filter_7day = datetime.now() - timedelta(days=7)
         forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
         action_list = []
@@ -855,7 +855,7 @@ def pending_htlcs(request):
 def failed_htlcs(request):
     if request.method == 'GET':
         context = {
-            'failed_htlcs': FailedHTLCs.objects.all().order_by('-timestamp')[:150],
+            'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:150],
         }
         return render(request, 'failed_htlcs.html', context)
     else:
@@ -896,7 +896,7 @@ def rebalancing(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
-        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).order_by('-is_active', 'percent_outbound').values())
+        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=(Sum('remote_balance')*100)/Sum('capacity')).annotate(percent_outbound=(Sum('local_balance')*100)/Sum('capacity')).annotate(inbound_can=((Sum('remote_balance')*100)/Sum('capacity'))/Sum('ar_in_target')).order_by('-is_active', 'percent_outbound').values())
         channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
         channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
         channels_df['steps'] = channels_df.apply(lambda row: 0 if row['inbound_can'] < 1 else int(((row['percent_inbound']-row['ar_in_target'])/((row['ar_amt_target']/row['capacity'])*100))+0.999), axis=1)
@@ -929,7 +929,7 @@ def keysends(request):
 def autopilot(request):
     if request.method == 'GET':
         context = {
-            'autopilot': Autopilot.objects.all().order_by('-timestamp')
+            'autopilot': Autopilot.objects.all().order_by('-id')
         }
         return render(request, 'autopilot.html', context)
     else:

@@ -68,7 +68,7 @@ def run_rebalancer(rebalance):
         rebalance.save()
         if rebalance.status == 2:
             update_channel(stub, rebalance.last_hop_pubkey)
-            auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
+            auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
             inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0:
                 outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
@@ -95,7 +95,7 @@ def auto_schedule():
         LocalSettings(key='AR-Enabled', value='0').save()
         enabled = 0
     if enabled == 1:
-        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
+        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
         if len(auto_rebalance_channels) > 0:
             if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 LocalSettings(key='AR-Outbound%', value='0.75').save()
@@ -144,7 +144,7 @@ def auto_enable():
         LocalSettings(key='AR-Autopilot', value='0').save()
         enabled = 0
     if enabled == 1:
-        channels = Channels.objects.filter(is_active=True, is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
+        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
         filter_7day = datetime.now() - timedelta(days=7)
         forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
         for channel in channels:

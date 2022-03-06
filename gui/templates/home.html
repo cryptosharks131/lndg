@@ -458,8 +458,8 @@
       <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
       <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td>{{ failed_htlc.chan_in_alias }}</td>
-      <td>{{ failed_htlc.chan_out_alias }}</td>
+      <td>{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</td>
+      <td>{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</td>
       <td>{{ failed_htlc.amount|intcomma }}</td>
       <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
       <td>{{ failed_htlc.missed_fee|intcomma }}</td>
