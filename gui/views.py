@@ -134,7 +134,7 @@ def home(request):
         total_costs = total_fees + onchain_costs
         total_costs_7day = total_7day_fees + onchain_costs_7day
         #Get list of recent rebalance requests
-        rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')/Sum('value'))*1000000, output_field=IntegerField())).order_by('-id')
+        rebalances = Rebalancer.objects.all().annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id')
         total_channels = node_info.num_active_channels + node_info.num_inactive_channels
         local_settings = LocalSettings.objects.filter(key__contains='AR-')
         try:
@@ -461,7 +461,7 @@ def channel(request):
             node_outbound = channels_df['local_balance'].sum()
             node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
-            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')/Sum('value'))*1000000, output_field=IntegerField())).order_by('-id').values())
+            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
             channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
@@ -905,7 +905,7 @@ def rebalancing(request):
         channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')/Sum('value'))*1000000, output_field=IntegerField())).order_by('-id')[:20],
+            'rebalancer': Rebalancer.objects.all().annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': LocalSettings.objects.filter(key__contains='AR-'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
