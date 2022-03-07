@@ -22,7 +22,7 @@
     {% for closure in closures %}
     <tr>
       <td><a href="/channel?={{ closure.chan_id }}" target="_blank">{{ closure.chan_id }}</a></td>
-      <td>{% if closure.alias != '---' %}<a href="{{ graph_links }}/{{ network }}node/{{ closure.remote_pubkey }}" target="_blank">{{ closure.alias }}</a>{% else %}{{ closure.alias }}{% endif %}</td>
+      <td><a href="{{ graph_links }}/{{ network }}node/{{ closure.remote_pubkey }}" target="_blank">{% if closure.alias == '' %}{{ closure.remote_pubkey|slice:":12" }}{% else %}{{ closure.alias }}{% endif %}</a></td>
       <td>{{ closure.capacity|intcomma }}</td>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx_hash }}" target="_blank">{{ closure.closing_tx }}</a></td>
       <td>{{ closure.settled_balance|intcomma }}</td>

@@ -421,7 +421,7 @@ def closures(request):
         closures_df = DataFrame.from_records(Closures.objects.all().values())
         channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
         merged = merge(closures_df, channels_df, on='chan_id', how='left')
-        merged['alias'] = merged['alias'].fillna('---')
+        merged['alias'] = merged['alias'].fillna('')
         context = {
             'closures': merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
