@@ -225,6 +225,7 @@
       <th>Scheduled Duration</th>
       <th>Value</th>
       <th>Fee Limit</th>
+      <th>Target PPM</th>
       <th>Last Hop Alias</th>
       <th>Status</th>
     </tr>
@@ -236,6 +237,7 @@
       <td>{{ rebalance.duration }} minutes</td>
       <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit|intcomma }}</td>
+      <td>{{ rebalance.ppm|intcomma }}</td>
       <td>{% if rebalance.target_alias == '' %}None Specified{% else %}{{ rebalance.target_alias }}{% endif %}</td>
       <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}Successful{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
     </tr>
