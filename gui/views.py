@@ -891,7 +891,7 @@ def forwards(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')channel.inbound_can >= 1 and channel.fee_check < 100 and channel.auto_rebalance == True
+@login_required(login_url='/lndg-admin/login/?next=/')
 def rebalancing(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
@@ -900,13 +900,14 @@ def rebalancing(request):
         channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
         channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
         channels_df['steps'] = channels_df.apply(lambda row: 0 if row['inbound_can'] < 1 else int(((row['percent_inbound']-row['ar_in_target'])/((row['ar_amt_target']/row['capacity'])*100))+0.999), axis=1)
-        channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]), axis=1)
-        channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_7d_df.empty else len(rebalancer_7d_df[rebalancer_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_7d_df['status']==2]), axis=1)
+        rebalancer_count_7d_df = rebalancer_7d_df[rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]
+        channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey].shape[0], axis=1)
+        channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_count_7d_df['status']==2].shape[0], axis=1)
         channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
-        channels_df['eligible'] = False
-        channels_df[channels_df['inbound_can']>=1][channels_df['fee_check']<100][channels_df['auto_rebalance']==True]['eligible'] = True
-        eligible_count = channels_df[channels_df['eligible']==True].count()
-        enabled_count = channels_df[channels_df['auto_rebalance']==True].count()
+        enabled_df = channels_df[channels_df['auto_rebalance']==True]
+        eligible_df = enabled_df[enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
+        eligible_count = eligible_df.shape[0]
+        enabled_count = enabled_df.shape[0]
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
