@@ -44,7 +44,7 @@
         <td>{{ channel.revenue_30day|intcomma }} [{{ channel.profits_30day|intcomma }}] | {{ channel.revenue_assist_30day|intcomma }}</td>
         <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
         <td title="Update Count: {{ channel.num_updates|intcomma }}">{{ channel.updates }}%</td>
-        <td title="Block Opened: {{ channel.open_block }}">{{ channel.initiator }}</td>
+        <td title="Block Opened: {{ channel.open_block }}">{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
       </tr>
       {% endfor %}
     </table>

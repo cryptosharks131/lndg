@@ -113,7 +113,7 @@
       <th width=5%>Local Commit</th>
       <th width=5%>Local Reserve</th>
       <th width=5%>Downtime</th>
-      <th width=5%>Initiated By Me</th>
+      <th width=5%>Opener</th>
       <th width=4%>iTarget%</th>
       <th width=4%>AR</th>
     </tr>
@@ -133,7 +133,7 @@
       <td>{{ channel.local_commit|intcomma }}</td>
       <td>{{ channel.local_chan_reserve|intcomma }}</td>
       <td title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
-      <td>{{ channel.initiator }}</td>
+      <td>{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
       <td>
         {% if channel.auto_rebalance == True %}
           <form action="/update_channel/" method="post">
@@ -174,9 +174,11 @@
       <th width=6%>Unsettled</th>
       <th width=4%>oRate</th>
       <th width=4%>oBase</th>
+      <th width=4%>oLife</th>
+      <th width=4%>iLife</th>
       <th width=5%>Local Commit</th>
       <th width=5%>Local Reserve</th>
-      <th width=5%>Initiated By Me</th>
+      <th width=5%>Opener</th>
       <th width=5%>Up/Down</th>
     </tr>
     {% for channel in private_channels %}
@@ -190,9 +192,11 @@
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
+      <td>{{ channel.total_sent|intcomma }}</td>
+      <td>{{ channel.total_received|intcomma }}</td>
       <td>{{ channel.local_commit|intcomma }}</td>
       <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td>{{ channel.initiator }}</td>
+      <td>{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
       <td {% if channel.is_active == True %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %} title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
     </tr>
     {% endfor %}
