@@ -18,9 +18,9 @@
     {% for htlc in outgoing_htlcs %}
     <tr>
       <td>{{ htlc.chan_id }}</td>
-      <td>{{ htlc.alias }}</td>
+      <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
       <td>{{ htlc.forwarding_channel }}</td>
-      <td>{{ htlc.forwarding_alias }}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
       <td>{{ htlc.hash_lock }}</td>
@@ -45,9 +45,9 @@
     {% for htlc in incoming_htlcs %}
     <tr>
       <td>{{ htlc.chan_id }}</td>
-      <td>{{ htlc.alias }}</td>
+      <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
       <td>{{ htlc.forwarding_channel }}</td>
-      <td>{{ htlc.forwarding_alias }}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
       <td>{{ htlc.hash_lock }}</td>

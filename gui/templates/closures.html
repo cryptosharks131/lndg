@@ -8,6 +8,7 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Channel ID</th>
+      <th>Alias</th>
       <th>Capacity</th>
       <th width=20%>Closing TXID</th>
       <th>Settled Balance</th>
@@ -16,18 +17,21 @@
       <th>Close Type</th>
       <th>Opener</th>
       <th>Closer</th>
+      <th>Resolutions</th>
     </tr>
     {% for closure in closures %}
     <tr>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.channel_point|slice:":-2" }}" target="_blank">{{ closure.chan_id }}</a></td>
+      <td>{% if closure.chan_id == '0' %}---{% else %}<a href="/channel?={{ closure.chan_id }}" target="_blank">{{ closure.chan_id }}</a>{% endif %}</td>
+      <td><a href="{{ graph_links }}/{{ network }}node/{{ closure.remote_pubkey }}" target="_blank">{% if closure.alias == '' %}{{ closure.remote_pubkey|slice:":12" }}{% else %}{{ closure.alias }}{% endif %}</a></td>
       <td>{{ closure.capacity|intcomma }}</td>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx_hash }}" target="_blank">{{ closure.closing_tx_hash }}</a></td>
+      <td>{% if closure.closing_tx == '0000000000000000000000000000000000000000000000000000000000000000' %}---{% else %}<a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx }}" target="_blank">{{ closure.closing_tx }}</a>{% endif %}</td>
       <td>{{ closure.settled_balance|intcomma }}</td>
       <td>{{ closure.time_locked_balance|intcomma }}</td>
       <td>{{ closure.close_height|intcomma }}</td>
       <td>{% if closure.close_type == 0 %}Cooperative{% elif closure.close_type == 1 %}Local Force{% elif closure.close_type == 2 %}Remote Force{% elif closure.close_type == 3 %}Breach{% elif closure.close_type == 4 %}Funding Cancelled{% elif closure.close_type == 5 %}Abandoned{% else %}{{ closure.close_type }}{% endif %}</td>
       <td>{% if closure.open_initiator == 0 %}Unknown{% elif closure.open_initiator == 1 %}Local{% elif closure.open_initiator == 2 %}Remote{% elif closure.open_initiator == 3 %}Both{% else %}{{ closure.open_initiator }}{% endif %}</td>
       <td>{% if closure.close_initiator == 0 %}Unknown{% elif closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% elif closure.close_initiator == 3 %}Both{% else %}{{ closure.close_initiator }}{% endif %}</td>
+      <td>{% if closure.resolution_count > 0 %}<a href="/resolutions?={{ closure.chan_id }}" target="_blank">Details</a>{% else %}---{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

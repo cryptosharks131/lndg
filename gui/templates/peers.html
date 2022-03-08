@@ -4,10 +4,11 @@
 {% load humanize %}
 {% if peers %}
 <div class="w3-container w3-padding-small">
-  <h2>Peers List</h2>
+  <h2>Peers List ({{ num_peers }})</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th width=40%>Peer PubKey</th>
+      <th>Peer Alias</th>
       <th>Network Address</th>
       <th>Inbound</th>
       <th>Sats Sent</th>
@@ -16,6 +17,7 @@
     {% for peer in peers %}
     <tr>
       <td><a href="{{ graph_links }}/{{ network }}node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
+      <td>{% if peer.alias != '' %}{{ peer.alias }}{% else %}---{% endif %}</td>
       <td>{{ peer.address }}</td>
       <td>{{ peer.inbound }}</td>
       <td>{{ peer.sat_sent|intcomma }}</td>

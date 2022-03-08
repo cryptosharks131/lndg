@@ -19,11 +19,11 @@
     {% for hop in route %}
     <tr>
       <td>{{ hop.step }}</td>
-      <td>{{ hop.amt }}</td>
-      <td>{{ hop.fee }}</td>
-      <td>{{ hop.ppm }}</td>
-      <td>{{ hop.cost_to }}</td>
-      <td>{{ hop.alias }}</td>
+      <td>{{ hop.amt|intcomma }}</td>
+      <td>{{ hop.fee|intcomma }}</td>
+      <td>{{ hop.ppm|intcomma }}</td>
+      <td>{{ hop.cost_to|intcomma }}</td>
+      <td>{% if hop.alias == '' %}---{% else %}{{ hop.alias }}{% endif %}</td>
       <td>{{ hop.chan_id }}</td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
     </tr>
