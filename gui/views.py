@@ -1094,7 +1094,8 @@ def rebalance(request):
                     for channel in form.cleaned_data['outgoing_chan_ids']:
                         chan_ids.append(channel.chan_id)
                     target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
-                    Rebalancer(value=form.cleaned_data['value'], fee_limit=form.cleaned_data['fee_limit'], outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration']).save()
+                    fee_limit = 0 if form.cleaned_data['value'] == 0 else form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001
+                    Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=chan_ids, last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration']).save()
                     messages.success(request, 'Rebalancer request created!')
                 else:
                     messages.error(request, 'Target peer is invalid or unknown.')
@@ -1106,7 +1107,7 @@ def rebalance(request):
                 messages.error(request, 'Error entering rebalancer request! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-    return redirect('home')
+    return redirect(request.META.get('HTTP_REFERER'))
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def update_chan_policy(request):
