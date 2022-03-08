@@ -704,6 +704,7 @@ def channel(request):
             channels_df['profits_vol_7day'] = 0 if channels_df['amt_routed_out_7day'][0] == 0 else int(channels_df['profits_7day'] / (channels_df['amt_routed_out_7day']/1000000))
             channels_df['profits_vol_1day'] = 0 if channels_df['amt_routed_out_1day'][0] == 0 else int(channels_df['profits_1day'] / (channels_df['amt_routed_out_1day']/1000000))
             channels_df['apy'] = 0.0
+            channels_df = channels_df.copy()
             channels_df['net_routed_7day'] = round((channels_df['amt_routed_out_7day']-channels_df['amt_routed_in_7day'])/channels_df['capacity'], 1)
             channels_df['out_rate'] = int((channels_df['revenue_7day']/channels_df['amt_routed_out_7day'])*1000000) if channels_df['amt_routed_out_7day'][0] > 0 else 0
             channels_df['rebal_ppm'] = int((channels_df['costs_7day']/channels_df['amt_rebal_in_7day'])*1000000) if channels_df['amt_rebal_in_7day'][0] > 0 else 0
@@ -726,6 +727,7 @@ def channel(request):
             channels_df['inbound_can'] = ((channels_df['remote_balance']*100)/channels_df['capacity'])/channels_df['ar_in_target']
             channels_df['fee_ratio'] = 100 if channels_df['local_fee_rate'][0] == 0 else int(round(((channels_df['remote_fee_rate']/channels_df['local_fee_rate'])*1000)/10, 0))
             channels_df['fee_check'] = 1 if channels_df['ar_max_cost'][0] == 0 else int(round(((channels_df['fee_ratio']/channels_df['ar_max_cost'])*1000)/10, 0))
+            channels_df = channels_df.copy()
             channels_df['steps'] = 0 if channels_df['inbound_can'][0] < 1 else int(((channels_df['in_percent']-channels_df['ar_in_target'])/((channels_df['ar_amt_target']/channels_df['capacity'])*100))+0.999)
             if node_capacity > 0:
                 outbound_ratio = node_outbound/node_capacity
