@@ -895,7 +895,7 @@ def forwards(request):
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def rebalancing(request):
-    if request.method == 'GET':    
+    if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
         channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
