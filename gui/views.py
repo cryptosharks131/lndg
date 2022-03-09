@@ -281,6 +281,9 @@ def channels(request):
                 channels_df['attempts_7day'] = 0
                 channels_df['success_7day'] = 0
                 channels_df['success_rate_7day'] = 0
+        else:
+            apy_7day = 0
+            apy_30day = 0
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'apy_7day': apy_7day,
@@ -344,7 +347,7 @@ def fees(request):
             channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/5, 0)*5), axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
         context = {
-            'channels': channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
+            'channels': [] if channels_df.empty else channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -420,10 +423,14 @@ def closures(request):
     if request.method == 'GET':
         closures_df = DataFrame.from_records(Closures.objects.all().values())
         channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
-        merged = merge(closures_df, channels_df, on='chan_id', how='left')
-        merged['alias'] = merged['alias'].fillna('')
+        if channels_df.empty:
+            merged = closures_df
+            merged['alias'] = ''
+        else:
+            merged = merge(closures_df, channels_df, on='chan_id', how='left')
+            merged['alias'] = merged['alias'].fillna('')
         context = {
-            'closures': merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
+            'closures': [] if merged.empty else merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'network_links': network_links(),
             'graph_links': graph_links()
@@ -899,18 +906,22 @@ def rebalancing(request):
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
         channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
-        channels_df['inbound_can'] = channels_df['percent_inbound'] / channels_df['ar_in_target']
-        channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
-        channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
-        channels_df['steps'] = channels_df.apply(lambda row: 0 if row['inbound_can'] < 1 else int(((row['percent_inbound']-row['ar_in_target'])/((row['ar_amt_target']/row['capacity'])*100))+0.999), axis=1)
-        rebalancer_count_7d_df = rebalancer_7d_df[rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]
-        channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey].shape[0], axis=1)
-        channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_count_7d_df['status']==2].shape[0], axis=1)
-        channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
-        enabled_df = channels_df[channels_df['auto_rebalance']==True]
-        eligible_df = enabled_df[enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
-        eligible_count = eligible_df.shape[0]
-        enabled_count = enabled_df.shape[0]
+        if channels_df.shape[0] > 0:
+            channels_df['inbound_can'] = channels_df['percent_inbound'] / channels_df['ar_in_target']
+            channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
+            channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
+            channels_df['steps'] = channels_df.apply(lambda row: 0 if row['inbound_can'] < 1 else int(((row['percent_inbound']-row['ar_in_target'])/((row['ar_amt_target']/row['capacity'])*100))+0.999), axis=1)
+            rebalancer_count_7d_df = DataFrame() if rebalancer_7d_df.empty else rebalancer_7d_df[rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]
+            channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey].shape[0], axis=1)
+            channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_count_7d_df['status']==2].shape[0], axis=1)
+            channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
+            enabled_df = channels_df[channels_df['auto_rebalance']==True]
+            eligible_df = enabled_df[enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
+            eligible_count = eligible_df.shape[0]
+            enabled_count = enabled_df.shape[0]
+        else:
+            eligible_count = 0
+            enabled_count = 0
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
