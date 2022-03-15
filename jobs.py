@@ -283,7 +283,8 @@ def update_closures(stub):
             counter += 1
             if counter > skip:
                 resolution_count = len(closure.resolutions)
-                db_closure = Closures(chan_id=closure.chan_id, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
+                txid, index = closure.channel_point.split(':')
+                db_closure = Closures(chan_id=closure.chan_id, funding_txid=txid, funding_index=index, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
                 db_closure.save()
                 if resolution_count > 0:
                     Resolutions.objects.filter(chan_id=closure.chan_id).delete()

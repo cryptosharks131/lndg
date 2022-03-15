@@ -21,6 +21,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('chan_id', models.CharField(max_length=20)),
+                ('funding_txid', models.CharField(max_length=64)),
+                ('funding_index', models.IntegerField()),
                 ('closing_tx', models.CharField(max_length=64)),
                 ('remote_pubkey', models.CharField(max_length=66)),
                 ('capacity', models.BigIntegerField()),

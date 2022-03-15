@@ -172,6 +172,8 @@ class Onchain(models.Model):
 
 class Closures(models.Model):
     chan_id = models.CharField(max_length=20)
+    funding_txid = models.CharField(max_length=64)
+    funding_index = models.IntegerField()
     closing_tx = models.CharField(max_length=64)
     remote_pubkey = models.CharField(max_length=66)
     capacity = models.BigIntegerField()
