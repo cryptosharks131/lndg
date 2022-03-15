@@ -96,6 +96,8 @@ class Channels(models.Model):
     ar_in_target = models.IntegerField(default=100)
     ar_out_target = models.IntegerField()
     ar_max_cost = models.IntegerField()
+    fees_updated = models.DateTimeField()
+    auto_fees = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.ar_out_target:
@@ -169,7 +171,7 @@ class Onchain(models.Model):
         app_label = 'gui'
 
 class Closures(models.Model):
-    chan_id = models.CharField(max_length=20, primary_key=True)
+    chan_id = models.CharField(max_length=20)
     closing_tx = models.CharField(max_length=64)
     remote_pubkey = models.CharField(max_length=66)
     capacity = models.BigIntegerField()
@@ -184,7 +186,7 @@ class Closures(models.Model):
         app_label = 'gui'
 
 class Resolutions(models.Model):
-    chan_id = models.ForeignKey('Closures', on_delete=models.CASCADE)
+    chan_id = models.CharField(max_length=20)
     resolution_type = models.IntegerField()
     outcome = models.IntegerField()
     outpoint_tx = models.CharField(max_length=64)

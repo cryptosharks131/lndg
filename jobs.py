@@ -352,8 +352,8 @@ def main():
         #Update data
         update_channels(stub)
         update_peers(stub)
-        update_payments(stub)
         update_invoices(stub)
+        update_payments(stub)
         update_forwards(stub)
         update_onchain(stub)
         update_closures(stub)
