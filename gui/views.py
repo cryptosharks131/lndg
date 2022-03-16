@@ -9,7 +9,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
@@ -370,7 +370,6 @@ def fees(request):
             channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/5, 0)*5), axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
             channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).seconds > 86400, axis=1)
-            print(channels_df)
         context = {
             'channels': [] if channels_df.empty else channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
@@ -990,6 +989,16 @@ def autopilot(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def autofees(request):
+    if request.method == 'GET':
+        context = {
+            'autofees': Autofees.objects.all().order_by('-id')
+        }
+        return render(request, 'autofees.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
@@ -1166,6 +1175,8 @@ def update_chan_policy(request):
                 if form.cleaned_data['target_all']:
                     args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': 40}
                     stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
+                    channels = Channels.objects.filter(is_open=True)
+                    channels.update(fees_updated=datetime.now())
                 elif len(form.cleaned_data['target_chans']) > 0:
                     for channel in form.cleaned_data['target_chans']:
                         channel_point = ln.ChannelPoint()
@@ -1173,6 +1184,9 @@ def update_chan_policy(request):
                         channel_point.funding_txid_str = channel.funding_txid
                         channel_point.output_index = channel.output_index
                         stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
+                        db_channel = Channels.objects.get(chan_id=channel.chan_id)
+                        db_channel.fees_updated = datetime.now()
+                        db_channel.save()
                 else:
                     messages.error(request, 'No channels were specified in the update request!')
                 messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
@@ -1305,6 +1319,7 @@ def update_channel(request):
                 channel_point.output_index = db_channel.output_index
                 stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
                 db_channel.local_fee_rate = target
+                db_channel.fees_updated = datetime.now()
                 db_channel.save()
                 messages.success(request, 'Fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             elif update_target == 2:
@@ -1477,6 +1492,7 @@ def update_setting(request):
                     channel_point.output_index = db_channel.output_index
                     stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
                     db_channel.local_fee_rate = target
+                    db_channel.fees_updated = datetime.now()
                     db_channel.save()
                 messages.success(request, 'Fee rate for all open channels updated to a value of: ' + str(target))
             elif key == 'ALL-oBase':
