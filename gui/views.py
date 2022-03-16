@@ -365,9 +365,9 @@ def fees(request):
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
             channels_df[channels_df['adjustment']==0][channels_df['out_percent'] >= 25][channels_df['net_routed_7day']==0]['new_rate'] = channels_df['local_fee_rate']-10
             channels_df[channels_df['adjustment']==0][channels_df['out_percent'] < 25][channels_df['failed_out_1day'] > 25]['new_rate'] = channels_df['local_fee_rate']+25
-            channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/5, 0)*5), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['max_suggestion'] if row['max_suggestion'] > 0 and row['new_rate'] > row['max_suggestion'] else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['min_suggestion'] if row['new_rate'] < row['min_suggestion'] else row['new_rate'], axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/5, 0)*5), axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
             channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).seconds > 86400, axis=1)
         context = {
