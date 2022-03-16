@@ -96,7 +96,7 @@ class Channels(models.Model):
     ar_in_target = models.IntegerField(default=100)
     ar_out_target = models.IntegerField()
     ar_max_cost = models.IntegerField()
-    fees_updated = models.DateTimeField()
+    fees_updated = models.DateTimeField(default=timezone.now)
     auto_fees = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
