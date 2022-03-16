@@ -52,7 +52,6 @@ class Migration(migrations.Migration):
             model_name='channels',
             name='fees_updated',
             field=models.DateTimeField(default=django.utils.timezone.now),
-            preserve_default=False,
         ),
         migrations.AddField(
             model_name='channels',
