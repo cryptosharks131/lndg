@@ -134,8 +134,8 @@ def home(request):
         private_capacity = private_channels.aggregate(Sum('capacity'))['capacity__sum']
         private_outbound = 0 if private_count == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
         private_inbound = 0 if private_count == 0 else private_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
-        sum_outbound = active_outbound + pending_outbound + inactive_outbound + private_outbound
-        sum_inbound = active_inbound + pending_inbound + inactive_inbound + private_inbound
+        sum_outbound = active_outbound + pending_outbound + inactive_outbound
+        sum_inbound = active_inbound + pending_inbound + inactive_inbound
         onchain_txs = Onchain.objects.all()
         onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
