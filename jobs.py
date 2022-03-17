@@ -418,7 +418,7 @@ def auto_fees(stub):
                     channel_point.funding_txid_str = channel.funding_txid
                     channel_point.output_index = channel.output_index
                     stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=40))
-                    channel.local_fee_rate = channel['new_rate']
+                    channel.local_fee_rate = target_channel['new_rate']
                     channel.fees_updated = datetime.now()
                     channel.save()
                     Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=channel.local_fee_rate, new_value=target_channel['new_rate']).save()
