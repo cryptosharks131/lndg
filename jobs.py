@@ -359,7 +359,7 @@ def auto_fees(stub):
         filter_7day = datetime.now() - timedelta(days=7)
         channels = Channels.objects.filter(is_open=True, auto_fees=True)
         channels_df = DataFrame.from_records(channels.values())
-        channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).seconds > 86400, axis=1)
+        channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
         channels_df = channels_df[channels_df['eligible']==True]
         if channels_df.shape[0] > 0:
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
