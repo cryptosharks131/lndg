@@ -421,7 +421,7 @@ def auto_fees(stub):
                     channel.local_fee_rate = target_channel['new_rate']
                     channel.fees_updated = datetime.now()
                     channel.save()
-                    Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=channel.local_fee_rate, new_value=target_channel['new_rate']).save()
+                    Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
 
 def main():
     try:
