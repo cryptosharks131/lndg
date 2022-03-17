@@ -1531,7 +1531,7 @@ def update_setting(request):
                 messages.success(request, 'Auto-Rebalance targeting for all channels updated to a value of: ' + str(target))
             elif key == 'ALL-AF':
                 target = int(value)
-                channels = Channels.objects.filter(is_open=True).update(auto_fees=target)
+                channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
             elif key == 'AF-Enabled':
                 enabled = int(value)
