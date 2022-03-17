@@ -1526,6 +1526,16 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
+            elif key == 'AF-Enabled':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AF-Enabled')
+                except:
+                    LocalSettings(key='AF-Enabled', value='0').save()
+                    db_enabled = LocalSettings.objects.get(key='AF-Enabled')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated autofees enabled setting to: ' + str(enabled))
             else:
                 messages.error(request, 'Invalid Request. Please try again.')
         else:
