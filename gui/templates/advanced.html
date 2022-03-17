@@ -196,7 +196,7 @@
             <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'LND-RetentionDays' %}
             <input style="text-align:center" id="value" type="number" min="0" max="1000" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:":3" == 'AR-' %}
+          {% elif settings.key|slice:":3" == 'AR-' or settings.key|slice:":3" == 'AF-' %}
             <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
           {% else %}
             <input style="text-align:center" id="value" type="text" name="value" value="{{ settings.value }}">
