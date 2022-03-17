@@ -357,7 +357,7 @@ def auto_fees(stub):
     if enabled == 1:
         filter_1day = datetime.now() - timedelta(days=1)
         filter_7day = datetime.now() - timedelta(days=7)
-        channels = Channels.objects.filter(is_open=True, auto_fees=True)
+        channels = Channels.objects.filter(is_open=True, private=False, auto_fees=True)
         channels_df = DataFrame.from_records(channels.values())
         channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
         channels_df = channels_df[channels_df['eligible']==True]

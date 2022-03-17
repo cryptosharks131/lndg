@@ -317,7 +317,7 @@ def fees(request):
     if request.method == 'GET':
         filter_1day = datetime.now() - timedelta(days=1)
         filter_7day = datetime.now() - timedelta(days=7)
-        channels = Channels.objects.filter(is_open=True)
+        channels = Channels.objects.filter(is_open=True, private=False)
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
