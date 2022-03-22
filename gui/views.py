@@ -50,12 +50,12 @@ def home(request):
         pending_force_closed = pending_channels.pending_force_closing_channels
         waiting_for_close = pending_channels.waiting_close_channels
         #Get recorded payment events
-        payments = Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')
+        payments = Payments.objects.exclude(status=3)
         total_payments = payments.filter(status=2).count()
         total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
         total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
         #Get recorded invoice details
-        invoices = Invoices.objects.exclude(state=2).order_by('-creation_date')
+        invoices = Invoices.objects.exclude(state=2)
         total_invoices = invoices.filter(state=1).count()
         total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
@@ -153,11 +153,11 @@ def home(request):
             'node_info': node_info,
             'total_channels': total_channels,
             'balances': balances,
-            'payments': payments[:6],
+            'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
             'total_sent': int(total_sent),
             'fees_paid': int(total_fees),
             'total_payments': total_payments,
-            'invoices': invoices[:6],
+            'invoices': invoices.order_by('-creation_date')[:6],
             'total_received': total_received,
             'total_invoices': total_invoices,
             'forwards': forwards_df.head(15).to_dict(orient='records'),
