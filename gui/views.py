@@ -59,11 +59,8 @@ def home(request):
         total_invoices = invoices.filter(state=1).count()
         total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
         #Get recorded forwarding events
-        forwards = Forwards.objects.all()
+        Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
         forwards_df = DataFrame.from_records(forwards.values())
-        forwards_df['amt_in'] = forwards_df['amt_in_msat']/1000
-        forwards_df['amt_out'] = forwards_df['amt_out_msat']/1000
-        forwards_df['ppm'] = int((forwards_df['fee']*1000000000)/forwards_df['amt_out_msat'])
         total_forwards = forwards_df.shape[0]
         total_value_forwards = 0 if total_forwards == 0 else int(forwards_df['amt_out_msat'].sum()/1000)
         total_earned = 0 if total_forwards == 0 else forwards_df['fee'].sum()
@@ -163,7 +160,7 @@ def home(request):
             'invoices': invoices.order_by('-creation_date')[:6],
             'total_received': total_received,
             'total_invoices': total_invoices,
-            'forwards': forwards_df.tail(15).sort_values(by=['id'], ascending=False).to_dict(orient='records'),
+            'forwards': forwards_df.head(15).to_dict(orient='records'),
             'earned': int(total_earned),
             'total_forwards': total_forwards,
             'total_value_forwards': total_value_forwards,
