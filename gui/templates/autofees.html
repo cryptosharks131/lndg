@@ -16,7 +16,7 @@
     </tr>
     {% for log in autofees %}
     <tr>
-      <td>{{ log.timestamp|naturaltime }}</td>
+      <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
       <td>{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</td>
       <td>{{ log.setting }}</td>

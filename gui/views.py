@@ -50,7 +50,7 @@ def home(request):
         pending_force_closed = pending_channels.pending_force_closing_channels
         waiting_for_close = pending_channels.waiting_close_channels
         #Get recorded payment events
-        payments = Payments.objects.exclude(status=3).order_by('-creation_date')
+        payments = Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')
         total_payments = payments.filter(status=2).count()
         total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
         total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
@@ -133,7 +133,6 @@ def home(request):
         active_private = private_channels.filter(is_active=True).count()
         private_capacity = private_channels.aggregate(Sum('capacity'))['capacity__sum']
         private_outbound = 0 if private_count == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-        private_inbound = 0 if private_count == 0 else private_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
         sum_outbound = active_outbound + pending_outbound + inactive_outbound
         sum_inbound = active_inbound + pending_inbound + inactive_inbound
         onchain_txs = Onchain.objects.all()
@@ -225,7 +224,7 @@ def channels(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_30day = datetime.now() - timedelta(days=30)
         forwards = Forwards.objects.filter(forward_date__gte=filter_30day)
-        payments = Payments.objects.filter(status=2, creation_date__gte=filter_30day, rebal_chan__isnull=False)
+        payments = Payments.objects.filter(status=2, creation_date__gte=filter_30day, rebal_chan__isnull=False).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField()))
         invoices = Invoices.objects.filter(state=1, r_hash__in=payments.values_list('payment_hash'))
         channels = Channels.objects.filter(is_open=True, private=False)
         channels_df = DataFrame.from_records(channels.values())
@@ -906,7 +905,7 @@ def failed_htlcs(request):
 def payments(request):
     if request.method == 'GET':
         context = {
-            'payments': Payments.objects.filter(status=2).order_by('-creation_date')[:150],
+            'payments': Payments.objects.filter(status=2).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:150],
         }
         return render(request, 'payments.html', context)
     else:

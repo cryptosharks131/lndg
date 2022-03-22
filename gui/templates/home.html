@@ -391,13 +391,14 @@
     <tr>
       <th>Timestamp</th>
       <th width=28%>Hash</th>
-      <th width=7%>Value</th>
-      <th width=7%>Fee Paid</th>
-      <th width=7%>Status</th>
+      <th width=6%>Value</th>
+      <th width=6%>Fee Paid</th>
+      <th width=6%>PPM Paid</th>
+      <th width=6%>Status</th>
       <th width=12%>Chan Out Alias</th>
       <th width=12%>Chan Out ID</th>
-      <th width=5%>Route</th>
-      <th width=8%>Keysend</th>
+      <th width=4%>Route</th>
+      <th width=6%>Keysend</th>
     </tr>
     {% for payment in payments %}
     <tr>
@@ -405,6 +406,7 @@
       <td>{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
+      <td>{{ payment.ppm|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}N/A{% endif %}</td>
