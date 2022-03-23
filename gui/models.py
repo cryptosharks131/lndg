@@ -186,6 +186,7 @@ class Closures(models.Model):
     resolution_count = models.IntegerField()
     class Meta:
         app_label = 'gui'
+        unique_together = (('funding_txid', 'funding_index'),)
 
 class Resolutions(models.Model):
     chan_id = models.CharField(max_length=20)
