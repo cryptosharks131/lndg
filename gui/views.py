@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from .lnd_deps import lightning_pb2 as ln
 from .lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -1581,6 +1581,14 @@ class PeersViewSet(viewsets.ReadOnlyModelViewSet):
 class OnchainViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Onchain.objects.all()
     serializer_class = OnchainSerializer
+
+class ClosuresViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Closures.objects.all()
+    serializer_class = ClosuresSerializer
+
+class ResolutionsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Resolutions.objects.all()
+    serializer_class = ResolutionsSerializer
 
 class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PendingHTLCs.objects.all()
