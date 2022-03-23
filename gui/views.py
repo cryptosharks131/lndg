@@ -290,12 +290,14 @@ def channels(request):
             if node_capacity > 0:
                 outbound_ratio = node_outbound/node_capacity
                 channels_df['apy_7day'] = channels_df.apply(lambda row: round((row['profits_7day']*5214.2857)/(row['capacity']*outbound_ratio), 2), axis=1)
-                channels_df['assisted_apy_7day'] = channels_df.apply(lambda row: round((row['revenue_assist_7day']*5214.2857)/(row['capacity']*(1-outbound_ratio)), 2), axis=1)
                 channels_df['apy_30day'] = channels_df.apply(lambda row: round((row['profits_30day']*1216.6667)/(row['capacity']*outbound_ratio), 2), axis=1)
-                channels_df['assisted_apy_30day'] = channels_df.apply(lambda row: round((row['revenue_assist_30day']*1216.6667)/(row['capacity']*(1-outbound_ratio)), 2), axis=1)
+                channels_df['cv_7day'] = channels_df.apply(lambda row: round((row['revenue_7day']*5214.2857)/(row['capacity']*outbound_ratio) + (row['revenue_assist_7day']*5214.2857)/(row['capacity']*(1-outbound_ratio)), 2), axis=1)
+                channels_df['cv_30day'] = channels_df.apply(lambda row: round((row['revenue_30day']*5214.2857)/(row['capacity']*outbound_ratio) + (row['revenue_assist_30day']*5214.2857)/(row['capacity']*(1-outbound_ratio)), 2), axis=1)
             else:
-                channels_df['apy_7day'] = 0
-                channels_df['apy_30day'] = 0
+                channels_df['apy_7day'] = 0.0
+                channels_df['apy_30day'] = 0.0
+                channels_df['cv_7day'] = 0.0
+                channels_df['cv_30day'] = 0.0
         else:
             apy_7day = 0
             apy_30day = 0
