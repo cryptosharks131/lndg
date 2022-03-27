@@ -444,13 +444,16 @@ def balances(request):
 def closures(request):
     if request.method == 'GET':
         closures_df = DataFrame.from_records(Closures.objects.all().values())
-        channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
-        if channels_df.empty:
-            merged = closures_df
-            merged['alias'] = ''
+        if closures_df.empty:
+            merged = DataFrame()
         else:
-            merged = merge(closures_df, channels_df, on='chan_id', how='left')
-            merged['alias'] = merged['alias'].fillna('')
+            channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
+            if channels_df.empty:
+                merged = closures_df
+                merged['alias'] = ''
+            else:
+                merged = merge(closures_df, channels_df, on='chan_id', how='left')
+                merged['alias'] = merged['alias'].fillna('')
         context = {
             'closures': [] if merged.empty else merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
