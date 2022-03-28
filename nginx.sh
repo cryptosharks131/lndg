@@ -93,13 +93,13 @@ upstream django {
 
 server {
     # the port your site will be served on, use port 80 unless setting up ssl certs, then 443
-    listen      $NODE_IP:8889;
+    listen      8889;
     # optional settings for ssl setup
     #ssl on;
     #ssl_certificate /<path_to_certs>/fullchain.pem;
     #ssl_certificate_key /<path_to_certs>/privkey.pem;
     # the domain name it will serve for
-    server_name $NODE_IP; # you can substitute your node IP address or a custom domain like lndg.local (just make sure to update your local hosts file)
+    server_name _; # you can substitute your node IP address or a custom domain like lndg.local (just make sure to update your local hosts file)
     charset     utf-8;
 
     # max upload size
