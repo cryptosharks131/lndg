@@ -882,7 +882,7 @@ def actions(request):
                 #print('Case 5: Pass')
                 continue
             if len(result) > 0:
-                action_list.append(result) 
+                action_list.append(result)
         context = {
             'action_list': action_list,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
@@ -1349,7 +1349,7 @@ def update_channel(request):
             elif update_target == 5:
                 db_channel.auto_rebalance = True if db_channel.auto_rebalance == False else False
                 db_channel.save()
-                messages.success(request, 'Auto rebalancer status for chanel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_rebalance))
+                messages.success(request, 'Auto rebalancer status for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_rebalance))
             elif update_target == 6:
                 db_channel.ar_max_cost = target
                 db_channel.save()
@@ -1369,7 +1369,7 @@ def update_channel(request):
             elif update_target == 8:
                 db_channel.auto_fees = True if db_channel.auto_fees == False else False
                 db_channel.save()
-                messages.success(request, 'Auto fees status for chanel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_fees))
+                messages.success(request, 'Auto fees status for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_fees))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:
