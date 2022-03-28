@@ -37,6 +37,7 @@ def run_rebalancer(rebalance):
             elif payment_response.status == 2:
                 #SUCCESSFUL
                 rebalance.status = 2
+                successful_out = payment_response.htlcs[0].route.hops[0].pub_key
             elif payment_response.status == 3:
                 #FAILURE
                 if payment_response.failure_reason == 1:
@@ -67,12 +68,12 @@ def run_rebalancer(rebalance):
         rebalance.stop = datetime.now()
         rebalance.save()
         if rebalance.status == 2:
-            update_channel(stub, rebalance.last_hop_pubkey)
+            update_channels(stub, rebalance.last_hop_pubkey, successful_out)
             auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
             inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0:
                 outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
-                next_rebalance = Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=rebalance.duration)
+                next_rebalance = Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
                 next_rebalance.save()
             else:
                 next_rebalance = None
@@ -80,8 +81,15 @@ def run_rebalancer(rebalance):
             next_rebalance = None
         return next_rebalance
 
-def update_channel(stub, peer_pubkey):
-    channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(peer_pubkey))).channels[0]
+def update_channels(stub, incoming_channel, outgoing_channel):
+    # Incoming channel update
+    channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(incoming_channel))).channels[0]
+    db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
+    db_channel.local_balance = channel.local_balance
+    db_channel.remote_balance = channel.remote_balance
+    db_channel.save()
+    # Outgoing channel update
+    channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(outgoing_channel))).channels[0]
     db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
     db_channel.local_balance = channel.local_balance
     db_channel.remote_balance = channel.remote_balance
@@ -127,7 +135,7 @@ def auto_schedule():
                             # TLDR: willing to pay 1 sat for every value_per_fee sats moved
                             if Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).exists():
                                 last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
-                                if not (last_rebalance.value != target_value or last_rebalance.status in [2, 6] or (last_rebalance.status in [3, 4, 5, 7, 400, 408] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > 30))):
+                                if not (last_rebalance.value != target_value or last_rebalance.status == 2 or (last_rebalance.status in [3, 4, 5, 6, 7, 400, 408] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > 30)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > 30))):
                                     continue
                             print('Creating Auto Rebalance Request')
                             print('Request for:', target.chan_id)

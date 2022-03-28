@@ -25,6 +25,15 @@
         <th>Max Cost</th>
         <th>iRate</th>
         <th>iBase</th>
+        <th>Updated</th>
+        <th>
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="Enable All">
+            <input type="hidden" name="key" value="ALL-AF">
+            <input type="hidden" name="value" value="1">
+          </form>
+        </th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -49,9 +58,19 @@
           </form>
         </td>
         <td>{{ channel.local_base_fee|intcomma }}</td>
-        <td>{{ channel.ar_max_cost }}%</td>
+        <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% endif %}>{{ channel.ar_max_cost }}%</td>
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
         <td>{{ channel.remote_base_fee|intcomma }}</td>
+        <td {% if channel.eligible == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>{{ channel.fees_updated|naturaltime }}</td>
+        <td {% if channel.auto_fees == False %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="{% if channel.auto_fees == True %}Disable{% else %}Enable{% endif %}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="8">
+            <input type="hidden" name="target" value="0">
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </table>

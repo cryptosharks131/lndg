@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %} {{ block.super }} - Autopilot{% endblock %}
+{% block title %} {{ block.super }} - Autofees{% endblock %}
 {% block content %}
 {% load humanize %}
-{% if autopilot %}
+{% if autofees %}
 <div class="w3-container w3-padding-small">
-  <h2>Autopilot Logs</h2>
+  <h2>Autofees Logs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
@@ -14,7 +14,7 @@
       <th>Old Value</th>
       <th>New Value</th>
     </tr>
-    {% for log in autopilot %}
+    {% for log in autofees %}
     <tr>
       <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
@@ -27,10 +27,10 @@
   </table>
 </div>
 {% endif %}
-{% if not autopilot %}
+{% if not autofees %}
 <div class="w3-container w3-padding-small">
-  <center><h1>No autopilot logs to see here yet!</h1></center>
-  <center><h6>Experimental. This will allow LNDg to automatically act upon the suggestions found <a href="/actions" target="_blank">here</a>.</h6></center>
+  <center><h1>No autofees logs to see here yet!</h1></center>
+  <center><h6>Experimental. This will allow LNDg to automatically act upon the suggestions found <a href="/fees" target="_blank">here</a>.</h6></center>
 </div>
 {% endif %}
 {% endblock %}

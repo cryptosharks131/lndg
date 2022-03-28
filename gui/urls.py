@@ -9,6 +9,8 @@ router.register(r'paymenthops', views.PaymentHopsViewSet)
 router.register(r'invoices', views.InvoicesViewSet)
 router.register(r'forwards', views.ForwardsViewSet)
 router.register(r'onchain', views.OnchainViewSet)
+router.register(r'closures', views.ClosuresViewSet)
+router.register(r'resolutions', views.ResolutionsViewSet)
 router.register(r'peers', views.PeersViewSet)
 router.register(r'channels', views.ChannelsViewSet)
 router.register(r'rebalancer', views.RebalancerViewSet)
@@ -46,6 +48,7 @@ urlpatterns = [
     path('keysends/', views.keysends, name='keysends'),
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
+    path('autofees/', views.autofees, name='autofees'),
     path('advanced/', views.advanced, name='advanced'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),

@@ -4,7 +4,8 @@
 {% load humanize %}
 <div class="w3-container w3-padding-small">
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Capacity: {{ capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {{ db_size }} GB</h4>
+  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</h4>
+  {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
   <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
   <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
 </div>
@@ -22,9 +23,11 @@
   <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound|intcomma }} [{{ profit_per_outbound_real|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
-  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-  <h4><a href="/closures" target="_blank">Closures</a> | <a href="/opens" target="_blank">New Peers</a> | <a href="/actions" target="_blank">AR Actions</a> | <a href="/fees" target="_blank">Fee Rates</a> | <a href="/autopilot" target="_blank">Autopilot Logs</a> | <a href="/channels" target="_blank">Channel Performance</a> | <a href="/keysends" target="_blank">Keysends</a> | <a href="/rebalancing" target="_blank">Rebalancing</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
+  <h4>Total Inbound Liquidity: {{ sum_inbound|intcomma }} | Outbound Liquidity: {{ sum_outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
+  <h4>Active Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }}</h4>
+  <h4>Inactive Inbound Liquidity: {{ inactive_inbound|intcomma }} | Outbound Liquidity: {{ inactive_outbound|intcomma }} | Unsettled Liquidity: {{ inactive_unsettled|intcomma }}</h4>
+  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Total Unsettled Liquidity: {{ total_unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
+  <h4><a href="/closures" target="_blank">Closures</a> | <a href="/opens" target="_blank">New Peers</a> | <a href="/actions" target="_blank">AR Actions</a> | <a href="/fees" target="_blank">Fee Rates</a> | <a href="/autopilot" target="_blank">Autopilot</a> | <a href="/autofees" target="_blank">Autofees</a> | <a href="/channels" target="_blank">Channel Performance</a> | <a href="/keysends" target="_blank">Keysends</a> | <a href="/rebalancing" target="_blank">Rebalancing</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
@@ -388,13 +391,14 @@
     <tr>
       <th>Timestamp</th>
       <th width=28%>Hash</th>
-      <th width=7%>Value</th>
-      <th width=7%>Fee Paid</th>
-      <th width=7%>Status</th>
+      <th width=6%>Value</th>
+      <th width=6%>Fee Paid</th>
+      <th width=6%>PPM Paid</th>
+      <th width=6%>Status</th>
       <th width=12%>Chan Out Alias</th>
       <th width=12%>Chan Out ID</th>
-      <th width=5%>Route</th>
-      <th width=8%>Keysend</th>
+      <th width=4%>Route</th>
+      <th width=6%>Keysend</th>
     </tr>
     {% for payment in payments %}
     <tr>
@@ -402,6 +406,7 @@
       <td>{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
+      <td>{{ payment.ppm|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}N/A{% endif %}</td>

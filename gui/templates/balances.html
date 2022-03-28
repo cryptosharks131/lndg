@@ -37,9 +37,9 @@
     {% for transaction in transactions %}
     <tr>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ transaction.tx_hash }}" target="_blank">{{ transaction.tx_hash }}</a></td>
-      <td>{{ transaction.amount }}</td>
-      <td>{% if transaction.block_height == 0 %}{{ transaction.block_height }}{% else %}<a href="{{ network_links }}/{{ network }}block/{{ transaction.block_height }}" target="_blank">{{ transaction.block_height }}</a>{% endif %}</td>
-      <td>{{ transaction.fee }}</td>
+      <td>{{ transaction.amount|intcomma }}</td>
+      <td>{% if transaction.block_height == 0 %}---{% else %}<a href="{{ network_links }}/{{ network }}block/{{ transaction.block_height }}" target="_blank">{{ transaction.block_height|intcomma }}</a>{% endif %}</td>
+      <td>{{ transaction.fee|intcomma }}</td>
       <td>{{ transaction.label }}</td>
     </tr>
     {% endfor %}

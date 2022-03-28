@@ -8,6 +8,60 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
+        <th colspan="7"></th>
+        <td title="Update all channel outgoing fee rates">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100000" name="value" value="">
+            <input type="hidden" name="key" value="ALL-oRate">
+          </form>
+        </td>
+        <td title="Update all channel outgoing base fees">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100000" name="value" value="">
+            <input type="hidden" name="key" value="ALL-oBase">
+          </form>
+        </td>
+        <th colspan="2"></th>
+        <td title="Update all channel AR amount amounts">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100000000" name="value" value="">
+            <input type="hidden" name="key" value="ALL-Amts">
+          </form>
+        </td>
+        <td title="Update all channel AR max cost %s">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100" name="value" value="">
+            <input type="hidden" name="key" value="ALL-MaxCost">
+          </form>
+        </td>
+        <td title="Update all channel AR outbound liquidity amount %s">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100" name="value" value="">
+            <input type="hidden" name="key" value="ALL-oTarget">
+          </form>
+        </td>
+        <td title="Update all channel AR inbound liquidity amount %s">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100" name="value" value="">
+            <input type="hidden" name="key" value="ALL-iTarget">
+          </form>
+        </td>
+        <td title="Update all channel AR enable/disable targeting">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="">
+            <input type="hidden" name="key" value="ALL-AR">
+          </form>
+        </td>
+        <th></th>
+      </tr>
+      <tr>
         <th>Channel ID</th>
         <th>Peer Alias</th>
         <th>Capacity</th>
@@ -142,7 +196,7 @@
             <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'LND-RetentionDays' %}
             <input style="text-align:center" id="value" type="number" min="0" max="1000" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:":3" == 'AR-' %}
+          {% elif settings.key|slice:":3" == 'AR-' or settings.key|slice:":3" == 'AF-' %}
             <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
           {% else %}
             <input style="text-align:center" id="value" type="text" name="value" value="{{ settings.value }}">

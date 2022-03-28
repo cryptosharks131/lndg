@@ -81,6 +81,7 @@ updates_channel_codes = [
     (5, 'ar_enabled'),
     (6, 'ar_max_cost'),
     (7, 'channel_state'),
+    (8, 'auto_fees'),
 ]
 
 class UpdateChannel(forms.Form):

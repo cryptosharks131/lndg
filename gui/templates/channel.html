@@ -25,15 +25,17 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Profitability</h2>
-  <h4>1-Day Revenue: {{ channel.revenue_1day|intcomma }} | Costs: {{ channel.costs_1day|intcomma }} | Profits: {{ channel.profits_1day|intcomma }} [{{ channel.profits_vol_1day }}] | Assisted Revenues: {{ channel.revenue_assist_1day|intcomma }} | APY: {{ channel.apy_1day }}%</h4>
-  <h4>7-Day Revenue: {{ channel.revenue_7day|intcomma }} | Costs: {{ channel.costs_7day|intcomma }} | Profits: {{ channel.profits_7day|intcomma }} [{{ channel.profits_vol_7day }}] | Assisted Revenues: {{ channel.revenue_assist_7day|intcomma }} | APY: {{ channel.apy_7day }}%</h4>
-  <h4>30-Day Revenue: {{ channel.revenue_30day|intcomma }} | Costs: {{ channel.costs_30day|intcomma }} | Profits: {{ channel.profits_30day|intcomma }} [{{ channel.profits_vol_30day }}] | Assisted Revenues: {{ channel.revenue_assist_30day|intcomma }} | APY: {{ channel.apy_30day }}%</h4>
-  <h4>Lifetime Revenue: {{ channel.revenue|intcomma }} | Costs: {{ channel.costs|intcomma }} | Profits: {{ channel.profits|intcomma }} [{{ channel.profits_vol }}] | Assisted Revenues: {{ channel.revenue_assist|intcomma }} | APY: {{ channel.apy }}%</h4>
+  <h4>1-Day Revenue: {{ channel.revenue_1day|intcomma }} | Costs: {{ channel.costs_1day|intcomma }} | Profits: {{ channel.profits_1day|intcomma }} [{{ channel.profits_vol_1day }}] | Assisted Revenues: {{ channel.revenue_assist_1day|intcomma }} | APY: {{ channel.apy_1day }}% | iAPY: {{ channel.assisted_apy_1day }}% | CV: {{ channel.cv_1day }}%</h4>
+  <h4>7-Day Revenue: {{ channel.revenue_7day|intcomma }} | Costs: {{ channel.costs_7day|intcomma }} | Profits: {{ channel.profits_7day|intcomma }} [{{ channel.profits_vol_7day }}] | Assisted Revenues: {{ channel.revenue_assist_7day|intcomma }} | APY: {{ channel.apy_7day }}% | iAPY: {{ channel.assisted_apy_7day }}% | CV: {{ channel.cv_7day }}%</h4>
+  <h4>30-Day Revenue: {{ channel.revenue_30day|intcomma }} | Costs: {{ channel.costs_30day|intcomma }} | Profits: {{ channel.profits_30day|intcomma }} [{{ channel.profits_vol_30day }}] | Assisted Revenues: {{ channel.revenue_assist_30day|intcomma }} | APY: {{ channel.apy_30day }}% | iAPY: {{ channel.assisted_apy_30day }}% | CV: {{ channel.cv_30day }}%</h4>
+  <h4>Lifetime Revenue: {{ channel.revenue|intcomma }} | Costs: {{ channel.costs|intcomma }} | Profits: {{ channel.profits|intcomma }} [{{ channel.profits_vol }}] | Assisted Revenues: {{ channel.revenue_assist|intcomma }} | APY: {{ channel.apy }}% | iAPY: {{ channel.assisted_apy }}% | CV: {{ channel.cv }}%</h4>
 </div>
 <div class="w3-container w3-padding-small" style="overflow-x: scroll">
   <h2>Channel Settings</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
+      <th>AF</th>
+      <th>Updated</th>
       <th title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
       <th title="The average rate earned outgoing on this channel">Out Rate</th>
       <th title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
@@ -54,6 +56,16 @@
       <th>Active</th>
     </tr>
     <tr>
+      <td {% if channel.auto_fees == False %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input type="submit" value="{% if channel.auto_fees == True %}Disable{% else %}Enable{% endif %}">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="8">
+          <input type="hidden" name="target" value="0">
+        </form>
+      </td>
+      <td {% if channel.eligible == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>{{ channel.fees_updated|naturaltime }}</td>
       <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}{% if channel.net_routed_7day != 0 %} | {{ channel.net_routed_7day }}{% endif %}</td>
       <td>{{ channel.out_rate }}</td>
       <td>{{ channel.rebal_ppm }}</td>
@@ -252,13 +264,14 @@
     <tr>
       <th>Timestamp</th>
       <th width=28%>Hash</th>
-      <th width=7%>Value</th>
-      <th width=7%>Fee Paid</th>
-      <th width=7%>Status</th>
+      <th width=6%>Value</th>
+      <th width=6%>Fee Paid</th>
+      <th width=6%>PPM Paid</th>
+      <th width=6%>Status</th>
       <th width=12%>Chan Out Alias</th>
       <th width=12%>Chan Out ID</th>
-      <th width=5%>Route</th>
-      <th width=8%>Keysend</th>
+      <th width=4%>Route</th>
+      <th width=6%>Keysend</th>
     </tr>
     {% for payment in payments %}
     <tr>
@@ -266,6 +279,7 @@
       <td>{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
+      <td>{{ payment.ppm|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}N/A{% endif %}</td>
@@ -318,6 +332,7 @@
       <th>Chan In Alias</th>
       <th>Chan Out Alias</th>
       <th>Forward Amount</th>
+      <th>Actual Outbound</th>
       <th>Potential Fee</th>
       <th>HTLC Failure</th>
       <th>Failure Detail</th>
@@ -325,11 +340,12 @@
     {% for failed_htlc in failed_htlcs %}
     <tr>
       <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
-      <td>{{ failed_htlc.chan_id_in }}</td>
-      <td>{{ failed_htlc.chan_id_out }}</td>
+      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
+      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
       <td>{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</td>
       <td>{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</td>
       <td>{{ failed_htlc.amount|intcomma }}</td>
+      <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
       <td>{{ failed_htlc.missed_fee|intcomma }}</td>
       <td>{% if failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
       <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
