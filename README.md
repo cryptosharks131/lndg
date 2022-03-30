@@ -134,10 +134,12 @@ When updating, follow the same steps as above. You will also need to restart the
 `sudo systemctl restart uwsgi.service`  
 
 ## Key Features
-### Suggests Fee Rates
+### Suggests And Automates Fee Rates
 LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions.
 
 You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal and you should wait ~24 hours before changing the fee rate again on any given channel.
+
+To allow LNDg to automatically adjust the fee rates on selected channels (no more than once every 24 hours) be sure that the AR-Autofees setting is set to `1` on the Advanced Settings page. You will also need to make sure individual channels are enabled on the Fee Rates page. You can view a log of AF changes by opening the Autofees tab.
 
 ### Suggests New Peers
 LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.  
