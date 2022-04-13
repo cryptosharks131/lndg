@@ -11,6 +11,7 @@
       <th>Active</th>
       <th>Sessions</th>
       <th>Addresses</th>
+      <th width=2%>Remove</th>
     </tr>
     {% for tower in towers %}
     <tr>
@@ -18,6 +19,7 @@
       <td>{{ tower.active }}</td>
       <td>{{ tower.num_sessions|intcomma }}</td>
       <td>{{ tower.addresses }}</td>
+      <td>X</td>
     </tr>
     {% endfor %}
   </table>
