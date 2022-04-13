@@ -485,7 +485,7 @@ def towers(request):
                 tower['pubkey'] = item.pubkey.hex()
                 tower['addresses'] = item.addresses
                 tower['active'] = item.active_session_candidate
-                tower['sessions'] = item.sessions
+                tower['num_sessions'] = item.num_sessions
                 towers.append(tower)
             context = {
                 'towers': towers
