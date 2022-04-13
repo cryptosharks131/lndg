@@ -19,9 +19,10 @@
       <td>{{ tower.active }}</td>
       <td>{{ tower.num_sessions|intcomma }}</td>
       <td>{{ tower.addresses }}</td>
-      <td>❌
+      <td>
         <form action="/removetower/" method="post">
           {% csrf_token %}
+          <input type="submit" value="❌">
           <input type="hidden" name="pubkey" value="{{ tower.pubkey }}">
         </form>
       </td>
