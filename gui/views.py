@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
@@ -522,7 +522,28 @@ def add_tower_form(request):
                 details_index = error.find('details =') + 11
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
-                messages.error(request, 'Connection request failed! Error: ' + error_msg)
+                messages.error(request, 'Add tower request failed! Error: ' + error_msg)
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def delete_tower_form(request):
+    if request.method == 'POST':
+        form = DeleteTowerForm(request.POST)
+        if form.is_valid():
+            try:
+                stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                pubkey = bytes.fromhex(form.cleaned_data['pubkey'])
+                address = form.cleaned_data['address']
+                response = stub.RemoveTower(wtrpc.RemoveTowerRequest(pubkey=pubkey, address=address))
+                messages.success(request, 'Tower deletion successful!' + str(response))
+            except Exception as e:
+                error = str(e)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Delete tower request failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
@@ -542,7 +563,7 @@ def remove_tower_form(request):
                 details_index = error.find('details =') + 11
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
-                messages.error(request, 'Connection request failed! Error: ' + error_msg)
+                messages.error(request, 'Remove tower request failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))

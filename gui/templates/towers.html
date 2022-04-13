@@ -40,7 +40,8 @@
       <th>Active</th>
       <th>Sessions</th>
       <th>Addresses</th>
-      <th>Remove</th>
+      <th>Enable</th>
+      <th>Delete</th>
     </tr>
     {% for tower in inactive_towers %}
     <tr>
@@ -51,8 +52,16 @@
       <td>
         <form action="/addtower/" method="post">
           {% csrf_token %}
-          <input style="border: none; color: green" type="submit" value="➕">
+          <input style="border: none" type="submit" value="➕">
           <input type="hidden" name="tower" value="{{ tower.pubkey }}@{{ tower.address }}">
+        </form>
+      </td>
+      <td>
+        <form action="/deletetower/" method="post">
+          {% csrf_token %}
+          <input style="border: none" type="submit" value="❌">
+          <input type="hidden" name="pubkey" value="{{ tower.pubkey }">
+          <input type="hidden" name="address" value="{{ tower.address }}">
         </form>
       </td>
     </tr>
@@ -60,7 +69,7 @@
   </table>
 </div>
 {% endif %}
-{% if not towers %}
+{% if not active %}
 <div class="w3-container w3-padding-small">
   <center><h1>No watch towers found!</h1></center>
 </div>

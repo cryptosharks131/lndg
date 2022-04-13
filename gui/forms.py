@@ -43,6 +43,10 @@ class ConnectPeerForm(forms.Form):
 class AddTowerForm(forms.Form):
     tower = forms.CharField(label='tower_pubkey', max_length=200)
 
+class DeleteTowerForm(forms.Form):
+    pubkey = forms.CharField(label='tower_pubkey', max_length=66)
+    address = forms.CharField(label='tower_address', max_length=134)
+
 class RemoveTowerForm(forms.Form):
     pubkey = forms.CharField(label='tower_pubkey', max_length=66)
 
