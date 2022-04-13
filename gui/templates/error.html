@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Error{% endblock %}
+{% block content %}
+<div class="w3-container w3-padding-small">
+  <center><h1>An error has occured!</h1></center>
+  {% if error == 'StatusCode.UNAVAILABLE' %}<center><h2>LNDg cannot reach the gRPC for LND. Make sure LND is running and/or your gRPC settings are correct.</h2></center>{% endif %}
+  {% if error == 'StatusCode.UNKNOWN' %}<center><h2>LND may not be ready yet. Wait a bit longer or check your LND logs.</h2></center>{% endif %}
+  <center><h4>Error Code: {{ error }}</h4></center>
+</div>
+{% endblock %}

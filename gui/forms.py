@@ -40,6 +40,9 @@ class CloseChannelForm(forms.Form):
 class ConnectPeerForm(forms.Form):
     peer_id = forms.CharField(label='peer_pubkey', max_length=200)
 
+class AddTowerForm(forms.Form):
+    tower = forms.CharField(label='tower_pubkey', max_length=200)
+
 class AddInvoiceForm(forms.Form):
     value = forms.IntegerField(label='value')
 

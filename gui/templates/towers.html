@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Towers{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if towers %}
+<div class="w3-container w3-padding-small">
+  <h2>Towers</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Pubkey</th>
+      <th>Active</th>
+      <th>Sessions</th>
+      <th>Addresses</th>
+    </tr>
+    {% for tower in towers %}
+    <tr>
+      <td>>{{ tower.pubkey }}</td>
+      <td>{{ tower.active_session_candidate }}</td>
+      <td>{{ tower.num_sessions|intcomma }}</td>
+      <td>{{ tower.addresses }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not towers %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No watch towers found!</h1></center>
+</div>
+{% endif %}
+<div class="w3-container w3-padding-small">
+  <h2>Add A Watch Tower</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/addtower/" method="post">
+      {% csrf_token %}
+      <label for="tower">Tower Connection String: </label>
+      <input id="tower" type="text" name="tower">
+      <input type="submit" value="OK">
+    </form>
+  </div>
+</div>
+{% endblock %}
