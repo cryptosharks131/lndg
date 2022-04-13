@@ -8,17 +8,15 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Pubkey</th>
-      <th>Active</th>
+      <th>Address</th>
       <th>Sessions</th>
-      <th>Addresses</th>
       <th>Remove</th>
     </tr>
     {% for tower in active_towers %}
     <tr>
       <td>{{ tower.pubkey }}</td>
-      <td>{{ tower.active }}</td>
-      <td>{{ tower.num_sessions|intcomma }}</td>
       <td>{{ tower.address }}</td>
+      <td>{{ tower.num_sessions|intcomma }}</td>
       <td>
         <form action="/removetower/" method="post">
           {% csrf_token %}
@@ -37,18 +35,16 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Pubkey</th>
-      <th>Active</th>
+      <th>Address</th>
       <th>Sessions</th>
-      <th>Addresses</th>
       <th>Enable</th>
       <th>Delete</th>
     </tr>
     {% for tower in inactive_towers %}
     <tr>
       <td>{{ tower.pubkey }}</td>
-      <td>{{ tower.active }}</td>
-      <td>{{ tower.num_sessions|intcomma }}</td>
       <td>{{ tower.address }}</td>
+      <td>{{ tower.num_sessions|intcomma }}</td>
       <td>
         <form action="/addtower/" method="post">
           {% csrf_token %}
