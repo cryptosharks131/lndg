@@ -14,8 +14,8 @@
     </tr>
     {% for tower in towers %}
     <tr>
-      <td>>{{ tower.pubkey }}</td>
-      <td>{{ tower.active_session_candidate }}</td>
+      <td>{{ tower.pubkey }}</td>
+      <td>{{ tower.active }}</td>
       <td>{{ tower.num_sessions|intcomma }}</td>
       <td>{{ tower.addresses }}</td>
     </tr>

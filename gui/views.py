@@ -478,8 +478,17 @@ def towers(request):
     if request.method == 'GET':
         try:
             stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            response = stub.ListTowers(wtrpc.ListTowersRequest(include_sessions=False)).towers
+            towers = []
+            for item in response:
+                tower = {}
+                tower['pubkey'] = item.pubkey.hex()
+                tower['addresses'] = item.addresses
+                tower['active'] = item.active_session_candidate
+                tower['sessions'] = item.sessions
+                towers.append(tower)
             context = {
-                'towers': stub.ListTowers(wtrpc.ListTowersRequest(include_sessions=False)).towers
+                'towers': towers
             }
             return render(request, 'towers.html', context)
         except Exception as e:
@@ -489,7 +498,7 @@ def towers(request):
                 error = str(e)
             return render(request, 'error.html', {'error': error})
     else:
-        return redirect('home')
+        return redirect(request.META.get('HTTP_REFERER'))
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def add_tower_form(request):
@@ -513,7 +522,7 @@ def add_tower_form(request):
                 messages.error(request, 'Connection request failed! Error: ' + error_msg)
         else:
             messages.error(request, 'Invalid Request. Please try again.')
-    return redirect('home')
+    return redirect(request.META.get('HTTP_REFERER'))
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def resolutions(request):
