@@ -37,6 +37,7 @@ urlpatterns = [
     path('closechannel/', views.close_channel_form, name='close-channel-form'),
     path('connectpeer/', views.connect_peer_form, name='connect-peer-form'),
     path('addtower/', views.add_tower_form, name='add-tower-form'),
+    path('removetower/', views.remove_tower_form, name='remove-tower-form'),
     path('newaddress/', views.new_address_form, name='new-address-form'),
     path('createinvoice/', views.add_invoice_form, name='add-invoice-form'),
     path('rebalancer/', views.rebalance, name='rebalancer'),

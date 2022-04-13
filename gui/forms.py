@@ -43,6 +43,9 @@ class ConnectPeerForm(forms.Form):
 class AddTowerForm(forms.Form):
     tower = forms.CharField(label='tower_pubkey', max_length=200)
 
+class RemoveTowerForm(forms.Form):
+    pubkey = forms.CharField(label='tower_pubkey', max_length=66)
+
 class AddInvoiceForm(forms.Form):
     value = forms.IntegerField(label='value')
 
