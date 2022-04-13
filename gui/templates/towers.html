@@ -11,7 +11,7 @@
       <th>Active</th>
       <th>Sessions</th>
       <th>Addresses</th>
-      <th width=2%>Remove</th>
+      <th>Remove</th>
     </tr>
     {% for tower in towers %}
     <tr>
@@ -22,7 +22,7 @@
       <td>
         <form action="/removetower/" method="post">
           {% csrf_token %}
-          <input type="submit" value="❌">
+          <input style="border: none" type="submit" value="❌">
           <input type="hidden" name="pubkey" value="{{ tower.pubkey }}">
         </form>
       </td>
