@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %} {{ block.super }} - Towers{% endblock %}
+{% block title %} {{ block.super }} - Watch Towers{% endblock %}
 {% block content %}
 {% load humanize %}
-{% if towers %}
+{% if active_towers %}
 <div class="w3-container w3-padding-small">
-  <h2>Towers</h2>
+  <h2>Active Towers</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Pubkey</th>
@@ -13,17 +13,46 @@
       <th>Addresses</th>
       <th>Remove</th>
     </tr>
-    {% for tower in towers %}
+    {% for tower in active_towers %}
     <tr>
       <td>{{ tower.pubkey }}</td>
       <td>{{ tower.active }}</td>
       <td>{{ tower.num_sessions|intcomma }}</td>
-      <td>{{ tower.addresses }}</td>
+      <td>{{ tower.address }}</td>
       <td>
         <form action="/removetower/" method="post">
           {% csrf_token %}
           <input style="border: none" type="submit" value="❌">
           <input type="hidden" name="pubkey" value="{{ tower.pubkey }}">
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if inactive_towers %}
+<div class="w3-container w3-padding-small">
+  <h2>Inactive Towers</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Pubkey</th>
+      <th>Active</th>
+      <th>Sessions</th>
+      <th>Addresses</th>
+      <th>Remove</th>
+    </tr>
+    {% for tower in inactive_towers %}
+    <tr>
+      <td>{{ tower.pubkey }}</td>
+      <td>{{ tower.active }}</td>
+      <td>{{ tower.num_sessions|intcomma }}</td>
+      <td>{{ tower.address }}</td>
+      <td>
+        <form action="/addtower/" method="post">
+          {% csrf_token %}
+          <input style="border: none; color: green" type="submit" value="➕">
+          <input type="hidden" name="tower" value="{{ tower.pubkey }}@{{ tower.address }}">
         </form>
       </td>
     </tr>

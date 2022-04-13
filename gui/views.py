@@ -478,17 +478,20 @@ def towers(request):
     if request.method == 'GET':
         try:
             stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-            response = stub.ListTowers(wtrpc.ListTowersRequest(include_sessions=False)).towers
-            towers = []
-            for item in response:
-                tower = {}
-                tower['pubkey'] = item.pubkey.hex()
-                tower['addresses'] = item.addresses
-                tower['active'] = item.active_session_candidate
-                tower['num_sessions'] = item.num_sessions
-                towers.append(tower)
+            towers = stub.ListTowers(wtrpc.ListTowersRequest(include_sessions=False)).towers
+            active_towers = []
+            inactive_towers = []
+            for item in towers:
+                for address in item.addresses:
+                    tower = {}
+                    tower['pubkey'] = item.pubkey.hex()
+                    tower['address'] = address
+                    tower['active'] = item.active_session_candidate
+                    tower['num_sessions'] = item.num_sessions
+                    active_towers.append(tower) if tower['active'] else inactive_towers.append(tower)
             context = {
-                'towers': towers
+                'active_towers': active_towers,
+                'inactive_towers': inactive_towers
             }
             return render(request, 'towers.html', context)
         except Exception as e:
