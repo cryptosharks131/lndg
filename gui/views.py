@@ -503,7 +503,7 @@ def add_tower_form(request):
                     peer_pubkey, host = tower.split('@')
                 else:
                     raise Exception('Invalid tower connection string.')
-                response = stub.ConnectPeer(wtrpc.AddTowerRequest(pubkey=bytes.fromhex(peer_pubkey), address=host))
+                response = stub.AddTower(wtrpc.AddTowerRequest(pubkey=bytes.fromhex(peer_pubkey), address=host))
                 messages.success(request, 'Tower addition successful!' + str(response))
             except Exception as e:
                 error = str(e)
