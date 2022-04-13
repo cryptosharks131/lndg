@@ -60,7 +60,7 @@
         <form action="/deletetower/" method="post">
           {% csrf_token %}
           <input style="border: none" type="submit" value="❌">
-          <input type="hidden" name="pubkey" value="{{ tower.pubkey }">
+          <input type="hidden" name="pubkey" value="{{ tower.pubkey }}">
           <input type="hidden" name="address" value="{{ tower.address }}">
         </form>
       </td>
