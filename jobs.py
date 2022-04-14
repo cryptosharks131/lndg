@@ -364,7 +364,7 @@ def auto_fees(stub):
         if channels_df.shape[0] > 0:
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
-                failed_htlc_df = failed_htlc_df[failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']]
+                failed_htlc_df = failed_htlc_df[failed_htlc_df['wire_failure']==15 & failed_htlc_df['failure_detail']==6 & failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']]
             forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
             forwards_df_7d = DataFrame.from_records(forwards.values())
             forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()

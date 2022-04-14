@@ -79,7 +79,7 @@
             <input type="hidden" name="target" value="0">
           </form>
         </td>
-        <td>{{ channel.success_rate }}% ({{ channel.success }}/{{ channel.attempts }})</td>
+        <td>{% if channel.attempts == 0 %}---{% else %}{{ channel.success_rate }}% ({{ channel.success }}/{{ channel.attempts }}){% endif %}</td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
       </tr>
       {% endfor %}
