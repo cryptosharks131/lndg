@@ -2,6 +2,37 @@
 {% block title %} {{ block.super }} - Watch Towers{% endblock %}
 {% block content %}
 {% load humanize %}
+{% if stats %}
+<div class="w3-container w3-padding-small">
+  <h2>Watch Tower Stats</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Stat</th>
+      <th>Value</th>
+    </tr>
+    <tr>
+      <td>Total Backups</td>
+      <td>{{ stats.num_backups|intcomma }}</td>
+    <tr>
+    <tr>
+      <td>Pending Backups</td>
+      <td>{{ stats.num_pending_backups|intcomma }}</td>
+    <tr>
+    <tr>
+      <td>Failed Backups</td>
+      <td>{{ stats.num_failed_backups|intcomma }}</td>
+    <tr>
+    <tr>
+      <td>Sessions Acquired</td>
+      <td>{{ stats.num_sessions_acquired|intcomma }}</td>
+    <tr>
+    <tr>
+      <td>Sessions Exhausted</td>
+      <td>{{ stats.num_sessions_exhausted|intcomma }}</td>
+    <tr>
+  </table>
+</div>
+{% endif %}
 {% if active_towers %}
 <div class="w3-container w3-padding-small">
   <h2>Active Towers</h2>
@@ -65,7 +96,7 @@
   </table>
 </div>
 {% endif %}
-{% if not active %}
+{% if not active_towers and not inactive_towers %}
 <div class="w3-container w3-padding-small">
   <center><h1>No watch towers found!</h1></center>
 </div>

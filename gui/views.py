@@ -489,9 +489,11 @@ def towers(request):
                     tower['active'] = item.active_session_candidate
                     tower['num_sessions'] = item.num_sessions
                     active_towers.append(tower) if tower['active'] else inactive_towers.append(tower)
+            stats = stub.Stats(wtrpc.StatsRequest())
             context = {
                 'active_towers': active_towers,
-                'inactive_towers': inactive_towers
+                'inactive_towers': inactive_towers,
+                'stats': stats
             }
             return render(request, 'towers.html', context)
         except Exception as e:
