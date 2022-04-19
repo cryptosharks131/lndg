@@ -10,6 +10,7 @@
   {% if tower.sessions %}
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
+      <th>Record</th>
       <th>Total Backups</th>
       <th>Pending Backups</th>
       <th>Failed Backups</th>
@@ -18,6 +19,7 @@
     </tr>
     {% for session in tower.sessions %}
     <tr>
+      <td>{{ forloop.counter }}</td>
       <td>{{ session.num_backups|intcomma }}</td>
       <td>{{ session.num_pending_backups|intcomma }}</td>
       <td>{{ session.max_backups|intcomma }}</td>
