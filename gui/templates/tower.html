@@ -16,13 +16,13 @@
       <th>Sessions Acquired</th>
       <th>Sessions Exhausted</th>
     </tr>
-    {% for session in sessions %}
+    {% for session in tower.sessions %}
     <tr>
-      <td>{{ stats.num_backups|intcomma }}</td>
-      <td>{{ stats.num_pending_backups|intcomma }}</td>
-      <td>{{ stats.max_backups|intcomma }}</td>
-      <td>{{ stats.sweep_sat_per_byte|intcomma }}</td>
-      <td>{{ stats.sweep_sat_per_vbyte|intcomma }}</td>
+      <td>{{ session.num_backups|intcomma }}</td>
+      <td>{{ session.num_pending_backups|intcomma }}</td>
+      <td>{{ session.max_backups|intcomma }}</td>
+      <td>{{ session.sweep_sat_per_byte|intcomma }}</td>
+      <td>{{ session.sweep_sat_per_vbyte|intcomma }}</td>
     </tr>
     {% endfor %}
   </table>
