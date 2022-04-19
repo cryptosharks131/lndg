@@ -506,6 +506,29 @@ def towers(request):
         return redirect(request.META.get('HTTP_REFERER'))
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def tower(request):
+    if request.method == 'GET':
+        pubkey = request.GET.urlencode()[1:]
+        try:
+            stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            if len(pubkey) == 66:
+                tower = stub.GetTowerInfo(wtrpc.GetTowerInfoRequest(pubkey=bytes.fromhex(pubkey), include_sessions=True))
+            else:
+                tower = []
+            context = {
+                'tower': tower
+            }
+            return render(request, 'tower.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def add_tower_form(request):
     if request.method == 'POST':
         form = AddTowerForm(request.POST)

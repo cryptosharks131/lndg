@@ -25,6 +25,7 @@ urlpatterns = [
     path('balances', views.balances, name='balances'),
     path('closures', views.closures, name='closures'),
     path('towers', views.towers, name='towers'),
+    path('tower', views.tower, name='tower'),
     path('resolutions', views.resolutions, name='resolutions'),
     path('channel', views.channel, name='channel'),
     path('pending_htlcs', views.pending_htlcs, name='pending-htlcs'),
