@@ -516,6 +516,7 @@ def tower(request):
             else:
                 tower = []
             context = {
+                'pubkey': pubkey,
                 'tower': tower
             }
             return render(request, 'tower.html', context)

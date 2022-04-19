@@ -4,8 +4,8 @@
 {% load humanize %}
 {% if tower %}
 <div class="w3-container w3-padding-small">
-  <h2>Details For Wacth Tower: {{ tower.pubkey }}</h2>
-  <h4>Addresses: {{ tower.addresses }}</h4>
+  <h2>Details For Wacth Tower: {{ pubkey }}</h2>
+  <h4>Addresses: {% for address in tower.addresses %}{{ address }} | {% endfor %}</h4>
   <h4>Active Candidate: {{ tower.active_session_candidate }} | Number Of Sessions: {{ tower.num_sessions|intcomma }}</h4>
   {% if tower.sessions %}
   <table class="w3-table-all w3-centered w3-hoverable">
