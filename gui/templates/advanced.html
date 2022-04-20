@@ -23,6 +23,13 @@
             <input type="hidden" name="key" value="ALL-oBase">
           </form>
         </td>
+        <td title="Update all channel CLTVs">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="18" max="1000" name="value" value="">
+            <input type="hidden" name="key" value="ALL-CLTV">
+          </form>
+        </td>
         <th colspan="2"></th>
         <td title="Update all channel AR amount amounts">
           <form action="/update_setting/" method="post">
@@ -71,6 +78,7 @@
         <th>Channel State</th>
         <th>oRate</th>
         <th>oBase</th>
+        <th>oCLTV</th>
         <th>iRate</th>
         <th>iBase</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
@@ -115,6 +123,14 @@
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="0">
+          </form>
+        </td>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="9">
           </form>
         </td>
         <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>

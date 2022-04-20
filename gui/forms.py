@@ -17,7 +17,7 @@ class RebalancerModelChoiceField(forms.models.ModelMultipleChoiceField):
 class ChanPolicyModelChoiceIterator(forms.models.ModelChoiceIterator):
     def choice(self, obj):
         return (self.field.prepare_value(obj),
-                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.local_base_fee) + ' | ' + str(obj.local_fee_rate)))
+                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.local_base_fee) + ' | ' + str(obj.local_fee_rate) + ' | ' + str(obj.local_cltv)))
 
 class ChanPolicyModelChoiceField(forms.models.ModelMultipleChoiceField):
     def _get_choices(self):
@@ -67,9 +67,10 @@ class ChanPolicyForm(forms.ModelForm):
     class Meta:
         model = Channels
         fields = []
-    new_base_fee = forms.IntegerField(label='new_base_fee')
-    new_fee_rate = forms.IntegerField(label='new_fee_rate')
-    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-alias'), required=False)
+    new_base_fee = forms.IntegerField(label='new_base_fee', required=False)
+    new_fee_rate = forms.IntegerField(label='new_fee_rate', required=False)
+    new_cltv = forms.IntegerField(label='new_cltv', required=False)
+    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1).order_by('-alias'), required=False)
     target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class AutoRebalanceForm(forms.Form):
@@ -92,6 +93,7 @@ updates_channel_codes = [
     (6, 'ar_max_cost'),
     (7, 'channel_state'),
     (8, 'auto_fees'),
+    (9, 'cltv'),
 ]
 
 class UpdateChannel(forms.Form):

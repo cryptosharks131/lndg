@@ -1312,32 +1312,49 @@ def update_chan_policy(request):
     if request.method == 'POST':
         form = ChanPolicyForm(request.POST)
         if form.is_valid():
-            try:
-                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                if form.cleaned_data['target_all']:
-                    args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': 40}
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
-                    channels = Channels.objects.filter(is_open=True)
-                    channels.update(fees_updated=datetime.now())
-                elif len(form.cleaned_data['target_chans']) > 0:
-                    for channel in form.cleaned_data['target_chans']:
-                        channel_point = ln.ChannelPoint()
-                        channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                        channel_point.funding_txid_str = channel.funding_txid
-                        channel_point.output_index = channel.output_index
-                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
-                        db_channel = Channels.objects.get(chan_id=channel.chan_id)
-                        db_channel.fees_updated = datetime.now()
-                        db_channel.save()
-                else:
-                    messages.error(request, 'No channels were specified in the update request!')
-                messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
-            except Exception as e:
-                error = str(e)
-                details_index = error.find('details =') + 11
-                debug_error_index = error.find('debug_error_string =') - 3
-                error_msg = error[details_index:debug_error_index]
-                messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
+            if form.cleaned_data['new_base_fee'] is not None or form.cleaned_data['new_fee_rate'] is not None or form.cleaned_data['new_cltv'] is not None:
+                try:
+                    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    if form.cleaned_data['target_all']:
+                        if form.cleaned_data['new_base_fee'] is not None and form.cleaned_data['new_fee_rate'] is not None and form.cleaned_data['new_cltv'] is not None:
+                            args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': form.cleaned_data['new_cltv']}
+                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
+                            channels = Channels.objects.filter(is_open=True)
+                            channels.update(local_base_fee=form.cleaned_data['new_base_fee'])
+                            channels.update(local_fee_rate=form.cleaned_data['new_fee_rate'])
+                            channels.update(local_cltv=form.cleaned_data['new_cltv'])
+                            channels.update(fees_updated=datetime.now())
+                        else:
+                            messages.error(request, 'You must specify all parameters when updating all channels.')
+                            return redirect('home')
+                    elif len(form.cleaned_data['target_chans']) > 0:
+                        for channel in form.cleaned_data['target_chans']:
+                            channel_point = ln.ChannelPoint()
+                            channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
+                            channel_point.funding_txid_str = channel.funding_txid
+                            channel_point.output_index = channel.output_index
+                            new_base_fee = form.cleaned_data['new_base_fee'] if form.cleaned_data['new_base_fee'] is not None else channel.local_base_fee
+                            new_fee_rate = form.cleaned_data['new_fee_rate']/1000000 if form.cleaned_data['new_fee_rate'] is not None else channel.local_fee_rate/1000000
+                            new_cltv = form.cleaned_data['new_cltv'] if form.cleaned_data['new_cltv'] is not None else channel.local_cltv
+                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
+                            db_channel = Channels.objects.get(chan_id=channel.chan_id)
+                            db_channel.local_base_fee = new_base_fee
+                            db_channel.local_fee_rate = new_fee_rate*1000000
+                            db_channel.local_cltv = new_cltv
+                            db_channel.fees_updated = datetime.now()
+                            db_channel.save()
+                    else:
+                        messages.error(request, 'No channels were specified in the update request!')
+                        return redirect('home')
+                    messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
+                except Exception as e:
+                    error = str(e)
+                    details_index = error.find('details =') + 11
+                    debug_error_index = error.find('debug_error_string =') - 3
+                    error_msg = error[details_index:debug_error_index]
+                    messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
+            else:
+                messages.error(request, 'You must specify at least one parameter.')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -1449,7 +1466,7 @@ def update_channel(request):
                 channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                 channel_point.funding_txid_str = db_channel.funding_txid
                 channel_point.output_index = db_channel.output_index
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=40))
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv))
                 db_channel.local_base_fee = target
                 db_channel.save()
                 messages.success(request, 'Base fee for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
@@ -1459,7 +1476,7 @@ def update_channel(request):
                 channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                 channel_point.funding_txid_str = db_channel.funding_txid
                 channel_point.output_index = db_channel.output_index
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
                 db_channel.local_fee_rate = target
                 db_channel.fees_updated = datetime.now()
                 db_channel.save()
@@ -1500,6 +1517,17 @@ def update_channel(request):
                 db_channel.auto_fees = True if db_channel.auto_fees == False else False
                 db_channel.save()
                 messages.success(request, 'Auto fees status for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_fees))
+            elif update_target == 9:
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=target))
+                db_channel.local_cltv = target
+                db_channel.fees_updated = datetime.now()
+                db_channel.save()
+                messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:
@@ -1632,7 +1660,7 @@ def update_setting(request):
                     channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                     channel_point.funding_txid_str = db_channel.funding_txid
                     channel_point.output_index = db_channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
                     db_channel.local_fee_rate = target
                     db_channel.fees_updated = datetime.now()
                     db_channel.save()
@@ -1647,10 +1675,24 @@ def update_setting(request):
                     channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                     channel_point.funding_txid_str = db_channel.funding_txid
                     channel_point.output_index = db_channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=40))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv))
                     db_channel.local_base_fee = target
                     db_channel.save()
                 messages.success(request, 'Base fee for all channels updated to a value of: ' + str(target))
+            elif key == 'ALL-CLTV':
+                target = int(value)
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channels = Channels.objects.filter(is_open=True)
+                for db_channel in channels:
+                    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    channel_point = ln.ChannelPoint()
+                    channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                    channel_point.funding_txid_str = db_channel.funding_txid
+                    channel_point.output_index = db_channel.output_index
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=target))
+                    db_channel.local_cltv = target
+                    db_channel.save()
+                messages.success(request, 'CLTV for all channels updated to a value of: ' + str(target))
             elif key == 'ALL-Amts':
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True).update(ar_amt_target=target)
