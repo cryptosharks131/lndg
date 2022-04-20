@@ -1341,7 +1341,8 @@ def update_chan_policy(request):
                             db_channel.local_base_fee = new_base_fee
                             db_channel.local_fee_rate = new_fee_rate*1000000
                             db_channel.local_cltv = new_cltv
-                            db_channel.fees_updated = datetime.now()
+                            if form.cleaned_data['new_fee_rate'] is not None:
+                                db_channel.fees_updated = datetime.now()
                             db_channel.save()
                     else:
                         messages.error(request, 'No channels were specified in the update request!')
@@ -1525,7 +1526,6 @@ def update_channel(request):
                 channel_point.output_index = db_channel.output_index
                 stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=target))
                 db_channel.local_cltv = target
-                db_channel.fees_updated = datetime.now()
                 db_channel.save()
                 messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             else:
