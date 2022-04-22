@@ -1074,6 +1074,19 @@ def batch(request):
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
+def connect_peer(peer_pubkey, stub):
+    if Peers.objects.filter(pubkey=peer_pubkey, connected=True).exists():
+        return True
+    else:
+        try:
+            node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+            host = node.addresses[0].addr
+            ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
+            stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+            return True
+        except:
+            return False
+
 @login_required(login_url='/lndg-admin/login/?next=/')
 def batch_open(request):
     if request.method == 'POST':
@@ -1081,39 +1094,69 @@ def batch_open(request):
         if form.is_valid():
             count = 0
             open_list = []
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             if form.cleaned_data['pubkey1'] and form.cleaned_data['amt1'] and len(form.cleaned_data['pubkey1']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey1'], 'amt':form.cleaned_data['amt1']})
+                peer_pubkey = form.cleaned_data['pubkey1']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':peer_pubkey, 'amt':form.cleaned_data['amt1']})
             if form.cleaned_data['pubkey2'] and form.cleaned_data['amt2'] and len(form.cleaned_data['pubkey2']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey2'], 'amt':form.cleaned_data['amt2']})
+                peer_pubkey = form.cleaned_data['pubkey2']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey2'], 'amt':form.cleaned_data['amt2']})
             if form.cleaned_data['pubkey3'] and form.cleaned_data['amt3'] and len(form.cleaned_data['pubkey3']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey3'], 'amt':form.cleaned_data['amt3']})
+                peer_pubkey = form.cleaned_data['pubkey3']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey3'], 'amt':form.cleaned_data['amt3']})
             if form.cleaned_data['pubkey4'] and form.cleaned_data['amt4'] and len(form.cleaned_data['pubkey4']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey4'], 'amt':form.cleaned_data['amt4']})
+                peer_pubkey = form.cleaned_data['pubkey4']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey4'], 'amt':form.cleaned_data['amt4']})
             if form.cleaned_data['pubkey5'] and form.cleaned_data['amt5'] and len(form.cleaned_data['pubkey5']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey5'], 'amt':form.cleaned_data['amt5']})
+                peer_pubkey = form.cleaned_data['pubkey5']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey5'], 'amt':form.cleaned_data['amt5']})
             if form.cleaned_data['pubkey6'] and form.cleaned_data['amt6'] and len(form.cleaned_data['pubkey6']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey6'], 'amt':form.cleaned_data['amt6']})
+                peer_pubkey = form.cleaned_data['pubkey6']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey6'], 'amt':form.cleaned_data['amt6']})
             if form.cleaned_data['pubkey7'] and form.cleaned_data['amt7'] and len(form.cleaned_data['pubkey7']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey7'], 'amt':form.cleaned_data['amt7']})
+                peer_pubkey = form.cleaned_data['pubkey7']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey7'], 'amt':form.cleaned_data['amt7']})
             if form.cleaned_data['pubkey8'] and form.cleaned_data['amt8'] and len(form.cleaned_data['pubkey8']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey8'], 'amt':form.cleaned_data['amt8']})
+                peer_pubkey = form.cleaned_data['pubkey8']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey8'], 'amt':form.cleaned_data['amt8']})
             if form.cleaned_data['pubkey9'] and form.cleaned_data['amt9'] and len(form.cleaned_data['pubkey9']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey9'], 'amt':form.cleaned_data['amt9']})
+                peer_pubkey = form.cleaned_data['pubkey9']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey9'], 'amt':form.cleaned_data['amt9']})
             if form.cleaned_data['pubkey10'] and form.cleaned_data['amt10'] and len(form.cleaned_data['pubkey10']) == 66:
                 count += 1
-                open_list.append({'pubkey':form.cleaned_data['pubkey10'], 'amt':form.cleaned_data['amt10']})
+                peer_pubkey = form.cleaned_data['pubkey10']
+                connected = connect_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey10'], 'amt':form.cleaned_data['amt10']})
             if len (open_list) > 0:
                 try:
-                    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
                     channels = []
                     for open in open_list:
                         channel_open = ln.BatchOpenChannel()

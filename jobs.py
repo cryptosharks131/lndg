@@ -95,7 +95,7 @@ def update_payments(stub):
                                 db_payment.message = message
                             if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
                                 db_payment.rebal_chan = hop.chan_id
-                            db_payment.save()
+                        db_payment.save()
 
 def update_invoices(stub):
     #Remove anything open so we can get most up to date status
