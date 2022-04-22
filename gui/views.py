@@ -1093,6 +1093,7 @@ def batch_open(request):
         form = BatchOpenForm(request.POST)
         if form.is_valid():
             count = 0
+            fail = False
             open_list = []
             stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             if form.cleaned_data['pubkey1'] and form.cleaned_data['amt1'] and len(form.cleaned_data['pubkey1']) == 66:
