@@ -1101,60 +1101,92 @@ def batch_open(request):
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':peer_pubkey, 'amt':form.cleaned_data['amt1']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 1!')
             if form.cleaned_data['pubkey2'] and form.cleaned_data['amt2'] and len(form.cleaned_data['pubkey2']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey2']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey2'], 'amt':form.cleaned_data['amt2']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 2!')
             if form.cleaned_data['pubkey3'] and form.cleaned_data['amt3'] and len(form.cleaned_data['pubkey3']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey3']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey3'], 'amt':form.cleaned_data['amt3']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 3!')
             if form.cleaned_data['pubkey4'] and form.cleaned_data['amt4'] and len(form.cleaned_data['pubkey4']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey4']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey4'], 'amt':form.cleaned_data['amt4']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 4!')
             if form.cleaned_data['pubkey5'] and form.cleaned_data['amt5'] and len(form.cleaned_data['pubkey5']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey5']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey5'], 'amt':form.cleaned_data['amt5']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 5!')
             if form.cleaned_data['pubkey6'] and form.cleaned_data['amt6'] and len(form.cleaned_data['pubkey6']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey6']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey6'], 'amt':form.cleaned_data['amt6']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 6!')
             if form.cleaned_data['pubkey7'] and form.cleaned_data['amt7'] and len(form.cleaned_data['pubkey7']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey7']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey7'], 'amt':form.cleaned_data['amt7']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 7!')
             if form.cleaned_data['pubkey8'] and form.cleaned_data['amt8'] and len(form.cleaned_data['pubkey8']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey8']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey8'], 'amt':form.cleaned_data['amt8']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 8!')
             if form.cleaned_data['pubkey9'] and form.cleaned_data['amt9'] and len(form.cleaned_data['pubkey9']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey9']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey9'], 'amt':form.cleaned_data['amt9']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 9!')
             if form.cleaned_data['pubkey10'] and form.cleaned_data['amt10'] and len(form.cleaned_data['pubkey10']) == 66:
                 count += 1
                 peer_pubkey = form.cleaned_data['pubkey10']
                 connected = open_peer(peer_pubkey, stub)
                 if connected:
                     open_list.append({'pubkey':form.cleaned_data['pubkey10'], 'amt':form.cleaned_data['amt10']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 10!')
+            if fail == True:
+                return redirect('home')
             if len (open_list) > 0:
                 try:
                     channels = []
