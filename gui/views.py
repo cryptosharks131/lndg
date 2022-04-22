@@ -1186,7 +1186,7 @@ def batch_open(request):
                     fail = True
                     messages.error(request, 'Unable to connect with peer 10!')
             if fail == True:
-                return redirect('home')
+                return redirect('batch')
             if len (open_list) > 0:
                 try:
                     channels = []
