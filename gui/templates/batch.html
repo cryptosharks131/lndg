@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Batch Open{% endblock %}
+{% block content %}
+{% load humanize %}
+<div class="w3-container w3-padding-small">
+  <h2>Batch Open Up To 10 Channels</h2>
+  <form action="/batchopen/" method="post">
+    {% csrf_token %}
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <tr>
+        <th>ID</th>
+        <th>Pubkey</th>
+        <th>Amt</th>
+      </tr>
+      {% for num in iterator %}
+      <tr>
+        <td>{{ num }}</td>
+        <td><input style="text-align:center" id="pubkey{{ num }}" name="pubkey{{ num }}" value=""></td>
+        <td><input style="text-align:center" id="amt{{ num }}" type="number" min="0" name="amt{{ num }}" value=""></td>
+      </tr>
+      {% endfor %}
+    </table>
+    <ul>
+      Opening Fee Rate (sats/vbyte): <input style="text-align:center" id="fee_rate" type="number" min="1" name="fee_rate" value="">
+      <input type="submit" value="OK">
+    </ul>
+  </form>
+</div>
+{% endblock %}
