@@ -21,7 +21,7 @@
       <td>{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</td>
       <td>{{ log.setting }}</td>
       <td>{{ log.old_value }}</td>
-      <td>{{ log.new_value }}</td>
+      <td {% if if log.new_value > log.old_value %}style="background-color: #d5fadb"{% else %}style="background-color: #fadbd5"{% endif %}>{{ log.new_value }}</td>
     </tr>
     {% endfor %}
   </table>
