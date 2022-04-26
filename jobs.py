@@ -206,8 +206,10 @@ def update_channels(stub):
         db_channel.local_commit = channel.commit_fee
         db_channel.local_chan_reserve = channel.local_chan_reserve_sat
         db_channel.num_updates = channel.num_updates
-        db_channel.last_update = datetime.now() if db_channel.is_active != channel.active else db_channel.last_update
-        db_channel.is_active = channel.active
+        if db_channel.is_active != channel.active:
+            db_channel.last_update = datetime.now()
+            db_channel.alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias
+            db_channel.is_active = channel.active
         db_channel.is_open = True
         db_channel.total_sent = channel.total_satoshis_sent
         db_channel.total_received = channel.total_satoshis_received
@@ -445,8 +447,8 @@ def main():
     try:
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         #Update data
-        update_channels(stub)
         update_peers(stub)
+        update_channels(stub)
         update_invoices(stub)
         update_payments(stub)
         update_forwards(stub)
