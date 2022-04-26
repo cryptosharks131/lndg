@@ -25,7 +25,6 @@ urlpatterns = [
     path('balances', views.balances, name='balances'),
     path('closures', views.closures, name='closures'),
     path('towers', views.towers, name='towers'),
-    path('tower', views.tower, name='tower'),
     path('batch', views.batch, name='batch'),
     path('batchopen/', views.batch_open, name='batch-open'),
     path('resolutions', views.resolutions, name='resolutions'),
