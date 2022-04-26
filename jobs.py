@@ -208,7 +208,8 @@ def update_channels(stub):
         db_channel.num_updates = channel.num_updates
         if db_channel.is_active != channel.active:
             db_channel.last_update = datetime.now()
-            db_channel.alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias
+            peer_alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias
+            db_channel.alias = '' if peer_alias is None else peer_alias
             db_channel.is_active = channel.active
         db_channel.is_open = True
         db_channel.total_sent = channel.total_satoshis_sent
