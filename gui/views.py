@@ -8,13 +8,15 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
-from .lnd_deps import lightning_pb2 as ln
-from .lnd_deps import lightning_pb2_grpc as lnrpc
+from gui.lnd_deps import lightning_pb2 as ln
+from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
+from gui.lnd_deps import wtclient_pb2 as wtrpc
+from gui.lnd_deps import wtclient_pb2_grpc as wtstub
 from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
@@ -39,182 +41,189 @@ def network_links():
 @login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-        #Get balance and general node information
-        node_info = stub.GetInfo(ln.GetInfoRequest())
-        balances = stub.WalletBalance(ln.WalletBalanceRequest())
-        pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
-        limbo_balance = pending_channels.total_limbo_balance
-        pending_open = pending_channels.pending_open_channels
-        pending_closed = pending_channels.pending_closing_channels
-        pending_force_closed = pending_channels.pending_force_closing_channels
-        waiting_for_close = pending_channels.waiting_close_channels
-        #Get recorded payment events
-        payments = Payments.objects.exclude(status=3)
-        total_payments = payments.filter(status=2).count()
-        total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
-        total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
-        #Get recorded invoice details
-        invoices = Invoices.objects.exclude(state=2)
-        total_invoices = invoices.filter(state=1).count()
-        total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
-        #Get recorded forwarding events
-        forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
-        forwards_df = DataFrame.from_records(forwards.values())
-        total_forwards = forwards_df.shape[0]
-        total_value_forwards = 0 if total_forwards == 0 else int(forwards_df['amt_out_msat'].sum()/1000)
-        total_earned = 0 if total_forwards == 0 else forwards_df['fee'].sum()
-        forwards_df_in_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).sum()
-        forwards_df_out_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).sum()
-        forwards_df_in_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).count()
-        forwards_df_out_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).count()
-        #Get current active channels
-        active_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
-        active_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
-        active_inbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
-        active_outbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-        active_unsettled = 0 if active_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
-        filter_7day = datetime.now() - timedelta(days=7)
-        forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
-        forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
-        forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
-        forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
-        forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
-        routed_7day = forwards_df_7d.shape[0]
-        routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
-        total_earned_7day = 0 if routed_7day == 0 else forwards_df_7d['fee'].sum()
-        payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
-        payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
-        total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
-        pending_htlc_count = Channels.objects.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if Channels.objects.filter(is_open=True).exists() else 0
-        pending_outbound = Channels.objects.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if Channels.objects.filter(is_open=True).exists() else 0
-        pending_inbound = Channels.objects.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if Channels.objects.filter(is_open=True).exists() else 0
-        detailed_active_channels = []
-        for channel in active_channels:
-            detailed_channel = {}
-            detailed_channel['remote_pubkey'] = channel.remote_pubkey
-            detailed_channel['chan_id'] = channel.chan_id
-            detailed_channel['capacity'] = channel.capacity
-            detailed_channel['local_balance'] = channel.local_balance + channel.pending_outbound
-            detailed_channel['remote_balance'] = channel.remote_balance + channel.pending_inbound
-            detailed_channel['unsettled_balance'] = channel.unsettled_balance
-            detailed_channel['initiator'] = channel.initiator
-            detailed_channel['alias'] = channel.alias
-            detailed_channel['local_base_fee'] = channel.local_base_fee
-            detailed_channel['local_fee_rate'] = channel.local_fee_rate
-            detailed_channel['local_disabled'] = channel.local_disabled
-            detailed_channel['remote_base_fee'] = channel.remote_base_fee
-            detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
-            detailed_channel['remote_disabled'] = channel.remote_disabled
-            detailed_channel['last_update'] = channel.last_update
-            detailed_channel['funding_txid'] = channel.funding_txid
-            detailed_channel['output_index'] = channel.output_index
-            detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
-            detailed_channel['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
-            detailed_channel['routed_in'] = forwards_df_in_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_count.index == channel.chan_id).any() else 0
-            detailed_channel['routed_out'] = forwards_df_out_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_count.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_in'] = int(forwards_df_in_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_out'] = int(forwards_df_out_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_sum.index == channel.chan_id).any() else 0
-            detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
-            detailed_channel['htlc_count'] = channel.htlc_count
-            detailed_channel['auto_rebalance'] = channel.auto_rebalance
-            detailed_channel['ar_in_target'] = channel.ar_in_target
-            detailed_active_channels.append(detailed_channel)
-        #Get current inactive channels
-        inactive_channels = Channels.objects.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
-        inactive_capacity = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('capacity'))['capacity__sum']
-        private_channels = Channels.objects.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
-        inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-        inactive_inbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
-        private_count = private_channels.count()
-        active_private = private_channels.filter(is_active=True).count()
-        private_capacity = private_channels.aggregate(Sum('capacity'))['capacity__sum']
-        private_outbound = 0 if private_count == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-        sum_outbound = active_outbound + pending_outbound + inactive_outbound
-        sum_inbound = active_inbound + pending_inbound + inactive_inbound
-        onchain_txs = Onchain.objects.all()
-        onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
-        onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
-        total_costs = total_fees + onchain_costs
-        total_costs_7day = total_7day_fees + onchain_costs_7day
-        #Get list of recent rebalance requests
-        rebalances = Rebalancer.objects.all().annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id')
-        total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
-        local_settings = LocalSettings.objects.filter(key__contains='AR-')
         try:
-            db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
-        except:
-            db_size = 0
-        #Build context for front-end and render page
-        context = {
-            'node_info': node_info,
-            'total_channels': total_channels,
-            'balances': balances,
-            'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
-            'total_sent': int(total_sent),
-            'fees_paid': int(total_fees),
-            'total_payments': total_payments,
-            'invoices': invoices.order_by('-creation_date')[:6],
-            'total_received': total_received,
-            'total_invoices': total_invoices,
-            'forwards': forwards_df.head(15).to_dict(orient='records'),
-            'earned': int(total_earned),
-            'total_forwards': total_forwards,
-            'total_value_forwards': total_value_forwards,
-            'routed_7day': routed_7day,
-            'routed_7day_amt': routed_7day_amt,
-            'earned_7day': int(total_earned_7day),
-            'routed_7day_percent': 0 if sum_outbound == 0 else int((routed_7day_amt/sum_outbound)*100),
-            'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees)/(sum_outbound/1000000)),
-            'profit_per_outbound_real': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day)/(sum_outbound/1000000)),
-            'percent_cost': 0 if total_earned == 0 else int((total_costs/total_earned)*100),
-            'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
-            'onchain_costs': onchain_costs,
-            'onchain_costs_7day': onchain_costs_7day,
-            'total_7day_fees': int(total_7day_fees),
-            'active_channels': detailed_active_channels,
-            'total_capacity': active_capacity + inactive_capacity,
-            'active_private': active_private,
-            'total_private': private_count,
-            'private_outbound': private_outbound,
-            'private_capacity': private_capacity,
-            'inbound': active_inbound,
-            'sum_inbound': sum_inbound,
-            'inactive_inbound': inactive_inbound,
-            'outbound': active_outbound,
-            'sum_outbound': sum_outbound,
-            'inactive_outbound': inactive_outbound,
-            'unsettled': active_unsettled,
-            'inactive_unsettled': pending_outbound + pending_inbound - active_unsettled,
-            'total_unsettled': pending_outbound + pending_inbound,
-            'limbo_balance': limbo_balance,
-            'inactive_channels': inactive_channels,
-            'private_channels': private_channels,
-            'pending_open': pending_open,
-            'pending_closed': pending_closed,
-            'pending_force_closed': pending_force_closed,
-            'waiting_for_close': waiting_for_close,
-            'rebalances': rebalances[:12],
-            'chan_policy_form': ChanPolicyForm,
-            'local_settings': local_settings,
-            'pending_htlc_count': pending_htlc_count,
-            'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
-            'payments_ppm': 0 if total_sent == 0 else int((total_fees/total_sent)*1000000),
-            'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
-            '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
-            '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
-            'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
-            'eligible_count': Channels.objects.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
-            'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
-            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'graph_links': graph_links(),
-            'network_links': network_links(),
-            'db_size': db_size
-        }
-        return render(request, 'home.html', context)
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            #Get balance and general node information
+            node_info = stub.GetInfo(ln.GetInfoRequest())
+            balances = stub.WalletBalance(ln.WalletBalanceRequest())
+            pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
+            limbo_balance = pending_channels.total_limbo_balance
+            pending_open = pending_channels.pending_open_channels
+            pending_closed = pending_channels.pending_closing_channels
+            pending_force_closed = pending_channels.pending_force_closing_channels
+            waiting_for_close = pending_channels.waiting_close_channels
+            #Get recorded payment events
+            payments = Payments.objects.exclude(status=3)
+            total_payments = payments.filter(status=2).count()
+            total_sent = 0 if total_payments == 0 else payments.filter(status=2).aggregate(Sum('value'))['value__sum']
+            total_fees = 0 if total_payments == 0 else payments.aggregate(Sum('fee'))['fee__sum']
+            #Get recorded invoice details
+            invoices = Invoices.objects.exclude(state=2)
+            total_invoices = invoices.filter(state=1).count()
+            total_received = 0 if total_invoices == 0 else invoices.aggregate(Sum('amt_paid'))['amt_paid__sum']
+            #Get recorded forwarding events
+            forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
+            forwards_df = DataFrame.from_records(forwards.values())
+            total_forwards = forwards_df.shape[0]
+            total_value_forwards = 0 if total_forwards == 0 else int(forwards_df['amt_out_msat'].sum()/1000)
+            total_earned = 0 if total_forwards == 0 else forwards_df['fee'].sum()
+            forwards_df_in_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_sum = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).sum()
+            forwards_df_in_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_in', as_index=True).count()
+            forwards_df_out_count = DataFrame() if forwards_df.empty else forwards_df.groupby('chan_id_out', as_index=True).count()
+            #Get current active channels
+            active_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
+            active_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
+            active_inbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
+            active_outbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+            active_unsettled = 0 if active_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
+            filter_7day = datetime.now() - timedelta(days=7)
+            forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
+            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+            forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
+            forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
+            routed_7day = forwards_df_7d.shape[0]
+            routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
+            total_earned_7day = 0 if routed_7day == 0 else forwards_df_7d['fee'].sum()
+            payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
+            payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
+            total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
+            pending_htlc_count = Channels.objects.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if Channels.objects.filter(is_open=True).exists() else 0
+            pending_outbound = Channels.objects.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if Channels.objects.filter(is_open=True).exists() else 0
+            pending_inbound = Channels.objects.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if Channels.objects.filter(is_open=True).exists() else 0
+            detailed_active_channels = []
+            for channel in active_channels:
+                detailed_channel = {}
+                detailed_channel['remote_pubkey'] = channel.remote_pubkey
+                detailed_channel['chan_id'] = channel.chan_id
+                detailed_channel['capacity'] = channel.capacity
+                detailed_channel['local_balance'] = channel.local_balance + channel.pending_outbound
+                detailed_channel['remote_balance'] = channel.remote_balance + channel.pending_inbound
+                detailed_channel['unsettled_balance'] = channel.unsettled_balance
+                detailed_channel['initiator'] = channel.initiator
+                detailed_channel['alias'] = channel.alias
+                detailed_channel['local_base_fee'] = channel.local_base_fee
+                detailed_channel['local_fee_rate'] = channel.local_fee_rate
+                detailed_channel['local_disabled'] = channel.local_disabled
+                detailed_channel['remote_base_fee'] = channel.remote_base_fee
+                detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
+                detailed_channel['remote_disabled'] = channel.remote_disabled
+                detailed_channel['last_update'] = channel.last_update
+                detailed_channel['funding_txid'] = channel.funding_txid
+                detailed_channel['output_index'] = channel.output_index
+                detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
+                detailed_channel['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
+                detailed_channel['routed_in'] = forwards_df_in_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_count.index == channel.chan_id).any() else 0
+                detailed_channel['routed_out'] = forwards_df_out_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_count.index == channel.chan_id).any() else 0
+                detailed_channel['amt_routed_in'] = int(forwards_df_in_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_sum.index == channel.chan_id).any() else 0
+                detailed_channel['amt_routed_out'] = int(forwards_df_out_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_sum.index == channel.chan_id).any() else 0
+                detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
+                detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
+                detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
+                detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
+                detailed_channel['htlc_count'] = channel.htlc_count
+                detailed_channel['auto_rebalance'] = channel.auto_rebalance
+                detailed_channel['ar_in_target'] = channel.ar_in_target
+                detailed_active_channels.append(detailed_channel)
+            #Get current inactive channels
+            inactive_channels = Channels.objects.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
+            inactive_capacity = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('capacity'))['capacity__sum']
+            private_channels = Channels.objects.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
+            inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+            inactive_inbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
+            private_count = private_channels.count()
+            active_private = private_channels.filter(is_active=True).count()
+            private_capacity = private_channels.aggregate(Sum('capacity'))['capacity__sum']
+            private_outbound = 0 if private_count == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
+            sum_outbound = active_outbound + pending_outbound + inactive_outbound
+            sum_inbound = active_inbound + pending_inbound + inactive_inbound
+            onchain_txs = Onchain.objects.all()
+            onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
+            onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+            total_costs = total_fees + onchain_costs
+            total_costs_7day = total_7day_fees + onchain_costs_7day
+            #Get list of recent rebalance requests
+            rebalances = Rebalancer.objects.all().annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id')
+            total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
+            local_settings = LocalSettings.objects.filter(key__contains='AR-')
+            try:
+                db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
+            except:
+                db_size = 0
+            #Build context for front-end and render page
+            context = {
+                'node_info': node_info,
+                'total_channels': total_channels,
+                'balances': balances,
+                'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
+                'total_sent': int(total_sent),
+                'fees_paid': int(total_fees),
+                'total_payments': total_payments,
+                'invoices': invoices.order_by('-creation_date')[:6],
+                'total_received': total_received,
+                'total_invoices': total_invoices,
+                'forwards': forwards_df.head(15).to_dict(orient='records'),
+                'earned': int(total_earned),
+                'total_forwards': total_forwards,
+                'total_value_forwards': total_value_forwards,
+                'routed_7day': routed_7day,
+                'routed_7day_amt': routed_7day_amt,
+                'earned_7day': int(total_earned_7day),
+                'routed_7day_percent': 0 if sum_outbound == 0 else int((routed_7day_amt/sum_outbound)*100),
+                'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees)/(sum_outbound/1000000)),
+                'profit_per_outbound_real': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day)/(sum_outbound/1000000)),
+                'percent_cost': 0 if total_earned == 0 else int((total_costs/total_earned)*100),
+                'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
+                'onchain_costs': onchain_costs,
+                'onchain_costs_7day': onchain_costs_7day,
+                'total_7day_fees': int(total_7day_fees),
+                'active_channels': detailed_active_channels,
+                'total_capacity': active_capacity + inactive_capacity,
+                'active_private': active_private,
+                'total_private': private_count,
+                'private_outbound': private_outbound,
+                'private_capacity': private_capacity,
+                'inbound': active_inbound,
+                'sum_inbound': sum_inbound,
+                'inactive_inbound': inactive_inbound,
+                'outbound': active_outbound,
+                'sum_outbound': sum_outbound,
+                'inactive_outbound': inactive_outbound,
+                'unsettled': active_unsettled,
+                'inactive_unsettled': pending_outbound + pending_inbound - active_unsettled,
+                'total_unsettled': pending_outbound + pending_inbound,
+                'limbo_balance': limbo_balance,
+                'inactive_channels': inactive_channels,
+                'private_channels': private_channels,
+                'pending_open': pending_open,
+                'pending_closed': pending_closed,
+                'pending_force_closed': pending_force_closed,
+                'waiting_for_close': waiting_for_close,
+                'rebalances': rebalances[:12],
+                'chan_policy_form': ChanPolicyForm,
+                'local_settings': local_settings,
+                'pending_htlc_count': pending_htlc_count,
+                'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
+                'payments_ppm': 0 if total_sent == 0 else int((total_fees/total_sent)*1000000),
+                'routed_ppm': 0 if total_value_forwards == 0 else int((total_earned/total_value_forwards)*1000000),
+                '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
+                '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
+                'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
+                'eligible_count': Channels.objects.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
+                'enabled_count': Channels.objects.filter(is_open=True, auto_rebalance=True).count(),
+                'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+                'graph_links': graph_links(),
+                'network_links': network_links(),
+                'db_size': db_size
+            }
+            return render(request, 'home.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
@@ -323,7 +332,7 @@ def fees(request):
         if channels_df.shape[0] > 0:
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
-                failed_htlc_df = failed_htlc_df[failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']]
+                failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
             forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
             forwards_df_7d = DataFrame.from_records(forwards.values())
             forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
@@ -348,12 +357,12 @@ def fees(request):
             channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_sum.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
             channels_df['rebal_ppm'] = channels_df.apply(lambda row: int((row['costs_7day']/row['amt_rebal_in_7day'])*1000000) if row['amt_rebal_in_7day'] > 0 else 0, axis=1)
-            channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15) if row['in_percent'] > 25 else int(row['local_fee_rate']), axis=1)
+            channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
+            channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate']+row['profit_margin'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15) if row['in_percent'] > 25 else int(row['local_fee_rate']), axis=1)
             channels_df['max_suggestion'] = channels_df.apply(lambda row: row['local_fee_rate']+25 if row['max_suggestion'] > (row['local_fee_rate']+25) or row['max_suggestion'] == 0 else row['max_suggestion'], axis=1)
-            channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75) if row['out_percent'] > 25 else int(row['local_fee_rate']), axis=1)
+            channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['rebal_ppm'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75) if row['out_percent'] > 25 else int(row['local_fee_rate']), axis=1)
             channels_df['min_suggestion'] = channels_df.apply(lambda row: row['local_fee_rate']-50 if row['min_suggestion'] < (row['local_fee_rate']-50) else row['min_suggestion'], axis=1)
             channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
-            channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
             channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']), axis=1)
             channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
             channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02), axis=1)
@@ -465,6 +474,103 @@ def closures(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def towers(request):
+    if request.method == 'GET':
+        try:
+            stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            towers = stub.ListTowers(wtrpc.ListTowersRequest(include_sessions=False)).towers
+            active_towers = []
+            inactive_towers = []
+            for item in towers:
+                for address in item.addresses:
+                    tower = {}
+                    tower['pubkey'] = item.pubkey.hex()
+                    tower['address'] = address
+                    tower['active'] = item.active_session_candidate
+                    tower['num_sessions'] = item.num_sessions
+                    active_towers.append(tower) if tower['active'] else inactive_towers.append(tower)
+            stats = stub.Stats(wtrpc.StatsRequest())
+            context = {
+                'active_towers': active_towers,
+                'inactive_towers': inactive_towers,
+                'stats': stats
+            }
+            return render(request, 'towers.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def add_tower_form(request):
+    if request.method == 'POST':
+        form = AddTowerForm(request.POST)
+        if form.is_valid():
+            try:
+                stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                tower = form.cleaned_data['tower']
+                if tower.count('@') == 1 and len(tower.split('@')[0]) == 66:
+                    peer_pubkey, host = tower.split('@')
+                else:
+                    raise Exception('Invalid tower connection string.')
+                response = stub.AddTower(wtrpc.AddTowerRequest(pubkey=bytes.fromhex(peer_pubkey), address=host))
+                messages.success(request, 'Tower addition successful!' + str(response))
+            except Exception as e:
+                error = str(e)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Add tower request failed! Error: ' + error_msg)
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def delete_tower_form(request):
+    if request.method == 'POST':
+        form = DeleteTowerForm(request.POST)
+        if form.is_valid():
+            try:
+                stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                pubkey = bytes.fromhex(form.cleaned_data['pubkey'])
+                address = form.cleaned_data['address']
+                response = stub.RemoveTower(wtrpc.RemoveTowerRequest(pubkey=pubkey, address=address))
+                messages.success(request, 'Tower deletion successful!' + str(response))
+            except Exception as e:
+                error = str(e)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Delete tower request failed! Error: ' + error_msg)
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def remove_tower_form(request):
+    if request.method == 'POST':
+        form = RemoveTowerForm(request.POST)
+        if form.is_valid():
+            try:
+                stub = wtstub.WatchtowerClientStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                pubkey = bytes.fromhex(form.cleaned_data['pubkey'])
+                response = stub.RemoveTower(wtrpc.RemoveTowerRequest(pubkey=pubkey))
+                messages.success(request, 'Tower removal successful!' + str(response))
+            except Exception as e:
+                error = str(e)
+                details_index = error.find('details =') + 11
+                debug_error_index = error.find('debug_error_string =') - 3
+                error_msg = error[details_index:debug_error_index]
+                messages.error(request, 'Remove tower request failed! Error: ' + error_msg)
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def resolutions(request):
     if request.method == 'GET':
         chan_id = request.GET.urlencode()[1:]
@@ -570,33 +676,33 @@ def channel(request):
             channels_df['failed_out_1day'] = 0
             start_date = None
             if failed_htlc_df.shape[0]> 0:
-                channels_df['failed_out'] = len(failed_htlc_df[failed_htlc_df['chan_id_out']==chan_id][failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']])
+                channels_df['failed_out'] = len(failed_htlc_df[(failed_htlc_df['chan_id_out']==chan_id) & (failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])])
                 failed_htlc_df_30d = failed_htlc_df.loc[failed_htlc_df['timestamp'] >= filter_30day]
                 if failed_htlc_df_30d.shape[0]> 0:
-                    channels_df['failed_out_30day'] = len(failed_htlc_df_30d[failed_htlc_df_30d['chan_id_out']==chan_id][failed_htlc_df_30d['wire_failure']==15][failed_htlc_df_30d['failure_detail']==6][failed_htlc_df_30d['amount']>failed_htlc_df_30d['chan_out_liq']+failed_htlc_df_30d['chan_out_pending']])
+                    channels_df['failed_out_30day'] = len(failed_htlc_df_30d[(failed_htlc_df_30d['chan_id_out']==chan_id) & (failed_htlc_df_30d['wire_failure']==15) & (failed_htlc_df_30d['failure_detail']==6) & (failed_htlc_df_30d['amount']>failed_htlc_df_30d['chan_out_liq']+failed_htlc_df_30d['chan_out_pending'])])
                     failed_htlc_df_7d = failed_htlc_df_30d.loc[failed_htlc_df_30d['timestamp'] >= filter_7day]
                     if failed_htlc_df_7d.shape[0]> 0:
-                        channels_df['failed_out_7day'] = len(failed_htlc_df_7d[failed_htlc_df_7d['chan_id_out']==chan_id][failed_htlc_df_7d['wire_failure']==15][failed_htlc_df_7d['failure_detail']==6][failed_htlc_df_7d['amount']>failed_htlc_df_7d['chan_out_liq']+failed_htlc_df_7d['chan_out_pending']])
+                        channels_df['failed_out_7day'] = len(failed_htlc_df_7d[(failed_htlc_df_7d['chan_id_out']==chan_id) & (failed_htlc_df_7d['wire_failure']==15) & (failed_htlc_df_7d['failure_detail']==6) & (failed_htlc_df_7d['amount']>failed_htlc_df_7d['chan_out_liq']+failed_htlc_df_7d['chan_out_pending'])])
                         failed_htlc_df_1d = failed_htlc_df_7d.loc[failed_htlc_df_7d['timestamp'] >= filter_1day]
                         if failed_htlc_df_1d.shape[0]> 0:
-                            channels_df['failed_out_1day'] = len(failed_htlc_df_1d[failed_htlc_df_1d['chan_id_out']==chan_id][failed_htlc_df_1d['wire_failure']==15][failed_htlc_df_1d['failure_detail']==6][failed_htlc_df_1d['amount']>failed_htlc_df_1d['chan_out_liq']+failed_htlc_df_1d['chan_out_pending']])
+                            channels_df['failed_out_1day'] = len(failed_htlc_df_1d[(failed_htlc_df_1d['chan_id_out']==chan_id) & (failed_htlc_df_1d['wire_failure']==15) & (failed_htlc_df_1d['failure_detail']==6) & (failed_htlc_df_1d['amount']>failed_htlc_df_1d['chan_out_liq']+failed_htlc_df_1d['chan_out_pending'])])
             if rebalancer_df.shape[0]> 0:
-                channels_df['attempts'] = len(rebalancer_df[rebalancer_df['status']>=2][rebalancer_df['status']<400])
+                channels_df['attempts'] = len(rebalancer_df[(rebalancer_df['status']>=2) & (rebalancer_df['status']<400)])
                 channels_df['success'] = len(rebalancer_df[rebalancer_df['status']==2])
                 channels_df['success_rate'] = 0 if channels_df['attempts'][0] == 0 else int((channels_df['success']/channels_df['attempts'])*100)
                 rebalancer_df_30d = rebalancer_df.loc[rebalancer_df['stop'] >= filter_30day]
                 if rebalancer_df_30d.shape[0]> 0:
-                    channels_df['attempts_30day'] = len(rebalancer_df_30d[rebalancer_df_30d['status']>=2][rebalancer_df_30d['status']<400])
+                    channels_df['attempts_30day'] = len(rebalancer_df_30d[(rebalancer_df_30d['status']>=2) & (rebalancer_df_30d['status']<400)])
                     channels_df['success_30day'] = len(rebalancer_df_30d[rebalancer_df_30d['status']==2])
                     channels_df['success_rate_30day'] = 0 if channels_df['attempts_30day'][0] == 0 else int((channels_df['success_30day']/channels_df['attempts_30day'])*100)
                     rebalancer_df_7d = rebalancer_df_30d.loc[rebalancer_df_30d['stop'] >= filter_7day]
                     if rebalancer_df_7d.shape[0]> 0:
-                        channels_df['attempts_7day'] = len(rebalancer_df_7d[rebalancer_df_7d['status']>=2][rebalancer_df_7d['status']<400])
+                        channels_df['attempts_7day'] = len(rebalancer_df_7d[(rebalancer_df_7d['status']>=2) & (rebalancer_df_7d['status']<400)])
                         channels_df['success_7day'] = len(rebalancer_df_7d[rebalancer_df_7d['status']==2])
                         channels_df['success_rate_7day'] = 0 if channels_df['attempts_7day'][0] == 0 else int((channels_df['success_7day']/channels_df['attempts_7day'])*100)
                         rebalancer_df_1d = rebalancer_df_7d.loc[rebalancer_df_7d['stop'] >= filter_1day]
                         if rebalancer_df_1d.shape[0]> 0:
-                            channels_df['attempts_1day'] = len(rebalancer_df_1d[rebalancer_df_1d['status']>=2][rebalancer_df_1d['status']<400])
+                            channels_df['attempts_1day'] = len(rebalancer_df_1d[(rebalancer_df_1d['status']>=2) & (rebalancer_df_1d['status']<400)])
                             channels_df['success_1day'] = len(rebalancer_df_1d[rebalancer_df_1d['status']==2])
                             channels_df['success_rate_1day'] = 0 if channels_df['attempts_1day'][0] == 0 else int((channels_df['success_1day']/channels_df['attempts_1day'])*100)
             if forwards_df.shape[0]> 0:
@@ -935,6 +1041,153 @@ def invoices(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def batch(request):
+    if request.method == 'GET':
+        context = {
+            'iterator': range(1,11),
+        }
+        return render(request, 'batch.html', context)
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+def open_peer(peer_pubkey, stub):
+    if Peers.objects.filter(pubkey=peer_pubkey, connected=True).exists():
+        return True
+    else:
+        try:
+            node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer_pubkey, include_channels=False)).node
+            host = node.addresses[0].addr
+            ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
+            stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+            return True
+        except:
+            return False
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def batch_open(request):
+    if request.method == 'POST':
+        form = BatchOpenForm(request.POST)
+        if form.is_valid():
+            count = 0
+            fail = False
+            open_list = []
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            if form.cleaned_data['pubkey1'] and form.cleaned_data['amt1'] and len(form.cleaned_data['pubkey1']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey1']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':peer_pubkey, 'amt':form.cleaned_data['amt1']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 1!')
+            if form.cleaned_data['pubkey2'] and form.cleaned_data['amt2'] and len(form.cleaned_data['pubkey2']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey2']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey2'], 'amt':form.cleaned_data['amt2']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 2!')
+            if form.cleaned_data['pubkey3'] and form.cleaned_data['amt3'] and len(form.cleaned_data['pubkey3']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey3']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey3'], 'amt':form.cleaned_data['amt3']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 3!')
+            if form.cleaned_data['pubkey4'] and form.cleaned_data['amt4'] and len(form.cleaned_data['pubkey4']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey4']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey4'], 'amt':form.cleaned_data['amt4']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 4!')
+            if form.cleaned_data['pubkey5'] and form.cleaned_data['amt5'] and len(form.cleaned_data['pubkey5']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey5']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey5'], 'amt':form.cleaned_data['amt5']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 5!')
+            if form.cleaned_data['pubkey6'] and form.cleaned_data['amt6'] and len(form.cleaned_data['pubkey6']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey6']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey6'], 'amt':form.cleaned_data['amt6']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 6!')
+            if form.cleaned_data['pubkey7'] and form.cleaned_data['amt7'] and len(form.cleaned_data['pubkey7']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey7']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey7'], 'amt':form.cleaned_data['amt7']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 7!')
+            if form.cleaned_data['pubkey8'] and form.cleaned_data['amt8'] and len(form.cleaned_data['pubkey8']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey8']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey8'], 'amt':form.cleaned_data['amt8']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 8!')
+            if form.cleaned_data['pubkey9'] and form.cleaned_data['amt9'] and len(form.cleaned_data['pubkey9']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey9']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey9'], 'amt':form.cleaned_data['amt9']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 9!')
+            if form.cleaned_data['pubkey10'] and form.cleaned_data['amt10'] and len(form.cleaned_data['pubkey10']) == 66:
+                count += 1
+                peer_pubkey = form.cleaned_data['pubkey10']
+                connected = open_peer(peer_pubkey, stub)
+                if connected:
+                    open_list.append({'pubkey':form.cleaned_data['pubkey10'], 'amt':form.cleaned_data['amt10']})
+                else:
+                    fail = True
+                    messages.error(request, 'Unable to connect with peer 10!')
+            if fail == True:
+                return redirect('batch')
+            if len (open_list) > 0:
+                try:
+                    channels = []
+                    for open in open_list:
+                        channel_open = ln.BatchOpenChannel()
+                        channel_open.node_pubkey = bytes.fromhex(open['pubkey'])
+                        channel_open.local_funding_amount = open['amt']
+                        channels.append(channel_open)
+                    response = stub.BatchOpenChannel(ln.BatchOpenChannelRequest(channels=channels, sat_per_vbyte=form.cleaned_data['fee_rate']))
+                    print(response)
+                    messages.success(request, 'Batch opened channels!')
+                except Exception as e:
+                    error = str(e)
+                    details_index = error.find('details =') + 11
+                    debug_error_index = error.find('debug_error_string =') - 3
+                    error_msg = error[details_index:debug_error_index]
+                    messages.error(request, 'Batch open failed! Error: ' + error_msg)
+            else:
+                messages.error(request, 'No channels specified!')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect('batch')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def forwards(request):
     if request.method == 'GET':
         context = {
@@ -1182,32 +1435,50 @@ def update_chan_policy(request):
     if request.method == 'POST':
         form = ChanPolicyForm(request.POST)
         if form.is_valid():
-            try:
-                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                if form.cleaned_data['target_all']:
-                    args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': 40}
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
-                    channels = Channels.objects.filter(is_open=True)
-                    channels.update(fees_updated=datetime.now())
-                elif len(form.cleaned_data['target_chans']) > 0:
-                    for channel in form.cleaned_data['target_chans']:
-                        channel_point = ln.ChannelPoint()
-                        channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                        channel_point.funding_txid_str = channel.funding_txid
-                        channel_point.output_index = channel.output_index
-                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=form.cleaned_data['new_base_fee'], fee_rate=(form.cleaned_data['new_fee_rate']/1000000), time_lock_delta=40))
-                        db_channel = Channels.objects.get(chan_id=channel.chan_id)
-                        db_channel.fees_updated = datetime.now()
-                        db_channel.save()
-                else:
-                    messages.error(request, 'No channels were specified in the update request!')
-                messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
-            except Exception as e:
-                error = str(e)
-                details_index = error.find('details =') + 11
-                debug_error_index = error.find('debug_error_string =') - 3
-                error_msg = error[details_index:debug_error_index]
-                messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
+            if form.cleaned_data['new_base_fee'] is not None or form.cleaned_data['new_fee_rate'] is not None or form.cleaned_data['new_cltv'] is not None:
+                try:
+                    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    if form.cleaned_data['target_all']:
+                        if form.cleaned_data['new_base_fee'] is not None and form.cleaned_data['new_fee_rate'] is not None and form.cleaned_data['new_cltv'] is not None:
+                            args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': form.cleaned_data['new_cltv']}
+                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
+                            channels = Channels.objects.filter(is_open=True)
+                            channels.update(local_base_fee=form.cleaned_data['new_base_fee'])
+                            channels.update(local_fee_rate=form.cleaned_data['new_fee_rate'])
+                            channels.update(local_cltv=form.cleaned_data['new_cltv'])
+                            channels.update(fees_updated=datetime.now())
+                        else:
+                            messages.error(request, 'You must specify all parameters when updating all channels.')
+                            return redirect('home')
+                    elif len(form.cleaned_data['target_chans']) > 0:
+                        for channel in form.cleaned_data['target_chans']:
+                            channel_point = ln.ChannelPoint()
+                            channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
+                            channel_point.funding_txid_str = channel.funding_txid
+                            channel_point.output_index = channel.output_index
+                            new_base_fee = form.cleaned_data['new_base_fee'] if form.cleaned_data['new_base_fee'] is not None else channel.local_base_fee
+                            new_fee_rate = form.cleaned_data['new_fee_rate']/1000000 if form.cleaned_data['new_fee_rate'] is not None else channel.local_fee_rate/1000000
+                            new_cltv = form.cleaned_data['new_cltv'] if form.cleaned_data['new_cltv'] is not None else channel.local_cltv
+                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
+                            db_channel = Channels.objects.get(chan_id=channel.chan_id)
+                            db_channel.local_base_fee = new_base_fee
+                            db_channel.local_fee_rate = new_fee_rate*1000000
+                            db_channel.local_cltv = new_cltv
+                            if form.cleaned_data['new_fee_rate'] is not None:
+                                db_channel.fees_updated = datetime.now()
+                            db_channel.save()
+                    else:
+                        messages.error(request, 'No channels were specified in the update request!')
+                        return redirect('home')
+                    messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
+                except Exception as e:
+                    error = str(e)
+                    details_index = error.find('details =') + 11
+                    debug_error_index = error.find('debug_error_string =') - 3
+                    error_msg = error[details_index:debug_error_index]
+                    messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
+            else:
+                messages.error(request, 'You must specify at least one parameter.')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
@@ -1319,7 +1590,7 @@ def update_channel(request):
                 channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                 channel_point.funding_txid_str = db_channel.funding_txid
                 channel_point.output_index = db_channel.output_index
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=40))
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv))
                 db_channel.local_base_fee = target
                 db_channel.save()
                 messages.success(request, 'Base fee for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
@@ -1329,7 +1600,7 @@ def update_channel(request):
                 channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                 channel_point.funding_txid_str = db_channel.funding_txid
                 channel_point.output_index = db_channel.output_index
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
                 db_channel.local_fee_rate = target
                 db_channel.fees_updated = datetime.now()
                 db_channel.save()
@@ -1370,6 +1641,16 @@ def update_channel(request):
                 db_channel.auto_fees = True if db_channel.auto_fees == False else False
                 db_channel.save()
                 messages.success(request, 'Auto fees status for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.auto_fees))
+            elif update_target == 9:
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=target))
+                db_channel.local_cltv = target
+                db_channel.save()
+                messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:
@@ -1502,7 +1783,7 @@ def update_setting(request):
                     channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                     channel_point.funding_txid_str = db_channel.funding_txid
                     channel_point.output_index = db_channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=40))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
                     db_channel.local_fee_rate = target
                     db_channel.fees_updated = datetime.now()
                     db_channel.save()
@@ -1517,10 +1798,24 @@ def update_setting(request):
                     channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
                     channel_point.funding_txid_str = db_channel.funding_txid
                     channel_point.output_index = db_channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=40))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=target, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv))
                     db_channel.local_base_fee = target
                     db_channel.save()
                 messages.success(request, 'Base fee for all channels updated to a value of: ' + str(target))
+            elif key == 'ALL-CLTV':
+                target = int(value)
+                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                channels = Channels.objects.filter(is_open=True)
+                for db_channel in channels:
+                    stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                    channel_point = ln.ChannelPoint()
+                    channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                    channel_point.funding_txid_str = db_channel.funding_txid
+                    channel_point.output_index = db_channel.output_index
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=target))
+                    db_channel.local_cltv = target
+                    db_channel.save()
+                messages.success(request, 'CLTV for all channels updated to a value of: ' + str(target))
             elif key == 'ALL-Amts':
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True).update(ar_amt_target=target)

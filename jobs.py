@@ -41,17 +41,20 @@ def update_payments(stub):
                             PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                             cost_to += fee
                             if hop_count == 1:
-                                new_payment.chan_out = hop.chan_id
-                                new_payment.chan_out_alias = alias
-                            if hop_count == total_hops and 5482373484 in hop.custom_records:
+                                if new_payment.chan_out is None:
+                                    new_payment.chan_out = hop.chan_id
+                                    new_payment.chan_out_alias = alias
+                                else:
+                                    new_payment.chan_out = 'MPP'
+                                    new_payment.chan_out_alias = 'MPP'
+                            if hop_count == total_hops and 5482373484 in hop.custom_records and new_payment.keysend_preimage is None:
                                 records = hop.custom_records
                                 message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
                                 new_payment.keysend_preimage = records[5482373484].hex()
                                 new_payment.message = message
-                            if hop_count == total_hops and hop.pub_key == self_pubkey:
+                            if hop_count == total_hops and hop.pub_key == self_pubkey and new_payment.rebal_chan is None:
                                 new_payment.rebal_chan = hop.chan_id
                         new_payment.save()
-                        break
         except:
             #Error inserting, try to update instead
             db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
@@ -79,16 +82,20 @@ def update_payments(stub):
                             PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                             cost_to += fee
                             if hop_count == 1:
-                                db_payment.chan_out = hop.chan_id
-                                db_payment.chan_out_alias = alias
-                                db_payment.save()
-                            if hop_count == total_hops and 5482373484 in hop.custom_records:
+                                if db_payment.chan_out is None:
+                                    db_payment.chan_out = hop.chan_id
+                                    db_payment.chan_out_alias = alias
+                                else:
+                                    db_payment.chan_out = 'MPP'
+                                    db_payment.chan_out_alias = 'MPP'
+                            if hop_count == total_hops and 5482373484 in hop.custom_records and db_payment.keysend_preimage is None:
                                 records = hop.custom_records
                                 message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
                                 db_payment.keysend_preimage = records[5482373484].hex()
                                 db_payment.message = message
-                                db_payment.save()
-                        break
+                            if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
+                                db_payment.rebal_chan = hop.chan_id
+                        db_payment.save()
 
 def update_invoices(stub):
     #Remove anything open so we can get most up to date status
@@ -170,31 +177,40 @@ def update_channels(stub):
                 db_channel.local_base_fee = chan_data.node2_policy.fee_base_msat
                 db_channel.local_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
                 db_channel.local_disabled = chan_data.node2_policy.disabled
+                db_channel.local_cltv = chan_data.node2_policy.time_lock_delta
                 db_channel.remote_base_fee = chan_data.node1_policy.fee_base_msat
                 db_channel.remote_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
                 db_channel.remote_disabled = chan_data.node1_policy.disabled
+                db_channel.remote_cltv = chan_data.node1_policy.time_lock_delta
             else:
                 db_channel.local_base_fee = chan_data.node1_policy.fee_base_msat
                 db_channel.local_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
                 db_channel.local_disabled = chan_data.node1_policy.disabled
+                db_channel.local_cltv = chan_data.node1_policy.time_lock_delta
                 db_channel.remote_base_fee = chan_data.node2_policy.fee_base_msat
                 db_channel.remote_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
                 db_channel.remote_disabled = chan_data.node2_policy.disabled
+                db_channel.remote_cltv = chan_data.node2_policy.time_lock_delta
         except:
             db_channel.local_base_fee = 0
             db_channel.local_fee_rate = 0
             db_channel.local_disabled = False
+            db_channel.local_cltv = 40
             db_channel.remote_base_fee = 0
             db_channel.remote_fee_rate = 0
             db_channel.remote_disabled = False
+            db_channel.remote_cltv = 40
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
         db_channel.local_commit = channel.commit_fee
         db_channel.local_chan_reserve = channel.local_chan_reserve_sat
         db_channel.num_updates = channel.num_updates
-        db_channel.last_update = datetime.now() if db_channel.is_active != channel.active else db_channel.last_update
-        db_channel.is_active = channel.active
+        if db_channel.is_active != channel.active:
+            db_channel.last_update = datetime.now()
+            peer_alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias
+            db_channel.alias = '' if peer_alias is None else peer_alias
+            db_channel.is_active = channel.active
         db_channel.is_open = True
         db_channel.total_sent = channel.total_satoshis_sent
         db_channel.total_received = channel.total_satoshis_received
@@ -286,7 +302,12 @@ def update_closures(stub):
                 resolution_count = len(closure.resolutions)
                 txid, index = closure.channel_point.split(':')
                 db_closure = Closures(chan_id=closure.chan_id, funding_txid=txid, funding_index=index, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
-                db_closure.save()
+                try:
+                    db_closure.save()
+                except Exception as e:
+                    print('Error inserting closure:', str(e))
+                    Closures.objects.filter(funding_txid=txid,funding_index=index).delete()
+                    return
                 if resolution_count > 0:
                     Resolutions.objects.filter(chan_id=closure.chan_id).delete()
                     for resolution in closure.resolutions:
@@ -359,12 +380,12 @@ def auto_fees(stub):
         filter_7day = datetime.now() - timedelta(days=7)
         channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
         channels_df = DataFrame.from_records(channels.values())
-        channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
-        channels_df = channels_df[channels_df['eligible']==True]
         if channels_df.shape[0] > 0:
+            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
+            channels_df = channels_df[channels_df['eligible']==True]
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
-                failed_htlc_df = failed_htlc_df[failed_htlc_df['wire_failure']==15][failed_htlc_df['failure_detail']==6][failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending']]
+                failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
             forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
             forwards_df_7d = DataFrame.from_records(forwards.values())
             forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
@@ -389,12 +410,12 @@ def auto_fees(stub):
             channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_sum.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
             channels_df['rebal_ppm'] = channels_df.apply(lambda row: int((row['costs_7day']/row['amt_rebal_in_7day'])*1000000) if row['amt_rebal_in_7day'] > 0 else 0, axis=1)
-            channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15) if row['in_percent'] > 25 else int(row['local_fee_rate']), axis=1)
+            channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
+            channels_df['max_suggestion'] = channels_df.apply(lambda row: int((row['out_rate']+row['profit_margin'] if row['out_rate'] > 0 else row['local_fee_rate'])*1.15) if row['in_percent'] > 25 else int(row['local_fee_rate']), axis=1)
             channels_df['max_suggestion'] = channels_df.apply(lambda row: row['local_fee_rate']+25 if row['max_suggestion'] > (row['local_fee_rate']+25) or row['max_suggestion'] == 0 else row['max_suggestion'], axis=1)
-            channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['out_rate'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75) if row['out_percent'] > 25 else int(row['local_fee_rate']), axis=1)
+            channels_df['min_suggestion'] = channels_df.apply(lambda row: int((row['rebal_ppm'] if row['out_rate'] > 0 else row['local_fee_rate'])*0.75) if row['out_percent'] > 25 else int(row['local_fee_rate']), axis=1)
             channels_df['min_suggestion'] = channels_df.apply(lambda row: row['local_fee_rate']-50 if row['min_suggestion'] < (row['local_fee_rate']-50) else row['min_suggestion'], axis=1)
             channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
-            channels_df['profit_margin'] = channels_df.apply(lambda row: row['out_rate']*((100-row['ar_max_cost'])/100), axis=1)
             channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']), axis=1)
             channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
             channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02), axis=1)
@@ -417,7 +438,7 @@ def auto_fees(stub):
                     channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
                     channel_point.funding_txid_str = channel.funding_txid
                     channel_point.output_index = channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=40))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
                     channel.local_fee_rate = target_channel['new_rate']
                     channel.fees_updated = datetime.now()
                     channel.save()
@@ -427,8 +448,8 @@ def main():
     try:
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         #Update data
-        update_channels(stub)
         update_peers(stub)
+        update_channels(stub)
         update_invoices(stub)
         update_payments(stub)
         update_forwards(stub)

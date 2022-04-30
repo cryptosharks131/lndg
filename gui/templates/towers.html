@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Watch Towers{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if stats %}
+<div class="w3-container w3-padding-small">
+  <h2>Watch Tower Stats</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Stat</th>
+      <th>Value</th>
+    </tr>
+    <tr>
+      <td>Total Backups</td>
+      <td>{{ stats.num_backups|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Pending Backups</td>
+      <td>{{ stats.num_pending_backups|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Failed Backups</td>
+      <td>{{ stats.num_failed_backups|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Sessions Acquired</td>
+      <td>{{ stats.num_sessions_acquired|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Sessions Exhausted</td>
+      <td>{{ stats.num_sessions_exhausted|intcomma }}</td>
+    </tr>
+  </table>
+</div>
+{% endif %}
+{% if active_towers %}
+<div class="w3-container w3-padding-small">
+  <h2>Active Towers</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Pubkey</th>
+      <th>Address</th>
+      <th>Sessions</th>
+      <th>Remove</th>
+    </tr>
+    {% for tower in active_towers %}
+    <tr>
+      <td>{{ tower.pubkey }}</td>
+      <td>{{ tower.address }}</td>
+      <td>{{ tower.num_sessions|intcomma }}</td>
+      <td>
+        <form action="/removetower/" method="post">
+          {% csrf_token %}
+          <input style="border: none" type="submit" value="❌">
+          <input type="hidden" name="pubkey" value="{{ tower.pubkey }}">
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if inactive_towers %}
+<div class="w3-container w3-padding-small">
+  <h2>Inactive Towers</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Pubkey</th>
+      <th>Address</th>
+      <th>Sessions</th>
+      <th>Enable</th>
+      <th>Delete</th>
+    </tr>
+    {% for tower in inactive_towers %}
+    <tr>
+      <td>{{ tower.pubkey }}</td>
+      <td>{{ tower.address }}</td>
+      <td>{{ tower.num_sessions|intcomma }}</td>
+      <td>
+        <form action="/addtower/" method="post">
+          {% csrf_token %}
+          <input style="border: none" type="submit" value="➕">
+          <input type="hidden" name="tower" value="{{ tower.pubkey }}@{{ tower.address }}">
+        </form>
+      </td>
+      <td>
+        <form action="/deletetower/" method="post">
+          {% csrf_token %}
+          <input style="border: none" type="submit" value="❌">
+          <input type="hidden" name="pubkey" value="{{ tower.pubkey }}">
+          <input type="hidden" name="address" value="{{ tower.address }}">
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not active_towers and not inactive_towers %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No watch towers found!</h1></center>
+</div>
+{% endif %}
+<div class="w3-container w3-padding-small">
+  <h2>Add A Watch Tower</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/addtower/" method="post">
+      {% csrf_token %}
+      <label for="tower">Tower Connection String: </label>
+      <input id="tower" type="text" name="tower">
+      <input type="submit" value="OK">
+    </form>
+  </div>
+</div>
+{% endblock %}

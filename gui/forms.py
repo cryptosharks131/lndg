@@ -17,7 +17,7 @@ class RebalancerModelChoiceField(forms.models.ModelMultipleChoiceField):
 class ChanPolicyModelChoiceIterator(forms.models.ModelChoiceIterator):
     def choice(self, obj):
         return (self.field.prepare_value(obj),
-                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.local_base_fee) + ' | ' + str(obj.local_fee_rate)))
+                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.local_base_fee) + ' | ' + str(obj.local_fee_rate) + ' | ' + str(obj.local_cltv)))
 
 class ChanPolicyModelChoiceField(forms.models.ModelMultipleChoiceField):
     def _get_choices(self):
@@ -40,6 +40,16 @@ class CloseChannelForm(forms.Form):
 class ConnectPeerForm(forms.Form):
     peer_id = forms.CharField(label='peer_pubkey', max_length=200)
 
+class AddTowerForm(forms.Form):
+    tower = forms.CharField(label='tower_pubkey', max_length=200)
+
+class DeleteTowerForm(forms.Form):
+    pubkey = forms.CharField(label='tower_pubkey', max_length=66)
+    address = forms.CharField(label='tower_address', max_length=134)
+
+class RemoveTowerForm(forms.Form):
+    pubkey = forms.CharField(label='tower_pubkey', max_length=66)
+
 class AddInvoiceForm(forms.Form):
     value = forms.IntegerField(label='value')
 
@@ -57,9 +67,10 @@ class ChanPolicyForm(forms.ModelForm):
     class Meta:
         model = Channels
         fields = []
-    new_base_fee = forms.IntegerField(label='new_base_fee')
-    new_fee_rate = forms.IntegerField(label='new_fee_rate')
-    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-alias'), required=False)
+    new_base_fee = forms.IntegerField(label='new_base_fee', required=False)
+    new_fee_rate = forms.IntegerField(label='new_fee_rate', required=False)
+    new_cltv = forms.IntegerField(label='new_cltv', required=False)
+    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1).order_by('-alias'), required=False)
     target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class AutoRebalanceForm(forms.Form):
@@ -82,6 +93,7 @@ updates_channel_codes = [
     (6, 'ar_max_cost'),
     (7, 'channel_state'),
     (8, 'auto_fees'),
+    (9, 'cltv'),
 ]
 
 class UpdateChannel(forms.Form):
@@ -92,3 +104,26 @@ class UpdateChannel(forms.Form):
 class UpdateSetting(forms.Form):
     key = forms.CharField(label='setting', max_length=20)
     value = forms.CharField(label='value', max_length=50)
+
+class BatchOpenForm(forms.Form):
+    pubkey1 = forms.CharField(label='pubkey1', max_length=66, required=False)
+    amt1 = forms.IntegerField(label='amt1', required=False)
+    pubkey2 = forms.CharField(label='pubkey2', max_length=66, required=False)
+    amt2 = forms.IntegerField(label='amt2', required=False)
+    pubkey3 = forms.CharField(label='pubkey3', max_length=66, required=False)
+    amt3 = forms.IntegerField(label='amt3', required=False)
+    pubkey4 = forms.CharField(label='pubkey4', max_length=66, required=False)
+    amt4 = forms.IntegerField(label='amt4', required=False)
+    pubkey5 = forms.CharField(label='pubkey5', max_length=66, required=False)
+    amt5 = forms.IntegerField(label='amt5', required=False)
+    pubkey6 = forms.CharField(label='pubkey6', max_length=66, required=False)
+    amt6 = forms.IntegerField(label='amt6', required=False)
+    pubkey7 = forms.CharField(label='pubkey7', max_length=66, required=False)
+    amt7 = forms.IntegerField(label='amt7', required=False)
+    pubkey8 = forms.CharField(label='pubkey8', max_length=66, required=False)
+    amt8 = forms.IntegerField(label='amt8', required=False)
+    pubkey9 = forms.CharField(label='pubkey9', max_length=66, required=False)
+    amt9 = forms.IntegerField(label='amt9', required=False)
+    pubkey10 = forms.CharField(label='pubkey10', max_length=66, required=False)
+    amt10 = forms.IntegerField(label='amt10', required=False)
+    fee_rate = forms.IntegerField(label='fee_rate')
