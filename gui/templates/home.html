@@ -574,17 +574,6 @@
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Update Peer Alias</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/api/updatealias/" method="post">
-      {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
   <h2>Update Channel Policy</h2>
   <div class="w3-container w3-padding-32">
     <form action="/updatechanpolicy/" method="post">
