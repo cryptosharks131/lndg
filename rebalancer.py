@@ -23,7 +23,7 @@ def run_rebalancer(rebalance):
     outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
     if len(outbound_cans) == 0:
         return None
-    elif str(outbound_cans).replace('\'', '') != rebalance.outgoing_chan_ids:
+    elif str(outbound_cans).replace('\'', '') != rebalance.outgoing_chan_ids and rebalance.manual == False:
         rebalance.outgoing_chan_ids = str(outbound_cans).replace('\'', '')
     rebalance.start = datetime.now()
     try:

@@ -152,6 +152,7 @@ class Rebalancer(models.Model):
     stop = models.DateTimeField(null=True, default=None)
     status = models.IntegerField(default=0)
     payment_hash = models.CharField(max_length=64, null=True, default=None)
+    manual = models.BooleanField(default=False)
     class Meta:
         app_label = 'gui'
 

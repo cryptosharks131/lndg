@@ -208,7 +208,7 @@ def update_channels(stub):
         db_channel.num_updates = channel.num_updates
         if db_channel.is_active != channel.active:
             db_channel.last_update = datetime.now()
-            peer_alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias
+            peer_alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias if Peers.objects.filter(pubkey=db_channel.remote_pubkey).exists() else None
             db_channel.alias = '' if peer_alias is None else peer_alias
             db_channel.is_active = channel.active
         db_channel.is_open = True
