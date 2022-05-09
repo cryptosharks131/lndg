@@ -1414,7 +1414,7 @@ def rebalance(request):
                     if len(chan_ids) > 0:
                         target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
                         fee_limit = 0 if form.cleaned_data['value'] == 0 else int(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001)
-                        Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=str(chan_ids).replace('\'', ''), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration']).save()
+                        Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=str(chan_ids).replace('\'', ''), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration'], manual=True).save()
                         messages.success(request, 'Rebalancer request created!')
                     else:
                         messages.error(request, 'You must select atleast one outgoing channel.')
