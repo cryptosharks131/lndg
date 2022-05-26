@@ -347,6 +347,16 @@ class LightningStub(object):
                 request_serializer=lightning__pb2.RPCMiddlewareResponse.SerializeToString,
                 response_deserializer=lightning__pb2.RPCMiddlewareRequest.FromString,
                 )
+        self.SendCustomMessage = channel.unary_unary(
+                '/lnrpc.Lightning/SendCustomMessage',
+                request_serializer=lightning__pb2.SendCustomMessageRequest.SerializeToString,
+                response_deserializer=lightning__pb2.SendCustomMessageResponse.FromString,
+                )
+        self.SubscribeCustomMessages = channel.unary_stream(
+                '/lnrpc.Lightning/SubscribeCustomMessages',
+                request_serializer=lightning__pb2.SubscribeCustomMessagesRequest.SerializeToString,
+                response_deserializer=lightning__pb2.CustomMessage.FromString,
+                )
 
 
 class LightningServicer(object):
@@ -1070,6 +1080,23 @@ class LightningServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SendCustomMessage(self, request, context):
+        """lncli: `sendcustom`
+        SendCustomMessage sends a custom peer message.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SubscribeCustomMessages(self, request, context):
+        """lncli: `subscribecustom`
+        SubscribeCustomMessages subscribes to a stream of incoming custom peer
+        messages.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LightningServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -1387,6 +1414,16 @@ def add_LightningServicer_to_server(servicer, server):
                     servicer.RegisterRPCMiddleware,
                     request_deserializer=lightning__pb2.RPCMiddlewareResponse.FromString,
                     response_serializer=lightning__pb2.RPCMiddlewareRequest.SerializeToString,
+            ),
+            'SendCustomMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendCustomMessage,
+                    request_deserializer=lightning__pb2.SendCustomMessageRequest.FromString,
+                    response_serializer=lightning__pb2.SendCustomMessageResponse.SerializeToString,
+            ),
+            'SubscribeCustomMessages': grpc.unary_stream_rpc_method_handler(
+                    servicer.SubscribeCustomMessages,
+                    request_deserializer=lightning__pb2.SubscribeCustomMessagesRequest.FromString,
+                    response_serializer=lightning__pb2.CustomMessage.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -2484,5 +2521,39 @@ class Lightning(object):
         return grpc.experimental.stream_stream(request_iterator, target, '/lnrpc.Lightning/RegisterRPCMiddleware',
             lightning__pb2.RPCMiddlewareResponse.SerializeToString,
             lightning__pb2.RPCMiddlewareRequest.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SendCustomMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/lnrpc.Lightning/SendCustomMessage',
+            lightning__pb2.SendCustomMessageRequest.SerializeToString,
+            lightning__pb2.SendCustomMessageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SubscribeCustomMessages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/lnrpc.Lightning/SubscribeCustomMessages',
+            lightning__pb2.SubscribeCustomMessagesRequest.SerializeToString,
+            lightning__pb2.CustomMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
