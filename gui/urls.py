@@ -64,5 +64,8 @@ urlpatterns = [
     path('api/createinvoice/', views.add_invoice, name='add-invoice'),
     path('api/newaddress/', views.new_address, name='new-address'),
     path('api/updatealias/', views.update_alias, name='update-alias'),
+    path('api/getinfo/', views.get_info, name='get-info'),
+    path('api/balances/', views.api_balances, name='api-balances'),
+    path('api/pendingchannels/', views.pending_channels, name='pending-channels'),
     path('lndg-admin/', admin.site.urls),
 ]

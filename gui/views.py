@@ -2046,7 +2046,7 @@ def add_invoice(request):
     else:
         return Response({'error': 'Invalid request!'})
 
-@api_view(['POST'])
+@api_view(['GET'])
 def new_address(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
@@ -2084,3 +2084,68 @@ def update_alias(request):
     else:
         messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
+
+@api_view(['GET'])
+def get_info(request):
+    try:
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        response = stub.GetInfo(ln.GetInfoRequest())
+        target = {'identity_pubkey':response.identity_pubkey, 'alias':response.alias, 'num_active_channels':response.num_active_channels, 'num_peers':response.num_peers, 'block_height':response.block_height, 'block_hash':response.block_hash,'synced_to_chain':response.synced_to_chain,'testnet':response.testnet,'uris':[uri for uri in response.uris],'best_header_timestamp':response.best_header_timestamp,'version':response.version,'num_inactive_channels':response.num_inactive_channels,'chains':[{'chain':response.chains[i].chain,'network':response.chains[i].network} for i in range(0,len(response.chains))],'color':response.color,'synced_to_graph':response.synced_to_graph}
+        return Response({'message': 'success', 'data':target})
+    except Exception as e:
+        error = str(e)
+        details_index = error.find('details =') + 11
+        debug_error_index = error.find('debug_error_string =') - 3
+        error_msg = error[details_index:debug_error_index]
+        return Response({'error': 'Failed to call getinfo! Error: ' + error_msg})
+
+@api_view(['GET'])
+def api_balances(request):
+    try:
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        response = stub.WalletBalance(ln.WalletBalanceRequest())
+        target = {'total_balance':response.confirmed_balance, 'confirmed_balance':response.confirmed_balance}
+        return Response({'message': 'success', 'data':target})
+    except Exception as e:
+        error = str(e)
+        details_index = error.find('details =') + 11
+        debug_error_index = error.find('debug_error_string =') - 3
+        error_msg = error[details_index:debug_error_index]
+        return Response({'error': 'Failed to get wallet balances! Error: ' + error_msg})
+
+@api_view(['GET'])
+def pending_channels(request):
+    try:
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        response = stub.PendingChannels(ln.PendingChannelsRequest())
+        print(response)
+        if response.pending_open_channels or response.pending_closing_channels or response.pending_force_closing_channels or response.waiting_close_channels or response.total_limbo_balance:
+            target = {}
+            if response.pending_open_channels:
+                target_resp = response.pending_open_channels
+                pending_open_channels = {'pending_open':[{'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'commit_fee':target_resp[i].commit_fee,'commit_weight':target_resp[i].commit_weight,'fee_per_kw':target_resp[i].fee_per_kw} for i in range(0,len(target_resp))]}
+                target.update(pending_open_channels)
+            if response.pending_closing_channels:
+                target_resp = response.pending_closing_channels
+                pending_closing_channels = {'pending_closing':[{'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]}
+                target.update(pending_closing_channels)
+            if response.pending_force_closing_channels:
+                target_resp = response.pending_force_closing_channels
+                pending_force_closing_channels = {'pending_force_closing':[{'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity} for i in range(0,len(target_resp))]}
+                target.update(pending_force_closing_channels)
+            if response.waiting_close_channels:
+                target_resp = response.waiting_close_channels
+                waiting_close_channels = {'waiting_close':[{'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]}
+                target.update(waiting_close_channels)
+            if response.total_limbo_balance:
+                total_limbo_balance = {'total_limbo_balance':response.total_limbo_balance}
+                target.update(total_limbo_balance)
+            return Response({'message': 'success', 'data':target})
+        else:
+            return Response({'message': 'success', 'data':None})
+    except Exception as e:
+        error = str(e)
+        details_index = error.find('details =') + 11
+        debug_error_index = error.find('debug_error_string =') - 3
+        error_msg = error[details_index:debug_error_index]
+        return Response({'error': 'Failed to get pending channels! Error: ' + error_msg})
