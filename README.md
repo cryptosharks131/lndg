@@ -173,8 +173,8 @@ The following data can be accessed at the /api endpoint:
 ### Peer Reconnection
 LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
 
-## Auto-Rebalancer
-### Here are some notes to help you get started using the Auto-Rebalancer (AR).
+## Auto-Rebalancer - [Quick Start Guide](https://github.com/cryptosharks131/lndg/blob/master/quickstart.md)
+### Here are some additional notes to help you better understand the Auto-Rebalancer (AR).
 
 The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucarative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
 
