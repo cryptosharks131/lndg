@@ -330,6 +330,26 @@ def fees(request):
         channels = Channels.objects.filter(is_open=True, private=False)
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
+            if LocalSettings.objects.filter(key='AF-MaxRate').exists():
+                max_rate = int(LocalSettings.objects.filter(key='AF-MaxRate')[0].value)
+            else:
+                LocalSettings(key='AF-MaxRate', value='2500').save()
+                max_rate = 2500
+            if LocalSettings.objects.filter(key='AF-MinRate').exists():
+                min_rate = int(LocalSettings.objects.filter(key='AF-MinRate')[0].value)
+            else:
+                LocalSettings(key='AF-MinRate', value='0').save()
+                min_rate = 0
+            if LocalSettings.objects.filter(key='AF-Increment').exists():
+                increment = int(LocalSettings.objects.filter(key='AF-Increment')[0].value)
+            else:
+                LocalSettings(key='AF-Increment', value='5').save()
+                increment = 5
+            if LocalSettings.objects.filter(key='AF-Multiplier').exists():
+                multiplier = int(LocalSettings.objects.filter(key='AF-Multiplier')[0].value)
+            else:
+                LocalSettings(key='AF-Multiplier', value='5').save()
+                multiplier = 5
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
                 failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
@@ -365,8 +385,8 @@ def fees(request):
             channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
             channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']), axis=1)
             channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
-            channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*0.02), axis=1)
-            channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*0.05), axis=1)
+            channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*(multiplier/100)), axis=1)
+            channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*(multiplier/100)), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else (row['min_suggestion'] if row['net_routed_7day'] == 0 and row['in_percent'] < 25 else row['fee_rate_only']))), axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
@@ -374,11 +394,14 @@ def fees(request):
             channels_df['new_rate'] = channels_df.apply(lambda row: row['local_fee_rate']+25 if row['adjustment']==0 and row['out_percent']<25 and row['failed_out_1day']>25 else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['max_suggestion'] if row['new_rate'] > row['max_suggestion'] else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: row['min_suggestion'] if row['new_rate'] < row['min_suggestion'] else row['new_rate'], axis=1)
-            channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/5, 0)*5), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: int(round(row['new_rate']/increment, 0)*increment), axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: max_rate if max_rate < row['new_rate'] else row['new_rate'], axis=1)
+            channels_df['new_rate'] = channels_df.apply(lambda row: min_rate if min_rate > row['new_rate'] else row['new_rate'], axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
             channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
         context = {
             'channels': [] if channels_df.empty else channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
+            'local_settings': LocalSettings.objects.filter(key__contains='AF-'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -1850,6 +1873,46 @@ def update_setting(request):
                 db_enabled.value = enabled
                 db_enabled.save()
                 messages.success(request, 'Updated autofees enabled setting to: ' + str(enabled))
+            elif key == 'AF-MaxRate':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AF-MaxRate')
+                except:
+                    LocalSettings(key='AF-MaxRate', value='2500').save()
+                    db_enabled = LocalSettings.objects.get(key='AF-MaxRate')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated autofees max rate setting to: ' + str(enabled))
+            elif key == 'AF-MinRate':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AF-MinRate')
+                except:
+                    LocalSettings(key='AF-MinRate', value='0').save()
+                    db_enabled = LocalSettings.objects.get(key='AF-MinRate')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated autofees min rate setting to: ' + str(enabled))
+            elif key == 'AF-Increment':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AF-Increment')
+                except:
+                    LocalSettings(key='AF-Increment', value='5').save()
+                    db_enabled = LocalSettings.objects.get(key='AF-Increment')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated autofees fee increment setting to: ' + str(enabled))
+            elif key == 'AF-Multiplier':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AF-Multiplier')
+                except:
+                    LocalSettings(key='AF-Multiplier', value='5').save()
+                    db_enabled = LocalSettings.objects.get(key='AF-Multiplier')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated autofees fee multiplier setting to: ' + str(enabled))
             else:
                 messages.error(request, 'Invalid Request. Please try again.')
         else:

@@ -2,6 +2,35 @@
 {% block title %} {{ block.super }} - Fee Rates{% endblock %}
 {% block content %}
 {% load humanize %}
+{% if local_settings %}
+<div class="w3-container w3-padding-small">
+  <h2>Auto-Fees Settings</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Key</th>
+      <th>Value</th>
+    </tr>
+    {% for settings in local_settings %}
+    <tr>
+      <td>{{ settings.key }}</td>
+      <td>
+        <form action="/update_setting/" method="post">
+          {% csrf_token %}
+          {% if settings.key == 'AF-MaxRate' or settings.key == 'AF-MinRate' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="5000" name="value" value="{{ settings.value }}">
+          {% elif settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' %}
+            <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
+          {% else %}
+            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
+          {% endif %}
+          <input type="hidden" name="key" value="{{ settings.key }}">
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
   <h2>Suggested Fee Rates</h2>
