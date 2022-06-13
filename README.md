@@ -94,7 +94,7 @@ Recommend Setup With Supervisord or Systemd
   c) Start Supervisord `supervisord`  
 
 2. Systemd (2 options)  
-  Option 1 - Bash script install `sudo bash systemd.sh`  
+  Option 1 - Bash script install (requires install at ~/lndg) `sudo bash systemd.sh`  
   Option 2 - [Manual Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)  
   
 Alternatively, you may also make your own task for these files with your preferred tool (task scheduler/cronjob/etc).  
