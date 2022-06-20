@@ -143,7 +143,7 @@ class Peers(models.Model):
 class Rebalancer(models.Model):
     requested = models.DateTimeField(default=timezone.now)
     value = models.IntegerField()
-    fee_limit = models.IntegerField()
+    fee_limit = models.FloatField()
     outgoing_chan_ids = models.TextField(default='[]')
     last_hop_pubkey = models.CharField(default='', max_length=66)
     target_alias = models.CharField(default='', max_length=32)
@@ -209,7 +209,7 @@ class PendingHTLCs(models.Model):
     amount = models.BigIntegerField()
     hash_lock = models.CharField(max_length=64)
     expiration_height = models.IntegerField()
-    forwarding_channel = models.IntegerField()
+    forwarding_channel = models.CharField(max_length=20)
     forwarding_alias = models.CharField(max_length=32)
     class Meta:
         app_label = 'gui'

@@ -409,7 +409,7 @@
       <td>{{ payment.ppm|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}N/A{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}N/A{% endif %}</td>
+      <td>{% if payment.status == 2 %}{% if payment.chan_out != 'MPP' %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}{{ payment.chan_out }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
       <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
@@ -503,19 +503,21 @@
   <div class="w3-container w3-padding-32">
     <form action="/autorebalance/" method="post">
       {% csrf_token %}
-      <label for="enabled">Enabled: </label>
+      <label title="This enables or disables the auto-scheduling function" for="enabled">Enabled: </label>
       <input id="enabled" type="number" min="0" max="1" name="enabled">
-      <label for="target_percent">Target Amount (%): </label>
+      <label title="The % of the total capacity to target as the rebalance amount" for="target_percent">Target Amount (%): </label>
       <input id="target_percent" type="number" step="0.001" min="0" max="1" name="target_percent">
-      <label for="target_time">Target Time (min): </label>
+      <label title="The time spent per individual rebalance attempt" for="target_time">Target Time (min): </label>
       <input id="target_time" type="number" min="0" max="60" name="target_time">
-      <label for="outbound_percent">Target Outbound Above (%): </label>
+      <label title="When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel" for="outbound_percent">Target Outbound Above (%): </label>
       <input id="outbound_percent" type="number" step="0.01" min="0" max="1" name="outbound_percent">
-      <label for="fee_rate">Global Max Fee Rate (ppm): </label>
+      <label title="The max rate we can ever use to refill a channel with outbound" for="fee_rate">Global Max Fee Rate (ppm): </label>
       <input id="fee_rate" type="number" min="0" max="2500" name="fee_rate">
-      <label for="max_cost">Max Cost (%): </label>
+      <label title="The ppm to target which is the % of the outbound fee rate for the channel being refilled" for="max_cost">Max Cost (%): </label>
       <input id="max_cost" type="number" step="0.01" min="0" max="1" name="max_cost">
-      <label for="autopilot">Autopilot: </label>
+      <label title="The % of the target amount to be randomly varied with every rebalance attempt" for="autopilot">Variance (%): </label>
+      <input id="autopilot" type="number" min="0" max="100" name="variance">
+      <label title="This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions" for="autopilot">Autopilot: </label>
       <input id="autopilot" type="number" min="0" max="1" name="autopilot">
       <input type="submit" value="OK">
     </form>

@@ -206,8 +206,10 @@
             <input style="text-align:center" id="value" type="number" step="0.01" min="0" max="1" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AR-Time' %}
             <input style="text-align:center" id="value" type="number" min="0" max="60" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-MaxFeeRate' %}
+          {% elif settings.key == 'AR-MaxFeeRate' or settings.key == 'AF-MaxRate' %}
             <input style="text-align:center" id="value" type="number" min="0" max="2500" name="value" value="{{ settings.value }}">
+          {% elif settings.key == 'AR-Variance' %}
+            <input style="text-align:center" id="value" type="number" min="0" max="100" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'LND-CleanPayments' %}
             <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'LND-RetentionDays' %}

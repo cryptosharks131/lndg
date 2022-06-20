@@ -144,7 +144,7 @@ def home(request):
             total_costs = total_fees + onchain_costs
             total_costs_7day = total_7day_fees + onchain_costs_7day
             #Get list of recent rebalance requests
-            rebalances = Rebalancer.objects.all().annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id')
+            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
             local_settings = LocalSettings.objects.filter(key__contains='AR-')
             try:
@@ -1236,7 +1236,7 @@ def rebalancing(request):
             channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_count_7d_df['status']==2].shape[0], axis=1)
             channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
             enabled_df = channels_df[channels_df['auto_rebalance']==True]
-            eligible_df = enabled_df[enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
+            eligible_df = enabled_df[enabled_df['is_active']==True][enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
             eligible_count = eligible_df.shape[0]
             enabled_count = enabled_df.shape[0]
         else:
@@ -1246,7 +1246,7 @@ def rebalancing(request):
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
             'channels': channels_df.to_dict(orient='records'),
-            'rebalancer': Rebalancer.objects.all().annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id')[:20],
+            'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': LocalSettings.objects.filter(key__contains='AR-'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
@@ -1436,7 +1436,7 @@ def rebalance(request):
                         chan_ids.append(channel.chan_id)
                     if len(chan_ids) > 0:
                         target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
-                        fee_limit = 0 if form.cleaned_data['value'] == 0 else int(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001)
+                        fee_limit = round(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001, 3)
                         Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=str(chan_ids).replace('\'', ''), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration'], manual=True).save()
                         messages.success(request, 'Rebalancer request created!')
                     else:
@@ -1594,6 +1594,16 @@ def auto_rebalance(request):
                 db_autopilot.value = autopilot
                 db_autopilot.save()
                 messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
+            if form.cleaned_data['variance'] is not None:
+                variance = form.cleaned_data['variance']
+                try:
+                    db_variance = LocalSettings.objects.get(key='AR-Variance')
+                except:
+                    LocalSettings(key='AR-Variance', value='0').save()
+                    db_variance = LocalSettings.objects.get(key='AR-Variance')
+                db_variance.value = variance
+                db_variance.save()
+                messages.success(request, 'Updated variance setting to: ' + str(variance))
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
@@ -1757,6 +1767,16 @@ def update_setting(request):
                 db_autopilot.value = autopilot
                 db_autopilot.save()
                 messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
+            elif key == 'AR-Variance':
+                variance = int(value)
+                try:
+                    db_variance = LocalSettings.objects.get(key='AR-Variance')
+                except:
+                    LocalSettings(key='AR-Variance', value='0').save()
+                    db_variance = LocalSettings.objects.get(key='AR-Variance')
+                db_variance.value = variance
+                db_variance.save()
+                messages.success(request, 'Updated variance setting to: ' + str(variance))
             elif key == 'GUI-GraphLinks':
                 links = str(value)
                 try:
