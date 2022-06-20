@@ -627,7 +627,7 @@ def channel(request):
             node_outbound = channels_df['local_balance'].sum()
             node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
-            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=(Sum('fee_limit')*1000000)/Sum('value')).order_by('-id').values())
+            rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
             channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
