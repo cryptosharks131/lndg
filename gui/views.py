@@ -146,7 +146,7 @@ def home(request):
             #Get list of recent rebalance requests
             rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
-            local_settings = LocalSettings.objects.filter(key__contains='AR-')
+            local_settings = LocalSettings.objects.filter(key__contains='AR-').order_by('key')
             try:
                 db_size = round(path.getsize(path.expanduser(LND_DIR_PATH + '/data/graph/' + LND_NETWORK + '/channel.db'))*0.000000001, 3)
             except:
@@ -406,7 +406,7 @@ def fees(request):
             channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
         context = {
             'channels': [] if channels_df.empty else channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
-            'local_settings': LocalSettings.objects.filter(key__contains='AF-'),
+            'local_settings': LocalSettings.objects.filter(key__contains='AF-').order_by('key'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -428,7 +428,7 @@ def advanced(request):
             channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'local_settings': LocalSettings.objects.all(),
+            'local_settings': LocalSettings.objects.all().order_by('key'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -1253,7 +1253,7 @@ def rebalancing(request):
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
-            'local_settings': LocalSettings.objects.filter(key__contains='AR-'),
+            'local_settings': LocalSettings.objects.filter(key__contains='AR-').order_by('key'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -1609,6 +1609,16 @@ def auto_rebalance(request):
                 db_variance.value = variance
                 db_variance.save()
                 messages.success(request, 'Updated variance setting to: ' + str(variance))
+            if form.cleaned_data['wait_period'] is not None:
+                wait_period = form.cleaned_data['wait_period']
+                try:
+                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
+                except:
+                    LocalSettings(key='AR-WaitPeriod', value='30').save()
+                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
+                db_wait_period.value = wait_period
+                db_wait_period.save()
+                messages.success(request, 'Updated wait period setting to: ' + str(wait_period))
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
@@ -1782,6 +1792,16 @@ def update_setting(request):
                 db_variance.value = variance
                 db_variance.save()
                 messages.success(request, 'Updated variance setting to: ' + str(variance))
+            elif key == 'AR-WaitPeriod':
+                wait_period = int(value)
+                try:
+                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
+                except:
+                    LocalSettings(key='AR-WaitPeriod', value='0').save()
+                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
+                db_wait_period.value = wait_period
+                db_wait_period.save()
+                messages.success(request, 'Updated wait period setting to: ' + str(wait_period))
             elif key == 'GUI-GraphLinks':
                 links = str(value)
                 try:
