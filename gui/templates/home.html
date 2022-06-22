@@ -211,8 +211,9 @@
   <h2>Pending Open Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th width=25%>Channel Point</th>
-      <th width=25%>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
@@ -220,10 +221,11 @@
     </tr>
     {% for channel in pending_open %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -238,8 +240,9 @@
   <h2>Pending Close Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
@@ -248,10 +251,11 @@
     </tr>
     {% for channel in pending_closed %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -267,21 +271,23 @@
   <h2>Pending Force Close Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
       <th>Balance In Limbo</th>
       <th>Blocks To Maturity</th>
-      <th>Closing TX</th>
+      <th width=20%>Closing TX</th>
     </tr>
     {% for channel in pending_force_closed %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
@@ -298,8 +304,9 @@
   <h2>Channels Waiting To Close</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
@@ -308,10 +315,11 @@
     </tr>
     {% for channel in waiting_for_close %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
       <td>{{ channel.channel.capacity|intcomma }}</td>
       <td>{{ channel.channel.local_balance|intcomma }}</td>
       <td>{{ channel.channel.remote_balance|intcomma }}</td>
