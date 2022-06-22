@@ -222,13 +222,13 @@
     {% for channel in pending_open %}
     <tr>
       <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.commit_fee }}</td>
     </tr>
     {% endfor %}
@@ -252,13 +252,13 @@
     {% for channel in pending_closed %}
     <tr>
       <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.commitments.local_commit_fee_sat }}</td>
     </tr>
@@ -284,13 +284,13 @@
     {% for channel in pending_force_closed %}
     <tr>
       <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.blocks_til_maturity|intcomma }}</td>
       <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
@@ -316,13 +316,13 @@
     {% for channel in waiting_for_close %}
     <tr>
       <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-      <td title="{{ channel.channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      {% with funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.commitments.local_commit_fee_sat }}</td>
     </tr>
