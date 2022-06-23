@@ -22,7 +22,7 @@
       <td>{{ htlc.forwarding_channel }}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
-      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.expiration_datetime|naturaltime }}</td>
+      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
       <td>{{ htlc.hash_lock }}</td>
     </tr>
     {% endfor %}
@@ -49,7 +49,7 @@
       <td>{{ htlc.forwarding_channel }}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
-      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.expiration_datetime|naturaltime }}</td>
+      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
       <td>{{ htlc.hash_lock }}</td>
     </tr>
     {% endfor %}
