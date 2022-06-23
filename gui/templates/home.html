@@ -278,7 +278,7 @@
       <th>Local Balance</th>
       <th>Remote Balance</th>
       <th>Balance In Limbo</th>
-      <th>Blocks To Maturity</th>
+      <th>Maturity</th>
       <th width=20%>Closing TX</th>
     </tr>
     {% for channel in pending_force_closed %}
@@ -292,7 +292,7 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.blocks_til_maturity|intcomma }}</td>
+      <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
       <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
