@@ -32,6 +32,9 @@ services:
 docker-compose down
 docker-compose build --no-cache
 docker-compose up -d
+
+# OPTIONAL: remove unused builds and objects
+docker system prune -f
 ```
 
 ## Manual Umbrel Installation (now available directly from the Umbrel app store)
@@ -69,6 +72,9 @@ networks:
 docker-compose down
 docker-compose build --no-cache
 docker-compose up -d
+
+# OPTIONAL: remove unused builds and objects
+docker system prune -f
 ```
 
 ## Manual Installation
@@ -87,7 +93,7 @@ Tip: If you plan to only use the development server, you will need to setup whit
 ### Step 2 - Setup Backend Data, Automated Rebalancing and HTLC Stream Data
 The files `jobs.py`, `rebalancer.py` and `htlc_stream.py` inside lndg/gui/ serve to update the backend database with the most up to date information, rebalance any channels based on your lndg dashboard settings and to listen for any failure events in your htlc stream. A refresh interval of at least 10-20 seconds is recommended for the `jobs.py` and `rebalancer.py` files for the best user experience.
 
-Recommend Setup With Supervisord or Systemd
+Recommend Setup With Supervisord (least setup) or Systemd (most compatible)
 1. Supervisord  
   a) Setup supervisord config `.venv/bin/python initialize.py -sd`  
   b) Install Supervisord `.venv/bin/pip install supervisor`  
@@ -134,12 +140,16 @@ When updating, follow the same steps as above. You will also need to restart the
 `sudo systemctl restart uwsgi.service`  
 
 ## Key Features
-### Suggests And Automates Fee Rates
-LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions.
+### Batch Opens
+You can use LNDg to batch open up to 10 channels at a time with a single transaction. This can help to signicantly reduce the channel open fees incurred when opening multiple channels.
+
+### Watch Tower Management
+You can use LNDg to add, monitor or remove watch towers from the lnd node.
+
+### Suggests Fee Rates
+LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions. You can use the Auto-Fees feature in order to automatically act upon the suggestions given.
 
 You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal and you should wait ~24 hours before changing the fee rate again on any given channel.
-
-To allow LNDg to automatically adjust the fee rates on selected channels (no more than once every 24 hours) be sure that the AR-Autofees setting is set to `1` on the Advanced Settings page. You will also need to make sure individual channels are enabled on the Fee Rates page. You can view a log of AF changes by opening the Autofees tab.
 
 ### Suggests New Peers
 LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.  
@@ -173,6 +183,24 @@ The following data can be accessed at the /api endpoint:
 ### Peer Reconnection
 LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
 
+## Auto-Fees
+### Here are some additional notes to help you get started using Auto-Fees (AF).
+LNDg can update your fees on a channel every 24 hours if there is a suggestion listed on the fee rates page. You must make sure the AF-Enabled setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
+
+You can customize some settings of AF by updating the following settings:
+AF-FailedHTLCs - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)
+AF-Increment - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value
+AF-MaxRate - The maximum fee rate in which we can adjust to
+AF-MinRate - The minimum fee rate in which we can adjust to
+AF-Multiplier - Multiplier used against the flow pattern algorithm, the larger the multiplier, the larger the potential moves
+
+AF Notes:
+1. AF changes only trigger after 24 hours of no fee updates via LNDg
+2. Single step maximum increase set to 15% or 25 ppm (which ever is increase smaller)
+3. Single step maximum decrease set to 25% or 50 ppm (which ever is decrease smaller)
+4. Channels with less than 25% outbound liquidty will not have their fees decreased
+5. Channels with less than 25% inbound liquidty will not have their fees increased
+
 ## Auto-Rebalancer - [Quick Start Guide](https://github.com/cryptosharks131/lndg/blob/master/quickstart.md)
 ### Here are some additional notes to help you better understand the Auto-Rebalancer (AR).
 
@@ -189,6 +217,11 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
 9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
 10. Attempts that are successful or attempts with only incorrect payment information are tried again immediately. Example: If a rebalancing for 50k was sucessful, AR will try another 50k immediately with the same parameters.
 11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed.
+
+Additonal customization options:
+1. AR-Autopilot - Automatically act upon suggestions on the AR Actions page
+2. AR-WaitPeriod - How long AR should wait before scheduling a channel that has recently failed an attempt
+3. AR-Variance - How much to randomly vary the target rebalance amount by this % of the target amount
 
 #### Steps to start the Auto-Rebalancer:
 1. Update Channel Specific Settings  
@@ -233,6 +266,12 @@ If you want a channel not to be picked for rebalancing (i.e. it is already full 
 ![image](https://user-images.githubusercontent.com/38626122/137810021-4f69dcb0-5fce-4062-bc49-e75f5dd0feda.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809882-4a87f86d-290c-456e-9606-ed669fd98561.png)
 ![image](https://user-images.githubusercontent.com/38626122/148699417-bd9fbb49-72f5-4c3f-811f-e18c990a06ba.png)
+
+### Manage Auto-Fees Or Get Suggestions
+![image](https://user-images.githubusercontent.com/38626122/175364451-a7e2bc62-71bd-4a2d-99f6-6a1f27e5999a.png)
+
+### Batch Open Channels
+![image](https://user-images.githubusercontent.com/38626122/175364599-ac894b68-a11d-420b-93b3-3ee8dffc857f.png)
 
 ### Suggests Peers To Open With and Rebalancer Actions To Take
 ![image](https://user-images.githubusercontent.com/38626122/148699445-88efeacd-3cfc-429c-91d8-3a52ee633195.png)
