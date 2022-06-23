@@ -218,7 +218,7 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
 10. Attempts that are successful or attempts with only incorrect payment information are tried again immediately. Example: If a rebalancing for 50k was sucessful, AR will try another 50k immediately with the same parameters.
 11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed.
 
-Additonal customization options:
+Additional customization options:
 1. AR-Autopilot - Automatically act upon suggestions on the AR Actions page
 2. AR-WaitPeriod - How long AR should wait before scheduling a channel that has recently failed an attempt
 3. AR-Variance - How much to randomly vary the target rebalance amount by this % of the target amount
