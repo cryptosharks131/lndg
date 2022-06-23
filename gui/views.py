@@ -1046,8 +1046,8 @@ def pending_htlcs(request):
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
         context = {
-            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).order_by('hash_lock'),
-            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).order_by('hash_lock')
+            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(expiration_datetime=datetime.now()+timedelta(minutes=(10*(Sum('expiration_height')-block_height)))).order_by('hash_lock'),
+            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(expiration_datetime=datetime.now()+timedelta(minutes=(10*(Sum('expiration_height')-block_height)))).order_by('hash_lock')
         }
         return render(request, 'pending_htlcs.html', context)
     else:
