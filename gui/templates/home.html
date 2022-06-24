@@ -211,7 +211,6 @@
   <h2>Pending Open Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
       <th>Peer Alias</th>
       <th width=20%>Channel Point</th>
       <th>Capacity</th>
@@ -221,7 +220,6 @@
     </tr>
     {% for channel in pending_open %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
         <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
