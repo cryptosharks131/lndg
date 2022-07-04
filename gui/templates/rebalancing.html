@@ -153,15 +153,15 @@
       <label title="This enables or disables the auto-scheduling function" for="enabled">Enabled: </label>
       <input id="enabled" type="number" min="0" max="1" name="enabled">
       <label title="The % of the total capacity to target as the rebalance amount" for="target_percent">Target Amount (%): </label>
-      <input id="target_percent" type="number" step="0.001" min="0.001" max="1" name="target_percent">
+      <input id="target_percent" type="number" step="0.1" min="0.1" max="100" name="target_percent">
       <label title="The time spent per individual rebalance attempt" for="target_time">Target Time (min): </label>
       <input id="target_time" type="number" min="1" max="60" name="target_time">
       <label title="When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel" for="outbound_percent">Target Outbound Above (%): </label>
-      <input id="outbound_percent" type="number" step="0.01" min="0.01" max="1" name="outbound_percent">
+      <input id="outbound_percent" type="number" step="1" min="1" max="100" name="outbound_percent">
       <label title="The max rate we can ever use to refill a channel with outbound" for="fee_rate">Global Max Fee Rate (ppm): </label>
       <input id="fee_rate" type="number" min="1" max="2500" name="fee_rate">
       <label title="The ppm to target which is the % of the outbound fee rate for the channel being refilled" for="max_cost">Max Cost (%): </label>
-      <input id="max_cost" type="number" step="0.01" min="0.01" max="1" name="max_cost">
+      <input id="max_cost" type="number" step="1" min="1" max="100" name="max_cost">
       <label title="The % of the target amount to be randomly varied with every rebalance attempt" for="variance">Variance (%): </label>
       <input id="variance" type="number" min="0" max="100" name="variance">
       <label title="The minutes we should wait after a failed attempt before trying again" for="wait_period">Wait Period (min): </label>

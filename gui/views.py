@@ -1573,15 +1573,15 @@ def auto_rebalance(request):
                 else:
                     messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
             if form.cleaned_data['target_percent'] is not None:
-                target_percent = form.cleaned_data['target_percent']
+                target_percent = float(form.cleaned_data['target_percent'])
                 try:
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 except:
-                    LocalSettings(key='AR-Target%', value='0.05').save()
+                    LocalSettings(key='AR-Target%', value='5').save()
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
-                Channels.objects.all().update(ar_amt_target=Round(F('capacity')*target_percent, output_field=IntegerField()))
+                Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(target_percent/100), output_field=IntegerField()))
                 messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
             if form.cleaned_data['target_time'] is not None:
                 target_time = form.cleaned_data['target_time']
@@ -1604,15 +1604,15 @@ def auto_rebalance(request):
                 db_enabled.save()
                 messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
             if form.cleaned_data['outbound_percent'] is not None:
-                outbound_percent = form.cleaned_data['outbound_percent']
+                outbound_percent = int(form.cleaned_data['outbound_percent'])
                 try:
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 except:
-                    LocalSettings(key='AR-Outbound%', value='0.75').save()
+                    LocalSettings(key='AR-Outbound%', value='75').save()
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=int(outbound_percent*100))
+                Channels.objects.all().update(ar_out_target=int(outbound_percent))
                 messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
@@ -1625,15 +1625,15 @@ def auto_rebalance(request):
                 db_fee_rate.save()
                 messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
             if form.cleaned_data['max_cost'] is not None:
-                max_cost = form.cleaned_data['max_cost']
+                max_cost = int(form.cleaned_data['max_cost'])
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
+                    LocalSettings(key='AR-MaxCost%', value='65').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()
-                Channels.objects.all().update(ar_max_cost=int(max_cost*100))
+                Channels.objects.all().update(ar_max_cost=int(max_cost))
                 messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
             if form.cleaned_data['autopilot'] is not None:
                 autopilot = form.cleaned_data['autopilot']
@@ -1759,11 +1759,11 @@ def update_setting(request):
             key = form.cleaned_data['key']
             value = form.cleaned_data['value']
             if key == 'AR-Target%':
-                target_percent = value
+                target_percent = float(value)
                 try:
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 except:
-                    LocalSettings(key='AR-Target%', value='0.05').save()
+                    LocalSettings(key='AR-Target%', value='5').save()
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
@@ -1789,11 +1789,11 @@ def update_setting(request):
                 db_enabled.save()
                 messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
             elif key == 'AR-Outbound%':
-                outbound_percent = float(value)
+                outbound_percent = int(value)
                 try:
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 except:
-                    LocalSettings(key='AR-Outbound%', value='0.75').save()
+                    LocalSettings(key='AR-Outbound%', value='75').save()
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
@@ -1809,11 +1809,11 @@ def update_setting(request):
                 db_fee_rate.save()
                 messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
             elif key == 'AR-MaxCost%':
-                max_cost = float(value)
+                max_cost = int(value)
                 try:
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 except:
-                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
+                    LocalSettings(key='AR-MaxCost%', value='65').save()
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()

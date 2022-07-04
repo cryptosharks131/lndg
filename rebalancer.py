@@ -112,7 +112,7 @@ def auto_schedule():
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
         if len(auto_rebalance_channels) > 0:
             if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
-                LocalSettings(key='AR-Outbound%', value='0.75').save()
+                LocalSettings(key='AR-Outbound%', value='75').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
@@ -132,9 +132,9 @@ def auto_schedule():
                     LocalSettings(key='AR-WaitPeriod', value='30').save()
                     wait_period = 30
                 if not LocalSettings.objects.filter(key='AR-Target%').exists():
-                    LocalSettings(key='AR-Target%', value='0.05').save()
+                    LocalSettings(key='AR-Target%', value='5').save()
                 if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
-                    LocalSettings(key='AR-MaxCost%', value='0.65').save()
+                    LocalSettings(key='AR-MaxCost%', value='65').save()
                 for target in inbound_cans:
                     target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
                     if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
