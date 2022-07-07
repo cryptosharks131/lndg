@@ -6,17 +6,17 @@ def update_percent_vars(apps, schedma_editor):
     try:
         if settings.objects.filter(key='AR-MaxCost%').exists():
             current_value = settings.objects.filter(key='AR-MaxCost%')[0]
-            if float(current_value.value) < 1:
+            if float(current_value.value) <= 1:
                 current_value.value = int(float(current_value.value)*100)
                 current_value.save()
         if settings.objects.filter(key='AR-Outbound%').exists():
             current_value = settings.objects.filter(key='AR-Outbound%')[0]
-            if float(current_value.value) < 1:
+            if float(current_value.value) <= 1:
                 current_value.value = int(float(current_value.value)*100)
                 current_value.save()
         if settings.objects.filter(key='AR-Target%').exists():
             current_value = settings.objects.filter(key='AR-Target%')[0]
-            if float(current_value.value) < 1:
+            if float(current_value.value) <= 1:
                 current_value.value = int(float(current_value.value)*100)
                 current_value.save()
     except Exception as e:
