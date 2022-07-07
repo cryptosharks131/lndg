@@ -6,24 +6,36 @@ def update_percent_vars(apps, schedma_editor):
     try:
         if settings.objects.filter(key='AR-MaxCost%').exists():
             current_value = settings.objects.filter(key='AR-MaxCost%')[0]
-            if float(current_value.value) <= 1:
-                current_value.value = int(float(current_value.value)*100)
-                current_value.save()
+            current_value.value = int(float(current_value.value)*100)
+            current_value.save()
         if settings.objects.filter(key='AR-Outbound%').exists():
             current_value = settings.objects.filter(key='AR-Outbound%')[0]
-            if float(current_value.value) <= 1:
-                current_value.value = int(float(current_value.value)*100)
-                current_value.save()
+            current_value.value = int(float(current_value.value)*100)
+            current_value.save()
         if settings.objects.filter(key='AR-Target%').exists():
             current_value = settings.objects.filter(key='AR-Target%')[0]
-            if float(current_value.value) <= 1:
-                current_value.value = int(float(current_value.value)*100)
-                current_value.save()
+            current_value.value = int(float(current_value.value)*100)
+            current_value.save()
     except Exception as e:
         print('Migration step failed:', str(e))
 
 def revert_percent_vars(apps, schedma_editor):
-    pass
+    settings = apps.get_model('gui', 'localsettings')
+    try:
+        if settings.objects.filter(key='AR-MaxCost%').exists():
+            current_value = settings.objects.filter(key='AR-MaxCost%')[0]
+            current_value.value = int(current_value.value)/100
+            current_value.save()
+        if settings.objects.filter(key='AR-Outbound%').exists():
+            current_value = settings.objects.filter(key='AR-Outbound%')[0]
+            current_value.value = int(current_value.value)/100
+            current_value.save()
+        if settings.objects.filter(key='AR-Target%').exists():
+            current_value = settings.objects.filter(key='AR-Target%')[0]
+            current_value.value = int(current_value.value)/100
+            current_value.save()
+    except Exception as e:
+        print('Migration reversion step failed:', str(e))
 
 class Migration(migrations.Migration):
 
