@@ -784,8 +784,9 @@ def channel(request):
                         channels_df['average_in_7day'] = 0 if channels_df['routed_in_7day'][0] == 0 else int(channels_df['amt_routed_in_7day']/channels_df['routed_in_7day'])
                         channels_df['revenue_assist_7day'] = int(forwards_in_df_7d_sum.loc[chan_id].fee)
                         forwards_in_df_7d_sum = forwards_in_df_7d[forwards_in_df_7d['amt_out_msat']>=1000000].groupby('chan_id_in', as_index=True).sum()
-                        channels_df['amt_routed_in_7day_fees'] = int(forwards_in_df_7d_sum.loc[chan_id].amt_out_msat/1000)
-                        channels_df['revenue_assist_7day_fees'] = int(forwards_in_df_7d_sum.loc[chan_id].fee)
+                        if forwards_in_df_7d_sum.shape[0] > 0:
+                            channels_df['amt_routed_in_7day_fees'] = int(forwards_in_df_7d_sum.loc[chan_id].amt_out_msat/1000)
+                            channels_df['revenue_assist_7day_fees'] = int(forwards_in_df_7d_sum.loc[chan_id].fee)
                         forwards_in_df_1d = forwards_in_df_7d.loc[forwards_in_df_7d['forward_date'] >= filter_1day]
                         if forwards_in_df_1d.shape[0] > 0:
                             forwards_in_df_1d_count = forwards_in_df_1d.groupby('chan_id_in', as_index=True).count()
@@ -796,39 +797,40 @@ def channel(request):
                             channels_df['revenue_assist_1day'] = int(forwards_in_df_1d_sum.loc[chan_id].fee)
             if forwards_out_df.shape[0]> 0:
                 start_date = forwards_out_df['forward_date'].min()
-                forwards_out_df_out_count = forwards_out_df.groupby('chan_id_out', as_index=True).count()
-                forwards_out_df_out_sum = forwards_out_df.groupby('chan_id_out', as_index=True).sum()
-                channels_df['routed_out'] = forwards_out_df_out_count.loc[chan_id].amt_out_msat
-                channels_df['amt_routed_out'] = int(forwards_out_df_out_sum.loc[chan_id].amt_out_msat/1000)
+                forwards_out_df_count = forwards_out_df.groupby('chan_id_out', as_index=True).count()
+                forwards_out_df_sum = forwards_out_df.groupby('chan_id_out', as_index=True).sum()
+                channels_df['routed_out'] = forwards_out_df_count.loc[chan_id].amt_out_msat
+                channels_df['amt_routed_out'] = int(forwards_out_df_sum.loc[chan_id].amt_out_msat/1000)
                 channels_df['average_out'] = 0 if channels_df['routed_out'][0] == 0 else int(channels_df['amt_routed_out']/channels_df['routed_out'])
-                channels_df['revenue'] = int(forwards_out_df_out_sum.loc[chan_id].fee) if forwards_out_df_out_sum.empty == False else 0
+                channels_df['revenue'] = int(forwards_out_df_sum.loc[chan_id].fee) if forwards_out_df_sum.empty == False else 0
                 forwards_out_df_30d = forwards_out_df.loc[forwards_out_df['forward_date'] >= filter_30day]
                 if forwards_out_df_30d.shape[0] > 0:
-                    forwards_out_df_out_30d_count = forwards_out_df_30d.groupby('chan_id_out', as_index=True).count()
-                    forwards_out_df_out_30d_sum = forwards_out_df_30d.groupby('chan_id_out', as_index=True).sum()
-                    channels_df['routed_out_30day'] = forwards_out_df_out_30d_count.loc[chan_id].amt_out_msat
-                    channels_df['amt_routed_out_30day'] = int(forwards_out_df_out_30d_sum.loc[chan_id].amt_out_msat/1000)
+                    forwards_out_df_30d_count = forwards_out_df_30d.groupby('chan_id_out', as_index=True).count()
+                    forwards_out_df_30d_sum = forwards_out_df_30d.groupby('chan_id_out', as_index=True).sum()
+                    channels_df['routed_out_30day'] = forwards_out_df_30d_count.loc[chan_id].amt_out_msat
+                    channels_df['amt_routed_out_30day'] = int(forwards_out_df_30d_sum.loc[chan_id].amt_out_msat/1000)
                     channels_df['average_out_30day'] = 0 if channels_df['routed_out_30day'][0] == 0 else int(channels_df['amt_routed_out_30day']/channels_df['routed_out_30day'])
-                    channels_df['revenue_30day'] = int(forwards_out_df_out_30d_sum.loc[chan_id].fee) if forwards_out_df_out_30d_sum.empty == False else 0
+                    channels_df['revenue_30day'] = int(forwards_out_df_30d_sum.loc[chan_id].fee) if forwards_out_df_30d_sum.empty == False else 0
                     forwards_out_df_7d = forwards_out_df_30d.loc[forwards_out_df_30d['forward_date'] >= filter_7day]
                     if forwards_out_df_7d.shape[0] > 0:
-                        forwards_out_df_out_7d_count = forwards_out_df_7d.groupby('chan_id_out', as_index=True).count()
-                        forwards_out_df_out_7d_sum = forwards_out_df_7d.groupby('chan_id_out', as_index=True).sum()
-                        channels_df['routed_out_7day'] = forwards_out_df_out_7d_count.loc[chan_id].amt_out_msat
-                        channels_df['amt_routed_out_7day'] = int(forwards_out_df_out_7d_sum.loc[chan_id].amt_out_msat/1000)
+                        forwards_out_df_7d_count = forwards_out_df_7d.groupby('chan_id_out', as_index=True).count()
+                        forwards_out_df_7d_sum = forwards_out_df_7d.groupby('chan_id_out', as_index=True).sum()
+                        channels_df['routed_out_7day'] = forwards_out_df_7d_count.loc[chan_id].amt_out_msat
+                        channels_df['amt_routed_out_7day'] = int(forwards_out_df_7d_sum.loc[chan_id].amt_out_msat/1000)
                         channels_df['average_out_7day'] = 0 if channels_df['routed_out_7day'][0] == 0 else int(channels_df['amt_routed_out_7day']/channels_df['routed_out_7day'])
-                        channels_df['revenue_7day'] = int(forwards_out_df_out_7d_sum.loc[chan_id].fee)
-                        forwards_out_df_out_7d_sum = forwards_out_df_7d[forwards_out_df_7d['amt_out_msat']>=1000000].groupby('chan_id_out', as_index=True).sum()
-                        channels_df['amt_routed_out_7day_fees'] = int(forwards_out_df_out_7d_sum.loc[chan_id].amt_out_msat/1000)
-                        channels_df['revenue_7day_fees'] = int(forwards_out_df_out_7d_sum.loc[chan_id].fee)
+                        channels_df['revenue_7day'] = int(forwards_out_df_7d_sum.loc[chan_id].fee)
+                        forwards_out_df_7d_sum = forwards_out_df_7d[forwards_out_df_7d['amt_out_msat']>=1000000].groupby('chan_id_out', as_index=True).sum()
+                        if forwards_out_df_7d_sum.shape[0] > 0:
+                            channels_df['amt_routed_out_7day_fees'] = int(forwards_out_df_7d_sum.loc[chan_id].amt_out_msat/1000)
+                            channels_df['revenue_7day_fees'] = int(forwards_out_df_7d_sum.loc[chan_id].fee)
                         forwards_out_df_1d = forwards_out_df_7d.loc[forwards_out_df_7d['forward_date'] >= filter_1day]
                         if forwards_out_df_1d.shape[0] > 0:
-                            forwards_out_df_out_1d_count = forwards_out_df_1d.groupby('chan_id_out', as_index=True).count()
-                            forwards_out_df_out_1d_sum = forwards_out_df_1d.groupby('chan_id_out', as_index=True).sum()
-                            channels_df['routed_out_1day'] = forwards_out_df_out_1d_count.loc[chan_id].amt_out_msat
-                            channels_df['amt_routed_out_1day'] = int(forwards_out_df_out_1d_sum.loc[chan_id].amt_out_msat/1000)
+                            forwards_out_df_1d_count = forwards_out_df_1d.groupby('chan_id_out', as_index=True).count()
+                            forwards_out_df_1d_sum = forwards_out_df_1d.groupby('chan_id_out', as_index=True).sum()
+                            channels_df['routed_out_1day'] = forwards_out_df_1d_count.loc[chan_id].amt_out_msat
+                            channels_df['amt_routed_out_1day'] = int(forwards_out_df_1d_sum.loc[chan_id].amt_out_msat/1000)
                             channels_df['average_out_1day'] = 0 if channels_df['routed_out_1day'][0] == 0 else int(channels_df['amt_routed_out_1day']/channels_df['routed_out_1day'])
-                            channels_df['revenue_1day'] = int(forwards_out_df_out_1d_sum.loc[chan_id].fee)
+                            channels_df['revenue_1day'] = int(forwards_out_df_1d_sum.loc[chan_id].fee)
             if payments_df.shape[0] > 0:
                 payments_df_count = payments_df.groupby('chan_out', as_index=True).count()
                 payments_df_sum = payments_df.groupby('chan_out', as_index=True).sum()
