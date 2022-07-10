@@ -185,14 +185,14 @@ LNDg will automatically try to resolve any channels that are seen as inactive, n
 
 ## Auto-Fees
 ### Here are some additional notes to help you get started using Auto-Fees (AF).
-LNDg can update your fees on a channel every 24 hours if there is a suggestion listed on the fee rates page. You must make sure the AF-Enabled setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
+LNDg can update your fees on a channel every 24 hours if there is a suggestion listed on the fee rates page. You must make sure the `AF-Enabled` setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
 
-You can customize some settings of AF by updating the following settings:
-AF-FailedHTLCs - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)
-AF-Increment - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value
-AF-MaxRate - The maximum fee rate in which we can adjust to
-AF-MinRate - The minimum fee rate in which we can adjust to
-AF-Multiplier - Multiplier used against the flow pattern algorithm, the larger the multiplier, the larger the potential moves
+You can customize some settings of AF by updating the following settings:  
+`AF-FailedHTLCs` - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)  
+`AF-Increment` - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value  
+`AF-MaxRate` - The maximum fee rate in which we can adjust to  
+`AF-MinRate` - The minimum fee rate in which we can adjust to  
+`AF-Multiplier` - Multiplier used against the flow pattern algorithm, the larger the multiplier, the larger the potential moves  
 
 AF Notes:
 1. AF changes only trigger after 24 hours of no fee updates via LNDg
@@ -216,12 +216,12 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
 8. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%` on the specific channel. Rebalance attempts will be made until inbound liquidity falls below this channel settting.
 9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
 10. Attempts that are successful or attempts with only incorrect payment information are tried again immediately. Example: If a rebalancing for 50k was sucessful, AR will try another 50k immediately with the same parameters.
-11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed.
+11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed. The 30 minute window can be customized by updating the `AR-WaitPeriod` setting.
 
 Additional customization options:
-1. AR-Autopilot - Automatically act upon suggestions on the AR Actions page
-2. AR-WaitPeriod - How long AR should wait before scheduling a channel that has recently failed an attempt
-3. AR-Variance - How much to randomly vary the target rebalance amount by this % of the target amount
+1. `AR-Autopilot` - Automatically act upon suggestions on the AR Actions page
+2. `AR-WaitPeriod` - How long AR should wait before scheduling a channel that has recently failed an attempt
+3. `AR-Variance` - How much to randomly vary the target rebalance amount by this % of the target amount
 
 #### Steps to start the Auto-Rebalancer:
 1. Update Channel Specific Settings  
