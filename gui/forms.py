@@ -81,6 +81,8 @@ class AutoRebalanceForm(forms.Form):
     fee_rate = forms.IntegerField(label='fee_rate', required=False)
     outbound_percent = forms.FloatField(label='outbound_percent', required=False)
     max_cost = forms.FloatField(label='max_cost', required=False)
+    variance = forms.IntegerField(label='variance', required=False)
+    wait_period = forms.IntegerField(label='wait_period', required=False)
     autopilot = forms.IntegerField(label='autopilot', required=False)
 
 updates_channel_codes = [

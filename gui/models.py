@@ -104,25 +104,25 @@ class Channels(models.Model):
     def save(self, *args, **kwargs):
         if not self.ar_out_target:
             if LocalSettings.objects.filter(key='AR-Outbound%').exists():
-                outbound_setting = float(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
+                outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
             else:
-                LocalSettings(key='AR-Outbound%', value='0.75').save()
-                outbound_setting = 0.75
-            self.ar_out_target = int(outbound_setting * 100)
+                LocalSettings(key='AR-Outbound%', value='75').save()
+                outbound_setting = 75
+            self.ar_out_target = int(outbound_setting)
         if not self.ar_amt_target:
             if LocalSettings.objects.filter(key='AR-Target%').exists():
-                amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+                amt_setting = int(LocalSettings.objects.filter(key='AR-Target%')[0].value)
             else:
-                LocalSettings(key='AR-Target%', value='0.05').save()
-                amt_setting = 0.05
-            self.ar_amt_target = int(amt_setting * self.capacity)
+                LocalSettings(key='AR-Target%', value='5').save()
+                amt_setting = 5
+            self.ar_amt_target = int((amt_setting/100) * self.capacity)
         if not self.ar_max_cost:
             if LocalSettings.objects.filter(key='AR-MaxCost%').exists():
-                cost_setting = float(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
+                cost_setting = int(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
             else:
-                LocalSettings(key='AR-MaxCost%', value='0.65').save()
-                cost_setting = 0.65
-            self.ar_max_cost = int(cost_setting * 100)
+                LocalSettings(key='AR-MaxCost%', value='65').save()
+                cost_setting = 65
+            self.ar_max_cost = int(cost_setting)
         super(Channels, self).save(*args, **kwargs)
 
     class Meta:
@@ -143,7 +143,7 @@ class Peers(models.Model):
 class Rebalancer(models.Model):
     requested = models.DateTimeField(default=timezone.now)
     value = models.IntegerField()
-    fee_limit = models.IntegerField()
+    fee_limit = models.FloatField()
     outgoing_chan_ids = models.TextField(default='[]')
     last_hop_pubkey = models.CharField(default='', max_length=66)
     target_alias = models.CharField(default='', max_length=32)
@@ -209,7 +209,7 @@ class PendingHTLCs(models.Model):
     amount = models.BigIntegerField()
     hash_lock = models.CharField(max_length=64)
     expiration_height = models.IntegerField()
-    forwarding_channel = models.IntegerField()
+    forwarding_channel = models.CharField(max_length=20)
     forwarding_alias = models.CharField(max_length=32)
     class Meta:
         app_label = 'gui'

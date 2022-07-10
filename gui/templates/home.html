@@ -74,7 +74,7 @@
           {% if channel.auto_rebalance == True %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
+              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="3">
             </form>
@@ -141,7 +141,7 @@
         {% if channel.auto_rebalance == True %}
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
+            <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="3">
           </form>
@@ -211,8 +211,8 @@
   <h2>Pending Open Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th width=25%>Channel Point</th>
-      <th width=25%>Peer PubKey</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
@@ -220,13 +220,13 @@
     </tr>
     {% for channel in pending_open %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.commit_fee }}</td>
     </tr>
     {% endfor %}
@@ -238,8 +238,9 @@
   <h2>Pending Close Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
@@ -248,13 +249,14 @@
     </tr>
     {% for channel in pending_closed %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.commitments.local_commit_fee_sat }}</td>
     </tr>
@@ -267,26 +269,28 @@
   <h2>Pending Force Close Channels</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
       <th>Balance In Limbo</th>
-      <th>Blocks To Maturity</th>
-      <th>Closing TX</th>
+      <th>Maturity</th>
+      <th width=20%>Closing TX</th>
     </tr>
     {% for channel in pending_force_closed %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.blocks_til_maturity|intcomma }}</td>
+      <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
       <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
@@ -298,8 +302,9 @@
   <h2>Channels Waiting To Close</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel Point</th>
-      <th>Peer PubKey</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
       <th>Capacity</th>
       <th>Local Balance</th>
       <th>Remote Balance</th>
@@ -308,13 +313,14 @@
     </tr>
     {% for channel in waiting_for_close %}
     <tr>
-      {% with pending_funding_txid=channel.channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ pending_funding_txid }}' target="_blank">{{ channel.channel.channel_point }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
       {% endwith %}
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.channel.remote_node_pub }}" target="_blank">{{ channel.channel.remote_node_pub }}</a></td>
-      <td>{{ channel.channel.capacity|intcomma }}</td>
-      <td>{{ channel.channel.local_balance|intcomma }}</td>
-      <td>{{ channel.channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.commitments.local_commit_fee_sat }}</td>
     </tr>
@@ -409,7 +415,7 @@
       <td>{{ payment.ppm|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}N/A{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}N/A{% endif %}</td>
+      <td>{% if payment.status == 2 %}{% if payment.chan_out != 'MPP' %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}{{ payment.chan_out }}{% endif %}{% else %}N/A{% endif %}</td>
       <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
       <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
@@ -503,19 +509,23 @@
   <div class="w3-container w3-padding-32">
     <form action="/autorebalance/" method="post">
       {% csrf_token %}
-      <label for="enabled">Enabled: </label>
+      <label title="This enables or disables the auto-scheduling function" for="enabled">Enabled: </label>
       <input id="enabled" type="number" min="0" max="1" name="enabled">
-      <label for="target_percent">Target Amount (%): </label>
-      <input id="target_percent" type="number" step="0.001" min="0" max="1" name="target_percent">
-      <label for="target_time">Target Time (min): </label>
-      <input id="target_time" type="number" min="0" max="60" name="target_time">
-      <label for="outbound_percent">Target Outbound Above (%): </label>
-      <input id="outbound_percent" type="number" step="0.01" min="0" max="1" name="outbound_percent">
-      <label for="fee_rate">Global Max Fee Rate (ppm): </label>
-      <input id="fee_rate" type="number" min="0" max="2500" name="fee_rate">
-      <label for="max_cost">Max Cost (%): </label>
-      <input id="max_cost" type="number" step="0.01" min="0" max="1" name="max_cost">
-      <label for="autopilot">Autopilot: </label>
+      <label title="The % of the total capacity to target as the rebalance amount" for="target_percent">Target Amount (%): </label>
+      <input id="target_percent" type="number" step="0.1" min="0.1" max="100" name="target_percent">
+      <label title="The time spent per individual rebalance attempt" for="target_time">Target Time (min): </label>
+      <input id="target_time" type="number" min="1" max="60" name="target_time">
+      <label title="When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel" for="outbound_percent">Target Outbound Above (%): </label>
+      <input id="outbound_percent" type="number" step="1" min="1" max="100" name="outbound_percent">
+      <label title="The max rate we can ever use to refill a channel with outbound" for="fee_rate">Global Max Fee Rate (ppm): </label>
+      <input id="fee_rate" type="number" min="1" max="2500" name="fee_rate">
+      <label title="The ppm to target which is the % of the outbound fee rate for the channel being refilled" for="max_cost">Max Cost (%): </label>
+      <input id="max_cost" type="number" step="1" min="1" max="100" name="max_cost">
+      <label title="The % of the target amount to be randomly varied with every rebalance attempt" for="variance">Variance (%): </label>
+      <input id="variance" type="number" min="0" max="100" name="variance">
+      <label title="The minutes we should wait after a failed attempt before trying again" for="wait_period">Wait Period (min): </label>
+      <input id="wait_period" type="number" min="1" max="100" name="wait_period">
+      <label title="This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions" for="autopilot">Autopilot: </label>
       <input id="autopilot" type="number" min="0" max="1" name="autopilot">
       <input type="submit" value="OK">
     </form>
