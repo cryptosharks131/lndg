@@ -108,10 +108,10 @@ class Channels(models.Model):
             else:
                 LocalSettings(key='AR-Outbound%', value='75').save()
                 outbound_setting = 75
-            self.ar_out_target = int(outbound_setting)
+            self.ar_out_target = outbound_setting
         if not self.ar_amt_target:
             if LocalSettings.objects.filter(key='AR-Target%').exists():
-                amt_setting = int(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+                amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
             else:
                 LocalSettings(key='AR-Target%', value='5').save()
                 amt_setting = 5
@@ -122,7 +122,7 @@ class Channels(models.Model):
             else:
                 LocalSettings(key='AR-MaxCost%', value='65').save()
                 cost_setting = 65
-            self.ar_max_cost = int(cost_setting)
+            self.ar_max_cost = cost_setting
         super(Channels, self).save(*args, **kwargs)
 
     class Meta:
