@@ -83,6 +83,10 @@ User=$INSTALL_USER
 Group=$INSTALL_USER
 ExecStart=/usr/bin/bash $HOME_DIR/lndg/htlc_stream.sh
 StandardError=append:/var/log/lnd_htlc_stream_error.log
+Restart=on-failure
+RestartSec=60s
+[Install]
+WantedBy=multi-user.target
 EOF
 }
 
