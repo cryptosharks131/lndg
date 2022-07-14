@@ -165,31 +165,36 @@ def auto_enable():
     else:
         LocalSettings(key='AR-Autopilot', value='0').save()
         enabled = 0
+    if LocalSettings.objects.filter(key='AR-APDays').exists():
+        apdays = int(LocalSettings.objects.filter(key='AR-APDays')[0].value)
+    else:
+        LocalSettings(key='AR-APDays', value='7').save()
+        apdays = 7        
     if enabled == 1:
         channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
-        filter_7day = datetime.now() - timedelta(days=7)
-        forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
+        filter_day = datetime.now() - timedelta(days=apdays)
+        forwards = Forwards.objects.filter(forward_date__gte=filter_day)
         for channel in channels:
             outbound_percent = int(round(channel.outbound_percent/10, 0))
             inbound_percent = int(round(channel.inbound_percent/10, 0))
-            routed_in_7day = forwards.filter(chan_id_in=channel.chan_id).count()
-            routed_out_7day = forwards.filter(chan_id_out=channel.chan_id).count()
-            i7D = 0 if routed_in_7day == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
-            o7D = 0 if routed_out_7day == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
-            if o7D > (i7D*1.10) and outbound_percent > 75:
+            routed_in_apday = forwards.filter(chan_id_in=channel.chan_id).count()
+            routed_out_apday = forwards.filter(chan_id_out=channel.chan_id).count()
+            iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
+            oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
+            if oapD > (iapD*1.10) and outbound_percent > 75:
                 #print('Case 1: Pass')
                 pass
-            elif o7D > (i7D*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
+            elif oapD > (iapD*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
                 #print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
                 channel.auto_rebalance = True
                 channel.save()
                 Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=0, new_value=1).save()
-            elif o7D < (i7D*1.10) and outbound_percent > 75 and channel.auto_rebalance == True:
+            elif oapD < (iapD*1.10) and outbound_percent > 75 and channel.auto_rebalance == True:
                 #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
                 channel.auto_rebalance = False
                 channel.save()
                 Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=1, new_value=0).save()
-            elif o7D < (i7D*1.10) and inbound_percent > 75:
+            elif oapD < (iapD*1.10) and inbound_percent > 75:
                 #print('Case 4: Pass')
                 pass
             else:
