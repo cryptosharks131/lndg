@@ -1840,6 +1840,16 @@ def update_setting(request):
                 db_autopilot.value = autopilot
                 db_autopilot.save()
                 messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
+            elif key == 'AR-APDays':
+                apdays = int(value)
+                try:
+                    db_apdays = LocalSettings.objects.get(key='AR-APDays')
+                except:
+                    LocalSettings(key='AR-APDays', value='0').save()
+                    db_apdays = LocalSettings.objects.get(key='AR-APDays')
+                db_apdays.value = apdays
+                db_apdays.save()
+                messages.success(request, 'Updated Autopilot Days setting to: ' + str(apdays))                
             elif key == 'AR-Variance':
                 variance = int(value)
                 try:
