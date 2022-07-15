@@ -1657,6 +1657,16 @@ def auto_rebalance(request):
                 db_autopilot.value = autopilot
                 db_autopilot.save()
                 messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
+            if form.cleaned_data['autopilotdays'] is not None:
+                autopilotdays = form.cleaned_data['autopilotdays']
+                try:
+                    db_autopilotdays = LocalSettings.objects.get(key='AR-APDays')
+                except:
+                    LocalSettings(key='AR-APDays', value='7').save()
+                    db_autopilotdays = LocalSettings.objects.get(key='AR-APDays')
+                db_autopilotdays.value = autopilotdays
+                db_autopilotdays.save()
+                messages.success(request, 'Updated autopilot days setting to: ' + str(autopilotdays))
             if form.cleaned_data['variance'] is not None:
                 variance = form.cleaned_data['variance']
                 try:

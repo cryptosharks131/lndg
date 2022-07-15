@@ -84,6 +84,7 @@ class AutoRebalanceForm(forms.Form):
     variance = forms.IntegerField(label='variance', required=False)
     wait_period = forms.IntegerField(label='wait_period', required=False)
     autopilot = forms.IntegerField(label='autopilot', required=False)
+    autopilotdays = forms.IntegerField(label='autopilotdays', required=False)
 
 updates_channel_codes = [
     (0, 'base_fee'),
