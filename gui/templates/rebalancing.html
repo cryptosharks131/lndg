@@ -101,6 +101,7 @@
       <th>Start</th>
       <th>Stop</th>
       <th>Scheduled Duration</th>
+      <th>Actual Duration</th>
       <th>Value</th>
       <th>Fee Limit</th>
       <th>Target PPM</th>
@@ -113,6 +114,7 @@
       <td {% if rebalance.status == 0 %}>N/A{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
       <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>N/A{% endif %}</td>
       <td>{{ rebalance.duration }} minutes</td>
+      <td {% if rebalance.status == 2 %}>{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}N/A{% endif %}</td>
       <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit|intcomma }}</td>
       <td>{{ rebalance.ppm|intcomma }}</td>
