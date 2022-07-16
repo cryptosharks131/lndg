@@ -247,6 +247,7 @@ def main():
     parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
     parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
     parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')
+    parser.add_argument('-u', '--adminuser', help = 'Setup a custom admin username', default='lndg-admin')
     parser.add_argument('-pw', '--adminpw', help = 'Setup a custom admin password', default=None)
     args = parser.parse_args()
     node_ip = args.nodeip
@@ -258,6 +259,7 @@ def main():
     whitenoise = args.whitenoise
     docker = args.docker
     debug = args.debug
+    adminuser = args.adminuser
     adminpw = args.adminpw
     if docker:
         setup_supervisord = True
@@ -300,8 +302,8 @@ def main():
         if get_user_model().objects.count() == 0:
             print('Setting up initial user...')
             try:
-                call_command('createsuperuser', username='lndg-admin', email='admin@lndg.local', interactive=False)
-                admin = get_user_model().objects.get(username='lndg-admin')
+                call_command('createsuperuser', username=adminuser, email='admin@lndg.local', interactive=False)
+                admin = get_user_model().objects.get(username=adminuser)
                 login_pw = secrets.token_urlsafe(16) if adminpw is None else adminpw
                 admin.set_password(login_pw)
                 admin.save()
