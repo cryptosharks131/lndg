@@ -106,6 +106,7 @@ def home(request):
             pending_htlc_count = channels.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if channels.filter(is_open=True).exists() else 0
             pending_outbound = channels.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if channels.filter(is_open=True).exists() else 0
             pending_inbound = channels.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if channels.filter(is_open=True).exists() else 0
+            num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
             detailed_active_channels = []
             for channel in active_channels:
                 detailed_channel = {}
@@ -229,7 +230,8 @@ def home(request):
                 'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
-                'db_size': db_size
+                'db_size': db_size,
+                'num_updates': num_updates
             }
             return render(request, 'home.html', context)
         except Exception as e:
