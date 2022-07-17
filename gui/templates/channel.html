@@ -217,8 +217,8 @@
       <td>{{ forward.amt_out|intcomma }}</td>
       <td>{% if forward.chan_in_alias == '' %}---{% else %}{{ forward.chan_in_alias }}{% endif %}</td>
       <td>{% if forward.chan_out_alias == '' %}---{% else %}{{ forward.chan_out_alias }}{% endif %}</td>
-      <td>{{ forward.chan_id_in }}</td>
-      <td>{{ forward.chan_id_out }}</td>
+      <td><a href="/channel?={{ forward.chan_id_in }}" target="_blank">{{ forward.chan_id_in }}</a></td>
+      <td><a href="/channel?={{ forward.chan_id_out }}" target="_blank">{{ forward.chan_id_out }}</a></td>
       <td>{{ forward.fee }}</td>
       <td>{{ forward.ppm|intcomma }}</td>
     </tr>
@@ -235,6 +235,7 @@
       <th>Start</th>
       <th>Stop</th>
       <th>Scheduled Duration</th>
+      <th>Actual Duration</th>
       <th>Value</th>
       <th>Fee Limit</th>
       <th>Target PPM</th>
@@ -247,6 +248,7 @@
       <td {% if rebalance.status == 0 %}>N/A{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
       <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>N/A{% endif %}</td>
       <td>{{ rebalance.duration }} minutes</td>
+      <td {% if rebalance.status == 2 %}>{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}N/A{% endif %}</td>
       <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit|intcomma }}</td>
       <td>{{ rebalance.ppm|intcomma }}</td>
