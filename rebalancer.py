@@ -175,61 +175,46 @@ def auto_enable():
         LocalSettings(key='AR-APDays', value='7').save()
         apdays = 7
     if enabled == 1:
-        channels = Channels.objects.filter(is_active=True, is_open=True, private=False)
+        lookup_channels=Channels.objects.filter(is_active=True, is_open=True, private=False)
+        channels = lookup_channels.values('remote_pubkey').annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by()
         filter_day = datetime.now() - timedelta(days=apdays)
         forwards = Forwards.objects.filter(forward_date__gte=filter_day)
         for channel in channels:
-            peer_channels = Channels.objects.filter(remote_pubkey=channel.remote_pubkey)
-            local_balance = int(0)
-            remote_balance =  int(0)
-            capacity = int(0)
-            routed_in_apday = int(0)
-            routed_out_apday = int(0)
-            iapD = int(0)
-            oapD = int(0)
-            for peer_channel in peer_channels:
-                #print ('AP Aggregating :', peer_channel.alias, ' : ', peer_channel.chan_id)
-                local_balance += int(peer_channel.local_balance)
-                local_balance += int(peer_channel.pending_outbound)
-                remote_balance += int(peer_channel.remote_balance)
-                remote_balance += int(peer_channel.pending_inbound)
-                capacity += int(peer_channel.capacity)
-                routed_in_apday = forwards.filter(chan_id_in=peer_channel.chan_id).count()
-                routed_out_apday = forwards.filter(chan_id_out=peer_channel.chan_id).count()
-                #TLDR; division by 10000000 gets you routed in 10K sat unit. Eventually we should consider making it a configurable parameter.
-                if routed_in_apday > 0:
-                    iapD = iapD + int(forwards.filter(chan_id_in=peer_channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)
-                if routed_out_apday > 0:
-                    oapD = oapD + int(forwards.filter(chan_id_out=peer_channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)
+            outbound_percent = int(round(channel['outbound_percent']/10, 0))
+            inbound_percent = int(round(channel['inbound_percent']/10, 0))
+            chan_list = lookup_channels.filter(remote_pubkey=channel['remote_pubkey']).values('chan_id')
+            routed_in_apday = forwards.filter(chan_id_in__in=chan_list).count()
+            routed_out_apday = forwards.filter(chan_id_out__in=chan_list).count()
+            iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in__in=chan_list).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
+            oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out__in=chan_list).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
 
-            outbound_percent = int(round(local_balance*100/capacity, 0))
-            inbound_percent = int(round(remote_balance*100/capacity, 0))
+            for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
+                #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
 
-            #print('Processing: ', channel.alias, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent, ' : ', capacity)
-
-            if oapD > (iapD*1.10) and outbound_percent > 75:
-                #print('Case 1: Pass')
-                pass
-            elif oapD > (iapD*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
-                #print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
-                channel.auto_rebalance = True
-                channel.save()
-                Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=0, new_value=1).save()
-                print('Auto Pilot Enabled: ', channel.alias, ' : ', channel.chan_id , ' In: ', iapD, ' Out: ', oapD)
-            elif oapD < (iapD*1.10) and outbound_percent > 75 and channel.auto_rebalance == True:
-                #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
-                channel.auto_rebalance = False
-                channel.save()
-                Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=1, new_value=0).save()
-                print('Auto Pilot Disabled (3): ', channel.alias, ' : ', channel.chan_id, ' In: ', iapD, ' Out: ', oapD )
-            elif oapD < (iapD*1.10) and inbound_percent > 75:
-                #print('Case 4: Pass')
-                pass
-            else:
-                #print('Case 5: Pass')
-                pass
+                if oapD > (iapD*1.10) and outbound_percent > 75:
+                    #print('Case 1: Pass')
+                    pass
+                elif oapD > (iapD*1.10) and inbound_percent > 75 and peer_channel.auto_rebalance == False:
+                    #print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
+                    peer_channel.auto_rebalance = True
+                    peer_channel.save()
+                    Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=0, new_value=1).save()
+                    print('Auto Pilot Enabled: ', peer_channel.alias, ' : ', peer_channel.chan_id , ' Out: ', oapD, ' In: ', iapD)
+                elif oapD < (iapD*1.10) and outbound_percent > 75 and peer_channel.auto_rebalance == True:
+                    #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
+                    peer_channel.auto_rebalance = False
+                    peer_channel.save()
+                    Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=1, new_value=0).save()
+                    print('Auto Pilot Disabled (3): ', peer_channel.alias, ' : ', peer_channel.chan_id, ' Out: ', oapD, ' In: ', iapD )
+                elif oapD < (iapD*1.10) and inbound_percent > 75:
+                    #print('Case 4: Pass')
+                    pass
+                else:
+                    #print('Case 5: Pass')
+                    pass
 
 def main():
+
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')
     if len(rebalances) == 0:
         auto_enable()
