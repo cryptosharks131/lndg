@@ -17,8 +17,8 @@
   </form>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Completed Payments: {{ total_payments }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }} [{{ payments_ppm|intcomma }}]</h4>
-  <h4>Paid Invoices: {{ total_invoices }} | Sats Received: {{ total_received|intcomma }}</h4>
+  <h4>Completed Payments: {{ total_payments|intcomma }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }} [{{ payments_ppm|intcomma }}]</h4>
+  <h4>Paid Invoices: {{ total_invoices|intcomma }} | Sats Received: {{ total_received|intcomma }}</h4>
   <h4>Lifetime Routed: {{ total_forwards|intcomma }} | Value: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }} [{{ routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs|intcomma }} | Percent Cost: {{ percent_cost }}%</h4>
   <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound|intcomma }} [{{ profit_per_outbound_real|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
 </div>
@@ -352,7 +352,7 @@
       <td>{% if forward.chan_out_alias == '' %}---{% else %}{{ forward.chan_out_alias }}{% endif %}</td>
       <td><a href="/channel?={{ forward.chan_id_in }}" target="_blank">{{ forward.chan_id_in }}</a></td>
       <td><a href="/channel?={{ forward.chan_id_out }}" target="_blank">{{ forward.chan_id_out }}</a></td>
-      <td>{{ forward.fee }}</td>
+      <td>{{ forward.fee|intcomma }}</td>
       <td>{{ forward.ppm|intcomma }}</td>
     </tr>
     {% endfor %}
