@@ -22,6 +22,7 @@ def run_rebalancer(rebalance):
     auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
     outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
     if len(outbound_cans) == 0:
+        print ('No outbound_cans')
         return None
     elif str(outbound_cans).replace('\'', '') != rebalance.outgoing_chan_ids and rebalance.manual == False:
         rebalance.outgoing_chan_ids = str(outbound_cans).replace('\'', '')
@@ -34,7 +35,9 @@ def run_rebalancer(rebalance):
         chan_ids = json.loads(rebalance.outgoing_chan_ids)
         timeout = rebalance.duration * 60
         invoice_response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
+        #print('Rebalance for:', rebalance.target_alias, ' : ', rebalance.last_hop_pubkey, ' Amount:', rebalance.value, ' Duration:', rebalance.duration, ' via:', chan_ids )
         for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
+            #print ('Payment Response:', payment_response.status, ' Reason:', payment_response.failure_reason, 'Payment Hash :', payment_response.payment_hash )
             if payment_response.status == 1 and rebalance.status == 0:
                 #IN-FLIGHT
                 rebalance.payment_hash = payment_response.payment_hash
@@ -64,6 +67,7 @@ def run_rebalancer(rebalance):
             elif payment_response.status == 0:
                 rebalance.status = 400
     except Exception as e:
+        #print('Exception: ', str(e))
         if str(e.code()) == 'StatusCode.DEADLINE_EXCEEDED':
             rebalance.status = 408
         else:
@@ -169,45 +173,55 @@ def auto_enable():
         apdays = int(LocalSettings.objects.filter(key='AR-APDays')[0].value)
     else:
         LocalSettings(key='AR-APDays', value='7').save()
-        apdays = 7        
+        apdays = 7
     if enabled == 1:
-        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
+        lookup_channels=Channels.objects.filter(is_active=True, is_open=True, private=False)
+        channels = lookup_channels.values('remote_pubkey').annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by()
         filter_day = datetime.now() - timedelta(days=apdays)
         forwards = Forwards.objects.filter(forward_date__gte=filter_day)
         for channel in channels:
-            outbound_percent = int(round(channel.outbound_percent/10, 0))
-            inbound_percent = int(round(channel.inbound_percent/10, 0))
-            routed_in_apday = forwards.filter(chan_id_in=channel.chan_id).count()
-            routed_out_apday = forwards.filter(chan_id_out=channel.chan_id).count()
-            iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in=channel.chan_id).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
-            oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out=channel.chan_id).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
-            if oapD > (iapD*1.10) and outbound_percent > 75:
-                #print('Case 1: Pass')
-                pass
-            elif oapD > (iapD*1.10) and inbound_percent > 75 and channel.auto_rebalance == False:
-                #print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
-                channel.auto_rebalance = True
-                channel.save()
-                Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=0, new_value=1).save()
-            elif oapD < (iapD*1.10) and outbound_percent > 75 and channel.auto_rebalance == True:
-                #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
-                channel.auto_rebalance = False
-                channel.save()
-                Autopilot(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Enabled', old_value=1, new_value=0).save()
-            elif oapD < (iapD*1.10) and inbound_percent > 75:
-                #print('Case 4: Pass')
-                pass
-            else:
-                #print('Case 5: Pass')
-                pass
+            outbound_percent = int(round(channel['outbound_percent']/10, 0))
+            inbound_percent = int(round(channel['inbound_percent']/10, 0))
+            chan_list = lookup_channels.filter(remote_pubkey=channel['remote_pubkey']).values('chan_id')
+            routed_in_apday = forwards.filter(chan_id_in__in=chan_list).count()
+            routed_out_apday = forwards.filter(chan_id_out__in=chan_list).count()
+            iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in__in=chan_list).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
+            oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out__in=chan_list).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
+
+            for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
+                #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
+
+                if oapD > (iapD*1.10) and outbound_percent > 75:
+                    #print('Case 1: Pass')
+                    pass
+                elif oapD > (iapD*1.10) and inbound_percent > 75 and peer_channel.auto_rebalance == False:
+                    #print('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
+                    peer_channel.auto_rebalance = True
+                    peer_channel.save()
+                    Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=0, new_value=1).save()
+                    print('Auto Pilot Enabled: ', peer_channel.alias, ' : ', peer_channel.chan_id , ' Out: ', oapD, ' In: ', iapD)
+                elif oapD < (iapD*1.10) and outbound_percent > 75 and peer_channel.auto_rebalance == True:
+                    #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
+                    peer_channel.auto_rebalance = False
+                    peer_channel.save()
+                    Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=1, new_value=0).save()
+                    print('Auto Pilot Disabled (3): ', peer_channel.alias, ' : ', peer_channel.chan_id, ' Out: ', oapD, ' In: ', iapD )
+                elif oapD < (iapD*1.10) and inbound_percent > 75:
+                    #print('Case 4: Pass')
+                    pass
+                else:
+                    #print('Case 5: Pass')
+                    pass
 
 def main():
+
     rebalances = Rebalancer.objects.filter(status=0).order_by('id')
     if len(rebalances) == 0:
         auto_enable()
         auto_schedule()
     else:
         rebalance = rebalances[0]
+        #print('Next Rebalance for:', rebalance.target_alias, ' : ', rebalance.last_hop_pubkey, ' Amount:', rebalance.value, ' Duration:', rebalance.duration )
         while rebalance != None:
             rebalance = run_rebalancer(rebalance)
 

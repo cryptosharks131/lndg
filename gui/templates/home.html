@@ -4,7 +4,7 @@
 {% load humanize %}
 <div class="w3-container w3-padding-small">
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</h4>
+  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h4>
   {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
   <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
   <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
@@ -368,6 +368,7 @@
       <th>Start</th>
       <th>Stop</th>
       <th>Scheduled Duration</th>
+      <th>Actual Duration</th>
       <th>Value</th>
       <th>Fee Limit</th>
       <th>Target PPM</th>
@@ -380,6 +381,7 @@
       <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}N/A{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
       <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}N/A{% endif %}</td>
       <td>{{ rebalance.duration }} minutes</td>
+      <td {% if rebalance.status == 2 %}>{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}N/A{% endif %}</td>
       <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit|intcomma }}</td>
       <td>{{ rebalance.ppm|intcomma }}</td>
