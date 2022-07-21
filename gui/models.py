@@ -95,7 +95,7 @@ class Channels(models.Model):
     last_update = models.DateTimeField()
     auto_rebalance = models.BooleanField(default=False)
     ar_amt_target = models.BigIntegerField()
-    ar_in_target = models.IntegerField(default=100)
+    ar_in_target = models.IntegerField()
     ar_out_target = models.IntegerField()
     ar_max_cost = models.IntegerField()
     fees_updated = models.DateTimeField(default=timezone.now)
@@ -109,6 +109,13 @@ class Channels(models.Model):
                 LocalSettings(key='AR-Outbound%', value='75').save()
                 outbound_setting = 75
             self.ar_out_target = outbound_setting
+        if not self.ar_in_target:
+            if LocalSettings.objects.filter(key='AR-Inbound%').exists():
+                inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
+            else:
+                LocalSettings(key='AR-Inbound%', value='100').save()
+                inbound_setting = 100
+            self.ar_in_target = inbound_setting
         if not self.ar_amt_target:
             if LocalSettings.objects.filter(key='AR-Target%').exists():
                 amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)

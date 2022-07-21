@@ -1595,8 +1595,11 @@ def auto_rebalance(request):
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
-                Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(target_percent/100), output_field=IntegerField()))
-                messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
+                if form.cleaned_data['targetallchannels']:
+                    Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(target_percent/100), output_field=IntegerField()))
+                    messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
+                else:
+                    messages.success(request, 'Updated auto rebalancer target amount in local settings: ' + str(target_percent))
             if form.cleaned_data['target_time'] is not None:
                 target_time = form.cleaned_data['target_time']
                 try:
@@ -1626,8 +1629,25 @@ def auto_rebalance(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                Channels.objects.all().update(ar_out_target=int(outbound_percent))
-                messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
+                if form.cleaned_data['targetallchannels']:
+                    Channels.objects.all().update(ar_out_target=int(outbound_percent))
+                    messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
+                else:
+                    messages.success(request, 'Updated auto rebalancer target outbound percent setting in local settings to: ' + str(outbound_percent))
+            if form.cleaned_data['inbound_percent'] is not None:
+                inbound_percent = int(form.cleaned_data['inbound_percent'])
+                try:
+                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
+                except:
+                    LocalSettings(key='AR-Inbound%', value='100').save()
+                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
+                db_inbound_target.value = inbound_percent
+                db_inbound_target.save()
+                if form.cleaned_data['targetallchannels']:
+                    Channels.objects.all().update(ar_out_target=int(outbound_percent))
+                    messages.success(request, 'Updated auto rebalancer target inbound percent setting for all channels to: ' + str(inbound_percent))
+                else:
+                    messages.success(request, 'Updated auto rebalancer target inbound percent setting in local settigs to: ' + str(inbound_percent))
             if form.cleaned_data['fee_rate'] is not None:
                 fee_rate = form.cleaned_data['fee_rate']
                 try:
@@ -1647,8 +1667,11 @@ def auto_rebalance(request):
                     db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
                 db_max_cost.value = max_cost
                 db_max_cost.save()
-                Channels.objects.all().update(ar_max_cost=int(max_cost))
-                messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
+                if form.cleaned_data['targetallchannels']:
+                    Channels.objects.all().update(ar_max_cost=int(max_cost))
+                    messages.success(request, 'Updated auto rebalancer max cost setting for all channels to: ' + str(max_cost))
+                else:
+                    messages.success(request, 'Updated auto rebalancer max cost setting in local settings to: ' + str(max_cost))
             if form.cleaned_data['autopilot'] is not None:
                 autopilot = form.cleaned_data['autopilot']
                 try:
@@ -1791,7 +1814,7 @@ def update_setting(request):
                     db_percent_target = LocalSettings.objects.get(key='AR-Target%')
                 db_percent_target.value = target_percent
                 db_percent_target.save()
-                messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
+                messages.success(request, 'Updated auto rebalancer target amount to: ' + str(target_percent))
             elif key == 'AR-Time':
                 target_time = int(value)
                 try:
@@ -1821,7 +1844,17 @@ def update_setting(request):
                     db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
                 db_outbound_target.value = outbound_percent
                 db_outbound_target.save()
-                messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
+                messages.success(request, 'Updated auto rebalancer target outbound percent setting: ' + str(outbound_percent))
+            elif key == 'AR-Inbound%':
+                inbound_percent = int(value)
+                try:
+                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
+                except:
+                    LocalSettings(key='AR-Inbound%', value='100').save()
+                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
+                db_inbound_target.value = inbound_percent
+                db_inbound_target.save()
+                messages.success(request, 'Updated auto rebalancer target inbound percent setting: ' + str(inbound_percent))
             elif key == 'AR-MaxFeeRate':
                 fee_rate = int(value)
                 try:
@@ -1857,7 +1890,7 @@ def update_setting(request):
                 try:
                     db_apdays = LocalSettings.objects.get(key='AR-APDays')
                 except:
-                    LocalSettings(key='AR-APDays', value='0').save()
+                    LocalSettings(key='AR-APDays', value='7').save()
                     db_apdays = LocalSettings.objects.get(key='AR-APDays')
                 db_apdays.value = apdays
                 db_apdays.save()
