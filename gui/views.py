@@ -500,13 +500,14 @@ def closures(request):
         if closures_df.empty:
             merged = DataFrame()
         else:
-            channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
+            channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias', 'closing_costs'))
             if channels_df.empty:
                 merged = closures_df
                 merged['alias'] = ''
             else:
                 merged = merge(closures_df, channels_df, on='chan_id', how='left')
                 merged['alias'] = merged['alias'].fillna('')
+                merged['closing_costs'] = merged['closing_costs'].fillna('')
         context = {
             'closures': [] if merged.empty else merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
@@ -1769,6 +1770,10 @@ def update_channel(request):
                 db_channel.local_cltv = target
                 db_channel.save()
                 messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
+            elif update_target == 10:
+                db_channel.closing_costs = target
+                db_channel.save()
+                messages.success(request, 'Closing costs for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.closing_costs))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:
