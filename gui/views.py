@@ -1304,12 +1304,17 @@ def rebalancing(request):
             eligible_df = enabled_df[enabled_df['is_active']==True][enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
             eligible_count = eligible_df.shape[0]
             enabled_count = enabled_df.shape[0]
+            available_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True][channels_df['percent_outbound'] / channels_df['ar_out_target']>=1]
+            available_count = available_df.shape[0]
         else:
             eligible_count = 0
             enabled_count = 0
+        available_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True][channels_df['percent_outbound'] / channels_df['ar_out_target']>=1]
+        available_count = available_df.shape[0]
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
+            'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
