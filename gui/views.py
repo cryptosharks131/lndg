@@ -327,7 +327,7 @@ def channels(request):
             apy_7day = 0
             apy_30day = 0
         context = {
-            'channels': channels_df.to_dict(orient='records'),
+            'channels': channels_df.sort_values(by=['cv_30day'], ascending=False).to_dict(orient='records')[:69],
             'apy_7day': apy_7day,
             'apy_30day': apy_30day,
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
