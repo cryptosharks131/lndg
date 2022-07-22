@@ -95,13 +95,21 @@ class Channels(models.Model):
     last_update = models.DateTimeField()
     auto_rebalance = models.BooleanField(default=False)
     ar_amt_target = models.BigIntegerField()
-    ar_in_target = models.IntegerField(default=100)
+    ar_in_target = models.IntegerField()
     ar_out_target = models.IntegerField()
     ar_max_cost = models.IntegerField()
     fees_updated = models.DateTimeField(default=timezone.now)
-    auto_fees = models.BooleanField(default=False)
+    auto_fees = models.BooleanField()
+    closing_costs = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
+        if self.auto_fees is None:
+            if LocalSettings.objects.filter(key='AF-Enabled').exists():
+                enabled = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
+            else:
+                LocalSettings(key='AF-Enabled', value='0').save()
+                enabled = 0
+            self.auto_fees = False if enabled == 0 else True
         if not self.ar_out_target:
             if LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
@@ -109,6 +117,13 @@ class Channels(models.Model):
                 LocalSettings(key='AR-Outbound%', value='75').save()
                 outbound_setting = 75
             self.ar_out_target = outbound_setting
+        if not self.ar_in_target:
+            if LocalSettings.objects.filter(key='AR-Inbound%').exists():
+                inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
+            else:
+                LocalSettings(key='AR-Inbound%', value='100').save()
+                inbound_setting = 100
+            self.ar_in_target = inbound_setting
         if not self.ar_amt_target:
             if LocalSettings.objects.filter(key='AR-Target%').exists():
                 amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
@@ -153,6 +168,7 @@ class Rebalancer(models.Model):
     status = models.IntegerField(default=0)
     payment_hash = models.CharField(max_length=64, null=True, default=None)
     manual = models.BooleanField(default=False)
+    fees_paid = models.FloatField(null=True, default=None)
     class Meta:
         app_label = 'gui'
 
