@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 BASE_DIR = Path(__file__).resolve().parent
 
-def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug):
+def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug, csrftrusted):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
@@ -13,6 +13,12 @@ def write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenois
     'whitenoise.middleware.WhiteNoiseMiddleware',"""
     else:
         wnl = ''
+    if csrftrusted:
+        csrf = """
+CSRF_TRUSTED_ORIGINS = [%s]
+    """ % (csrftrusted)
+    else:
+        csrf = ''
     settings_file = '''"""
 Django settings for lndg project.
 
@@ -41,7 +47,7 @@ SECRET_KEY = '%s'
 DEBUG = %s
 
 ALLOWED_HOSTS = ['%s']
-
+%s
 LND_DIR_PATH = '%s'
 LND_NETWORK = '%s'
 LND_RPC_SERVER = '%s'
@@ -151,7 +157,7 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, debug, node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, wnl)
+''' % (secret, debug, node_ip, csrf, lnd_dir_path, lnd_network, lnd_rpc_server, wnl)
     try:
         f = open("lndg/settings.py", "x")
         f.close()
@@ -249,6 +255,7 @@ def main():
     parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')
     parser.add_argument('-u', '--adminuser', help = 'Setup a custom admin username', default='lndg-admin')
     parser.add_argument('-pw', '--adminpw', help = 'Setup a custom admin password', default=None)
+    parser.add_argument('-csrf', '--csrftrusted', help = 'Set trusted CSRF origins', default=None)
     args = parser.parse_args()
     node_ip = args.nodeip
     lnd_dir_path = args.lnddir
@@ -261,10 +268,11 @@ def main():
     debug = args.debug
     adminuser = args.adminuser
     adminpw = args.adminpw
+    csrftrusted = args.csrftrusted
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug)
+    write_settings(node_ip, lnd_dir_path, lnd_network, lnd_rpc_server, whitenoise, debug, csrftrusted)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)
