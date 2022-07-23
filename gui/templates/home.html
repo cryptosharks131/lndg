@@ -17,9 +17,6 @@
   </form>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Completed Payments: {{ total_payments|intcomma }} | Sats Sent: {{ total_sent|intcomma }} | Fees Paid: {{ fees_paid|intcomma }} [{{ payments_ppm|intcomma }}]</h4>
-  <h4>Paid Invoices: {{ total_invoices|intcomma }} | Sats Received: {{ total_received|intcomma }}</h4>
-  <h4>Lifetime Routed: {{ total_forwards|intcomma }} | Value: {{ total_value_forwards|intcomma }} | Fees Earned: {{ earned|intcomma }} [{{ routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs|intcomma }} | Percent Cost: {{ percent_cost }}%</h4>
   <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound|intcomma }} [{{ profit_per_outbound_real|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
 </div>
 <div class="w3-container w3-padding-small">
@@ -46,8 +43,6 @@
         <th>oBase</th>
         <th>o7D</th>
         <th>i7D</th>
-        <th>oLife</th>
-        <th>iLife</th>
         <th>iRate</th>
         <th>iBase</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
@@ -66,8 +61,6 @@
         <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
-        <td>{{ channel.amt_routed_out|intcomma }} M ({{ channel.routed_out }})</td>
-        <td>{{ channel.amt_routed_in|intcomma }} M ({{ channel.routed_in }})</td>
         <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
         <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
