@@ -208,7 +208,7 @@
           <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AR-Time' %}
             <input style="text-align:center" id="value" type="number" min="1" max="60" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-MaxFeeRate' or settings.key == 'AF-MaxRate' %}
+          {% elif settings.key == 'AR-MaxFeeRate' %}
             <input style="text-align:center" id="value" type="number" min="1" max="2500" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AF-MaxRate' or settings.key == 'AF-MinRate' %}
             <input style="text-align:center" id="value" type="number" min="0" max="5000" name="value" value="{{ settings.value }}">
