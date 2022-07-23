@@ -197,6 +197,7 @@ def home(request):
                 'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
                 'eligible_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
                 'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
+                'available_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=False).annotate(outbound_can=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).filter(outbound_can__gte=F('ar_out_target')).count(),
                 'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
@@ -1278,9 +1279,12 @@ def rebalancing(request):
         else:
             eligible_count = 0
             enabled_count = 0
+        available_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True][channels_df['percent_outbound'] / channels_df['ar_out_target']>=1]
+        available_count = available_df.shape[0]
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
+            'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
