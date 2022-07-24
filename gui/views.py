@@ -62,7 +62,7 @@ def home(request):
                 pending_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]
             if pending_channels.pending_force_closing_channels:
                 target_resp = pending_channels.pending_force_closing_channels
-                pending_force_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity,'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity)))} for i in range(0,len(target_resp))]
+                pending_force_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))} for i in range(0,len(target_resp))]
             if pending_channels.waiting_close_channels:
                 target_resp = pending_channels.waiting_close_channels
                 waiting_for_close = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]
@@ -466,27 +466,63 @@ def balances(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def closures(request):
     if request.method == 'GET':
-        closures_df = DataFrame.from_records(Closures.objects.all().values())
-        if closures_df.empty:
-            merged = DataFrame()
-        else:
-            channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias', 'closing_costs'))
-            if channels_df.empty:
-                merged = closures_df
-                merged['alias'] = ''
+        try:
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
+            channels = Channels.objects.all()
+            pending_closed = None
+            pending_force_closed = None
+            waiting_for_close = None
+            if pending_channels.pending_closing_channels:
+                target_resp = pending_channels.pending_closing_channels
+                pending_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]
+            if pending_channels.pending_force_closing_channels:
+                target_resp = pending_channels.pending_force_closing_channels
+                pending_force_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))} for i in range(0,len(target_resp))]
+            if pending_channels.waiting_close_channels:
+                target_resp = pending_channels.waiting_close_channels
+                waiting_for_close = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]
+            closures_df = DataFrame.from_records(Closures.objects.all().values())
+            if closures_df.empty:
+                merged = DataFrame()
             else:
-                merged = merge(closures_df, channels_df, on='chan_id', how='left')
-                merged['alias'] = merged['alias'].fillna('')
-                merged['closing_costs'] = merged['closing_costs'].fillna('')
-        context = {
-            'closures': [] if merged.empty else merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
-            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
-            'network_links': network_links(),
-            'graph_links': graph_links()
-        }
-        return render(request, 'closures.html', context)
+                channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias', 'closing_costs'))
+                if channels_df.empty:
+                    merged = closures_df
+                    merged['alias'] = ''
+                else:
+                    merged = merge(closures_df, channels_df, on='chan_id', how='left')
+                    merged['alias'] = merged['alias'].fillna('')
+                    merged['closing_costs'] = merged['closing_costs'].fillna('')
+            context = {
+                'pending_closed': pending_closed,
+                'pending_force_closed': pending_force_closed,
+                'waiting_for_close': waiting_for_close,
+                'closures': [] if merged.empty else merged.sort_values(by=['close_height'], ascending=False).to_dict(orient='records'),
+                'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+                'network_links': network_links(),
+                'graph_links': graph_links()
+            }
+            return render(request, 'closures.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
+
+def find_next_block_maturity(force_closing_channel):
+
+    #print (f"{datetime.now().strftime('%c')} : {force_closing_channel=}")
+    if force_closing_channel.blocks_til_maturity > 0:
+        return force_closing_channel.blocks_til_maturity
+    for pending_htlc in force_closing_channel.pending_htlcs:
+        if pending_htlc.blocks_til_maturity > 0:
+            #print (f"{datetime.now().strftime('%c')} : {pending_htlc=}")
+            return pending_htlc.blocks_til_maturity
+    return -1
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def towers(request):
