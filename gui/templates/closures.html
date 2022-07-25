@@ -2,6 +2,105 @@
 {% block title %} {{ block.super }} - Closures{% endblock %}
 {% block content %}
 {% load humanize %}
+{% if pending_closed %}
+<div class="w3-container w3-padding-small">
+  <h2>Pending Close Channels</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
+      <th>Capacity</th>
+      <th>Local Balance</th>
+      <th>Remote Balance</th>
+      <th>Balance In Limbo</th>
+      <th>Local Commit Fees</th>
+      <th width=20%>Closing TX</th>
+    </tr>
+    {% for channel in pending_closed %}
+    <tr>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+      {% endwith %}
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.limbo_balance|intcomma }}</td>
+      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if pending_force_closed %}
+<div class="w3-container w3-padding-small">
+  <h2>Pending Force Close Channels</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
+      <th>Capacity</th>
+      <th>Local Balance</th>
+      <th>Remote Balance</th>
+      <th>Balance In Limbo</th>
+      <th>Maturity</th>
+      <th width=20%>Closing TX</th>
+    </tr>
+    {% for channel in pending_force_closed %}
+    <tr>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+      {% endwith %}
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.limbo_balance|intcomma }}</td>
+      <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if waiting_for_close %}
+<div class="w3-container w3-padding-small">
+  <h2>Channels Waiting To Close</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
+      <th>Capacity</th>
+      <th>Local Balance</th>
+      <th>Remote Balance</th>
+      <th>Balance In Limbo</th>
+      <th>Local Commit Fee</th>
+      <th width=20%>Closing TX</th>
+    </tr>
+    {% for channel in waiting_for_close %}
+    <tr>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+      {% endwith %}
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.limbo_balance|intcomma }}</td>
+      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% if closures %}
 <div class="w3-container w3-padding-small">
   <h2>Closures</h2>
