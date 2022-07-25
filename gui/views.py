@@ -436,6 +436,28 @@ def route(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def routes(request):
+    if request.method == 'GET':
+        try:
+            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+            pubkey = request.GET.urlencode()[1:]
+            #print (f"{pubkey=}")
+            #If pubkey is available in the PaymentHops class, alias can be replaced by pubkey.
+            alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=pubkey, include_channels=False)).node.alias
+            #print (f"{alias=}")
+            context = {
+                'payment_hash':alias+':'+pubkey,
+                'route': PaymentHops.objects.filter(payment_hash__in=PaymentHops.objects.filter(alias=alias).order_by('-id').values_list('payment_hash')[:69]).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
+            }
+            return render(request, 'route.html', context)
+        except:
+            error = str(e)
+        return render(request, 'error.html', {'error': error})
+
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def peers(request):
     if request.method == 'GET':
         peers = Peers.objects.filter(connected=True)

@@ -21,6 +21,7 @@ router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 urlpatterns = [
     path('', views.home, name='home'),
     path('route', views.route, name='route'),
+    path('routes', views.routes, name='routes'),
     path('peers', views.peers, name='peers'),
     path('balances', views.balances, name='balances'),
     path('closures', views.closures, name='closures'),
