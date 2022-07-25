@@ -14,7 +14,8 @@
       <th>Local Balance</th>
       <th>Remote Balance</th>
       <th>Balance In Limbo</th>
-      <th>Local Commit Fee</th>
+      <th>Local Commit Fees</th>
+      <th width=20%>Closing TX</th>
     </tr>
     {% for channel in pending_closed %}
     <tr>
@@ -27,7 +28,8 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.commitments.local_commit_fee_sat }}</td>
+      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
   </table>
@@ -79,6 +81,7 @@
       <th>Remote Balance</th>
       <th>Balance In Limbo</th>
       <th>Local Commit Fee</th>
+      <th width=20%>Closing TX</th>
     </tr>
     {% for channel in waiting_for_close %}
     <tr>
@@ -91,7 +94,8 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.commitments.local_commit_fee_sat }}</td>
+      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
   </table>
