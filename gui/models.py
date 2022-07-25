@@ -99,9 +99,17 @@ class Channels(models.Model):
     ar_out_target = models.IntegerField()
     ar_max_cost = models.IntegerField()
     fees_updated = models.DateTimeField(default=timezone.now)
-    auto_fees = models.BooleanField(default=False)
+    auto_fees = models.BooleanField()
+    closing_costs = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
+        if self.auto_fees is None:
+            if LocalSettings.objects.filter(key='AF-Enabled').exists():
+                enabled = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
+            else:
+                LocalSettings(key='AF-Enabled', value='0').save()
+                enabled = 0
+            self.auto_fees = False if enabled == 0 else True
         if not self.ar_out_target:
             if LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
@@ -160,6 +168,7 @@ class Rebalancer(models.Model):
     status = models.IntegerField(default=0)
     payment_hash = models.CharField(max_length=64, null=True, default=None)
     manual = models.BooleanField(default=False)
+    fees_paid = models.FloatField(null=True, default=None)
     class Meta:
         app_label = 'gui'
 

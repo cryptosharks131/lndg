@@ -99,6 +99,7 @@ updates_channel_codes = [
     (7, 'channel_state'),
     (8, 'auto_fees'),
     (9, 'cltv'),
+    (10, 'closing_costs'),
 ]
 
 class UpdateChannel(forms.Form):
