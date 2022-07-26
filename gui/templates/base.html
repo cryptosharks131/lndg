@@ -21,6 +21,11 @@
         {% endif %}
         <div class="w3-container">
           <h1><a href="/">My Lnd Overview</a></h1>
+          <p>Last Updated :  <span id='datetime'></span></p>
+          <script>
+            var dt = new Date();
+            document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
+          </script>
         </div>
         {% block content %}{% endblock %}
     </div>
