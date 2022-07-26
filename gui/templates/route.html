@@ -12,6 +12,7 @@
       <th>Fee</th>
       <th title="The fee in PPM paid on this hop.">PPM</th>
       <th title="The cost to get the payment to this hop of the payment.">Cost To</th>
+      <th>📍</th>
       <th>Alias</th>
       <th>Channel ID</th>
       <th>Channel Capacity</th>
@@ -23,6 +24,7 @@
       <td>{{ hop.fee|intcomma }}</td>
       <td>{{ hop.ppm|intcomma }}</td>
       <td>{{ hop.cost_to|intcomma }}</td>
+      <td>{% if hop.step == 1 %}📍{% else %}🔻{% endif %}
       <td>{% if hop.alias == '' %}---{% else %}{{ hop.alias }}{% endif %}</td>
       <td><a href="/channel?={{ hop.chan_id }}" target="_blank">{{ hop.chan_id }}</a></td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
