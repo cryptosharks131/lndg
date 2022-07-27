@@ -46,6 +46,7 @@ def run_rebalancer(rebalance):
             elif payment_response.status == 2:
                 #SUCCESSFUL
                 rebalance.status = 2
+                rebalance.fees_paid = payment_response.fee_msat/1000
                 successful_out = payment_response.htlcs[0].route.hops[0].pub_key
             elif payment_response.status == 3:
                 #FAILURE
