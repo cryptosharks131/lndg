@@ -15,10 +15,10 @@ from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peer
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
-    in_flight_index = 0 if Payments.objects.filter(status=1, cleaned=False).aggregate(Min('index'))['index__min'] == None else Payments.objects.filter(status=1).aggregate(Min('index'))['index__min']
+    in_flight_index = Payments.objects.filter(status=1).aggregate(Min('index'))['index__min'] if Payments.objects.filter(status=1).exists() else 0
     Payments.objects.filter(status=1).delete()
     #Get the number of records in the database currently
-    last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
+    last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
     #We delete all inflight index in each cycle to we should start with one less so that inflight payment with index=in_flight_index comes back.
     last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
@@ -67,7 +67,6 @@ def update_payments(stub):
             db_payment.fee = round(payment.fee_msat/1000, 3)
             db_payment.status = payment.status
             db_payment.index = payment.payment_index
-            db_payment.cleaned = False
             db_payment.save()
             if payment.status == 2:
                 for attempt in payment.htlcs:
