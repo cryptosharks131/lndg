@@ -29,12 +29,8 @@ def update_close_fees(apps, schedma_editor):
             if channels.objects.filter(chan_id=closure.chan_id).exists():
                 channel = channels.objects.filter(chan_id=closure.chan_id)[0]
                 closing_costs = get_tx_fees(closure.closing_tx) if closure.open_initiator == 1 else 0
-                for resolution in resolutions.objects.filter(chan_id=closure.chan_id):
-                    if resolution.sweep_txid != '':
-                        closing_costs += get_tx_fees(resolution.sweep_txid)
-                    else:
-                        print('Unknown sweep tx for channel:', resolution.chan_id)
-                        closing_costs = 0
+                for resolution in resolutions.objects.filter(chan_id=closure.chan_id).exclude(resolution_type=2):
+                    closing_costs += get_tx_fees(resolution.sweep_txid)
                 channel.closing_costs = closing_costs
                 channel.save()
         
