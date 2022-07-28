@@ -9,9 +9,11 @@ from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import environ
 from pandas import DataFrame
+from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
 from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees
+from lndg.settings import LND_NETWORK
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
@@ -19,7 +21,7 @@ def update_payments(stub):
     Payments.objects.filter(status=1).delete()
     #Get the number of records in the database currently
     last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
-    print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
+    #print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
     #We delete all inflight index in each cycle to we should start with one less so that inflight payment with index=in_flight_index comes back.
     last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
@@ -297,6 +299,24 @@ def update_onchain(stub):
     for tx in onchain_txs:
         Onchain(tx_hash=tx.tx_hash, time_stamp=datetime.fromtimestamp(tx.time_stamp), amount=tx.amount, fee=tx.total_fees, block_hash=tx.block_hash, block_height=tx.block_height, label=tx.label[:100]).save()
 
+def network_links():
+    if LocalSettings.objects.filter(key='GUI-NetLinks').exists():
+        network_links = str(LocalSettings.objects.filter(key='GUI-NetLinks')[0].value)
+    else:
+        LocalSettings(key='GUI-NetLinks', value='https://mempool.space').save()
+        network_links = 'https://mempool.space'
+    return network_links
+
+def get_tx_fees(txid):
+    base_url = network_links() + ('/testnet' if LND_NETWORK == 'testnet' else '') + '/api/tx/'
+    try:
+        request_data = get(base_url + txid).json()
+        fee = request_data['fee']
+    except Exception as e:
+        print('Error getting closure fees for ', txid, ':', str(e))
+        fee = 0
+    return fee
+
 def update_closures(stub):
     closures = stub.ClosedChannels(ln.ClosedChannelsRequest()).channels
     if len(closures) > Closures.objects.all().count():
@@ -305,8 +325,10 @@ def update_closures(stub):
         for closure in closures:
             counter += 1
             if counter > skip:
+                channel = Channels.objects.filter(chan_id=closure.chan_id)[0] if Channels.objects.filter(chan_id=closure.chan_id).exists() else None
                 resolution_count = len(closure.resolutions)
                 txid, index = closure.channel_point.split(':')
+                closing_costs = get_tx_fees(txid) if closure.open_initiator == 1 else 0
                 db_closure = Closures(chan_id=closure.chan_id, funding_txid=txid, funding_index=index, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
                 try:
                     db_closure.save()
@@ -317,7 +339,11 @@ def update_closures(stub):
                 if resolution_count > 0:
                     Resolutions.objects.filter(chan_id=closure.chan_id).delete()
                     for resolution in closure.resolutions:
+                        closing_costs += get_tx_fees(resolution.sweep_txid)
                         Resolutions(chan_id=closure.chan_id, resolution_type=resolution.resolution_type, outcome=resolution.outcome, outpoint_tx=resolution.outpoint.txid_str, outpoint_index=resolution.outpoint.output_index, amount_sat=resolution.amount_sat, sweep_txid=resolution.sweep_txid).save()
+                if channel:
+                    channel.closing_costs = closing_costs
+                    channel.save()
 
 def reconnect_peers(stub):
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
