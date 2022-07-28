@@ -726,10 +726,10 @@ def income(request):
             'onchain_costs_7day': onchain_costs_7day,
             'onchain_costs_1day': onchain_costs_1day,
             'profits': (total_revenue-total_fees-onchain_costs),
-            'profits_90day': (total_revenue_90day-total_fees_90day-onchain_costs_90day),
-            'profits_30day': (total_revenue_30day-total_fees_30day-onchain_costs_30day),
-            'profits_7day': (total_revenue_7day-total_fees_7day-onchain_costs_7day),
-            'profits_1day': (total_revenue_1day-total_fees_1day-onchain_costs_1day),
+            'profits_90day': int(total_revenue_90day-total_fees_90day-onchain_costs_90day),
+            'profits_30day': int(total_revenue_30day-total_fees_30day-onchain_costs_30day),
+            'profits_7day': int(total_revenue_7day-total_fees_7day-onchain_costs_7day),
+            'profits_1day': int(total_revenue_1day-total_fees_1day-onchain_costs_1day),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
