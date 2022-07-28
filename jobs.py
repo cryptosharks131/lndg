@@ -19,8 +19,9 @@ def update_payments(stub):
     Payments.objects.filter(status=1).delete()
     #Get the number of records in the database currently
     last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
-    print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index, last_index) if in_flight_index > 0 else last_index=}")
-    last_index = min(in_flight_index, last_index) if in_flight_index > 0 else last_index
+    print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
+    #We delete all inflight index in each cycle to we should start with one less so that inflight payment with index=in_flight_index comes back.
+    last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     for payment in payments:
