@@ -137,8 +137,10 @@ def home(request):
             sum_outbound = active_outbound + pending_outbound + inactive_outbound
             sum_inbound = active_inbound + pending_inbound + inactive_inbound
             onchain_txs = Onchain.objects.all()
-            onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
             onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+            closures_7day = Closures.objects.filter(close_height__gte=(node_info.block_height - 1008))
+            close_fees_7day = channels.filter(chan_id__in=closures_7day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
+            onchain_costs_7day += close_fees_7day
             total_costs_7day = total_7day_fees + onchain_costs_7day
             #Get list of recent rebalance requests
             rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
