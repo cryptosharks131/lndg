@@ -1,5 +1,5 @@
 import django
-from django.db.models import Max
+from django.db.models import Max, Min
 from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -15,9 +15,13 @@ from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peer
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
+    in_flight_index = Payments.objects.filter(status=1).aggregate(Min('index'))['index__min'] if Payments.objects.filter(status=1).exists() else 0
     Payments.objects.filter(status=1).delete()
     #Get the number of records in the database currently
-    last_index = 0 if Payments.objects.aggregate(Max('index'))['index__max'] == None else Payments.objects.aggregate(Max('index'))['index__max']
+    last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
+    print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
+    #We delete all inflight index in each cycle to we should start with one less so that inflight payment with index=in_flight_index comes back.
+    last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     for payment in payments:
@@ -365,11 +369,11 @@ def clean_payments(stub):
                 details_index = error.find('details =') + 11
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
-                print('Error occured when cleaning payment: ' + payment.payment_hash)
-                print('Error: ' + error_msg)
+                print (f"{datetime.now().strftime('%c')} : Error  {payment.index=} {payment.status=} {payment.payment_hash=} {error_msg=}")
             finally:
                 payment.cleaned = True
                 payment.save()
+                print (f"{datetime.now().strftime('%c')} : Cleaned {payment.index=} {payment.status=} {payment.cleaned=} {payment.payment_hash=}")
 
 def auto_fees(stub):
     if LocalSettings.objects.filter(key='AF-Enabled').exists():
