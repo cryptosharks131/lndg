@@ -19,10 +19,7 @@ def update_close_fees(apps, schedma_editor):
         base_url = network_links() + ('/testnet' if LND_NETWORK == 'testnet' else '') + '/api/tx/'
         try:
             request_data = get(base_url + txid).json()
-            if LND_NETWORK == 'signet':
-                fee = request_data['fee']['amount']*100000000
-            else:
-                fee = request_data['fee']
+            fee = request_data['fee']
         except Exception as e:
             print('Error getting closure fees for', txid, '-', str(e))
             fee = 0
