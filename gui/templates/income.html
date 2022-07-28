@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - P&L{% endblock %}
+{% block content %}
+{% load humanize %}
+<div class="w3-container w3-padding-small">
+  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Line Item</th>
+      <th>1 Day</th>
+      <th>7 Day</th>
+      <th>30 Day</th>
+      <th>90 Day</th>
+      <th>Lifetime</th>
+    </tr>
+    <tr>
+      <td>Revenue</td>
+      <td>{{ total_revenue_1day|intcomma }}</td>
+      <td>{{ total_revenue_7day|intcomma }}</td>
+      <td>{{ total_revenue_30day|intcomma }}</td>
+      <td>{{ total_revenue_90day|intcomma }}</td>
+      <td>{{ total_revenue|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Onchain</td>
+      <td>{{ onchain_costs_1day|intcomma }}</td>
+      <td>{{ onchain_costs_7day|intcomma }}</td>
+      <td>{{ onchain_costs_30day|intcomma }}</td>
+      <td>{{ onchain_costs_90day|intcomma }}</td>
+      <td>{{ onchain_costs|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Offchain</td>
+      <td>{{ total_fees_1day|intcomma }}</td>
+      <td>{{ total_fees_7day|intcomma }}</td>
+      <td>{{ total_fees_30day|intcomma }}</td>
+      <td>{{ total_fees_90day|intcomma }}</td>
+      <td>{{ total_fees|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Profits</td>
+      <td>{{ profits_1day|intcomma }}</td>
+      <td>{{ profits_7day|intcomma }}</td>
+      <td>{{ profits_30day|intcomma }}</td>
+      <td>{{ profits_90day|intcomma }}</td>
+      <td>{{ profits|intcomma }}</td>
+    </tr>
+  </table>
+</div>
+{% endblock %}

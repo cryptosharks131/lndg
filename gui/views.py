@@ -442,18 +442,15 @@ def route(request):
 def routes(request):
     if request.method == 'GET':
         try:
-            stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
             pubkey = request.GET.urlencode()[1:]
-            #print (f"{pubkey=}")
             context = {
                 'payment_hash': pubkey,
                 'route': PaymentHops.objects.filter(payment_hash__in=PaymentHops.objects.filter(node_pubkey=pubkey).order_by('-id').values_list('payment_hash')[:69]).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
             }
             return render(request, 'route.html', context)
-        except:
+        except Exception as e:
             error = str(e)
-        return render(request, 'error.html', {'error': error})
-
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
@@ -536,7 +533,6 @@ def closures(request):
         return redirect('home')
 
 def find_next_block_maturity(force_closing_channel):
-
     #print (f"{datetime.now().strftime('%c')} : {force_closing_channel=}")
     if force_closing_channel.blocks_til_maturity > 0:
         return force_closing_channel.blocks_til_maturity
@@ -654,6 +650,90 @@ def resolutions(request):
             'network_links': network_links()
         }
         return render(request, 'resolutions.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def income(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        filter_90day = datetime.now() - timedelta(days=90)
+        filter_30day = datetime.now() - timedelta(days=30)
+        filter_7day = datetime.now() - timedelta(days=7)
+        filter_1day = datetime.now() - timedelta(days=1)
+        node_info = stub.GetInfo(ln.GetInfoRequest())
+        channels = Channels.objects.all()
+        payments = Payments.objects.filter(status=2)
+        payments_90day = payments.filter(creation_date__gte=filter_90day)
+        payments_30day = payments.filter(creation_date__gte=filter_30day)
+        payments_7day = payments.filter(creation_date__gte=filter_7day)
+        payments_1day = payments.filter(creation_date__gte=filter_1day)
+        onchain_txs = Onchain.objects.all()
+        onchain_txs_90day = onchain_txs.filter(time_stamp__gte=filter_90day)
+        onchain_txs_30day = onchain_txs.filter(time_stamp__gte=filter_30day)
+        onchain_txs_7day = onchain_txs.filter(time_stamp__gte=filter_7day)
+        onchain_txs_1day = onchain_txs.filter(time_stamp__gte=filter_1day)
+        closures = Closures.objects.all()
+        closures_90day = closures.filter(close_height__gte=(node_info.block_height - 12960))
+        closures_30day = closures.filter(close_height__gte=(node_info.block_height - 4320))
+        closures_7day = closures.filter(close_height__gte=(node_info.block_height - 1008))
+        closures_1day = closures.filter(close_height__gte=(node_info.block_height - 144))
+        forwards = Forwards.objects.all()
+        forwards_90day = forwards.filter(forward_date__gte=filter_90day)
+        forwards_30day = forwards.filter(forward_date__gte=filter_30day)
+        forwards_7day = forwards.filter(forward_date__gte=filter_7day)
+        forwards_1day = forwards.filter(forward_date__gte=filter_1day)
+        total_revenue = 0 if forwards.count() == 0 else round(forwards.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_revenue_90day = 0 if forwards_90day.count() == 0 else round(forwards_90day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_revenue_30day = 0 if forwards_30day.count() == 0 else round(forwards_30day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_revenue_7day = 0 if forwards_7day.count() == 0 else round(forwards_7day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_revenue_1day = 0 if forwards_1day.count() == 0 else round(forwards_1day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_fees = 0 if payments.count() == 0 else round(payments.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_fees_90day = 0 if payments_90day.count() == 0 else round(payments_90day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_fees_30day = 0 if payments_30day.count() == 0 else round(payments_30day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_fees_7day = 0 if payments_7day.count() == 0 else round(payments_7day.aggregate(Sum('fee'))['fee__sum'], 3)
+        total_fees_1day = 0 if payments_1day.count() == 0 else round(payments_1day.aggregate(Sum('fee'))['fee__sum'], 3)
+        onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
+        onchain_costs_90day = 0 if onchain_txs_90day.count() == 0 else onchain_txs_90day.aggregate(Sum('fee'))['fee__sum']
+        onchain_costs_30day = 0 if onchain_txs_30day.count() == 0 else onchain_txs_30day.aggregate(Sum('fee'))['fee__sum']
+        onchain_costs_7day = 0 if onchain_txs_7day.count() == 0 else onchain_txs_7day.aggregate(Sum('fee'))['fee__sum']
+        onchain_costs_1day = 0 if onchain_txs_1day.count() == 0 else onchain_txs_1day.aggregate(Sum('fee'))['fee__sum']
+        close_fees = channels.filter(chan_id__in=closures.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures.exists() else 0
+        close_fees_90day = channels.filter(chan_id__in=closures_90day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_90day.exists() else 0
+        close_fees_30day = channels.filter(chan_id__in=closures_30day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_30day.exists() else 0
+        close_fees_7day = channels.filter(chan_id__in=closures_7day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
+        close_fees_1day = channels.filter(chan_id__in=closures_1day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
+        onchain_costs += close_fees
+        onchain_costs_90day += close_fees_90day
+        onchain_costs_30day += close_fees_30day
+        onchain_costs_7day += close_fees_7day
+        onchain_costs_1day += close_fees_1day
+        context = {
+            'node_info': node_info,
+            'total_revenue': total_revenue,
+            'total_revenue_90day': total_revenue_90day,
+            'total_revenue_30day': total_revenue_30day,
+            'total_revenue_7day': total_revenue_7day,
+            'total_revenue_1day': total_revenue_1day,
+            'total_fees': total_fees,
+            'total_fees_90day': total_fees_90day,
+            'total_fees_30day': total_fees_30day,
+            'total_fees_7day': total_fees_7day,
+            'total_fees_1day': total_fees_1day,
+            'onchain_costs': onchain_costs,
+            'onchain_costs_90day': onchain_costs_90day,
+            'onchain_costs_30day': onchain_costs_30day,
+            'onchain_costs_7day': onchain_costs_7day,
+            'onchain_costs_1day': onchain_costs_1day,
+            'profits': (total_revenue-total_fees-onchain_costs),
+            'profits_90day': (total_revenue_90day-total_fees_90day-onchain_costs_90day),
+            'profits_30day': (total_revenue_30day-total_fees_30day-onchain_costs_30day),
+            'profits_7day': (total_revenue_7day-total_fees_7day-onchain_costs_7day),
+            'profits_1day': (total_revenue_1day-total_fees_1day-onchain_costs_1day),
+            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'graph_links': graph_links()
+        }
+        return render(request, 'income.html', context)
     else:
         return redirect('home')
 
