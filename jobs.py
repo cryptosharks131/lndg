@@ -311,7 +311,10 @@ def get_tx_fees(txid):
     base_url = network_links() + ('/testnet' if LND_NETWORK == 'testnet' else '') + '/api/tx/'
     try:
         request_data = get(base_url + txid).json()
-        fee = request_data['fee']
+        if LND_NETWORK == 'signet':
+            fee = request_data['fee']['amount']
+        else:
+            fee = request_data['fee']
     except Exception as e:
         print('Error getting closure fees for ', txid, ':', str(e))
         fee = 0
