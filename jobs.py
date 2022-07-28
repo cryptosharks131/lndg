@@ -312,7 +312,7 @@ def get_tx_fees(txid):
     try:
         request_data = get(base_url + txid).json()
         if LND_NETWORK == 'signet':
-            fee = request_data['fee']['amount']
+            fee = request_data['fee']['amount']*100000000
         else:
             fee = request_data['fee']
     except Exception as e:
