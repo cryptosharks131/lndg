@@ -53,6 +53,7 @@ def home(request):
             pending_closed = None
             pending_force_closed = None
             waiting_for_close = None
+            pending_open_balance = 0
             if pending_channels.pending_open_channels:
                 target_resp = pending_channels.pending_open_channels
                 peers = Peers.objects.all()
@@ -65,6 +66,7 @@ def home(request):
                 auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) if LocalSettings.objects.filter(key='AF-Enabled').exists() else 0
                 for i in range(0,len(target_resp)):
                     item = {}
+                    pending_open_balance += target_resp[i].channel.local_balance
                     funding_txid = target_resp[i].channel.channel_point.split(':')[0]
                     output_index = target_resp[i].channel.channel_point.split(':')[1]
                     updated = pending_changes.filter(funding_txid=funding_txid,output_index=output_index).exists()
@@ -127,17 +129,29 @@ def home(request):
             active_outbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
             active_unsettled = 0 if active_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
             filter_7day = datetime.now() - timedelta(days=7)
+            filter_1day = datetime.now() - timedelta(days=1)
             forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
+            forwards_df_1d = DataFrame() if forwards_df_7d.empty else forwards_df_7d[forwards_df_7d['forward_date']>=filter_1day]
             forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
             forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
             forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
             forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
+            forwards_df_in_1d_sum = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_in', as_index=True).sum()
+            forwards_df_out_1d_sum = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_out', as_index=True).sum()
+            forwards_df_in_1d_count = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_in', as_index=True).count()
+            forwards_df_out_1d_count = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_out', as_index=True).count()
+            routed_1day = forwards_df_1d.shape[0]
             routed_7day = forwards_df_7d.shape[0]
             routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
+            routed_1day_amt = 0 if routed_1day == 0 else int(forwards_df_1d['amt_out_msat'].sum()/1000)
             total_earned_7day = 0 if routed_7day == 0 else forwards_df_7d['fee'].sum()
+            total_earned_1day = 0 if routed_1day == 0 else forwards_df_1d['fee'].sum()
             payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
             payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
+            payments_1day = payments.filter(status=2).filter(creation_date__gte=filter_1day)
+            payments_1day_amt = 0 if payments_1day.count() == 0 else payments_1day.aggregate(Sum('value'))['value__sum']
             total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
+            total_1day_fees = 0 if payments_1day.count() == 0 else payments_1day.aggregate(Sum('fee'))['fee__sum']
             pending_htlc_count = channels.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if channels.filter(is_open=True).exists() else 0
             pending_outbound = channels.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if channels.filter(is_open=True).exists() else 0
             pending_inbound = channels.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if channels.filter(is_open=True).exists() else 0
@@ -168,6 +182,10 @@ def home(request):
                 detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
                 detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
+                detailed_channel['routed_in_1day'] = forwards_df_in_1d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_1d_count.index == channel.chan_id).any() else 0
+                detailed_channel['routed_out_1day'] = forwards_df_out_1d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_1d_count.index == channel.chan_id).any() else 0
+                detailed_channel['amt_routed_in_1day'] = int(forwards_df_in_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_1d_sum.index == channel.chan_id).any() else 0
+                detailed_channel['amt_routed_out_1day'] = int(forwards_df_out_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['htlc_count'] = channel.htlc_count
                 detailed_channel['auto_rebalance'] = channel.auto_rebalance
                 detailed_channel['ar_in_target'] = channel.ar_in_target
@@ -186,10 +204,15 @@ def home(request):
             sum_inbound = active_inbound + pending_inbound + inactive_inbound
             onchain_txs = Onchain.objects.all()
             onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
+            onchain_costs_1day = 0 if onchain_txs.filter(time_stamp__gte=filter_1day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_1day).aggregate(Sum('fee'))['fee__sum']
             closures_7day = Closures.objects.filter(close_height__gte=(node_info.block_height - 1008))
+            closures_1day = Closures.objects.filter(close_height__gte=(node_info.block_height - 144))
             close_fees_7day = channels.filter(chan_id__in=closures_7day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
+            close_fees_1day = channels.filter(chan_id__in=closures_1day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
             onchain_costs_7day += close_fees_7day
+            onchain_costs_1day += close_fees_1day
             total_costs_7day = total_7day_fees + onchain_costs_7day
+            total_costs_1day = total_1day_fees + onchain_costs_1day
             #Get list of recent rebalance requests
             rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
@@ -203,17 +226,27 @@ def home(request):
                 'node_info': node_info,
                 'total_channels': total_channels,
                 'balances': balances,
+                'total_balance': balances.total_balance + sum_outbound + pending_open_balance,
                 'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
                 'invoices': invoices.order_by('-creation_date')[:6],
                 'forwards': forwards[:15],
+                'routed_1day': routed_1day,
                 'routed_7day': routed_7day,
+                'routed_1day_amt': routed_1day_amt,
                 'routed_7day_amt': routed_7day_amt,
+                'earned_1day': int(total_earned_1day),
                 'earned_7day': int(total_earned_7day),
+                'routed_1day_percent': 0 if sum_outbound == 0 else int((routed_1day_amt/sum_outbound)*100),
                 'routed_7day_percent': 0 if sum_outbound == 0 else int((routed_7day_amt/sum_outbound)*100),
-                'profit_per_outbound': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees)/(sum_outbound/1000000)),
-                'profit_per_outbound_real': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day)/(sum_outbound/1000000)),
+                'profit_per_outbound_1d': 0 if sum_outbound == 0 else int((total_earned_1day - total_1day_fees)/(sum_outbound/1000000)),
+                'profit_per_outbound_real_1d': 0 if sum_outbound == 0 else int((total_earned_1day - total_costs_1day)/(sum_outbound/1000000)),
+                'profit_per_outbound_7d': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees)/(sum_outbound/1000000)),
+                'profit_per_outbound_real_7d': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day)/(sum_outbound/1000000)),
+                'percent_cost_1day': 0 if total_earned_1day == 0 else int((total_costs_1day/total_earned_1day)*100),
                 'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
+                'onchain_costs_1day': onchain_costs_1day,
                 'onchain_costs_7day': onchain_costs_7day,
+                'total_1day_fees': int(total_1day_fees),
                 'total_7day_fees': int(total_7day_fees),
                 'active_channels': detailed_active_channels,
                 'total_capacity': active_capacity + inactive_capacity,
@@ -242,7 +275,9 @@ def home(request):
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
+                '1day_routed_ppm': 0 if routed_1day_amt == 0 else int((total_earned_1day/routed_1day_amt)*1000000),
                 '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
+                '1day_payments_ppm': 0 if payments_1day_amt == 0 else int((total_1day_fees/payments_1day_amt)*1000000),
                 '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
                 'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
                 'eligible_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
@@ -731,16 +766,41 @@ def income(request):
         forwards_30day = forwards.filter(forward_date__gte=filter_30day)
         forwards_7day = forwards.filter(forward_date__gte=filter_7day)
         forwards_1day = forwards.filter(forward_date__gte=filter_1day)
-        total_revenue = 0 if forwards.count() == 0 else round(forwards.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_revenue_90day = 0 if forwards_90day.count() == 0 else round(forwards_90day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_revenue_30day = 0 if forwards_30day.count() == 0 else round(forwards_30day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_revenue_7day = 0 if forwards_7day.count() == 0 else round(forwards_7day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_revenue_1day = 0 if forwards_1day.count() == 0 else round(forwards_1day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_fees = 0 if payments.count() == 0 else round(payments.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_fees_90day = 0 if payments_90day.count() == 0 else round(payments_90day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_fees_30day = 0 if payments_30day.count() == 0 else round(payments_30day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_fees_7day = 0 if payments_7day.count() == 0 else round(payments_7day.aggregate(Sum('fee'))['fee__sum'], 3)
-        total_fees_1day = 0 if payments_1day.count() == 0 else round(payments_1day.aggregate(Sum('fee'))['fee__sum'], 3)
+        forward_count = forwards.count()
+        forward_count_90day = forwards_90day.count()
+        forward_count_30day = forwards_30day.count()
+        forward_count_7day = forwards_7day.count()
+        forward_count_1day = forwards_1day.count()
+        forward_amount = 0 if forward_count == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'])
+        forward_amount_90day = 0 if forward_count_90day == 0 else int(forwards_90day.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'])
+        forward_amount_30day = 0 if forward_count_30day == 0 else int(forwards_30day.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'])
+        forward_amount_7day = 0 if forward_count_7day == 0 else int(forwards_7day.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'])
+        forward_amount_1day = 0 if forward_count_1day == 0 else int(forwards_1day.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum'])
+        total_revenue = 0 if forward_count == 0 else int(forwards.aggregate(Sum('fee'))['fee__sum'])
+        total_revenue_90day = 0 if forward_count_90day == 0 else int(forwards_90day.aggregate(Sum('fee'))['fee__sum'])
+        total_revenue_30day = 0 if forward_count_30day == 0 else int(forwards_30day.aggregate(Sum('fee'))['fee__sum'])
+        total_revenue_7day = 0 if forward_count_7day == 0 else int(forwards_7day.aggregate(Sum('fee'))['fee__sum'])
+        total_revenue_1day = 0 if forward_count_1day == 0 else int(forwards_1day.aggregate(Sum('fee'))['fee__sum'])
+        total_revenue_ppm = 0 if forward_amount == 0 else int(total_revenue/(forward_amount/1000000))
+        total_revenue_ppm_90day = 0 if forward_amount_90day == 0 else int(total_revenue_90day/(forward_amount_90day/1000000))
+        total_revenue_ppm_30day = 0 if forward_amount_30day == 0 else int(total_revenue_30day/(forward_amount_30day/1000000))
+        total_revenue_ppm_7day = 0 if forward_amount_7day == 0 else int(total_revenue_7day/(forward_amount_7day/1000000))
+        total_revenue_ppm_1day = 0 if forward_amount_1day == 0 else int(total_revenue_1day/(forward_amount_1day/1000000))
+        total_sent = 0 if payments.count() == 0 else int(payments.aggregate(Sum('value'))['value__sum'])
+        total_sent_90day = 0 if payments_90day.count() == 0 else int(payments_90day.aggregate(Sum('value'))['value__sum'])
+        total_sent_30day = 0 if payments_30day.count() == 0 else int(payments_30day.aggregate(Sum('value'))['value__sum'])
+        total_sent_7day = 0 if payments_7day.count() == 0 else int(payments_7day.aggregate(Sum('value'))['value__sum'])
+        total_sent_1day = 0 if payments_1day.count() == 0 else int(payments_1day.aggregate(Sum('value'))['value__sum'])
+        total_fees = 0 if payments.count() == 0 else int(payments.aggregate(Sum('fee'))['fee__sum'])
+        total_fees_90day = 0 if payments_90day.count() == 0 else int(payments_90day.aggregate(Sum('fee'))['fee__sum'])
+        total_fees_30day = 0 if payments_30day.count() == 0 else int(payments_30day.aggregate(Sum('fee'))['fee__sum'])
+        total_fees_7day = 0 if payments_7day.count() == 0 else int(payments_7day.aggregate(Sum('fee'))['fee__sum'])
+        total_fees_1day = 0 if payments_1day.count() == 0 else int(payments_1day.aggregate(Sum('fee'))['fee__sum'])
+        total_fees_ppm = 0 if total_sent == 0 else int(total_fees/total_sent)
+        total_fees_ppm_90day = 0 if total_sent_90day == 0 else int(total_fees_90day/total_sent_90day)
+        total_fees_ppm_30day = 0 if total_sent_30day == 0 else int(total_fees_30day/total_sent_30day)
+        total_fees_ppm_7day = 0 if total_sent_7day == 0 else int(total_fees_7day/total_sent_7day)
+        total_fees_ppm_1day = 0 if total_sent_1day == 0 else int(total_fees_1day/total_sent_1day)
         onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_90day = 0 if onchain_txs_90day.count() == 0 else onchain_txs_90day.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_30day = 0 if onchain_txs_30day.count() == 0 else onchain_txs_30day.aggregate(Sum('fee'))['fee__sum']
@@ -756,8 +816,23 @@ def income(request):
         onchain_costs_30day += close_fees_30day
         onchain_costs_7day += close_fees_7day
         onchain_costs_1day += close_fees_1day
+        profits = int(total_revenue-total_fees-onchain_costs)
+        profits_90day = int(total_revenue_90day-total_fees_90day-onchain_costs_90day)
+        profits_30day = int(total_revenue_30day-total_fees_30day-onchain_costs_30day)
+        profits_7day = int(total_revenue_7day-total_fees_7day-onchain_costs_7day)
+        profits_1day = int(total_revenue_1day-total_fees_1day-onchain_costs_1day)
         context = {
             'node_info': node_info,
+            'forward_count': forward_count,
+            'forward_count_90day': forward_count_90day,
+            'forward_count_30day': forward_count_30day,
+            'forward_count_7day': forward_count_7day,
+            'forward_count_1day': forward_count_1day,
+            'forward_amount': forward_amount,
+            'forward_amount_90day': forward_amount_90day,
+            'forward_amount_30day': forward_amount_30day,
+            'forward_amount_7day': forward_amount_7day,
+            'forward_amount_1day': forward_amount_1day,
             'total_revenue': total_revenue,
             'total_revenue_90day': total_revenue_90day,
             'total_revenue_30day': total_revenue_30day,
@@ -768,16 +843,36 @@ def income(request):
             'total_fees_30day': total_fees_30day,
             'total_fees_7day': total_fees_7day,
             'total_fees_1day': total_fees_1day,
+            'total_fees_ppm': total_fees_ppm,
+            'total_fees_ppm_90day': total_fees_ppm_90day,
+            'total_fees_ppm_30day': total_fees_ppm_30day,
+            'total_fees_ppm_7day': total_fees_ppm_7day,
+            'total_fees_ppm_1day': total_fees_ppm_1day,
             'onchain_costs': onchain_costs,
             'onchain_costs_90day': onchain_costs_90day,
             'onchain_costs_30day': onchain_costs_30day,
             'onchain_costs_7day': onchain_costs_7day,
             'onchain_costs_1day': onchain_costs_1day,
-            'profits': int(total_revenue-total_fees-onchain_costs),
-            'profits_90day': int(total_revenue_90day-total_fees_90day-onchain_costs_90day),
-            'profits_30day': int(total_revenue_30day-total_fees_30day-onchain_costs_30day),
-            'profits_7day': int(total_revenue_7day-total_fees_7day-onchain_costs_7day),
-            'profits_1day': int(total_revenue_1day-total_fees_1day-onchain_costs_1day),
+            'total_revenue_ppm': total_revenue_ppm,
+            'total_revenue_ppm_90day': total_revenue_ppm_90day,
+            'total_revenue_ppm_30day': total_revenue_ppm_30day,
+            'total_revenue_ppm_7day': total_revenue_ppm_7day,
+            'total_revenue_ppm_1day': total_revenue_ppm_1day,
+            'profits': profits,
+            'profits_90day': profits_90day,
+            'profits_30day': profits_30day,
+            'profits_7day': profits_7day,
+            'profits_1day': profits_1day,
+            'profits_ppm': 0 if forward_amount == 0  else int(profits/(forward_amount/1000000)),
+            'profits_ppm_90day': 0 if forward_amount_90day == 0  else int(profits_90day/(forward_amount_90day/1000000)),
+            'profits_ppm_30day': 0 if forward_amount_30day == 0  else int(profits_30day/(forward_amount_30day/1000000)),
+            'profits_ppm_7day': 0 if forward_amount_7day == 0  else int(profits_7day/(forward_amount_7day/1000000)),
+            'profits_ppm_1day': 0 if forward_amount_1day == 0  else int(profits_1day/(forward_amount_1day/1000000)),
+            'percent_cost': 0 if total_revenue == 0 else int(((total_fees+onchain_costs)/total_revenue)*100),
+            'percent_cost_90day': 0 if total_revenue_90day == 0 else int(((total_fees_90day+onchain_costs_90day)/total_revenue_90day)*100),
+            'percent_cost_30day': 0 if total_revenue_30day == 0 else int(((total_fees_30day+onchain_costs_30day)/total_revenue_30day)*100),
+            'percent_cost_7day': 0 if total_revenue_7day == 0 else int(((total_fees_7day+onchain_costs_7day)/total_revenue_7day)*100),
+            'percent_cost_1day': 0 if total_revenue_1day == 0 else int(((total_fees_1day+onchain_costs_1day)/total_revenue_1day)*100),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }

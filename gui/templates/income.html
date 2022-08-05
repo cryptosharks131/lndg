@@ -14,15 +14,31 @@
       <th>Lifetime</th>
     </tr>
     <tr>
-      <td>Revenue</td>
-      <td>{{ total_revenue_1day|intcomma }}</td>
-      <td>{{ total_revenue_7day|intcomma }}</td>
-      <td>{{ total_revenue_30day|intcomma }}</td>
-      <td>{{ total_revenue_90day|intcomma }}</td>
-      <td>{{ total_revenue|intcomma }}</td>
+      <td>Payments Routed</td>
+      <td>{{ forward_count_1day|intcomma }}</td>
+      <td>{{ forward_count_7day|intcomma }}</td>
+      <td>{{ forward_count_30day|intcomma }}</td>
+      <td>{{ forward_count_90day|intcomma }}</td>
+      <td>{{ forward_count|intcomma }}</td>
     </tr>
     <tr>
-      <td>Onchain</td>
+      <td>Value Routed</td>
+      <td>{{ forward_amount_1day|intcomma }}</td>
+      <td>{{ forward_amount_7day|intcomma }}</td>
+      <td>{{ forward_amount_30day|intcomma }}</td>
+      <td>{{ forward_amount_90day|intcomma }}</td>
+      <td>{{ forward_amount|intcomma }}</td>
+    </tr>
+    <tr>
+      <td>Revenue Earned</td>
+      <td>{{ total_revenue_1day|intcomma }} [{{ total_revenue_ppm_1day|intcomma }}]</td>
+      <td>{{ total_revenue_7day|intcomma }} [{{ total_revenue_ppm_7day|intcomma }}]</td>
+      <td>{{ total_revenue_30day|intcomma }} [{{ total_revenue_ppm_30day|intcomma }}]</td>
+      <td>{{ total_revenue_90day|intcomma }} [{{ total_revenue_ppm_90day|intcomma }}]</td>
+      <td>{{ total_revenue|intcomma }} [{{ total_revenue_ppm|intcomma }}]</td>
+    </tr>
+    <tr>
+      <td>Onchain Costs</td>
       <td>{{ onchain_costs_1day|intcomma }}</td>
       <td>{{ onchain_costs_7day|intcomma }}</td>
       <td>{{ onchain_costs_30day|intcomma }}</td>
@@ -30,20 +46,28 @@
       <td>{{ onchain_costs|intcomma }}</td>
     </tr>
     <tr>
-      <td>Offchain</td>
-      <td>{{ total_fees_1day|intcomma }}</td>
-      <td>{{ total_fees_7day|intcomma }}</td>
-      <td>{{ total_fees_30day|intcomma }}</td>
-      <td>{{ total_fees_90day|intcomma }}</td>
-      <td>{{ total_fees|intcomma }}</td>
+      <td>Offchain Costs</td>
+      <td>{{ total_fees_1day|intcomma }} [{{ total_fees_ppm_1day }}]</td>
+      <td>{{ total_fees_7day|intcomma }} [{{ total_fees_ppm_7day }}]</td>
+      <td>{{ total_fees_30day|intcomma }} [{{ total_fees_ppm_30day }}]</td>
+      <td>{{ total_fees_90day|intcomma }} [{{ total_fees_ppm_90day }}]</td>
+      <td>{{ total_fees|intcomma }} [{{ total_fees_ppm }}]</td>
+    </tr>
+    <tr>
+      <td>Percent Cost</td>
+      <td>{{ percent_cost_1day|intcomma }}%</td>
+      <td>{{ percent_cost_7day|intcomma }}%</td>
+      <td>{{ percent_cost_30day|intcomma }}%</td>
+      <td>{{ percent_cost_90day|intcomma }}%</td>
+      <td>{{ percent_cost|intcomma }}%</td>
     </tr>
     <tr>
       <td>Profits</td>
-      <td>{{ profits_1day|intcomma }}</td>
-      <td>{{ profits_7day|intcomma }}</td>
-      <td>{{ profits_30day|intcomma }}</td>
-      <td>{{ profits_90day|intcomma }}</td>
-      <td>{{ profits|intcomma }}</td>
+      <td>{{ profits_1day|intcomma }} [{{ profits_ppm_1day }}]</td>
+      <td>{{ profits_7day|intcomma }} [{{ profits_ppm_7day }}]</td>
+      <td>{{ profits_30day|intcomma }} [{{ profits_ppm_30day }}]</td>
+      <td>{{ profits_90day|intcomma }} [{{ profits_ppm_90day }}]</td>
+      <td>{{ profits|intcomma }} [{{ profits_ppm }}]</td>
     </tr>
   </table>
 </div>

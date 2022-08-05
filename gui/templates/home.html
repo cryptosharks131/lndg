@@ -10,14 +10,15 @@
   <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Wallet Balance: {{ balances.total_balance|intcomma }} | Confirmed Wallet Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Wallet Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>
+  <h4>Total Balance: {{ total_balance|intcomma }} | Onchain Balance: {{ balances.total_balance|intcomma }} | Confirmed Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>
   <form action="/newaddress/" method="post">
     {% csrf_token %}
-    <input type="submit" value="Get New Deposit Address">
+    <input type="submit" value="Get New Onchain Address">
   </form>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound|intcomma }} [{{ profit_per_outbound_real|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
+  <h4>1-Day Routed: {{ routed_1day|intcomma }} | Value: {{ routed_1day_amt|intcomma }} | Fees Earned: {{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_1day|intcomma }} | Offchain Fees: {{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_1day }}% | Profit/Outbound: {{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}] | Outbound Utilization: {{ routed_1day_percent }}%</h4>
+  <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Total Inbound Liquidity: {{ sum_inbound|intcomma }} | Outbound Liquidity: {{ sum_outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
@@ -41,6 +42,8 @@
         <th>Unsettled</th>
         <th>oRate</th>
         <th>oBase</th>
+        <th>o1D</th>
+        <th>i1D</th>
         <th>o7D</th>
         <th>i7D</th>
         <th>iRate</th>
@@ -59,6 +62,8 @@
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
         <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
         <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
+        <td>{{ channel.amt_routed_out_1day|intcomma }} M ({{ channel.routed_out_1day }})</td>
+        <td>{{ channel.amt_routed_in_1day|intcomma }} M ({{ channel.routed_in_1day }})</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
         <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
