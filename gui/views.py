@@ -796,11 +796,11 @@ def income(request):
         total_fees_30day = 0 if payments_30day.count() == 0 else int(payments_30day.aggregate(Sum('fee'))['fee__sum'])
         total_fees_7day = 0 if payments_7day.count() == 0 else int(payments_7day.aggregate(Sum('fee'))['fee__sum'])
         total_fees_1day = 0 if payments_1day.count() == 0 else int(payments_1day.aggregate(Sum('fee'))['fee__sum'])
-        total_fees_ppm = 0 if total_sent == 0 else int(total_fees/total_sent)
-        total_fees_ppm_90day = 0 if total_sent_90day == 0 else int(total_fees_90day/total_sent_90day)
-        total_fees_ppm_30day = 0 if total_sent_30day == 0 else int(total_fees_30day/total_sent_30day)
-        total_fees_ppm_7day = 0 if total_sent_7day == 0 else int(total_fees_7day/total_sent_7day)
-        total_fees_ppm_1day = 0 if total_sent_1day == 0 else int(total_fees_1day/total_sent_1day)
+        total_fees_ppm = 0 if total_sent == 0 else int(total_fees/(total_sent/1000000))
+        total_fees_ppm_90day = 0 if total_sent_90day == 0 else int(total_fees_90day/(total_sent_90day/1000000))
+        total_fees_ppm_30day = 0 if total_sent_30day == 0 else int(total_fees_30day/(total_sent_30day/1000000))
+        total_fees_ppm_7day = 0 if total_sent_7day == 0 else int(total_fees_7day/(total_sent_7day/1000000))
+        total_fees_ppm_1day = 0 if total_sent_1day == 0 else int(total_fees_1day/(total_sent_1day/1000000))
         onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_90day = 0 if onchain_txs_90day.count() == 0 else onchain_txs_90day.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_30day = 0 if onchain_txs_30day.count() == 0 else onchain_txs_30day.aggregate(Sum('fee'))['fee__sum']
