@@ -103,7 +103,7 @@ class Channels(models.Model):
     closing_costs = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
-        if self.auto_fees is None:
+        if not self.auto_fees:
             if LocalSettings.objects.filter(key='AF-Enabled').exists():
                 enabled = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
             else:
@@ -264,3 +264,19 @@ class Autofees(models.Model):
     new_value = models.IntegerField()
     class Meta:
         app_label = 'gui'
+
+class PendingChannels(models.Model):
+    funding_txid = models.CharField(max_length=64)
+    output_index = models.IntegerField()
+    local_base_fee = models.IntegerField(null=True, default=None)
+    local_fee_rate = models.IntegerField(null=True, default=None)
+    local_cltv = models.IntegerField(null=True, default=None)
+    auto_rebalance = models.BooleanField(null=True, default=None)
+    ar_amt_target = models.BigIntegerField(null=True, default=None)
+    ar_in_target = models.IntegerField(null=True, default=None)
+    ar_out_target = models.IntegerField(null=True, default=None)
+    ar_max_cost = models.IntegerField(null=True, default=None)
+    auto_fees = models.BooleanField(null=True, default=None)
+    class Meta:
+        app_label = 'gui'
+        unique_together = (('funding_txid', 'output_index'),)

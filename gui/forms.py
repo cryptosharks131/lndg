@@ -107,6 +107,12 @@ class UpdateChannel(forms.Form):
     target = forms.IntegerField(label='target')
     update_target = forms.ChoiceField(label='update_target', choices=updates_channel_codes)
 
+class UpdatePending(forms.Form):
+    funding_txid = forms.CharField(label='funding_txid', max_length=64)
+    output_index = forms.IntegerField(label='output_index')
+    target = forms.IntegerField(label='target')
+    update_target = forms.ChoiceField(label='update_target', choices=updates_channel_codes)
+
 class UpdateSetting(forms.Form):
     key = forms.CharField(label='setting', max_length=20)
     value = forms.CharField(label='value', max_length=50)

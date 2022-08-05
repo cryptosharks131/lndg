@@ -118,6 +118,8 @@ def auto_schedule():
         if len(auto_rebalance_channels) > 0:
             if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
                 LocalSettings(key='AR-Outbound%', value='75').save()
+            if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
+                LocalSettings(key='AR-Inbound%', value='100').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
             inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
