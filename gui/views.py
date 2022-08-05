@@ -1238,6 +1238,16 @@ def invoices(request):
         return redirect('home')
 
 @login_required(login_url='/lndg-admin/login/?next=/')
+def rebalances(request):
+    if request.method == 'GET':
+        context = {
+            'rebalances': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:150],
+        }
+        return render(request, 'rebalances.html', context)
+    else:
+        return redirect('home')
+
+@login_required(login_url='/lndg-admin/login/?next=/')
 def batch(request):
     if request.method == 'GET':
         context = {
