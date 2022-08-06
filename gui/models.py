@@ -103,7 +103,7 @@ class Channels(models.Model):
     closing_costs = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
-        if not self.auto_fees:
+        if self.auto_fees is None:
             if LocalSettings.objects.filter(key='AF-Enabled').exists():
                 enabled = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
             else:
