@@ -396,9 +396,16 @@ def reconnect_peers(stub):
                         print('Unable to find node info on graph, using last known value')
                         host = peer.address
                     address = ln.LightningAddress(pubkey=inactive_peer, host=host)
-                    stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
-                    peer.last_reconnected = datetime.now()
-                    peer.save()
+                    try:
+                        stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
+                        peer.last_reconnected = datetime.now()
+                        peer.save()
+                    except Exception as e:
+                        error = str(e)
+                        details_index = error.find('details =') + 11
+                        debug_error_index = error.find('debug_error_string =') - 3
+                        error_msg = error[details_index:debug_error_index]
+                        print (f"{datetime.now().strftime('%c')} : Error reconnecting {inactive_peer=} {error_msg=}")
 
 def clean_payments(stub):
     if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
@@ -425,7 +432,7 @@ def clean_payments(stub):
                 details_index = error.find('details =') + 11
                 debug_error_index = error.find('debug_error_string =') - 3
                 error_msg = error[details_index:debug_error_index]
-                print (f"{datetime.now().strftime('%c')} : Error  {payment.index=} {payment.status=} {payment.payment_hash=} {error_msg=}")
+                print (f"{datetime.now().strftime('%c')} : Error {payment.index=} {payment.status=} {payment.payment_hash=} {error_msg=}")
             finally:
                 payment.cleaned = True
                 payment.save()
@@ -535,7 +542,7 @@ def auto_fees(stub):
                         Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
 
 def main():
-    # try:
+    try:
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         #Update data
         update_peers(stub)
@@ -548,8 +555,8 @@ def main():
         reconnect_peers(stub)
         clean_payments(stub)
         auto_fees(stub)
-    # except Exception as e:
-    #     print('Error processing background data: ' + str(e))
+    except Exception as e:
+        print('Error processing background data: ' + str(e))
 
 if __name__ == '__main__':
     main()
