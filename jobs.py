@@ -21,9 +21,9 @@ def update_payments(stub):
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
-        payment = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index, max_payments=1)).payments
+        payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index, max_payments=1)).payments
         if len(payment) > 0:
-            update_payment(stub, payment[0], self_pubkey)
+            update_payment(stub, payment, payment_data[0], self_pubkey)
     #Get the number of records in the database currently
     last_index = Payments.objects.exclude(status=1).aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     #print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
@@ -67,10 +67,10 @@ def update_payments(stub):
                         new_payment.save()
         except:
             #Error inserting, try to update instead
-            update_payment(stub, payment, self_pubkey)
+            db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
+            update_payment(stub, db_payment, payment, self_pubkey)
 
-def update_payment(stub, payment, self_pubkey):
-    db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
+def update_payment(stub, db_payment, payment, self_pubkey):
     db_payment.creation_date = datetime.fromtimestamp(payment.creation_date)
     db_payment.value = round(payment.value_msat/1000, 3)
     db_payment.fee = round(payment.fee_msat/1000, 3)
