@@ -17,15 +17,18 @@ from lndg.settings import LND_NETWORK
 
 def update_payments(stub):
     #Remove anything in-flight so we can get most up to date status
-    in_flight_index = Payments.objects.filter(status=1).aggregate(Min('index'))['index__min'] if Payments.objects.filter(status=1).exists() else 0
-    Payments.objects.filter(status=1).delete()
+    #in_flight_index = Payments.objects.filter(status=1).aggregate(Min('index'))['index__min'] if Payments.objects.filter(status=1).exists() else 0
+    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+    inflight_payments = Payments.objects.filter(status=1).order_by('index')
+    for payment in inflight_payments:
+        payment = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index, max_payments=1)).payments
+        update_payment(stub, payment, self_pubkey)
     #Get the number of records in the database currently
-    last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
+    last_index = Payments.objects.exclude(status=1).aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     #print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
     #We delete all inflight index in each cycle to we should start with one less so that inflight payment with index=in_flight_index comes back.
-    last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
+    #last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
-    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     for payment in payments:
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
@@ -63,45 +66,48 @@ def update_payments(stub):
                         new_payment.save()
         except:
             #Error inserting, try to update instead
-            db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
-            db_payment.creation_date = datetime.fromtimestamp(payment.creation_date)
-            db_payment.value = round(payment.value_msat/1000, 3)
-            db_payment.fee = round(payment.fee_msat/1000, 3)
-            db_payment.status = payment.status
-            db_payment.index = payment.payment_index
-            db_payment.save()
-            if payment.status == 2:
-                for attempt in payment.htlcs:
-                    if attempt.status == 1:
-                        PaymentHops.objects.filter(payment_hash=db_payment).delete()
-                        hops = attempt.route.hops
-                        hop_count = 0
-                        cost_to = 0
-                        total_hops = len(hops)
-                        for hop in hops:
-                            hop_count += 1
-                            try:
-                                alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
-                            except:
-                                alias = ''
-                            fee = hop.fee_msat/1000
-                            PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
-                            cost_to += fee
-                            if hop_count == 1:
-                                if db_payment.chan_out is None:
-                                    db_payment.chan_out = hop.chan_id
-                                    db_payment.chan_out_alias = alias
-                                else:
-                                    db_payment.chan_out = 'MPP'
-                                    db_payment.chan_out_alias = 'MPP'
-                            if hop_count == total_hops and 5482373484 in hop.custom_records and db_payment.keysend_preimage is None:
-                                records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
-                                db_payment.keysend_preimage = records[5482373484].hex()
-                                db_payment.message = message
-                            if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
-                                db_payment.rebal_chan = hop.chan_id
-                        db_payment.save()
+            update_payment(stub, payment, self_pubkey)
+
+def update_payment(stub, payment, self_pubkey):
+    db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
+    db_payment.creation_date = datetime.fromtimestamp(payment.creation_date)
+    db_payment.value = round(payment.value_msat/1000, 3)
+    db_payment.fee = round(payment.fee_msat/1000, 3)
+    db_payment.status = payment.status
+    db_payment.index = payment.payment_index
+    db_payment.save()
+    if payment.status == 2:
+        for attempt in payment.htlcs:
+            if attempt.status == 1:
+                PaymentHops.objects.filter(payment_hash=db_payment).delete()
+                hops = attempt.route.hops
+                hop_count = 0
+                cost_to = 0
+                total_hops = len(hops)
+                for hop in hops:
+                    hop_count += 1
+                    try:
+                        alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
+                    except:
+                        alias = ''
+                    fee = hop.fee_msat/1000
+                    PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
+                    cost_to += fee
+                    if hop_count == 1:
+                        if db_payment.chan_out is None:
+                            db_payment.chan_out = hop.chan_id
+                            db_payment.chan_out_alias = alias
+                        else:
+                            db_payment.chan_out = 'MPP'
+                            db_payment.chan_out_alias = 'MPP'
+                    if hop_count == total_hops and 5482373484 in hop.custom_records and db_payment.keysend_preimage is None:
+                        records = hop.custom_records
+                        message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
+                        db_payment.keysend_preimage = records[5482373484].hex()
+                        db_payment.message = message
+                    if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
+                        db_payment.rebal_chan = hop.chan_id
+                db_payment.save()
 
 def update_invoices(stub):
     #Remove anything open so we can get most up to date status
