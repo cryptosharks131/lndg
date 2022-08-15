@@ -16,19 +16,13 @@ from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peer
 from lndg.settings import LND_NETWORK
 
 def update_payments(stub):
-    #Remove anything in-flight so we can get most up to date status
-    #in_flight_index = Payments.objects.filter(status=1).aggregate(Min('index'))['index__min'] if Payments.objects.filter(status=1).exists() else 0
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
         payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
         if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash:
             update_payment(stub, payment_data[0], self_pubkey)
-    #Get the number of records in the database currently
-    last_index = Payments.objects.exclude(status=1).aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
-    #print (f"{datetime.now().strftime('%c')} : {in_flight_index=} {last_index=} {min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index=}")
-    #We delete all inflight index in each cycle to we should start with one less so that inflight payment with index=in_flight_index comes back.
-    #last_index = min(in_flight_index - 1, last_index) if in_flight_index > 0 else last_index
+    last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     for payment in payments:
         try:
@@ -111,44 +105,61 @@ def update_payment(stub, payment, self_pubkey):
                 db_payment.save()
 
 def update_invoices(stub):
-    #Remove anything open so we can get most up to date status
-    Invoices.objects.filter(state=0).delete()
-    last_index = 0 if Invoices.objects.aggregate(Max('index'))['index__max'] == None else Invoices.objects.aggregate(Max('index'))['index__max']
+    open_invoices = Invoices.objects.filter(state=0).order_by('index')
+    for open_invoice in open_invoices:
+        invoice_data = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=open_invoice.index-1, num_max_invoices=1)).invoices
+        if len(invoice_data) > 0 and open_invoice.r_hash == invoice_data[0].r_hash.hex():
+            update_invoice(stub, invoice_data[0], open_invoice)
+    last_index = Invoices.objects.aggregate(Max('index'))['index__max'] if Invoices.objects.exists() else 0
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=last_index, num_max_invoices=100)).invoices
     for invoice in invoices:
-        if invoice.state == 1:
-            if len(invoice.htlcs) > 0:
-                chan_in_id = invoice.htlcs[0].chan_id
-                alias = Channels.objects.filter(chan_id=chan_in_id)[0].alias if Channels.objects.filter(chan_id=chan_in_id).exists() else None
-                records = invoice.htlcs[0].custom_records
-                keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
-                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
-                if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
-                    signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
-                    try:
-                        valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
-                    except:
-                        print('Unable to validate signature on invoice: ' + invoice.r_hash.hex())
-                        valid = False
-                    sender = records[34349339].hex() if valid == True else None
-                    try:
-                        sender_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=sender, include_channels=False)).node.alias if sender != None else None
-                    except:
-                        sender_alias = None
-                else:
-                    sender = None
+        db_invoice = Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, index=invoice.add_index)
+        db_invoice.save()
+        update_invoice(stub, invoice, db_invoice)
+
+def update_invoice(stub, invoice, db_invoice):
+    if invoice.state == 1:
+        if len(invoice.htlcs) > 0:
+            chan_in_id = invoice.htlcs[0].chan_id
+            alias = Channels.objects.filter(chan_id=chan_in_id)[0].alias if Channels.objects.filter(chan_id=chan_in_id).exists() else None
+            records = invoice.htlcs[0].custom_records
+            keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
+            message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
+            if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
+                signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+                try:
+                    valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
+                except:
+                    print('Unable to validate signature on invoice: ' + invoice.r_hash.hex())
+                    valid = False
+                sender = records[34349339].hex() if valid == True else None
+                try:
+                    sender_alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=sender, include_channels=False)).node.alias if sender != None else None
+                except:
                     sender_alias = None
             else:
-                chan_in_id = None
-                alias = None
-                keysend_preimage = None
-                message = None
                 sender = None
                 sender_alias = None
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), settle_date=datetime.fromtimestamp(invoice.settle_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, chan_in=chan_in_id, chan_in_alias=alias, keysend_preimage=keysend_preimage, message=message, sender=sender, sender_alias=sender_alias, index=invoice.add_index).save()
         else:
-            Invoices(creation_date=datetime.fromtimestamp(invoice.creation_date), r_hash=invoice.r_hash.hex(), value=round(invoice.value_msat/1000, 3), amt_paid=invoice.amt_paid_sat, state=invoice.state, index=invoice.add_index).save()
+            chan_in_id = None
+            alias = None
+            keysend_preimage = None
+            message = None
+            sender = None
+            sender_alias = None
+        db_invoice.state = invoice.state
+        db_invoice.amt_paid = invoice.amt_paid_sat
+        db_invoice.settle_date = datetime.fromtimestamp(invoice.settle_date)
+        db_invoice.chan_in = chan_in_id
+        db_invoice.chan_in_alias = alias
+        db_invoice.keysend_preimage = keysend_preimage
+        db_invoice.message = message
+        db_invoice.sender = sender
+        db_invoice.sender_alias = sender_alias
+    else:
+        db_invoice.state = invoice.state
+    db_invoice.save()
 
 def update_forwards(stub):
     records = Forwards.objects.count()
