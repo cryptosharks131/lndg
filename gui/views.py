@@ -892,8 +892,12 @@ def channel(request):
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).values())
             invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
             channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).values())
-            node_outbound = channels_df['local_balance'].sum()
-            node_capacity = channels_df['capacity'].sum()
+            if channels_df.empty:
+                node_outbound = 0
+                node_capacity = 0
+            else:
+                node_outbound = channels_df['local_balance'].sum()
+                node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
