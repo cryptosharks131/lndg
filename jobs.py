@@ -21,7 +21,7 @@ def update_payments(stub):
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
-        payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index, max_payments=1)).payments
+        payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
         if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash:
             update_payment(stub, payment_data[0], self_pubkey)
     #Get the number of records in the database currently
