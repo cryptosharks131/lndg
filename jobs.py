@@ -22,6 +22,9 @@ def update_payments(stub):
         payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
         if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash:
             update_payment(stub, payment_data[0], self_pubkey)
+        else:
+            payment.status = 3
+            payment.save()
     last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     for payment in payments:
@@ -110,6 +113,9 @@ def update_invoices(stub):
         invoice_data = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=open_invoice.index-1, num_max_invoices=1)).invoices
         if len(invoice_data) > 0 and open_invoice.r_hash == invoice_data[0].r_hash.hex():
             update_invoice(stub, invoice_data[0], open_invoice)
+        else:
+            open_invoice.state = 2
+            open_invoice.save()
     last_index = Invoices.objects.aggregate(Max('index'))['index__max'] if Invoices.objects.exists() else 0
     invoices = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=last_index, num_max_invoices=100)).invoices
     for invoice in invoices:
