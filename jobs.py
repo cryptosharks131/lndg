@@ -75,9 +75,9 @@ def update_payment(stub, payment, self_pubkey):
     db_payment.index = payment.payment_index
     db_payment.save()
     if payment.status == 2:
+        PaymentHops.objects.filter(payment_hash=db_payment).delete()
         for attempt in payment.htlcs:
             if attempt.status == 1:
-                PaymentHops.objects.filter(payment_hash=db_payment).delete()
                 hops = attempt.route.hops
                 hop_count = 0
                 cost_to = 0
