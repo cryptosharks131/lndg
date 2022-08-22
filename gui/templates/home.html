@@ -345,7 +345,7 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td>{{ channel.local_commit_fee_sat|intcomma }}</td>
       <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
@@ -411,7 +411,7 @@
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td>{{ channel.local_commit_fee_sat|intcomma }}</td>
       <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
