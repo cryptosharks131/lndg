@@ -226,7 +226,7 @@ def home(request):
                 'node_info': node_info,
                 'total_channels': total_channels,
                 'balances': balances,
-                'total_balance': balances.total_balance + sum_outbound + pending_open_balance + limbo_balance,
+                'total_balance': balances.total_balance + sum_outbound + pending_open_balance + limbo_balance + private_outbound,
                 'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
                 'invoices': invoices.order_by('-creation_date')[:6],
                 'forwards': forwards[:15],
