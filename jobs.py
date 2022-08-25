@@ -20,7 +20,8 @@ def update_payments(stub):
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
         payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
-        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash:
+        #Ignore inflight payments before 30 days
+        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash and payment.creation_date > (datetime.now() - timedelta(days=30)):
             update_payment(stub, payment_data[0], self_pubkey)
         else:
             payment.status = 3
