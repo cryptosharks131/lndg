@@ -2,6 +2,105 @@
 {% block title %} {{ block.super }} - Closures{% endblock %}
 {% block content %}
 {% load humanize %}
+{% if pending_closed %}
+<div class="w3-container w3-padding-small">
+  <h2>Pending Close Channels</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
+      <th>Capacity</th>
+      <th>Local Balance</th>
+      <th>Remote Balance</th>
+      <th>Balance In Limbo</th>
+      <th>Local Commit Fees</th>
+      <th width=20%>Closing TX</th>
+    </tr>
+    {% for channel in pending_closed %}
+    <tr>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+      {% endwith %}
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.limbo_balance|intcomma }}</td>
+      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if pending_force_closed %}
+<div class="w3-container w3-padding-small">
+  <h2>Pending Force Close Channels</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
+      <th>Capacity</th>
+      <th>Local Balance</th>
+      <th>Remote Balance</th>
+      <th>Balance In Limbo</th>
+      <th>Maturity</th>
+      <th width=20%>Closing TX</th>
+    </tr>
+    {% for channel in pending_force_closed %}
+    <tr>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+      {% endwith %}
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.limbo_balance|intcomma }}</td>
+      <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if waiting_for_close %}
+<div class="w3-container w3-padding-small">
+  <h2>Channels Waiting To Close</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th width=20%>Channel Point</th>
+      <th>Capacity</th>
+      <th>Local Balance</th>
+      <th>Remote Balance</th>
+      <th>Balance In Limbo</th>
+      <th>Local Commit Fee</th>
+      <th width=20%>Closing TX</th>
+    </tr>
+    {% for channel in waiting_for_close %}
+    <tr>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      {% with funding_txid=channel.channel_point|slice:":-2" %}
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+      {% endwith %}
+      <td>{{ channel.capacity|intcomma }}</td>
+      <td>{{ channel.local_balance|intcomma }}</td>
+      <td>{{ channel.remote_balance|intcomma }}</td>
+      <td>{{ channel.limbo_balance|intcomma }}</td>
+      <td>{{ channel.local_commit_fee_sat }}</td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% if closures %}
 <div class="w3-container w3-padding-small">
   <h2>Closures</h2>
@@ -18,6 +117,7 @@
       <th>Opener</th>
       <th>Closer</th>
       <th>Resolutions</th>
+      <th>Costs</th>
     </tr>
     {% for closure in closures %}
     <tr>
@@ -32,6 +132,20 @@
       <td>{% if closure.open_initiator == 0 %}Unknown{% elif closure.open_initiator == 1 %}Local{% elif closure.open_initiator == 2 %}Remote{% elif closure.open_initiator == 3 %}Both{% else %}{{ closure.open_initiator }}{% endif %}</td>
       <td>{% if closure.close_initiator == 0 %}Unknown{% elif closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% elif closure.close_initiator == 3 %}Both{% else %}{{ closure.close_initiator }}{% endif %}</td>
       <td>{% if closure.resolution_count > 0 %}<a href="/resolutions?={{ closure.chan_id }}" target="_blank">Details</a>{% else %}---{% endif %}</td>
+      <td>
+        {% if closure.closing_costs == '' %}
+        ---
+        {% elif closure.open_initiator == 2 and closure.close_type == 0 %}
+        ---
+        {% else %}
+        <form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="0" max="1000000" name="target" value="{{ closure.closing_costs|add:"0" }}">
+          <input type="hidden" name="chan_id" value="{{ closure.chan_id }}">
+          <input type="hidden" name="update_target" value="10">
+        </form>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>

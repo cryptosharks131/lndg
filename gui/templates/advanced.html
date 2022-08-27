@@ -204,11 +204,11 @@
           {% csrf_token %}
           {% if settings.key == 'AR-Target%' %}
             <input style="text-align:center" id="value" type="number" step="0.1" min="0.1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod'%}
+          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod' or settings.key == 'AR-APDays' %}
           <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AR-Time' %}
             <input style="text-align:center" id="value" type="number" min="1" max="60" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-MaxFeeRate' or settings.key == 'AF-MaxRate' %}
+          {% elif settings.key == 'AR-MaxFeeRate' %}
             <input style="text-align:center" id="value" type="number" min="1" max="2500" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AF-MaxRate' or settings.key == 'AF-MinRate' %}
             <input style="text-align:center" id="value" type="number" min="0" max="5000" name="value" value="{{ settings.value }}">

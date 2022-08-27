@@ -1,8 +1,9 @@
 # LNDg
 Lite GUI web interface to analyze lnd data and manage your node with automation.
 
-Start by choosing one of the following installation methods:  
-[Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed) | [Umbrel Installation](https://github.com/cryptosharks131/lndg#umbrel-installation) | [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation)
+Start by choosing one of the following installation methods: [Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed) | [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation)
+
+LNDg can also be found directly on popular apps like Umbrel and Citadel with a 1-click install from the GUI.
 
 ## Docker Installation (requires docker and docker-compose be installed)
 ### Build and deploy
@@ -26,46 +27,6 @@ services:
 5. LNDg should now be available on port `http://localhost:8889`
 6. Open and copy the password from output file: `nano data/lndg-admin.txt`
 7. Use the password from the output file and the username `lndg-admin` to login
-
-### Updating
-```
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
-
-# OPTIONAL: remove unused builds and objects
-docker system prune -f
-```
-
-## Manual Umbrel Installation (now available directly from the Umbrel app store)
-
-### Build and deploy
-1. Log into your umbrel via ssh
-2. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-3. Change directory `cd lndg`
-4. Copy and replace the contents of the `docker-compose.yaml` with the below: `nano docker-compose.yaml`
-```
-services:
-  lndg:
-    build: .
-    volumes:
-      - /home/umbrel/umbrel/lnd:/root/.lnd:ro
-      - /home/umbrel/lndg/data:/lndg/data:rw
-    command:
-      - sh
-      - -c
-      - python initialize.py -net 'mainnet' -server '10.21.21.9:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8000
-    ports:
-      - 8889:8000
-networks: 
-  default: 
-    external: true
-    name: umbrel_main_network
-```
-5. Deploy your docker image: `docker-compose up -d`
-6. You can now access LNDg via your browser on port 8889: `http://umbrel.local:8889`
-7. Open and copy the password from output file: `nano data/lndg-admin.txt`
-8. Use the password from the output file and the username `lndg-admin` to login
 
 ### Updating
 ```

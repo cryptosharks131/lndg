@@ -80,10 +80,13 @@ class AutoRebalanceForm(forms.Form):
     target_time = forms.IntegerField(label='target_time', required=False)
     fee_rate = forms.IntegerField(label='fee_rate', required=False)
     outbound_percent = forms.FloatField(label='outbound_percent', required=False)
+    inbound_percent = forms.FloatField(label='inbound_percent', required=False)
     max_cost = forms.FloatField(label='max_cost', required=False)
     variance = forms.IntegerField(label='variance', required=False)
     wait_period = forms.IntegerField(label='wait_period', required=False)
     autopilot = forms.IntegerField(label='autopilot', required=False)
+    autopilotdays = forms.IntegerField(label='autopilotdays', required=False)
+    targetallchannels = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 updates_channel_codes = [
     (0, 'base_fee'),
@@ -96,10 +99,17 @@ updates_channel_codes = [
     (7, 'channel_state'),
     (8, 'auto_fees'),
     (9, 'cltv'),
+    (10, 'closing_costs'),
 ]
 
 class UpdateChannel(forms.Form):
     chan_id = forms.IntegerField(label='chan_id')
+    target = forms.IntegerField(label='target')
+    update_target = forms.ChoiceField(label='update_target', choices=updates_channel_codes)
+
+class UpdatePending(forms.Form):
+    funding_txid = forms.CharField(label='funding_txid', max_length=64)
+    output_index = forms.IntegerField(label='output_index')
     target = forms.IntegerField(label='target')
     update_target = forms.ChoiceField(label='update_target', choices=updates_channel_codes)
 

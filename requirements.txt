@@ -5,3 +5,4 @@ grpcio
 protobuf
 pytz
 pandas
+requests

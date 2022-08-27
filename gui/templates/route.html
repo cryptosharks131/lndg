@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if route %}
 <div class="w3-container w3-padding-small">
-  <h2>Route For Payment: {{ payment_hash }}</h2>
+  <h2>Route For : {{ payment_hash }}</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Step</th>
@@ -12,6 +12,7 @@
       <th>Fee</th>
       <th title="The fee in PPM paid on this hop.">PPM</th>
       <th title="The cost to get the payment to this hop of the payment.">Cost To</th>
+      <th>📍</th>
       <th>Alias</th>
       <th>Channel ID</th>
       <th>Channel Capacity</th>
@@ -23,8 +24,9 @@
       <td>{{ hop.fee|intcomma }}</td>
       <td>{{ hop.ppm|intcomma }}</td>
       <td>{{ hop.cost_to|intcomma }}</td>
+      <td>{% if hop.step == 1 %}📍{% else %}🔻{% endif %}
       <td>{% if hop.alias == '' %}---{% else %}{{ hop.alias }}{% endif %}</td>
-      <td>{{ hop.chan_id }}</td>
+      <td><a href="/channel?={{ hop.chan_id }}" target="_blank">{{ hop.chan_id }}</a></td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
     </tr>
     {% endfor %}
