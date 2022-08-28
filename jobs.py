@@ -405,31 +405,33 @@ def reconnect_peers(stub):
         peers = Peers.objects.all()
         for inactive_peer in inactive_peers:
             if peers.filter(pubkey=inactive_peer).exists():
-                peer = peers.filter(pubkey=inactive_peer)[0] 
+                peer = peers.filter(pubkey=inactive_peer)[0]
                 if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) > 2):
+                    print (f"{datetime.now().strftime('%c')} : Reconnecting {peer.alias=} {peer.pubkey=} {peer.last_reconnected=}")
                     if peer.connected == True:
-                        print('Inactive channel is still connected to peer, disconnecting peer...')
+                        print (f"{datetime.now().strftime('%c')} : ... Inactive channel is still connected to peer, disconnecting peer. {peer.alias=} {inactive_peer=}")
                         stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
                         peer.connected = False
                         peer.save()
-                    print('Attempting connection to:', inactive_peer)
                     try:
                         node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
                         host = node.addresses[0].addr
                     except:
-                        print('Unable to find node info on graph, using last known value')
+                        print (f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value {peer.alias=} {peer.pubkey=} {peer.address=}")
                         host = peer.address
                     address = ln.LightningAddress(pubkey=inactive_peer, host=host)
+                    print (f"{datetime.now().strftime('%c')} : ... Attempting connection to {peer.alias=} {inactive_peer=} {host=}")
                     try:
-                        stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=True, timeout=5))
-                        peer.last_reconnected = datetime.now()
-                        peer.save()
+                        response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
+                        print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
                     except Exception as e:
                         error = str(e)
                         details_index = error.find('details =') + 11
                         debug_error_index = error.find('debug_error_string =') - 3
                         error_msg = error[details_index:debug_error_index]
-                        print (f"{datetime.now().strftime('%c')} : Error reconnecting {inactive_peer=} {error_msg=}")
+                        print (f"{datetime.now().strftime('%c')} : .... Error reconnecting {peer.alias} {inactive_peer=} {error_msg=}")
+                    peer.last_reconnected = datetime.now()
+                    peer.save()
 
 def clean_payments(stub):
     if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
