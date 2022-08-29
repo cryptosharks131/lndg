@@ -70,7 +70,7 @@ def home(request):
                     funding_txid = target_resp[i].channel.channel_point.split(':')[0]
                     output_index = target_resp[i].channel.channel_point.split(':')[1]
                     updated = pending_changes.filter(funding_txid=funding_txid,output_index=output_index).exists()
-                    item['alias'] = peers.filter(pubkey=target_resp[i].channel.remote_node_pub)[0].alias if peers.filter(pubkey=target_resp[i].channel.remote_node_pub).exists() else None
+                    item['alias'] = peers.filter(pubkey=target_resp[i].channel.remote_node_pub)[0].alias if peers.filter(pubkey=target_resp[i].channel.remote_node_pub).exists() else ''
                     item['remote_node_pub'] = target_resp[i].channel.remote_node_pub
                     item['channel_point'] = target_resp[i].channel.channel_point
                     item['funding_txid'] = funding_txid
@@ -205,10 +205,10 @@ def home(request):
             onchain_txs = Onchain.objects.all()
             onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
             onchain_costs_1day = 0 if onchain_txs.filter(time_stamp__gte=filter_1day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_1day).aggregate(Sum('fee'))['fee__sum']
-            closures_7day = Closures.objects.filter(close_height__gte=(node_info.block_height - 1008))
-            closures_1day = Closures.objects.filter(close_height__gte=(node_info.block_height - 144))
-            close_fees_7day = channels.filter(chan_id__in=closures_7day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
-            close_fees_1day = channels.filter(chan_id__in=closures_1day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
+            closures_7day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 1008)).values('chan_id'))
+            closures_1day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 144)).values('chan_id'))
+            close_fees_7day = closures_7day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
+            close_fees_1day = closures_1day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
             onchain_costs_7day += close_fees_7day
             onchain_costs_1day += close_fees_1day
             total_costs_7day = total_7day_fees + onchain_costs_7day
@@ -756,11 +756,11 @@ def income(request):
         onchain_txs_30day = onchain_txs.filter(time_stamp__gte=filter_30day)
         onchain_txs_7day = onchain_txs.filter(time_stamp__gte=filter_7day)
         onchain_txs_1day = onchain_txs.filter(time_stamp__gte=filter_1day)
-        closures = Closures.objects.all()
-        closures_90day = closures.filter(close_height__gte=(node_info.block_height - 12960))
-        closures_30day = closures.filter(close_height__gte=(node_info.block_height - 4320))
-        closures_7day = closures.filter(close_height__gte=(node_info.block_height - 1008))
-        closures_1day = closures.filter(close_height__gte=(node_info.block_height - 144))
+        closures = channels.filter(chan_id__in=Closures.objects.all().values('chan_id'))
+        closures_90day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 12960)).values('chan_id'))
+        closures_30day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 4320)).values('chan_id'))
+        closures_7day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 1008)).values('chan_id'))
+        closures_1day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 144)).values('chan_id'))
         forwards = Forwards.objects.all()
         forwards_90day = forwards.filter(forward_date__gte=filter_90day)
         forwards_30day = forwards.filter(forward_date__gte=filter_30day)
@@ -806,11 +806,11 @@ def income(request):
         onchain_costs_30day = 0 if onchain_txs_30day.count() == 0 else onchain_txs_30day.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_7day = 0 if onchain_txs_7day.count() == 0 else onchain_txs_7day.aggregate(Sum('fee'))['fee__sum']
         onchain_costs_1day = 0 if onchain_txs_1day.count() == 0 else onchain_txs_1day.aggregate(Sum('fee'))['fee__sum']
-        close_fees = channels.filter(chan_id__in=closures.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures.exists() else 0
-        close_fees_90day = channels.filter(chan_id__in=closures_90day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_90day.exists() else 0
-        close_fees_30day = channels.filter(chan_id__in=closures_30day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_30day.exists() else 0
-        close_fees_7day = channels.filter(chan_id__in=closures_7day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
-        close_fees_1day = channels.filter(chan_id__in=closures_1day.values('chan_id')).aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
+        close_fees = closures.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures.exists() else 0
+        close_fees_90day = closures_90day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_90day.exists() else 0
+        close_fees_30day = closures_30day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_30day.exists() else 0
+        close_fees_7day = closures_7day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
+        close_fees_1day = closures_1day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
         onchain_costs += close_fees
         onchain_costs_90day += close_fees_90day
         onchain_costs_30day += close_fees_30day
