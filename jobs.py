@@ -20,7 +20,8 @@ def update_payments(stub):
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
         payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
-        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash:
+        #Ignore inflight payments before 30 days
+        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash and payment.creation_date > (datetime.now() - timedelta(days=30)):
             update_payment(stub, payment_data[0], self_pubkey)
         else:
             payment.status = 3
@@ -31,9 +32,9 @@ def update_payments(stub):
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
             new_payment.save()
-            if payment.status == 2:
+            if payment.status == 2 or payment.status == 1:
                 for attempt in payment.htlcs:
-                    if attempt.status == 1:
+                    if attempt.status == 1 or attempt.status == 0:
                         hops = attempt.route.hops
                         hop_count = 0
                         cost_to = 0
@@ -74,10 +75,10 @@ def update_payment(stub, payment, self_pubkey):
     db_payment.status = payment.status
     db_payment.index = payment.payment_index
     db_payment.save()
-    if payment.status == 2:
+    if payment.status == 2 or payment.status == 1:
         PaymentHops.objects.filter(payment_hash=db_payment).delete()
         for attempt in payment.htlcs:
-            if attempt.status == 1:
+            if attempt.status == 1 or attempt.status == 0:
                 hops = attempt.route.hops
                 hop_count = 0
                 cost_to = 0

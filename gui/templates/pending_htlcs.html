@@ -23,7 +23,7 @@
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
-      <td>{{ htlc.hash_lock }}</td>
+      <td><a href="/route?={{ htlc.hash_lock }}" target="_blank">{{ htlc.hash_lock }}</a></td>
     </tr>
     {% endfor %}
   </table>
@@ -50,7 +50,7 @@
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
-      <td>{{ htlc.hash_lock }}</td>
+      <td><a href="/route?={{ htlc.hash_lock }}" target="_blank">{{ htlc.hash_lock }}</a></td>
     </tr>
     {% endfor %}
   </table>

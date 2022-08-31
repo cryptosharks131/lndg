@@ -1259,7 +1259,14 @@ def channel(request):
             'graph_links': graph_links(),
             'network_links': network_links()
         }
-        return render(request, 'channel.html', context)
+        try:
+            return render(request, 'channel.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
@@ -1369,7 +1376,7 @@ def failed_htlcs(request):
 def payments(request):
     if request.method == 'GET':
         context = {
-            'payments': Payments.objects.filter(status=2).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:150],
+            'payments': Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:150],
         }
         return render(request, 'payments.html', context)
     else:
