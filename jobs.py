@@ -28,10 +28,12 @@ def update_payments(stub):
     last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     for payment in payments:
+        print (f"{datetime.now().strftime('%c')} : Processing New {payment.payment_index=} {payment.status=} {payment.payment_hash=}")
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
             new_payment.save()
             if payment.status == 2 or payment.status == 1:
+                PaymentHops.objects.filter(payment_hash=payment.payment_hash).delete()
                 for attempt in payment.htlcs:
                     if attempt.status == 1 or attempt.status == 0:
                         hops = attempt.route.hops
@@ -45,6 +47,7 @@ def update_payments(stub):
                             except:
                                 alias = ''
                             fee = hop.fee_msat/1000
+                            #print (f"{datetime.now().strftime('%c')} : Saving PaymentHop {attempt.attempt_id=} {attempt.status=} {new_payment.payment_hash=}")
                             PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                             cost_to += fee
                             if hop_count == 1:
@@ -61,8 +64,9 @@ def update_payments(stub):
                                 new_payment.message = message
                             if hop_count == total_hops and hop.pub_key == self_pubkey and new_payment.rebal_chan is None:
                                 new_payment.rebal_chan = hop.chan_id
-                        new_payment.save()
-        except:
+            new_payment.save()
+            adjust_ar_amt( payment, new_payment.rebal_chan )
+        except Exception as e:
             #Error inserting, try to update instead
             update_payment(stub, payment, self_pubkey)
 
@@ -73,7 +77,6 @@ def update_payment(stub, payment, self_pubkey):
     db_payment.fee = round(payment.fee_msat/1000, 3)
     db_payment.status = payment.status
     db_payment.index = payment.payment_index
-    db_payment.save()
     if payment.status == 2 or payment.status == 1:
         PaymentHops.objects.filter(payment_hash=db_payment).delete()
         db_payment.chan_out = None
@@ -108,7 +111,36 @@ def update_payment(stub, payment, self_pubkey):
                         db_payment.message = message
                     if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
                         db_payment.rebal_chan = hop.chan_id
-                db_payment.save()
+    db_payment.save()
+    adjust_ar_amt( payment, db_payment.rebal_chan )
+
+def adjust_ar_amt( payment, chan_id ):
+    #Adjust AR Target Amount, increase if success reduce if failed.
+    if payment.status == 2 and chan_id is not None:
+        db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
+        if db_channel is not None:
+            new_ar_amount = min(db_channel.ar_amt_target * 1.21, db_channel.capacity*0.21)
+            print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
+            db_channel.ar_amt_target = new_ar_amount
+            db_channel.save()
+    if payment.status == 3:
+        estimated_liquidity = 0
+        for attempt in payment.htlcs:
+            total_hops=len(attempt.route.hops)
+            #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
+            if attempt.failure.code in (1,2,12) and attempt.failure.failure_source_index == total_hops:
+                #Failure from last hop indicating liquidity available
+                estimated_liquidity += attempt.route.total_amt
+                chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
+                print (f"{datetime.now().strftime('%c')} : Failed Payment {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+        if estimated_liquidity <= payment.value_msat/1000:
+            #Change AR amount
+            new_ar_amount = estimated_liquidity if estimated_liquidity > 69420 else 69420
+            db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
+            if db_channel is not None:
+                print (f"{datetime.now().strftime('%c')} : Decrease AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
+                db_channel.ar_amt_target = new_ar_amount
+                db_channel.save()
 
 def update_invoices(stub):
     open_invoices = Invoices.objects.filter(state=0).order_by('index')
@@ -571,6 +603,7 @@ def auto_fees(stub):
                         Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
 
 def main():
+    #print (f"{datetime.now().strftime('%c')} : Entering Jobs")
     try:
         stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
         #Update data
@@ -585,7 +618,7 @@ def main():
         clean_payments(stub)
         auto_fees(stub)
     except Exception as e:
-        print('Error processing background data: ' + str(e))
-
+        print (f"{datetime.now().strftime('%c')} : Error processing background data: {str(e)=}")
+    #print (f"{datetime.now().strftime('%c')} : Exit Jobs")
 if __name__ == '__main__':
     main()
