@@ -512,12 +512,18 @@ def advanced(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def route(request):
     if request.method == 'GET':
-        payment_hash = request.GET.urlencode()[1:]
-        context = {
-            'payment_hash': payment_hash,
-            'route': PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
-        }
-        return render(request, 'route.html', context)
+        try:
+            payment_hash = request.GET.urlencode()[1:]
+            context = {
+                'payment_hash': payment_hash,
+                'route': PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField())),
+                'rebalances': Rebalancer.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())),
+                'invoices': Invoices.objects.filter(r_hash=payment_hash)
+            }
+            return render(request, 'route.html', context)
+        except Exception as e:
+            error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
