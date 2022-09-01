@@ -32,43 +32,10 @@ def update_payments(stub):
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
             new_payment.save()
-            if payment.status == 2 or payment.status == 1:
-                PaymentHops.objects.filter(payment_hash=payment.payment_hash).delete()
-                for attempt in payment.htlcs:
-                    if attempt.status == 1 or attempt.status == 0:
-                        hops = attempt.route.hops
-                        hop_count = 0
-                        cost_to = 0
-                        total_hops = len(hops)
-                        for hop in hops:
-                            hop_count += 1
-                            try:
-                                alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
-                            except:
-                                alias = ''
-                            fee = hop.fee_msat/1000
-                            #print (f"{datetime.now().strftime('%c')} : Saving PaymentHop {attempt.attempt_id=} {attempt.status=} {new_payment.payment_hash=}")
-                            PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
-                            cost_to += fee
-                            if hop_count == 1:
-                                if new_payment.chan_out is None:
-                                    new_payment.chan_out = hop.chan_id
-                                    new_payment.chan_out_alias = alias
-                                else:
-                                    new_payment.chan_out = 'MPP'
-                                    new_payment.chan_out_alias = 'MPP'
-                            if hop_count == total_hops and 5482373484 in hop.custom_records and new_payment.keysend_preimage is None:
-                                records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
-                                new_payment.keysend_preimage = records[5482373484].hex()
-                                new_payment.message = message
-                            if hop_count == total_hops and hop.pub_key == self_pubkey and new_payment.rebal_chan is None:
-                                new_payment.rebal_chan = hop.chan_id
-            new_payment.save()
-            adjust_ar_amt( payment, new_payment.rebal_chan )
         except Exception as e:
             #Error inserting, try to update instead
-            update_payment(stub, payment, self_pubkey)
+            print (f"{datetime.now().strftime('%c')} : Error processing {new_payment=} : {str(e)=}")
+        update_payment(stub, payment, self_pubkey)
 
 def update_payment(stub, payment, self_pubkey):
     db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
@@ -77,13 +44,13 @@ def update_payment(stub, payment, self_pubkey):
     db_payment.fee = round(payment.fee_msat/1000, 3)
     db_payment.status = payment.status
     db_payment.index = payment.payment_index
-    if payment.status == 2 or payment.status == 1:
+    if payment.status == 2 or payment.status == 1 or payment.status == 3:
         PaymentHops.objects.filter(payment_hash=db_payment).delete()
         db_payment.chan_out = None
         db_payment.rebal_chan = None
         db_payment.save()
         for attempt in payment.htlcs:
-            if attempt.status == 1 or attempt.status == 0:
+            if attempt.status == 1 or attempt.status == 0 or (attempt.status == 2 and attempt.failure.code in (1,2,12)) :
                 hops = attempt.route.hops
                 hop_count = 0
                 cost_to = 0
@@ -133,8 +100,8 @@ def adjust_ar_amt( payment, chan_id ):
                 estimated_liquidity += attempt.route.total_amt
                 chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
                 print (f"{datetime.now().strftime('%c')} : Failed Payment {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
-        if estimated_liquidity <= payment.value_msat/1000:
-            #Change AR amount
+        if estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
+            #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
             new_ar_amount = estimated_liquidity if estimated_liquidity > 69420 else 69420
             db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
             if db_channel is not None:
