@@ -85,21 +85,28 @@ def update_payment(stub, payment, self_pubkey):
     adjust_ar_amt( payment, db_payment.rebal_chan )
 
 def adjust_ar_amt( payment, chan_id ):
+    if LocalSettings.objects.filter(key='AR-Target%').exists():
+        ar_target = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+    else:
+        LocalSettings(key='AR-Target%', value='5').save()
+        ar_target = 5
+
     #Adjust AR Target Amount, increase if success reduce if failed.
     if payment.status == 2 and chan_id is not None:
         db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
         if db_channel is not None and payment.value_msat/1000 > 1000 :
-            new_ar_amount = int(min(db_channel.ar_amt_target * 1.21, db_channel.capacity*0.21))
-            print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
-            db_channel.ar_amt_target = new_ar_amount
-            db_channel.save()
+            new_ar_amount = int(min(max(db_channel.ar_amt_target * 1.21, payment.value_msat/1000), db_channel.capacity*ar_target*2/100))
+            if new_ar_amount > db_channel.ar_amt_target:
+                print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
+                db_channel.ar_amt_target = new_ar_amount
+                db_channel.save()
     if payment.status == 3:
         estimated_liquidity = 0
         for attempt in payment.htlcs:
             total_hops=len(attempt.route.hops)
             #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
-            if attempt.failure.code in (1,2,12) and attempt.failure.failure_source_index == total_hops:
-                #Failure from last hop indicating liquidity available
+            if (attempt.failure.code in (1,2) and attempt.failure.failure_source_index == total_hops) or attempt.failure.code == 12:
+                #Failure 1,2 from last hop indicating liquidity available, failure 12 shows fees in sufficient but liquidity available
                 estimated_liquidity += attempt.route.total_amt
                 chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
                 print (f"{datetime.now().strftime('%c')} : Failed Payment {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
@@ -417,7 +424,8 @@ def reconnect_peers(stub):
                     if peer.connected == True:
                         print (f"{datetime.now().strftime('%c')} : ... Inactive channel is still connected to peer, disconnecting peer. {peer.alias=} {inactive_peer=}")
                         try:
-                            stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
+                            response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
+                            print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
                             peer.connected = False
                             peer.save()
                         except Exception as e:
