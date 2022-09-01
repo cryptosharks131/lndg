@@ -62,9 +62,12 @@ def update_payment(stub, payment, self_pubkey):
                     except:
                         alias = ''
                     fee = hop.fee_msat/1000
+                    if hop_count == total_hops:
+                        # Add additional HTLC information in last hop alias
+                        alias += f'[ {payment.status}-{attempt.status}-{attempt.failure.code}-{attempt.failure.failure_source_index} ]'
                     PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                     cost_to += fee
-                    if hop_count == 1:
+                    if hop_count == 1 and attempt.status == 1:
                         if db_payment.chan_out is None:
                             db_payment.chan_out = hop.chan_id
                             db_payment.chan_out_alias = alias
@@ -85,7 +88,7 @@ def adjust_ar_amt( payment, chan_id ):
     #Adjust AR Target Amount, increase if success reduce if failed.
     if payment.status == 2 and chan_id is not None:
         db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
-        if db_channel is not None:
+        if db_channel is not None and payment.value_msat/1000 > 1000 :
             new_ar_amount = min(db_channel.ar_amt_target * 1.21, db_channel.capacity*0.21)
             print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
             db_channel.ar_amt_target = new_ar_amount
