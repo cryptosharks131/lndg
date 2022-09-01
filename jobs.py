@@ -115,6 +115,7 @@ def adjust_ar_amt( payment, chan_id ):
 def update_invoices(stub):
     open_invoices = Invoices.objects.filter(state=0).order_by('index')
     for open_invoice in open_invoices:
+        #print (f"{datetime.now().strftime('%c')} : Processing open invoice {open_invoice.index=} {open_invoice.state=} {open_invoice.r_hash=}")
         invoice_data = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=open_invoice.index-1, num_max_invoices=1)).invoices
         if len(invoice_data) > 0 and open_invoice.r_hash == invoice_data[0].r_hash.hex():
             update_invoice(stub, invoice_data[0], open_invoice)
@@ -415,14 +416,18 @@ def reconnect_peers(stub):
                     print (f"{datetime.now().strftime('%c')} : Reconnecting {peer.alias=} {peer.pubkey=} {peer.last_reconnected=}")
                     if peer.connected == True:
                         print (f"{datetime.now().strftime('%c')} : ... Inactive channel is still connected to peer, disconnecting peer. {peer.alias=} {inactive_peer=}")
-                        stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
-                        peer.connected = False
-                        peer.save()
+                        try:
+                            stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
+                            peer.connected = False
+                            peer.save()
+                        except Exception as e:
+                            print (f"{datetime.now().strftime('%c')} : .... Error disconnecting {peer.alias} {inactive_peer=} {str(e)=}")
+
                     try:
                         node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
                         host = node.addresses[0].addr
-                    except:
-                        print (f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value {peer.alias=} {peer.pubkey=} {peer.address=}")
+                    except Exception as e:
+                        print (f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value {peer.alias=} {peer.pubkey=} {peer.address=} {str(e)=}")
                         host = peer.address
                     address = ln.LightningAddress(pubkey=inactive_peer, host=host)
                     print (f"{datetime.now().strftime('%c')} : ... Attempting connection to {peer.alias=} {inactive_peer=} {host=}")
@@ -430,11 +435,7 @@ def reconnect_peers(stub):
                         response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
                         print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
                     except Exception as e:
-                        error = str(e)
-                        details_index = error.find('details =') + 11
-                        debug_error_index = error.find('debug_error_string =') - 3
-                        error_msg = error[details_index:debug_error_index]
-                        print (f"{datetime.now().strftime('%c')} : .... Error reconnecting {peer.alias} {inactive_peer=} {error_msg=}")
+                        print (f"{datetime.now().strftime('%c')} : .... Error reconnecting {peer.alias} {inactive_peer=} {str(e)=}")
                     peer.last_reconnected = datetime.now()
                     peer.save()
 
