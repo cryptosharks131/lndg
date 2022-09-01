@@ -89,7 +89,7 @@ def adjust_ar_amt( payment, chan_id ):
     if payment.status == 2 and chan_id is not None:
         db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
         if db_channel is not None and payment.value_msat/1000 > 1000 :
-            new_ar_amount = min(db_channel.ar_amt_target * 1.21, db_channel.capacity*0.21)
+            new_ar_amount = int(min(db_channel.ar_amt_target * 1.21, db_channel.capacity*0.21))
             print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
             db_channel.ar_amt_target = new_ar_amount
             db_channel.save()
@@ -105,7 +105,7 @@ def adjust_ar_amt( payment, chan_id ):
                 print (f"{datetime.now().strftime('%c')} : Failed Payment {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
         if estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
             #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
-            new_ar_amount = estimated_liquidity if estimated_liquidity > 69420 else 69420
+            new_ar_amount = int(estimated_liquidity if estimated_liquidity > 69420 else 69420)
             db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
             if db_channel is not None:
                 print (f"{datetime.now().strftime('%c')} : Decrease AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
