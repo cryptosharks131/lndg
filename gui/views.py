@@ -1261,6 +1261,7 @@ def channel(request):
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
             'rebalances': [] if rebalancer_df.empty else rebalancer_df.to_dict(orient='records')[:5],
             'failed_htlcs': [] if failed_htlc_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
+            'peer_info': [] if channels_df.empty else Peers.objects.filter(pubkey=channels_df['remote_pubkey'][0]),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
