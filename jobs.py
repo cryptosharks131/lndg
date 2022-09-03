@@ -109,8 +109,8 @@ def adjust_ar_amt( payment, chan_id ):
                 #Failure 1,2 from last hop indicating liquidity available, failure 12 shows fees in sufficient but liquidity available
                 estimated_liquidity += attempt.route.total_amt
                 chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
-                print (f"{datetime.now().strftime('%c')} : Failed Payment {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
-        if estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
+                print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+        if payment.value_msat/1000 >= 69420 and estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
             #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
             new_ar_amount = int(estimated_liquidity if estimated_liquidity > 69420 else 69420)
             db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
@@ -379,7 +379,7 @@ def get_tx_fees(txid):
         request_data = get(base_url + txid).json()
         fee = request_data['fee']
     except Exception as e:
-        print('Error getting closure fees for ', txid, ':', str(e))
+        print(f"{datetime.now().strftime('%c')} : Error getting closure fees {txid=} {str(e)=}")
         fee = 0
     return fee
 
@@ -476,7 +476,7 @@ def clean_payments(stub):
             finally:
                 payment.cleaned = True
                 payment.save()
-                print (f"{datetime.now().strftime('%c')} : Cleaned {payment.index=} {payment.status=} {payment.cleaned=} {payment.payment_hash=}")
+                #print (f"{datetime.now().strftime('%c')} : Cleaned {payment.index=} {payment.status=} {payment.cleaned=} {payment.payment_hash=}")
 
 def auto_fees(stub):
     if LocalSettings.objects.filter(key='AF-Enabled').exists():
@@ -553,7 +553,7 @@ def auto_fees(stub):
                 channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
                 channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']*multiplier), axis=1)
                 channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
-                channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*(multiplier/100)), axis=1)
+                channels_df['out_rate_only'] = channels_df.apply(lambda row: int(max(row['out_rate'],row['local_fee_rate']) * (1+row['net_routed_7day']*(multiplier/100))), axis=1)
                 channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*(multiplier/100)), axis=1)
                 channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else (row['min_suggestion'] if row['net_routed_7day'] == 0 and row['in_percent'] < 25 else row['fee_rate_only']))), axis=1)
                 channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
