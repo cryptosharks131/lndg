@@ -65,6 +65,8 @@ def update_payment(stub, payment, self_pubkey):
                     if hop_count == total_hops:
                         # Add additional HTLC information in last hop alias
                         alias += f'[ {payment.status}-{attempt.status}-{attempt.failure.code}-{attempt.failure.failure_source_index} ]'
+                    #if hop_count == total_hops:
+                        #print (f"{datetime.now().strftime('%c')} : Debug Hop {attempt.attempt_id=} {attempt.route.total_amt=} {hop.mpp_record.payment_addr.hex()=} {hop.mpp_record.total_amt_msat=} {hop.amp_record=} {db_payment.payment_hash=}")
                     PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                     cost_to += fee
                     if hop_count == 1 and attempt.status == 1:
@@ -114,7 +116,7 @@ def adjust_ar_amt( payment, chan_id ):
             #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
             new_ar_amount = int(estimated_liquidity if estimated_liquidity > 69420 else 69420)
             db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
-            if db_channel is not None:
+            if db_channel is not None and new_ar_amount < db_channel.ar_amt_target:
                 print (f"{datetime.now().strftime('%c')} : Decrease AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
                 db_channel.ar_amt_target = new_ar_amount
                 db_channel.save()
@@ -413,7 +415,9 @@ def update_closures(stub):
                     channel.save()
 
 def reconnect_peers(stub):
-    inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
+    #Allow 1 hour before attempting reconnect attempts. Most issues should resolve in this time anyway.
+    filter_1hour = datetime.now() - timedelta(hours=1)
+    inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False, last_update__lte=filter_1hour).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
         peers = Peers.objects.all()
         for inactive_peer in inactive_peers:
@@ -425,7 +429,7 @@ def reconnect_peers(stub):
                         print (f"{datetime.now().strftime('%c')} : ... Inactive channel is still connected to peer, disconnecting peer. {peer.alias=} {inactive_peer=}")
                         try:
                             response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
-                            print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
+                            print (f"{datetime.now().strftime('%c')} : .... Status Disconnect {peer.alias=} {inactive_peer=} {response=}")
                             peer.connected = False
                             peer.save()
                         except Exception as e:
