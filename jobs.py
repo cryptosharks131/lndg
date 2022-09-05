@@ -415,9 +415,7 @@ def update_closures(stub):
                     channel.save()
 
 def reconnect_peers(stub):
-    #Allow 1 hour before attempting reconnect attempts. Most issues should resolve in this time anyway.
-    filter_1hour = datetime.now() - timedelta(hours=1)
-    inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False, last_update__lte=filter_1hour).values_list('remote_pubkey', flat=True).distinct()
+    inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
         peers = Peers.objects.all()
         for inactive_peer in inactive_peers:
@@ -447,7 +445,11 @@ def reconnect_peers(stub):
                         response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
                         print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
                     except Exception as e:
-                        print (f"{datetime.now().strftime('%c')} : .... Error reconnecting {peer.alias} {inactive_peer=} {str(e)=}")
+                        error = str(e)
+                        details_index = error.find('details =') + 11
+                        debug_error_index = error.find('debug_error_string =') - 3
+                        error_msg = error[details_index:debug_error_index]
+                        print (f"{datetime.now().strftime('%c')} : .... Error reconnecting {peer.alias} {inactive_peer=} {error_msg=}")
                     peer.last_reconnected = datetime.now()
                     peer.save()
 
@@ -557,7 +559,7 @@ def auto_fees(stub):
                 channels_df['assisted_ratio'] = channels_df.apply(lambda row: round((row['revenue_assist_7day'] if row['revenue_7day'] == 0 else row['revenue_assist_7day']/row['revenue_7day']), 2), axis=1)
                 channels_df['adjusted_out_rate'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['assisted_ratio']*multiplier), axis=1)
                 channels_df['adjusted_rebal_rate'] = channels_df.apply(lambda row: int(row['rebal_ppm']+row['profit_margin']), axis=1)
-                channels_df['out_rate_only'] = channels_df.apply(lambda row: int(max(row['out_rate'],row['local_fee_rate']) * (1+row['net_routed_7day']*(multiplier/100))), axis=1)
+                channels_df['out_rate_only'] = channels_df.apply(lambda row: int(row['out_rate']+row['net_routed_7day']*row['out_rate']*(multiplier/100)), axis=1)
                 channels_df['fee_rate_only'] = channels_df.apply(lambda row: int(row['local_fee_rate']+row['net_routed_7day']*row['local_fee_rate']*(multiplier/100)), axis=1)
                 channels_df['new_rate'] = channels_df.apply(lambda row: row['adjusted_out_rate'] if row['net_routed_7day'] != 0 else (row['adjusted_rebal_rate'] if row['rebal_ppm'] > 0 and row['out_rate'] > 0 else (row['out_rate_only'] if row['out_rate'] > 0 else (row['min_suggestion'] if row['net_routed_7day'] == 0 and row['in_percent'] < 25 else row['fee_rate_only']))), axis=1)
                 channels_df['new_rate'] = channels_df.apply(lambda row: 0 if row['new_rate'] < 0 else row['new_rate'], axis=1)
