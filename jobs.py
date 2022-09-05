@@ -28,7 +28,7 @@ def update_payments(stub):
     last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     for payment in payments:
-        print (f"{datetime.now().strftime('%c')} : Processing New {payment.payment_index=} {payment.status=} {payment.payment_hash=}")
+        #print (f"{datetime.now().strftime('%c')} : Processing New {payment.payment_index=} {payment.status=} {payment.payment_hash=}")
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
             new_payment.save()
