@@ -364,7 +364,7 @@ def network_links():
     return network_links
 
 def get_tx_fees(txid):
-    base_url = network_links() + ('/testnet' if LND_NETWORK == 'testnet' else '') + '/api/tx/'
+    base_url = network_links() + ('/testnet' if settings.LND_NETWORK == 'testnet' else '') + '/api/tx/'
     try:
         request_data = get(base_url + txid).json()
         fee = request_data['fee']
