@@ -1374,10 +1374,24 @@ def pending_htlcs(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def failed_htlcs(request):
     if request.method == 'GET':
-        context = {
-            'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:150],
-        }
-        return render(request, 'failed_htlcs.html', context)
+        try:
+            #print (f"{datetime.now().strftime('%c')} : {request.GET.urlencode()=}")
+            query = None if request.GET.urlencode()[1:] == '' else request.GET.urlencode()[1:].split('_')
+            chan_id = None if query is None else query[0]
+            direction = None if query is None else query[1]
+            #print (f"{datetime.now().strftime('%c')} : {query=} {chan_id=} {direction=}")
+            failed_htlcs=FailedHTLCs.objects.all().order_by('-id')[:150] if direction is None else (FailedHTLCs.objects.filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.filter(chan_id_in=chan_id).order_by('-id')[:150])
+
+            context = {
+                'failed_htlcs': failed_htlcs
+            }
+            return render(request, 'failed_htlcs.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
