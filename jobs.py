@@ -12,7 +12,7 @@ from pandas import DataFrame
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels, Rebalancer
 
 def update_payments(stub):
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
@@ -103,6 +103,12 @@ def adjust_ar_amt( payment, chan_id ):
                 db_channel.ar_amt_target = new_ar_amount
                 db_channel.save()
     if payment.status == 3:
+        #skip rapid fire rebalances
+        last_rebalance_duration = Rebalancer.objects.filter(payment_hash=payment.payment_hash)[0].duration if Rebalancer.objects.filter(payment_hash=payment.payment_hash).exists() else 0
+        #print (f"{datetime.now().strftime('%c')} : DEBUG {last_rebalance_duration=} {payment.payment_hash=}")
+        if last_rebalance_duration <= 1:
+            print (f"{datetime.now().strftime('%c')} : Skipping Liquidiy Estimation {last_rebalance_duration=} {payment.payment_hash=}")
+            return
         estimated_liquidity = 0
         for attempt in payment.htlcs:
             total_hops=len(attempt.route.hops)
