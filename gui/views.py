@@ -1377,10 +1377,10 @@ def failed_htlcs(request):
         try:
             #print (f"{datetime.now().strftime('%c')} : {request.GET.urlencode()=}")
             query = None if request.GET.urlencode()[1:] == '' else request.GET.urlencode()[1:].split('_')
-            chan_id = None if query is None else query[0]
-            direction = None if query is None else query[1]
+            chan_id = None if query is None or len(query) < 1 else query[0]
+            direction = None if query is None or len(query) < 2 else query[1]
             #print (f"{datetime.now().strftime('%c')} : {query=} {chan_id=} {direction=}")
-            failed_htlcs=FailedHTLCs.objects.all().order_by('-id')[:150] if direction is None else (FailedHTLCs.objects.filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.filter(chan_id_in=chan_id).order_by('-id')[:150])
+            failed_htlcs=FailedHTLCs.objects.all().order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.filter(chan_id_in=chan_id).order_by('-id')[:150])
 
             context = {
                 'failed_htlcs': failed_htlcs
