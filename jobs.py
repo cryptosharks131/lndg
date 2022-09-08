@@ -87,6 +87,18 @@ def update_payment(stub, payment, self_pubkey):
     adjust_ar_amt( payment, db_payment.rebal_chan )
 
 def adjust_ar_amt( payment, chan_id ):
+    if payment.status not in (2,3):
+        return
+    #skip rapid fire rebalances
+    last_rebalance_duration = Rebalancer.objects.filter(payment_hash=payment.payment_hash)[0].duration if Rebalancer.objects.filter(payment_hash=payment.payment_hash).exists() else 0
+    #print (f"{datetime.now().strftime('%c')} : DEBUG {last_rebalance_duration=} {payment.payment_hash=}")
+    if last_rebalance_duration <= 1 or payment.status not in (2,3):
+        print (f"{datetime.now().strftime('%c')} : Skipping Liquidiy Estimation {last_rebalance_duration=} {payment.payment_hash=}")
+        return
+    #To be coverted to settings later
+    lower_limit = 69420
+    upper_limit = 2
+
     if LocalSettings.objects.filter(key='AR-Target%').exists():
         ar_target = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
     else:
@@ -97,18 +109,12 @@ def adjust_ar_amt( payment, chan_id ):
     if payment.status == 2 and chan_id is not None:
         db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
         if db_channel is not None and payment.value_msat/1000 > 1000 :
-            new_ar_amount = int(min(max(db_channel.ar_amt_target * 1.21, payment.value_msat/1000), db_channel.capacity*ar_target*2/100))
+            new_ar_amount = int(min(max(db_channel.ar_amt_target * 1.21, payment.value_msat/1000), db_channel.capacity*ar_target*upper_limit/100))
             if new_ar_amount > db_channel.ar_amt_target:
                 print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
                 db_channel.ar_amt_target = new_ar_amount
                 db_channel.save()
     if payment.status == 3:
-        #skip rapid fire rebalances
-        last_rebalance_duration = Rebalancer.objects.filter(payment_hash=payment.payment_hash)[0].duration if Rebalancer.objects.filter(payment_hash=payment.payment_hash).exists() else 0
-        #print (f"{datetime.now().strftime('%c')} : DEBUG {last_rebalance_duration=} {payment.payment_hash=}")
-        if last_rebalance_duration <= 1:
-            print (f"{datetime.now().strftime('%c')} : Skipping Liquidiy Estimation {last_rebalance_duration=} {payment.payment_hash=}")
-            return
         estimated_liquidity = 0
         for attempt in payment.htlcs:
             total_hops=len(attempt.route.hops)
@@ -118,9 +124,9 @@ def adjust_ar_amt( payment, chan_id ):
                 estimated_liquidity += attempt.route.total_amt
                 chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
                 print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
-        if payment.value_msat/1000 >= 69420 and estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
+        if payment.value_msat/1000 >= lower_limit and estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
             #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
-            new_ar_amount = int(estimated_liquidity if estimated_liquidity > 69420 else 69420)
+            new_ar_amount = int(estimated_liquidity if estimated_liquidity > lower_limit else lower_limit)
             db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
             if db_channel is not None and new_ar_amount < db_channel.ar_amt_target:
                 print (f"{datetime.now().strftime('%c')} : Decrease AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
