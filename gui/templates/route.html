@@ -104,4 +104,58 @@
   </table>
 </div>
 {% endif %}
+{% if outgoing_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Outgoing HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th width=10%>Channel Alias</th>
+      <th>Forwarding Channel</th>
+      <th width=10%>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration</th>
+      <th width=25%>Hash Lock</th>
+    </tr>
+    {% for htlc in outgoing_htlcs %}
+    <tr>
+      <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
+      <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if incoming_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Incoming HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th width=10%>Channel Alias</th>
+      <th>Forwarding Channel</th>
+      <th width=10%>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration</th>
+      <th width=25%>Hash Lock</th>
+    </tr>
+    {% for htlc in incoming_htlcs %}
+    <tr>
+      <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
+      <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% endblock %}
