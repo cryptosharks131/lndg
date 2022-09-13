@@ -2,7 +2,6 @@ import django
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect
-from lndg import settings
 from os import environ
 from time import sleep
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
@@ -11,7 +10,7 @@ from gui.models import Channels, FailedHTLCs
 
 def main():
     try:
-        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
+        connection = lnd_connect()
         routerstub = lnrouter.RouterStub(connection)
         for response in routerstub.SubscribeHtlcEvents(lnr.SubscribeHtlcEventsRequest()):
             if response.event_type == 3 and str(response.link_fail_event) != '':

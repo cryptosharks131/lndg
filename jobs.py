@@ -1,5 +1,5 @@
 import django
-from django.db.models import Max, Min
+from django.db.models import Max
 from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -159,7 +159,7 @@ def update_invoice(stub, invoice, db_invoice):
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
             if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
-                signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                signerstub = lnsigner.SignerStub(lnd_connect())
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
                 try:
                     valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
@@ -602,7 +602,7 @@ def auto_fees(stub):
 def main():
     #print (f"{datetime.now().strftime('%c')} : Entering Jobs")
     try:
-        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        stub = lnrpc.LightningStub(lnd_connect())
         #Update data
         update_peers(stub)
         update_channels(stub)
