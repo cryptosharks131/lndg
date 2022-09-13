@@ -100,7 +100,6 @@ class Channels(models.Model):
     ar_max_cost = models.IntegerField()
     fees_updated = models.DateTimeField(default=timezone.now)
     auto_fees = models.BooleanField()
-    closing_costs = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
         if self.auto_fees is None:
@@ -203,6 +202,7 @@ class Closures(models.Model):
     open_initiator = models.IntegerField()
     close_initiator = models.IntegerField()
     resolution_count = models.IntegerField()
+    closing_costs = models.IntegerField(default=0)
     class Meta:
         app_label = 'gui'
         unique_together = (('funding_txid', 'funding_index'),)

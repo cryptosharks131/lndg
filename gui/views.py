@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
@@ -21,6 +21,7 @@ from .lnd_deps.lnd_connect import lnd_connect
 from lndg.settings import LND_NETWORK, LND_DIR_PATH
 from os import path
 from pandas import DataFrame, merge
+from requests import get
 
 def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
@@ -37,6 +38,12 @@ def network_links():
         LocalSettings(key='GUI-NetLinks', value='https://mempool.space').save()
         network_links = 'https://mempool.space'
     return network_links
+
+def get_tx_fees(txid):
+    base_url = network_links() + ('/testnet' if settings.LND_NETWORK == 'testnet' else '') + '/api/tx/'
+    request_data = get(base_url + txid).json()
+    fee = request_data['fee']
+    return fee
 
 @login_required(login_url='/lndg-admin/login/?next=/')
 def home(request):
@@ -205,8 +212,8 @@ def home(request):
             onchain_txs = Onchain.objects.all()
             onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
             onchain_costs_1day = 0 if onchain_txs.filter(time_stamp__gte=filter_1day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_1day).aggregate(Sum('fee'))['fee__sum']
-            closures_7day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 1008)).values('chan_id'))
-            closures_1day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 144)).values('chan_id'))
+            closures_7day = Closures.objects.filter(close_height__gte=(node_info.block_height - 1008))
+            closures_1day = Closures.objects.filter(close_height__gte=(node_info.block_height - 144))
             close_fees_7day = closures_7day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
             close_fees_1day = closures_1day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
             onchain_costs_7day += close_fees_7day
@@ -598,14 +605,13 @@ def closures(request):
             if closures_df.empty:
                 merged = DataFrame()
             else:
-                channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias', 'closing_costs'))
+                channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
                 if channels_df.empty:
                     merged = closures_df
                     merged['alias'] = ''
                 else:
                     merged = merge(closures_df, channels_df, on='chan_id', how='left')
                     merged['alias'] = merged['alias'].fillna('')
-                    merged['closing_costs'] = merged['closing_costs'].fillna('')
             context = {
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
@@ -766,11 +772,11 @@ def income(request):
         onchain_txs_30day = onchain_txs.filter(time_stamp__gte=filter_30day)
         onchain_txs_7day = onchain_txs.filter(time_stamp__gte=filter_7day)
         onchain_txs_1day = onchain_txs.filter(time_stamp__gte=filter_1day)
-        closures = channels.filter(chan_id__in=Closures.objects.all().values('chan_id'))
-        closures_90day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 12960)).values('chan_id'))
-        closures_30day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 4320)).values('chan_id'))
-        closures_7day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 1008)).values('chan_id'))
-        closures_1day = channels.filter(chan_id__in=Closures.objects.filter(close_height__gte=(node_info.block_height - 144)).values('chan_id'))
+        closures = Closures.objects.all()
+        closures_90day = Closures.objects.filter(close_height__gte=(node_info.block_height - 12960))
+        closures_30day = Closures.objects.filter(close_height__gte=(node_info.block_height - 4320))
+        closures_7day = Closures.objects.filter(close_height__gte=(node_info.block_height - 1008))
+        closures_1day = Closures.objects.filter(close_height__gte=(node_info.block_height - 144))
         forwards = Forwards.objects.all()
         forwards_90day = forwards.filter(forward_date__gte=filter_90day)
         forwards_30day = forwards.filter(forward_date__gte=filter_30day)
@@ -1156,7 +1162,7 @@ def channel(request):
                     channels_df['costs_30day'] = 0 if channels_df['rebal_in_30day'][0] == 0 or invoice_hashes_30d.empty == True else int(rebal_payments_df_30d.set_index('payment_hash', inplace=False).loc[invoice_hashes_30d[chan_id]]['fee'].sum())
                     channels_df['costs_7day'] = 0 if channels_df['rebal_in_7day'][0] == 0 or invoice_hashes_7d.empty == True else int(rebal_payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[chan_id]]['fee'].sum())
                     channels_df['costs_1day'] = 0 if channels_df['rebal_in_1day'][0] == 0 or invoice_hashes_1d.empty == True else int(rebal_payments_df_1d.set_index('payment_hash', inplace=False).loc[invoice_hashes_1d[chan_id]]['fee'].sum())
-            channels_df['costs'] +=  channels_df['closing_costs']
+            channels_df['costs'] += Closures.objects.filter(funding_txid=channels_df['funding_txid'][0],funding_index=channels_df['output_index'][0])[0].closing_costs if Closures.objects.filter(funding_txid=channels_df['funding_txid'][0],funding_index=channels_df['output_index'][0]).exists() else 0
             channels_df['profits'] = channels_df['revenue'] - channels_df['costs']
             channels_df['profits_30day'] = channels_df['revenue_30day'] - channels_df['costs_30day']
             channels_df['profits_7day'] = channels_df['revenue_7day'] - channels_df['costs_7day']
@@ -2111,10 +2117,6 @@ def update_channel(request):
                 db_channel.local_cltv = target
                 db_channel.save()
                 messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
-            elif update_target == 10:
-                db_channel.closing_costs = target
-                db_channel.save()
-                messages.success(request, 'Closing costs for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(db_channel.closing_costs))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:
@@ -2464,6 +2466,37 @@ def update_setting(request):
                 messages.error(request, 'Invalid Request. Please try again.')
         else:
             messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def update_closing(request):
+    if request.method == 'POST':
+        form = UpdateClosing(request.POST)
+        if form.is_valid() and Closures.objects.filter(funding_txid=form.cleaned_data['funding_txid'], funding_index=form.cleaned_data['funding_index']).exists():
+            funding_txid = form.cleaned_data['funding_txid']
+            funding_index = form.cleaned_data['funding_index']
+            target = int(form.cleaned_data['target'])
+            db_closing = Closures.objects.filter(funding_txid=funding_txid, funding_index=funding_index)[0]
+            db_closing.closing_costs = target
+            db_closing.save()
+            messages.success(request, 'Updated closing costs for ' + str(funding_txid) + ':' + str(funding_index) + ' updated to a value of: ' + str(target))
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@login_required(login_url='/lndg-admin/login/?next=/')
+def get_fees(request):
+    if request.method == 'GET':
+        missing_fees = Closures.objects.exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
+        if missing_fees:
+            for missing_fee in missing_fees:
+                try:
+                    txid = missing_fee.closing_tx
+                    missing_fee.closing_costs = get_tx_fees(txid)
+                    missing_fee.save()
+                except Exception as error:
+                    messages.error(request, f"Error getting closure fees: {txid=} {error=}")
+                    return redirect(request.META.get('HTTP_REFERER'))
     return redirect(request.META.get('HTTP_REFERER'))
 
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):

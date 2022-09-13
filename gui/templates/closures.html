@@ -117,7 +117,7 @@
       <th>Opener</th>
       <th>Closer</th>
       <th>Resolutions</th>
-      <th>Costs</th>
+      <th>Costs <a href="/get_fees/">🗘</a></th>
     </tr>
     {% for closure in closures %}
     <tr>
@@ -135,14 +135,14 @@
       <td>
         {% if closure.closing_costs == '' %}
         ---
-        {% elif closure.open_initiator == 2 and closure.close_type == 0 %}
+        {% elif closure.open_initiator == 2 and closure.resolution_count == 0 %}
         ---
         {% else %}
-        <form action="/update_channel/" method="post">
+        <form action="/update_closing/" method="post">
           {% csrf_token %}
           <input style="text-align:center" id="target" type="number" min="0" max="1000000" name="target" value="{{ closure.closing_costs|add:"0" }}">
-          <input type="hidden" name="chan_id" value="{{ closure.chan_id }}">
-          <input type="hidden" name="update_target" value="10">
+          <input type="hidden" name="funding_txid" value="{{ closure.funding_txid }}">
+          <input type="hidden" name="funding_index" value="{{ closure.funding_index }}">
         </form>
         {% endif %}
       </td>

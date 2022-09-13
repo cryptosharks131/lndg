@@ -99,13 +99,17 @@ updates_channel_codes = [
     (7, 'channel_state'),
     (8, 'auto_fees'),
     (9, 'cltv'),
-    (10, 'closing_costs'),
 ]
 
 class UpdateChannel(forms.Form):
     chan_id = forms.IntegerField(label='chan_id')
     target = forms.IntegerField(label='target')
     update_target = forms.ChoiceField(label='update_target', choices=updates_channel_codes)
+
+class UpdateClosing(forms.Form):
+    funding_txid = forms.CharField(label='funding_txid', max_length=64)
+    funding_index = forms.IntegerField(label='funding_index')
+    target = forms.IntegerField(label='target')
 
 class UpdatePending(forms.Form):
     funding_txid = forms.CharField(label='funding_txid', max_length=64)
