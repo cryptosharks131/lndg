@@ -1600,6 +1600,8 @@ def rebalancing(request):
         channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
         if channels_df.shape[0] > 0:
             channels_df['inbound_can'] = channels_df['percent_inbound'] / channels_df['ar_in_target']
+            channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
+            channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
             channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
             channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
             channels_df['steps'] = channels_df.apply(lambda row: 0 if row['inbound_can'] < 1 else int(((row['percent_inbound']-row['ar_in_target'])/((row['ar_amt_target']/row['capacity'])*100))+0.999), axis=1)
