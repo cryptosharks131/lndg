@@ -2493,7 +2493,10 @@ def get_fees(request):
             for missing_fee in missing_fees:
                 try:
                     txid = missing_fee.closing_tx
-                    missing_fee.closing_costs = get_tx_fees(txid)
+                    closing_costs = get_tx_fees(txid) if missing_fee.open_initiator == 1 else 0
+                    for resolution in Resolutions.objects.filter(chan_id=missing_fee.chan_id).exclude(resolution_type=2):
+                        closing_costs += get_tx_fees(resolution.sweep_txid)
+                    missing_fee.closing_costs = closing_costs
                     missing_fee.save()
                 except Exception as error:
                     messages.error(request, f"Error getting closure fees: {txid=} {error=}")
