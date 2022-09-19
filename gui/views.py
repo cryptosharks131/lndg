@@ -760,7 +760,6 @@ def income(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_1day = datetime.now() - timedelta(days=1)
         node_info = stub.GetInfo(ln.GetInfoRequest())
-        channels = Channels.objects.all()
         payments = Payments.objects.filter(status=2)
         payments_90day = payments.filter(creation_date__gte=filter_90day)
         payments_30day = payments.filter(creation_date__gte=filter_30day)
@@ -2750,8 +2749,17 @@ def get_info(request):
 def api_balances(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
-        response = stub.WalletBalance(ln.WalletBalanceRequest())
-        target = {'total_balance':response.confirmed_balance, 'confirmed_balance':response.confirmed_balance}
+        balances = stub.WalletBalance(ln.WalletBalanceRequest())
+        pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
+        limbo_balance = pending_channels.total_limbo_balance
+        pending_open_balance = 0
+        if pending_channels.pending_open_channels:
+            target_resp = pending_channels.pending_open_channels
+            for i in range(0,len(target_resp)):
+                pending_open_balance += target_resp[i].channel.local_balance
+        channels = Channels.objects.filter(is_open=1)
+        offchain_balance = channels.aggregate(Sum('local_balance'))['local_balance__sum'] + channels.aggregate(Sum('pending_outbound'))['pending_outbound__sum'] + pending_open_balance + limbo_balance
+        target = {'total_balance':(balances.total_balance + offchain_balance),'offchain_balance':offchain_balance,'onchain_balance':balances.total_balance, 'confirmed_balance':balances.confirmed_balance, 'unconfirmed_balance':balances.unconfirmed_balance}
         return Response({'message': 'success', 'data':target})
     except Exception as e:
         error = str(e)
@@ -2759,6 +2767,52 @@ def api_balances(request):
         debug_error_index = error.find('debug_error_string =') - 3
         error_msg = error[details_index:debug_error_index]
         return Response({'error': 'Failed to get wallet balances! Error: ' + error_msg})
+
+@api_view(['GET'])
+def api_income(request):
+    try:
+        stub = lnrpc.LightningStub(lnd_connect())
+        try:
+            days = int(request.GET.urlencode()[1:])
+        except:
+            days = None
+        day_filter = datetime.now() - timedelta(days=days) if days else None
+        node_info = stub.GetInfo(ln.GetInfoRequest())
+        payments = payments.filter(creation_date__gte=day_filter) if day_filter else Payments.objects.filter(status=2)
+        onchain_txs = onchain_txs.filter(time_stamp__gte=day_filter) if day_filter else Onchain.objects.all()
+        closures = Closures.objects.filter(close_height__gte=(node_info.block_height - (days*144))) if days else Closures.objects.all()
+        forwards = forwards.filter(forward_date__gte=day_filter) if day_filter else Forwards.objects.all()
+        forward_count = forwards.count()
+        forward_amount = 0 if forward_count == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
+        total_revenue = 0 if forward_count == 0 else int(forwards.aggregate(Sum('fee'))['fee__sum'])
+        total_revenue_ppm = 0 if forward_amount == 0 else int(total_revenue/(forward_amount/1000000))
+        total_sent = 0 if payments.count() == 0 else int(payments.aggregate(Sum('value'))['value__sum'])
+        total_fees = 0 if payments.count() == 0 else int(payments.aggregate(Sum('fee'))['fee__sum'])
+        total_fees_ppm = 0 if total_sent == 0 else int(total_fees/(total_sent/1000000))
+        onchain_costs = 0 if onchain_txs.count() == 0 else onchain_txs.aggregate(Sum('fee'))['fee__sum']
+        close_fees = closures.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures.exists() else 0
+        onchain_costs += close_fees
+        profits = int(total_revenue-total_fees-onchain_costs)
+        target = {
+            'node_info': node_info,
+            'forward_count': forward_count,
+            'forward_amount': forward_amount,
+            'total_revenue': total_revenue,
+            'total_fees': total_fees,
+            'total_fees_ppm': total_fees_ppm,
+            'onchain_costs': onchain_costs,
+            'total_revenue_ppm': total_revenue_ppm,
+            'profits': profits,
+            'profits_ppm': 0 if forward_amount == 0  else int(profits/(forward_amount/1000000)),
+            'percent_cost': 0 if total_revenue == 0 else int(((total_fees+onchain_costs)/total_revenue)*100),
+        }
+        return Response({'message': 'success', 'data':target})
+    except Exception as e:
+        error = str(e)
+        details_index = error.find('details =') + 11
+        debug_error_index = error.find('debug_error_string =') - 3
+        error_msg = error[details_index:debug_error_index]
+        return Response({'error': 'Failed to get revenue stats! Error: ' + error_msg})
 
 @api_view(['GET'])
 def pending_channels(request):
