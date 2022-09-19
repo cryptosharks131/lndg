@@ -2778,10 +2778,10 @@ def api_income(request):
             days = None
         day_filter = datetime.now() - timedelta(days=days) if days else None
         node_info = stub.GetInfo(ln.GetInfoRequest())
-        payments = payments.filter(creation_date__gte=day_filter) if day_filter else Payments.objects.filter(status=2)
-        onchain_txs = onchain_txs.filter(time_stamp__gte=day_filter) if day_filter else Onchain.objects.all()
+        payments = Payments.objects.filter(status=2).filter(creation_date__gte=day_filter) if day_filter else Payments.objects.filter(status=2)
+        onchain_txs = Onchain.objects.filter(time_stamp__gte=day_filter) if day_filter else Onchain.objects.all()
         closures = Closures.objects.filter(close_height__gte=(node_info.block_height - (days*144))) if days else Closures.objects.all()
-        forwards = forwards.filter(forward_date__gte=day_filter) if day_filter else Forwards.objects.all()
+        forwards = Forwards.objects.filter(forward_date__gte=day_filter) if day_filter else Forwards.objects.all()
         forward_count = forwards.count()
         forward_amount = 0 if forward_count == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_revenue = 0 if forward_count == 0 else int(forwards.aggregate(Sum('fee'))['fee__sum'])
@@ -2794,7 +2794,6 @@ def api_income(request):
         onchain_costs += close_fees
         profits = int(total_revenue-total_fees-onchain_costs)
         target = {
-            'node_info': node_info,
             'forward_count': forward_count,
             'forward_amount': forward_amount,
             'total_revenue': total_revenue,
