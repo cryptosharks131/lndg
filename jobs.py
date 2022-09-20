@@ -408,7 +408,7 @@ def update_closures(stub):
                 channel = Channels.objects.filter(chan_id=closure.chan_id)[0] if Channels.objects.filter(chan_id=closure.chan_id).exists() else None
                 resolution_count = len(closure.resolutions)
                 txid, index = closure.channel_point.split(':')
-                closing_costs = get_tx_fees(closure.closing_tx_hash) if closure.open_initiator == 1 else 0
+                closing_costs = get_tx_fees(closure.closing_tx_hash) if (closure.open_initiator != 2 and closure.close_type not in [4, 5]) else 0
                 db_closure = Closures(chan_id=closure.chan_id, funding_txid=txid, funding_index=index, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
                 try:
                     db_closure.save()

@@ -2487,7 +2487,7 @@ def update_closing(request):
 @login_required(login_url='/lndg-admin/login/?next=/')
 def get_fees(request):
     if request.method == 'GET':
-        missing_fees = Closures.objects.exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
+        missing_fees = Closures.objects.exclude(close_type__in=[4, 5]).exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
         if missing_fees:
             for missing_fee in missing_fees:
                 try:

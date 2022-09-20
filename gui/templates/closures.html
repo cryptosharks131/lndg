@@ -133,7 +133,7 @@
       <td>{% if closure.close_initiator == 0 %}Unknown{% elif closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% elif closure.close_initiator == 3 %}Both{% else %}{{ closure.close_initiator }}{% endif %}</td>
       <td>{% if closure.resolution_count > 0 %}<a href="/resolutions?={{ closure.chan_id }}" target="_blank">Details</a>{% else %}---{% endif %}</td>
       <td>
-        {% if closure.closing_costs == '' %}
+        {% if closure.close_type == 4 or closure.close_type == 5 %}
         ---
         {% elif closure.open_initiator == 2 and closure.resolution_count == 0 %}
         ---
