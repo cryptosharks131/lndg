@@ -7,6 +7,7 @@
   <h2>Route For : {{ payment_hash }}</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
+      <th>Attempt Id</th>
       <th>Step</th>
       <th>Amount</th>
       <th>Fee</th>
@@ -19,6 +20,7 @@
     </tr>
     {% for hop in route %}
     <tr>
+      <td>{{ hop.attempt_id }}</td>
       <td>{{ hop.step }}</td>
       <td>{{ hop.amt|intcomma }}</td>
       <td>{{ hop.fee|intcomma }}</td>
@@ -98,7 +100,7 @@
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
       <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
       <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
-      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
+      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}<a href="/keysends?={{ invoice.r_hash }}" target="_blank">Yes</a>{% else %}No{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
