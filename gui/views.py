@@ -522,9 +522,14 @@ def route(request):
             stub = lnrpc.LightningStub(lnd_connect())
             block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
             payment_hash = request.GET.urlencode()[1:]
+            route = PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
+            total_cost = route.aggregate(Sum('fee'))['fee__sum']
+            total_ppm = route.aggregate(Sum('ppm'))['ppm__sum']
             context = {
                 'payment_hash': payment_hash,
-                'route': PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField())),
+                'total_cost': total_cost,
+                'total_ppm': total_ppm,
+                'route': route,
                 'rebalances': Rebalancer.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())),
                 'invoices': Invoices.objects.filter(r_hash=payment_hash),
                 'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
