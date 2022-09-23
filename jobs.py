@@ -422,9 +422,8 @@ def update_closures(stub):
                         if resolution.resolution_type != 2:
                             closing_costs += get_tx_fees(resolution.sweep_txid)
                         Resolutions(chan_id=closure.chan_id, resolution_type=resolution.resolution_type, outcome=resolution.outcome, outpoint_tx=resolution.outpoint.txid_str, outpoint_index=resolution.outpoint.output_index, amount_sat=resolution.amount_sat, sweep_txid=resolution.sweep_txid).save()
-                if channel:
-                    channel.closing_costs = closing_costs
-                    channel.save()
+                db_closure.closing_costs = closing_costs
+                db_closure.save()
 
 def reconnect_peers(stub):
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
