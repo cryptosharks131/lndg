@@ -450,11 +450,15 @@ def reconnect_peers(stub):
                     except Exception as e:
                         print (f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value {peer.alias=} {peer.pubkey=} {peer.address=} {str(e)=}")
                         host = peer.address
-                    address = ln.LightningAddress(pubkey=inactive_peer, host=host)
+                    #address = ln.LightningAddress(pubkey=inactive_peer, host=host)
                     print (f"{datetime.now().strftime('%c')} : ... Attempting connection to {peer.alias=} {inactive_peer=} {host=}")
                     try:
-                        response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
-                        print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
+                        #try both the graph value and last know value
+                        stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=ln.LightningAddress(pubkey=inactive_peer, host=host), perm=True, timeout=5))
+                        if host != peer.address and peer.address[:9] != '127.0.0.1':
+                            stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=ln.LightningAddress(pubkey=inactive_peer, host=peer.address), perm=True, timeout=5))
+                        #response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
+                        #print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
                     except Exception as e:
                         error = str(e)
                         details_index = error.find('details =') + 11
