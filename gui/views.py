@@ -44,7 +44,18 @@ def get_tx_fees(txid):
     fee = request_data['fee']
     return fee
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+class is_login_required(object):
+    def __init__(self, dec, condition):
+        self.decorator = dec
+        self.condition = condition
+
+    def __call__(self, func):
+        if not self.condition:
+            # No login required
+            return func
+        return self.decorator(func)
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def home(request):
     if request.method == 'GET':
         try:
@@ -305,7 +316,7 @@ def home(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channels(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
@@ -400,7 +411,7 @@ def channels(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def fees(request):
     if request.method == 'GET':
         filter_1day = datetime.now() - timedelta(days=1)
@@ -493,7 +504,7 @@ def fees(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def advanced(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
@@ -515,7 +526,7 @@ def advanced(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def route(request):
     if request.method == 'GET':
         try:
@@ -542,7 +553,7 @@ def route(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def routes(request):
     if request.method == 'GET':
         try:
@@ -558,7 +569,7 @@ def routes(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def peers(request):
     if request.method == 'GET':
         peers = Peers.objects.filter(connected=True)
@@ -572,7 +583,7 @@ def peers(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def balances(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
@@ -586,7 +597,7 @@ def balances(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def closures(request):
     if request.method == 'GET':
         try:
@@ -645,7 +656,7 @@ def find_next_block_maturity(force_closing_channel):
             return pending_htlc.blocks_til_maturity
     return -1
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def towers(request):
     if request.method == 'GET':
         try:
@@ -677,7 +688,7 @@ def towers(request):
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def add_tower_form(request):
     if request.method == 'POST':
         form = AddTowerForm(request.POST)
@@ -701,7 +712,7 @@ def add_tower_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def delete_tower_form(request):
     if request.method == 'POST':
         form = DeleteTowerForm(request.POST)
@@ -722,7 +733,7 @@ def delete_tower_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def remove_tower_form(request):
     if request.method == 'POST':
         form = RemoveTowerForm(request.POST)
@@ -742,7 +753,7 @@ def remove_tower_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def resolutions(request):
     if request.method == 'GET':
         chan_id = request.GET.urlencode()[1:]
@@ -756,7 +767,7 @@ def resolutions(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def income(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
@@ -899,7 +910,7 @@ def income(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
     if request.method == 'GET':
         chan_id = request.GET.urlencode()[1:]
@@ -1292,7 +1303,7 @@ def channel(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def opens(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
@@ -1310,7 +1321,7 @@ def opens(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def actions(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
@@ -1371,7 +1382,7 @@ def actions(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def pending_htlcs(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
@@ -1384,7 +1395,7 @@ def pending_htlcs(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def failed_htlcs(request):
     if request.method == 'GET':
         try:
@@ -1408,7 +1419,7 @@ def failed_htlcs(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def payments(request):
     if request.method == 'GET':
         context = {
@@ -1418,7 +1429,7 @@ def payments(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def invoices(request):
     if request.method == 'GET':
         context = {
@@ -1428,7 +1439,7 @@ def invoices(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalances(request):
     if request.method == 'GET':
         context = {
@@ -1438,7 +1449,7 @@ def rebalances(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def batch(request):
     if request.method == 'GET':
         context = {
@@ -1461,7 +1472,7 @@ def open_peer(peer_pubkey, stub):
         except:
             return False
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def batch_open(request):
     if request.method == 'POST':
         form = BatchOpenForm(request.POST)
@@ -1585,7 +1596,7 @@ def batch_open(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('batch')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def forwards(request):
     if request.method == 'GET':
         context = {
@@ -1595,7 +1606,7 @@ def forwards(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalancing(request):
     if request.method == 'GET':
         filter_7day = datetime.now() - timedelta(days=7)
@@ -1637,7 +1648,7 @@ def rebalancing(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def keysends(request):
     if request.method == 'GET':
         context = {
@@ -1647,7 +1658,7 @@ def keysends(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def autopilot(request):
     if request.method == 'GET':
         chan_id = request.GET.urlencode()[1:]
@@ -1660,7 +1671,7 @@ def autopilot(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def autofees(request):
     if request.method == 'GET':
         chan_id = request.GET.urlencode()[1:]
@@ -1681,7 +1692,7 @@ def autofees(request):
     else:
         return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def open_channel_form(request):
     if request.method == 'POST':
         form = OpenChannelForm(request.POST)
@@ -1719,7 +1730,7 @@ def open_channel_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def close_channel_form(request):
     if request.method == 'POST':
         form = CloseChannelForm(request.POST)
@@ -1756,7 +1767,7 @@ def close_channel_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def connect_peer_form(request):
     if request.method == 'POST':
         form = ConnectPeerForm(request.POST)
@@ -1785,7 +1796,7 @@ def connect_peer_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def new_address_form(request):
     if request.method == 'POST':
         try:
@@ -1800,7 +1811,7 @@ def new_address_form(request):
             messages.error(request, 'Address request failed! Error: ' + error_msg)
     return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def add_invoice_form(request):
     if request.method == 'POST':
         form = AddInvoiceForm(request.POST)
@@ -1819,7 +1830,7 @@ def add_invoice_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalance(request):
     if request.method == 'POST':
         form = RebalancerForm(request.POST)
@@ -1848,7 +1859,7 @@ def rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_chan_policy(request):
     if request.method == 'POST':
         form = ChanPolicyForm(request.POST)
@@ -1901,7 +1912,7 @@ def update_chan_policy(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def auto_rebalance(request):
     if request.method == 'POST':
         form = AutoRebalanceForm(request.POST)
@@ -2046,7 +2057,7 @@ def auto_rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_channel(request):
     if request.method == 'POST':
         form = UpdateChannel(request.POST)
@@ -2128,7 +2139,7 @@ def update_channel(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_pending(request):
     if request.method == 'POST':
         form = UpdatePending(request.POST)
@@ -2184,7 +2195,7 @@ def update_pending(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_setting(request):
     if request.method == 'POST':
         form = UpdateSetting(request.POST)
@@ -2473,7 +2484,7 @@ def update_setting(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_closing(request):
     if request.method == 'POST':
         form = UpdateClosing(request.POST)
@@ -2489,7 +2500,7 @@ def update_closing(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-@login_required(login_url='/lndg-admin/login/?next=/')
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def get_fees(request):
     if request.method == 'GET':
         missing_fees = Closures.objects.exclude(close_type__in=[4, 5]).exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
