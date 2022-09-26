@@ -25,6 +25,7 @@ CSRF_TRUSTED_ORIGINS = [%s]
         'rest_framework.permissions.IsAuthenticated',
     ],"""
     else:
+        print('WARNING: No password login option detected, LNDg will not require authentication...')
         api_login = ''
     settings_file = '''"""
 Django settings for lndg project.
@@ -169,7 +170,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
         f = open("lndg/settings.py", "x")
         f.close()
     except:
-        print('A settings file may already exist, please double check.')
+        print('A settings file may already exist, skipping creation...')
         return
     try:
         f = open("lndg/settings.py", "w")
@@ -239,7 +240,7 @@ stdout_logfile_backups = 15
         f = open("/usr/local/etc/supervisord.conf", "x")
         f.close()
     except:
-        print('A supervisord settings file may already exist, please double check.')
+        print('A supervisord settings file may already exist, skipping creation...')
         return
     try:
         f = open("/usr/local/etc/supervisord.conf", "w")
