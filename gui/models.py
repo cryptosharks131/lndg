@@ -47,6 +47,7 @@ class Invoices(models.Model):
     sender = models.CharField(null=True, max_length=66)
     sender_alias = models.CharField(null=True, max_length=32)
     index = models.IntegerField()
+    is_revenue = models.BooleanField(default=False)
     class Meta:
         app_label = 'gui'
 
@@ -280,3 +281,10 @@ class PendingChannels(models.Model):
     class Meta:
         app_label = 'gui'
         unique_together = (('funding_txid', 'output_index'),)
+
+class AvoidNodes(models.Model):
+    pubkey = models.CharField(max_length=66, primary_key=True)
+    notes = models.CharField(null=True, max_length=1000)
+    updated = models.DateTimeField(default=timezone.now)
+    class Meta:
+        app_label = 'gui'

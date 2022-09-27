@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -776,6 +776,11 @@ def income(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_1day = datetime.now() - timedelta(days=1)
         node_info = stub.GetInfo(ln.GetInfoRequest())
+        invoices = Invoices.objects.filter(state=1, is_revenue=True)
+        invoices_90day = invoices.filter(settle_date__gte=filter_90day)
+        invoices_30day = invoices.filter(settle_date__gte=filter_30day)
+        invoices_7day = invoices.filter(settle_date__gte=filter_7day)
+        invoices_1day = invoices.filter(settle_date__gte=filter_1day)
         payments = Payments.objects.filter(status=2)
         payments_90day = payments.filter(creation_date__gte=filter_90day)
         payments_30day = payments.filter(creation_date__gte=filter_30day)
@@ -811,6 +816,16 @@ def income(request):
         total_revenue_30day = 0 if forward_count_30day == 0 else int(forwards_30day.aggregate(Sum('fee'))['fee__sum'])
         total_revenue_7day = 0 if forward_count_7day == 0 else int(forwards_7day.aggregate(Sum('fee'))['fee__sum'])
         total_revenue_1day = 0 if forward_count_1day == 0 else int(forwards_1day.aggregate(Sum('fee'))['fee__sum'])
+        total_received = 0 if invoices.count() == 0 else int(invoices.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_90day = 0 if invoices_90day.count() == 0 else int(invoices_90day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_30day = 0 if invoices_30day.count() == 0 else int(invoices_30day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_7day = 0 if invoices_7day.count() == 0 else int(invoices_7day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_1day = 0 if invoices_1day.count() == 0 else int(invoices_1day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_revenue += total_received
+        total_revenue_90day += total_received_90day
+        total_revenue_30day += total_received_30day
+        total_revenue_7day += total_received_7day
+        total_revenue_1day += total_received_1day
         total_revenue_ppm = 0 if forward_amount == 0 else int(total_revenue/(forward_amount/1000000))
         total_revenue_ppm_90day = 0 if forward_amount_90day == 0 else int(total_revenue_90day/(forward_amount_90day/1000000))
         total_revenue_ppm_30day = 0 if forward_amount_30day == 0 else int(total_revenue_30day/(forward_amount_30day/1000000))
@@ -1309,11 +1324,15 @@ def opens(request):
         stub = lnrpc.LightningStub(lnd_connect())
         self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
         current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
+        exlcude_list = AvoidNodes.objects.values_list('pubkey')
         filter_60day = datetime.now() - timedelta(days=60)
         payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
-        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).values('node_pubkey', 'alias').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).exclude(score=0).order_by('-score', 'ppm')[:21]
+        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).exclude(node_pubkey__in=exlcude_list).values('node_pubkey').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).exclude(score=0).order_by('-score', 'ppm')[:21]
+        for open in open_list:
+            open['alias'] = PaymentHops.objects.filter(node_pubkey=open['node_pubkey']).order_by('-id')[0].alias
         context = {
             'open_list': open_list,
+            'avoid_list': AvoidNodes.objects.all(),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -2501,6 +2520,45 @@ def update_closing(request):
     return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def update_keysend(request):
+    if request.method == 'POST':
+        form = UpdateKeysend(request.POST)
+        if form.is_valid() and Invoices.objects.filter(r_hash=form.cleaned_data['r_hash']).exists():
+            r_hash = form.cleaned_data['r_hash']
+            db_invoice = Invoices.objects.filter(r_hash=r_hash)[0]
+            db_invoice.is_revenue = not db_invoice.is_revenue
+            db_invoice.save()
+            messages.success(request, ('Marked' if db_invoice.is_revenue else 'Unmarked') + ' invoice ' + str(r_hash) + ' as revenue.')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def add_avoid(request):
+    if request.method == 'POST':
+        form = AddAvoid(request.POST)
+        if form.is_valid():
+            pubkey = form.cleaned_data['pubkey']
+            notes = form.cleaned_data['notes']
+            AvoidNodes(pubkey=pubkey, notes=notes).save()
+            messages.success(request, 'Successfully added node ' + str(pubkey) + ' to the avoid list.')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def remove_avoid(request):
+    if request.method == 'POST':
+        form = RemoveAvoid(request.POST)
+        if form.is_valid() and AvoidNodes.objects.filter(pubkey=form.cleaned_data['pubkey']).exists():
+            pubkey = form.cleaned_data['pubkey']
+            AvoidNodes.objects.filter(pubkey=pubkey).delete()
+            messages.success(request, 'Successfully removed node ' + str(pubkey) + ' from the avoid list.')
+        else:
+            messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def get_fees(request):
     if request.method == 'GET':
         missing_fees = Closures.objects.exclude(close_type__in=[4, 5]).exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
@@ -2801,6 +2859,9 @@ def api_income(request):
         forward_count = forwards.count()
         forward_amount = 0 if forward_count == 0 else int(forwards.aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/1000)
         total_revenue = 0 if forward_count == 0 else int(forwards.aggregate(Sum('fee'))['fee__sum'])
+        invoices = Invoices.objects.filter(state=1, is_revenue=True).filter(settle_date__gte=day_filter) if day_filter else Invoices.objects.filter(state=1, is_revenue=True)
+        total_received = 0 if invoices.count() == 0 else int(invoices.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_revenue += total_received
         total_revenue_ppm = 0 if forward_amount == 0 else int(total_revenue/(forward_amount/1000000))
         total_sent = 0 if payments.count() == 0 else int(payments.aggregate(Sum('value'))['value__sum'])
         total_fees = 0 if payments.count() == 0 else int(payments.aggregate(Sum('fee'))['fee__sum'])
