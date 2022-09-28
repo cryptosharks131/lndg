@@ -515,6 +515,8 @@ def advanced(request):
             channels_df['local_balance'] = channels_df.apply(lambda row: row.local_balance + row.pending_outbound, axis=1)
             channels_df['remote_balance'] = channels_df.apply(lambda row: row.remote_balance + row.pending_inbound, axis=1)
             channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
+            channels_df['local_min_htlc'] = channels_df['local_min_htlc_msat']/1000
+            channels_df['local_max_htlc'] = channels_df['local_max_htlc_msat']/1000
         context = {
             'channels': channels_df.to_dict(orient='records'),
             'local_settings': LocalSettings.objects.all().order_by('key'),
@@ -2151,7 +2153,27 @@ def update_channel(request):
                 stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=target))
                 db_channel.local_cltv = target
                 db_channel.save()
-                messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
+                messages.success(request, 'CLTV for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(float(target)))
+            elif update_target == 10:
+                stub = lnrpc.LightningStub(lnd_connect())
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, min_htlc_msat_specified=True, min_htlc_msat=int(target*1000)))
+                db_channel.local_min_htlc_msat = int(target*1000)
+                db_channel.save()
+                messages.success(request, 'Min HTLC for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(float(target)))
+            elif update_target == 11:
+                stub = lnrpc.LightningStub(lnd_connect())
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = db_channel.output_index
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, max_htlc_msat=int(target*1000)))
+                db_channel.local_max_htlc_msat = int(target*1000)
+                db_channel.save()
+                messages.success(request, 'Max HTLC for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             else:
                 messages.error(request, 'Invalid target code. Please try again.')
         else:
@@ -2413,6 +2435,20 @@ def update_setting(request):
                     db_channel.local_cltv = target
                     db_channel.save()
                 messages.success(request, 'CLTV for all channels updated to a value of: ' + str(target))
+            elif key == 'ALL-minHTLC':
+                target = int(float(value)*1000)
+                stub = lnrpc.LightningStub(lnd_connect())
+                channels = Channels.objects.filter(is_open=True)
+                for db_channel in channels:
+                    stub = lnrpc.LightningStub(lnd_connect())
+                    channel_point = ln.ChannelPoint()
+                    channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                    channel_point.funding_txid_str = db_channel.funding_txid
+                    channel_point.output_index = db_channel.output_index
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, min_htlc_msat_specified=True, min_htlc_msat=target))
+                    db_channel.local_min_htlc_msat = target
+                    db_channel.save()
+                messages.success(request, 'Min HTLC for all channels updated to a value of: ' + str(float(value)))
             elif key == 'ALL-Amts':
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True).update(ar_amt_target=target)
