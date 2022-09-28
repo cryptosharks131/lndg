@@ -4,7 +4,7 @@
   </style>
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="refresh" content="1260">
+    {% block meta %}{% endblock %}
     <title>{% block title %}LNDg{% endblock %}</title>
     {% load static %}
     {% load qr_code %}
@@ -22,11 +22,6 @@
         {% endif %}
         <div class="w3-container">
           <h1><a href="/">My Lnd Overview</a></h1>
-          <p>Last Updated :  <span id='datetime'></span> ... refreshing every 21 minutes</p>
-          <script>
-            var dt = new Date();
-            document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
-          </script>
         </div>
         {% block content %}{% endblock %}
     </div>
