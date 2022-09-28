@@ -6,7 +6,8 @@ from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
@@ -444,6 +445,11 @@ def fees(request):
             else:
                 LocalSettings(key='AF-FailedHTLCs', value='25').save()
                 failed_htlc_limit = 25
+            if LocalSettings.objects.filter(key='AF-UpdateHours').exists():
+                update_hours = int(LocalSettings.objects.filter(key='AF-UpdateHours')[0].value)
+            else:
+                LocalSettings(key='AF-UpdateHours', value='24').save()
+                update_hours = 24
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
                 failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
@@ -492,7 +498,7 @@ def fees(request):
             channels_df['new_rate'] = channels_df.apply(lambda row: max_rate if max_rate < row['new_rate'] else row['new_rate'], axis=1)
             channels_df['new_rate'] = channels_df.apply(lambda row: min_rate if min_rate > row['new_rate'] else row['new_rate'], axis=1)
             channels_df['adjustment'] = channels_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
-            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
+            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > (update_hours*3600), axis=1)
         context = {
             'channels': [] if channels_df.empty else channels_df.sort_values(by=['out_percent']).to_dict(orient='records'),
             'local_settings': LocalSettings.objects.filter(key__contains='AF-').order_by('key'),
@@ -2613,46 +2619,57 @@ def get_fees(request):
     return redirect(request.META.get('HTTP_REFERER'))
 
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Payments.objects.all()
     serializer_class = PaymentSerializer
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = PaymentHops.objects.all()
     serializer_class = PaymentHopsSerializer
 
 class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Invoices.objects.all()
     serializer_class = InvoiceSerializer
 
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all()
     serializer_class = ForwardSerializer
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Peers.objects.all()
     serializer_class = PeerSerializer
 
 class OnchainViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Onchain.objects.all()
     serializer_class = OnchainSerializer
 
 class ClosuresViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Closures.objects.all()
     serializer_class = ClosuresSerializer
 
 class ResolutionsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Resolutions.objects.all()
     serializer_class = ResolutionsSerializer
 
 class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = PendingHTLCs.objects.all()
     serializer_class = PendingHTLCSerializer
 
 class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = FailedHTLCs.objects.all()
     serializer_class = FailedHTLCSerializer
 
 class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = LocalSettings.objects.all()
     serializer_class = LocalSettingsSerializer
 
@@ -2666,6 +2683,7 @@ class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.errors)
 
 class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Channels.objects.all()
     serializer_class = ChannelSerializer
 
@@ -2679,6 +2697,7 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.errors)
 
 class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Rebalancer.objects.all()
     serializer_class = RebalancerSerializer
 
@@ -2691,6 +2710,7 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.errors)
 
 @api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def connect_peer(request):
     serializer = ConnectPeerSerializer(data=request.data)
     if serializer.is_valid():
@@ -2718,6 +2738,7 @@ def connect_peer(request):
         return Response({'error': 'Invalid request!'})
 
 @api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def open_channel(request):
     serializer = OpenChannelSerializer(data=request.data)
     if serializer.is_valid():
@@ -2753,6 +2774,7 @@ def open_channel(request):
         return Response({'error': 'Invalid request!'})
 
 @api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def close_channel(request):
     serializer = CloseChannelSerializer(data=request.data)
     if serializer.is_valid():
@@ -2786,6 +2808,7 @@ def close_channel(request):
         return Response({'error': 'Invalid request!'})
 
 @api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def add_invoice(request):
     serializer = AddInvoiceSerializer(data=request.data)
     if serializer.is_valid() and serializer.validated_data['value'] >= 0:
@@ -2803,6 +2826,7 @@ def add_invoice(request):
         return Response({'error': 'Invalid request!'})
 
 @api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def new_address(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
@@ -2816,6 +2840,7 @@ def new_address(request):
         return Response({'error': 'Address creation failed! Error: ' + error_msg})
 
 @api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def update_alias(request):
     serializer = UpdateAliasSerializer(data=request.data)
     if serializer.is_valid():
@@ -2842,6 +2867,7 @@ def update_alias(request):
     return redirect('home')
 
 @api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def get_info(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
@@ -2856,6 +2882,7 @@ def get_info(request):
         return Response({'error': 'Failed to call getinfo! Error: ' + error_msg})
 
 @api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def api_balances(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
@@ -2879,6 +2906,7 @@ def api_balances(request):
         return Response({'error': 'Failed to get wallet balances! Error: ' + error_msg})
 
 @api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def api_income(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
@@ -2927,6 +2955,7 @@ def api_income(request):
         return Response({'error': 'Failed to get revenue stats! Error: ' + error_msg})
 
 @api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def pending_channels(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())

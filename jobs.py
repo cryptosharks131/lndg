@@ -548,7 +548,12 @@ def auto_fees(stub):
             else:
                 LocalSettings(key='AF-FailedHTLCs', value='25').save()
                 failed_htlc_limit = 25
-            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
+            if LocalSettings.objects.filter(key='AF-UpdateHours').exists():
+                update_hours = int(LocalSettings.objects.filter(key='AF-UpdateHours')[0].value)
+            else:
+                LocalSettings(key='AF-UpdateHours', value='24').save()
+                update_hours = 24
+            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > (update_hours*3600), axis=1)
             channels_df = channels_df[channels_df['eligible']==True]
             if channels_df.shape[0] > 0:
                 failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
