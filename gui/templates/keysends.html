@@ -22,9 +22,9 @@
           <input type="hidden" name="r_hash" value="{{ keysend.r_hash }}">
         </form>
       </td>
-      <td title="{{ keysend.r_hash }}">{{ keysend.settle_date|naturaltime }}</td>
-      <td>{% if keysend.chan_in_alias == '' %}---{% else %}{{ keysend.chan_in_alias }}{% endif %}</td>
-      <td>{{ keysend.amt_paid|intcomma }}</td>
+      <td title="{{ keysend.settle_date }}">{{ keysend.settle_date|naturaltime }}</td>
+      <td title="{{ keysend.chan_in }}">{% if keysend.chan_in_alias == '' %}---{% else %}{{ keysend.chan_in_alias }}{% endif %}</td>
+      <td title="{{ keysend.r_hash }}">{{ keysend.amt_paid|intcomma }}</td>
       <td>{{ keysend.message }}{% if keysend.sender != None %} | Signed By: {% if keysend.sender_alias != None %}{{ keysend.sender_alias }}{% else %}{{ keysend.sender }}{% endif %}{% endif %}</td>
     </tr>
     {% endfor %}
