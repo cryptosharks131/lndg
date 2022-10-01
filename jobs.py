@@ -93,7 +93,7 @@ def adjust_ar_amt( payment, chan_id ):
     last_rebalance_duration = Rebalancer.objects.filter(payment_hash=payment.payment_hash)[0].duration if Rebalancer.objects.filter(payment_hash=payment.payment_hash).exists() else 0
     #print (f"{datetime.now().strftime('%c')} : DEBUG {last_rebalance_duration=} {payment.payment_hash=}")
     if last_rebalance_duration <= 1 or payment.status not in (2,3):
-        print (f"{datetime.now().strftime('%c')} : Skipping Liquidiy Estimation {last_rebalance_duration=} {payment.payment_hash=}")
+        print (f"{datetime.now().strftime('%c')} : Skipping Liquidity Estimation {last_rebalance_duration=} {payment.payment_hash=}")
         return
     #To be coverted to settings later
     lower_limit = 69420
