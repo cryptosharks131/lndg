@@ -31,16 +31,14 @@
             <td><div class="w3-orange w3-round">{% if channel.percent_inbound == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.percent_outbound == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.percent_outbound }}%"></div>{% endif %}</div></td>
             <td>{{ channel.remote_balance|intcomma }} ({{ channel.percent_inbound }}%)</td>
             {% if channel.auto_rebalance == False %}
-            <td {% if channel.percent_outbound>
-                = channel.ar_out_target %}
+            <td {% if channel.percent_outbound >= channel.ar_out_target %}
                 style="background-color: #a6dce2"
                 {% else %}
                 style="background-color: #fadbd5"
                 {% endif %}"> Out
             </td>
             {% else %}
-            <td title="Steps: {{ channel.steps }}" {% if channel.inbound_can>
-                = 1 and channel.fee_check < 100 %}
+            <td title="Steps: {{ channel.steps }}" {% if channel.inbound_can >= 1 and channel.fee_check < 100 %}
                 style="background-color: #a6dce2"
                 {% else %}
                 style="background-color: #fadbd5"
@@ -64,7 +62,7 @@
                     <input type="hidden" name="update_target" value="6">
                 </form>
             </td>
-            <td {% if channel.auto_rebalance= =False %}style="background-color: #a6dce2" {% else %}style="background-color: #fadbd5" {% endif %}>
+            <td {% if channel.auto_rebalance==False %}style="background-color: #a6dce2" {% else %}style="background-color: #fadbd5" {% endif %}>
                 <form action="/update_channel/" method="post">
                     {% csrf_token %}
                     <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
@@ -72,7 +70,7 @@
                     <input type="hidden" name="update_target" value="4">
                 </form>
             </td>
-            <td {% if channel.auto_rebalance= =True %}style="background-color: #a6dce2" {% else %}style="background-color: #fadbd5" {% endif %}>
+            <td {% if channel.auto_rebalance==True %}style="background-color: #a6dce2" {% else %}style="background-color: #fadbd5" {% endif %}>
                 <form action="/update_channel/" method="post">
                     {% csrf_token %}
                     <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
@@ -80,7 +78,7 @@
                     <input type="hidden" name="update_target" value="3">
                 </form>
             </td>
-            <td {% if channel.auto_rebalance= =True %}style="background-color: #a6dce2" {% else %}style="background-color: #fadbd5" {% endif %}>
+            <td {% if channel.auto_rebalance==True %}style="background-color: #a6dce2" {% else %}style="background-color: #fadbd5" {% endif %}>
                 <form action="/update_channel/" method="post">
                     {% csrf_token %}
                     <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
@@ -90,7 +88,7 @@
                 </form>
             </td>
             <td>{% if channel.attempts == 0 %}---{% else %}{{ channel.success_rate }}% ({{ channel.success }}/{{ channel.attempts }}){% endif %}</td>
-            <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active= =True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
+            <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active==True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
         </tr>
       {% endfor %}
     </table>
