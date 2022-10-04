@@ -2539,10 +2539,20 @@ def update_setting(request):
                 db_enabled.value = enabled
                 db_enabled.save()
                 messages.success(request, 'Updated autofees daily failed HTLC trigger limit setting to: ' + str(enabled))
+            elif key == 'AF-UpdateHours':
+                enabled = int(value)
+                try:
+                    db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
+                except:
+                    LocalSettings(key='AF-UpdateHours', value='24').save()
+                    db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
+                db_enabled.value = enabled
+                db_enabled.save()
+                messages.success(request, 'Updated autofees update hours setting to: ' + str(enabled))
             else:
-                messages.error(request, 'Invalid Request. Please try again.')
+                messages.error(request, 'Invalid Request. Please try again. [' + key +']')
         else:
-            messages.error(request, 'Invalid Request. Please try again.')
+            messages.error(request, 'Invalid Request Form. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
