@@ -542,7 +542,7 @@ def route(request):
             block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
             payment_hash = request.GET.urlencode()[1:]
             route = PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
-            total_cost = route.aggregate(Sum('fee'))['fee__sum']
+            total_cost = round(route.aggregate(Sum('fee'))['fee__sum'], 3)
             total_ppm = route.aggregate(Sum('ppm'))['ppm__sum']
             context = {
                 'payment_hash': payment_hash,
