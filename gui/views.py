@@ -1597,6 +1597,7 @@ def rebalancing(request):
                 field_text=field['id'].replace("_", "")
                 if field_text in sett_text or sett_text in field_text:
                     local_settings.append({'id': field['id'], 'title': field['title'], 'min': field['min'], 'max':field['max'], 'label': sett['key'], 'value': sett['value']})
+                    form.remove(field)
                     break
         context = {
             'eligible_count': eligible_count,
