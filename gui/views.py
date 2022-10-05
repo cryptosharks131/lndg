@@ -1583,7 +1583,6 @@ def rebalancing(request):
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
-            'rebalancer_form': RebalancerForm,
             'local_settings': LocalSettings.objects.filter(key__contains='AR-').order_by('key'),
             'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
