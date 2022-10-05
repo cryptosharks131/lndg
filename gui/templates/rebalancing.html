@@ -140,12 +140,12 @@
   <div class="w3-container">
     <div class="w3-row-padding w3-container">
       {% for settings in local_settings %}
-      <div class="w3-third w3-container">
+      <div class="w3-quarter w3-container">
         <label class="w3-label" title="{{ settings.title }}">{{ settings.label }}</label>
         <input class="w3-input" id="{{settings.id}}" name="{{settings.id}}" type="number" min="{{settings.min}}" max="{{settings.max}}" step="{{settings.min}}" value="{{settings.value|intcomma}}"/>
       </div>
       {% endfor %}
-      <div class="w3-third w3-container">
+      <div class="w3-quarter w3-container">
         <input class="w3-check" id="targetallchannels" type="checkbox" name="targetallchannels"/>
         <label class="w3-validate">Target All Channels </label>
         <input class="w3-btn" type="submit" value="OK">
