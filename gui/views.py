@@ -541,9 +541,9 @@ def route(request):
             stub = lnrpc.LightningStub(lnd_connect())
             block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
             payment_hash = request.GET.urlencode()[1:]
-            route = PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()))
-            total_cost = round(route.aggregate(Sum('fee'))['fee__sum'], 3)
-            total_ppm = route.aggregate(Sum('ppm'))['ppm__sum']
+            route = PaymentHops.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField())) if PaymentHops.objects.filter(payment_hash=payment_hash).exists() else None
+            total_cost = round(route.aggregate(Sum('fee'))['fee__sum'],3) if route is not None else 0
+            total_ppm = int(total_cost*1000000/route.filter(step=1).aggregate(Sum('amt'))['amt__sum']) if route is not None else 0
             context = {
                 'payment_hash': payment_hash,
                 'total_cost': total_cost,
