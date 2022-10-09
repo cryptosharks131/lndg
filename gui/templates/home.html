@@ -29,66 +29,87 @@
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
-  <h2>Active Channels</h2>
-  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th title="y = ax + b">Out Fee</th>
-        <th>Routed Out</th>
-        <th>Outbound Liquidity</th>
-        <th width=15%>Capacity</th>
-        <th>Inbound Liquidity</th>
-        <th>Unsettled</th>
-        <th>Routed In</th>
-        <th title="y = ax + b">In fee</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
-        <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
-      </tr>
-      {% for channel in active_channels %}
-      <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
-        <td><div class="w3-row">
-          <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_out_1day|intcomma }}M ({{ channel.routed_out_1day }})</small></div>
-          <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_out_7day|intcomma }}M ({{ channel.routed_out_7day }})</small></div></div>
-        </td>
-        <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
-        <td title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}"><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
-        <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
-        <td><small>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</small></td>
-        <td><div class="w3-row">
-          <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_in_1day|intcomma }}M ({{ channel.routed_in_1day }})</small></div>
-          <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_in_7day|intcomma }}M ({{ channel.routed_in_7day }})</small></div></div>
-        </td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
-        <td>
-          {% if channel.auto_rebalance %}
+  <h2>Update Channel Policy</h2>
+  <form action="/updatechanpolicy/" method="post">
+    <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <tr>
+          <th>Channel ID</th>
+          <th>Peer Alias</th>
+          <th title="y = ax + b">Out Fee</th>
+          <th>Routed Out</th>
+          <th>Outbound Liquidity</th>
+          <th width=15%>Capacity</th>
+          <th>Inbound Liquidity</th>
+          <th>Unsettled</th>
+          <th>Routed In</th>
+          <th title="y = ax + b">In fee</th>
+          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
+          <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
+          <th title="Select channels to update policy">Update</th>
+        </tr>
+        {% for channel in active_channels %}
+        <tr title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}">
+          <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+          <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+          <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
+          <td><div class="w3-row">
+            <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_out_1day|intcomma }}M ({{ channel.routed_out_1day }})</small></div>
+            <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_out_7day|intcomma }}M ({{ channel.routed_out_7day }})</small></div></div>
+          </td>
+          <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
+          <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
+          <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
+          <td><small>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</small></td>
+          <td><div class="w3-row">
+            <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_in_1day|intcomma }}M ({{ channel.routed_in_1day }})</small></div>
+            <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_in_7day|intcomma }}M ({{ channel.routed_in_7day }})</small></div></div>
+          </td>
+          <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
+          <td>
+            {% if channel.auto_rebalance %}
+              <form action="/update_channel/" method="post">
+                {% csrf_token %}
+                <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
+                <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                <input type="hidden" name="update_target" value="3">
+              </form>
+            {% else %}
+              ---
+            {% endif %}
+          </td>
+          <td>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
+              <input type="submit" value="{% if channel.auto_rebalance %}Disable{% else %}Enable{% endif %}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="3">
+              <input type="hidden" name="update_target" value="5">
+              <input type="hidden" name="target" value="0">
             </form>
-          {% else %}
-            ---
-          {% endif %}
-        </td>
-        <td>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance %}Disable{% else %}Enable{% endif %}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="5">
-            <input type="hidden" name="target" value="0">
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
+          </td>
+          <td><input name="target_chans" id="id_target_chans_{{forloop.counter0}}" class="w3-check" type="checkbox" value="{{channel.chan_id}}"/></td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% csrf_token %}
+    <div class="w3-col" style="width:20%" >
+      <input class="w3-input" placeholder="New Fee Rate" id="new_fee_rate" type="number" min="0" name="new_fee_rate">
+    </div>
+    <div class="w3-col" style="width:20%" >
+      <input class="w3-input" placeholder="New Base Fee" id="new_base_fee" type="number" min="0" name="new_base_fee">
+    </div>
+    <div class="w3-col" style="width:20%" >
+      <input class="w3-input" placeholder="New CLTV" id="new_cltv" type="number" min="18" name="new_cltv">
+    </div>
+    <div class="w3-col" style="width:20%">
+      <input class="w3-check" placeholder="" id="target_all" type="checkbox" name="target_all">
+      <label class="w3-validate" for="target_all">Target All Channels</label>
+    </div>
+    <div class="w3-col" style="width:20%">
+      <input class="w3-button" style="width:100%" type="submit" value="OK">
+    </div>
+  </form>
 </div>
 {% endif %}
 {% if inactive_channels %}
@@ -617,76 +638,70 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Connect To A Peer</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/connectpeer/" method="post">
+  <div class="w3-container w3-row">
+    <form action="/connectpeer/"  method="post">
       {% csrf_token %}
-      <label for="peer_id">PubKey or Connection String: </label>
-      <input id="peer_id" type="text" name="peer_id">
-      <input type="submit" value="OK">
+      <div class="w3-col w3-half">
+        <input class="w3-input" id="peer_id" placeholder="PubKey or Connection String" type="text" name="peer_id">
+      </div>
+      <div class="w3-col w3-quarter">  
+        <input class="w3-button" type="submit" value="OK">
+      </div>
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Open A Channel</h2>
-  <div class="w3-container w3-padding-32">
+  <div class="w3-row-padding">
     <form action="/openchannel/" method="post">
       {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <label for="local_amt">Local Amount: </label>
-      <input id="local_amt" type="number" name="local_amt">
-      <label for="sat_per_byte">Target Fee (sats/byte): </label>
-      <input id="sat_per_byte" type="number" name="sat_per_byte">
-      <input type="submit" value="OK">
+      <div class="w3-col w3-quarter">
+        <input class="w3-input" id="peer_pubkey" placeholder="Peer Pubkey" type="text" name="peer_pubkey">
+      </div>
+      <div class="w3-col w3-quarter">
+        <input class="w3-input"  id="local_amt" placeholder="Local Amount" type="number" name="local_amt">
+      </div>
+      <div class="w3-col w3-quarter">
+        <input class="w3-input"  id="sat_per_byte" placeholder="Target Fee (sats/byte)" type="number" name="sat_per_byte">
+      </div>   
+      <div class="w3-col w3-quarter">  
+        <input class="w3-button"  type="submit" value="OK">
+      </div> 
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Close A Channel</h2>
-  <div class="w3-container w3-padding-32">
+  <div class="w3-row-padding">
     <form action="/closechannel/" method="post">
       {% csrf_token %}
-      <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="number" name="chan_id">
-      <label for="target_fee">Target Fee: </label>
-      <input id="target_fee" type="number" min="1" max="100" name="target_fee">
-      <label for="force">Force Close? </label>
-      <input id="force" type="checkbox" name="force">
-      <input type="submit" value="OK">
+      <div class="w3-col w3-quarter">
+        <input class="w3-input" placeholder="Channel ID" id="chan_id" type="number" name="chan_id">
+      </div>
+      <div class="w3-col w3-quarter">
+        <input id="target_fee" class="w3-input" placeholder="Target Fee" type="number" min="1" max="100" name="target_fee">
+      </div>
+      <div class="w3-col w3-quarter">
+        <input class="w3-check" id="force" type="checkbox" name="force">
+        <label class="w3-validate">Force close </label>
+      </div>
+      <div class="w3-col w3-quarter">
+        <input class="w3-button" type="submit" value="OK">
+      </div>
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Create Invoice</h2>
-  <div class="w3-container w3-padding-32">
+  <div class="w3-row-padding">
     <form action="/createinvoice/" method="post">
       {% csrf_token %}
-      <label for="value">Invoice Amount: </label>
-      <input id="value" type="number" name="value">
-      <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Update Channel Policy</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/updatechanpolicy/" method="post">
-      {% csrf_token %}
-      <label for="new_base_fee">New Base Fee: </label>
-      <input id="new_base_fee" type="number" min="0" name="new_base_fee">
-      <label for="new_fee_rate">New Fee Rate: </label>
-      <input id="new_fee_rate" type="number" min="0" name="new_fee_rate">
-      <label for="new_cltv">New CLTV: </label>
-      <input id="new_cltv" type="number" min="18" name="new_cltv">
-      <label for="target_all">Target All Channels? </label>
-      <input id="target_all" type="checkbox" name="target_all">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:35.2%">
-        <li><h3><label for="target_chans">Select Channels To Update: </label></h3></li>
-        {% for channel in chan_policy_form.target_chans %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
+      <div class="w3-col w3-quarter">
+        <input id="value" class="w3-input" placeholder="Invoice Amount" type="number" name="value">
+      </div>
+      <div class="w3-col w3-quarter">
+        <input class="w3-button" type="submit" value="OK">
+      </div>
     </form>
   </div>
 </div>
