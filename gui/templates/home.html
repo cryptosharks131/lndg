@@ -36,14 +36,12 @@
         <th>Channel ID</th>
         <th>Peer Alias</th>
         <th title="y = ax + b">Out Fee</th>
-        <th>o1D</th>
-        <th>o7D</th>
+        <th>Routed Out</th>
         <th>Outbound Liquidity</th>
         <th width=15%>Capacity</th>
         <th>Inbound Liquidity</th>
         <th>Unsettled</th>
-        <th>i1D</th>
-        <th>i7D</th>
+        <th>Routed In</th>
         <th title="y = ax + b">In fee</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
@@ -53,14 +51,18 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
-        <td>{{ channel.amt_routed_out_1day|intcomma }} M ({{ channel.routed_out_1day }})</td>
-        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
+        <td><div class="w3-row">
+          <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_out_1day|intcomma }}M ({{ channel.routed_out_1day }})</small></div>
+          <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_out_7day|intcomma }}M ({{ channel.routed_out_7day }})</small></div></div>
+        </td>
         <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
         <td title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}"><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
         <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
-        <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
-        <td>{{ channel.amt_routed_in_1day|intcomma }} M ({{ channel.routed_in_1day }})</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
+        <td><small>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</small></td>
+        <td><div class="w3-row">
+          <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_in_1day|intcomma }}M ({{ channel.routed_in_1day }})</small></div>
+          <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_in_7day|intcomma }}M ({{ channel.routed_in_7day }})</small></div></div>
+        </td>
         <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
         <td>
           {% if channel.auto_rebalance %}
