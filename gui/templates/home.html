@@ -38,9 +38,8 @@
         <th title="y = ax + b">Out Fee</th>
         <th>o1D</th>
         <th>o7D</th>
-        <th>Capacity</th>
         <th>Outbound Liquidity</th>
-        <th width=10%></th>
+        <th width=15%>Capacity</th>
         <th>Inbound Liquidity</th>
         <th>Unsettled</th>
         <th>i1D</th>
@@ -53,19 +52,18 @@
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}">{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</td>
+        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
         <td>{{ channel.amt_routed_out_1day|intcomma }} M ({{ channel.routed_out_1day }})</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
-        <td title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}">{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
+        <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
+        <td title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}"><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
+        <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
         <td>{{ channel.amt_routed_in_1day|intcomma }} M ({{ channel.routed_in_1day }})</td>
         <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}">{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</td>
+        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
         <td>
-          {% if channel.auto_rebalance == True %}
+          {% if channel.auto_rebalance %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
@@ -79,7 +77,7 @@
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            <input type="submit" value="{% if channel.auto_rebalance %}Disable{% else %}Enable{% endif %}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
             <input type="hidden" name="target" value="0">
