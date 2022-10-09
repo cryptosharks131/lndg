@@ -96,6 +96,7 @@
 <div class="w3-container w3-padding-small">
   <h2>Update Channel Policy</h2>
   <form action="/updatechanpolicy/" method="post">
+    {% csrf_token %}
     <div class="w3-container w3-padding-small" style="overflow-x: scroll">
       <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
@@ -146,7 +147,7 @@
           <td>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input type="submit" value="{% if channel.auto_rebalance %}Disable{% else %}Enable{% endif %}">
+              <input type="submit" class="w3-btn" value="{% if channel.auto_rebalance %}Disable{% else %}Enable{% endif %}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="5">
               <input type="hidden" name="target" value="0">
@@ -157,7 +158,6 @@
         {% endfor %}
       </table>
     </div>
-    {% csrf_token %}
     <div class="w3-col" style="width:20%" >
       <input class="w3-input" placeholder="New Fee Rate" id="new_fee_rate" type="number" min="0" name="new_fee_rate">
     </div>
