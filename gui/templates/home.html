@@ -17,8 +17,35 @@
   </form>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>1-Day Routed: {{ routed_1day|intcomma }} | Value: {{ routed_1day_amt|intcomma }} | Fees Earned: {{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_1day|intcomma }} | Offchain Fees: {{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_1day }}% | Profit/Outbound: {{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}] | Outbound Utilization: {{ routed_1day_percent }}%</h4>
-  <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Period</th>
+      <th>Routed</th>
+      <th>Fees earned/paid</th>
+      <th>Offchain fees</th>
+      <th>Cost (%)</th>
+      <th>Profit</th>
+      <th>Outbound Utilization</th>
+    </tr>
+    <tr>
+      <td>1-Day</td>
+      <td>{{ routed_1day|intcomma }} ({{ routed_1day_amt|intcomma }} sats)</td>
+      <td>{{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}]/{{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}]</td>
+      <td>{{ onchain_costs_1day|intcomma }}</td>
+      <td>{{ percent_cost_1day }}%</td>
+      <td>{{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}]</td>
+      <td>{{ routed_1day_percent }}%</td>
+    </tr>
+    <tr>
+      <td>7-Day</td>
+      <td>{{ routed_7day|intcomma }} ({{ routed_7day_amt|intcomma }} sats)</td>
+      <td>{{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}]/{{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}]</td>
+      <td>{{ onchain_costs_7day|intcomma }}</td>
+      <td>{{ percent_cost_7day }}%</td>
+      <td>{{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}]</td>
+      <td>{{ routed_7day_percent }}%</td>
+    </tr>
+  </table>
 </div>
 <div class="w3-container w3-padding-small">
   <h4>Total Inbound Liquidity: {{ sum_inbound|intcomma }} | Outbound Liquidity: {{ sum_outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
