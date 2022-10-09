@@ -539,10 +539,10 @@
     {% for rebalance in rebalances %}
     <tr>
       <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
-      <td title="{{ rebalance.start }}">{% if rebalance.status == 0 %}---{% else %}{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td title="{{ rebalance.stop }}">{% if rebalance.status > 1 %}{{ rebalance.stop|naturaltime }}{% else %}---{% endif %}</td>
+      <td title="{{ rebalance.start }}">{{ rebalance.start|naturaltime|default:"---" }}</td>
+      <td title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime|default:"---" }}</td>
       <td>{{ rebalance.duration }} minutes</td>
-      <td>{% if rebalance.status == 2 %}{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}---{% endif %}</td>
+      <td>{{ rebalance.stop|timeuntil:rebalance.start|default:"---" }}</td>
       <td>{{ rebalance.value|intcomma }}</td>
       <td>{{ rebalance.fee_limit|intcomma }}</td>
       <td>{{ rebalance.ppm|intcomma }}</td>
@@ -702,6 +702,20 @@
   </div>
 </div>
 <div class="w3-container w3-padding-small">
+  <h2>Create Invoice</h2>
+  <div class="w3-row-padding">
+    <form action="/createinvoice/" method="post">
+      {% csrf_token %}
+      <div class="w3-col w3-quarter">
+        <input id="value" class="w3-input" placeholder="Invoice Amount" min="1" type="number" name="value">
+      </div>
+      <div class="w3-col w3-quarter">
+        <input class="w3-button" type="submit" value="OK">
+      </div>
+    </form>
+  </div>
+</div>
+<div class="w3-container w3-padding-small">
   <h2>Connect To A Peer</h2>
   <div class="w3-container w3-row">
     <form action="/connectpeer/"  method="post">
@@ -716,26 +730,6 @@
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Open A Channel</h2>
-  <div class="w3-row-padding">
-    <form action="/openchannel/" method="post">
-      {% csrf_token %}
-      <div class="w3-col w3-quarter">
-        <input class="w3-input" id="peer_pubkey" placeholder="Peer Pubkey" type="text" name="peer_pubkey">
-      </div>
-      <div class="w3-col w3-quarter">
-        <input class="w3-input"  id="local_amt" placeholder="Local Amount" type="number" name="local_amt">
-      </div>
-      <div class="w3-col w3-quarter">
-        <input class="w3-input"  id="sat_per_byte" placeholder="Target Fee (sats/byte)" type="number" name="sat_per_byte">
-      </div>   
-      <div class="w3-col w3-quarter">  
-        <input class="w3-button"  type="submit" value="OK">
-      </div> 
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
   <h2>Close A Channel</h2>
   <div class="w3-row-padding">
     <form action="/closechannel/" method="post">
@@ -743,30 +737,36 @@
       <div class="w3-col w3-quarter">
         <input class="w3-input" placeholder="Channel ID" id="chan_id" type="number" name="chan_id">
       </div>
-      <div class="w3-col w3-quarter">
-        <input id="target_fee" class="w3-input" placeholder="Target Fee" type="number" min="1" max="100" name="target_fee">
+      <div class="w3-col" style="width:15%">
+        <input id="target_fee" class="w3-input" placeholder="Target Fee (sats/byte)" type="number" min="1" max="100" name="target_fee">
       </div>
-      <div class="w3-col w3-quarter">
+      <div class="w3-col" style="width:10%">
         <input class="w3-check" id="force" type="checkbox" name="force">
         <label class="w3-validate">Force close </label>
       </div>
-      <div class="w3-col w3-quarter">
+      <div class="w3-col" style="width:10%">
         <input class="w3-button" type="submit" value="OK">
       </div>
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Create Invoice</h2>
+  <h2>Open A Channel</h2>
   <div class="w3-row-padding">
-    <form action="/createinvoice/" method="post">
+    <form action="/openchannel/" method="post">
       {% csrf_token %}
-      <div class="w3-col w3-quarter">
-        <input id="value" class="w3-input" placeholder="Invoice Amount" type="number" name="value">
+      <div class="w3-col" style="width:50%">
+        <input class="w3-input" id="peer_pubkey" placeholder="Peer Pubkey" type="text" name="peer_pubkey">
       </div>
-      <div class="w3-col w3-quarter">
-        <input class="w3-button" type="submit" value="OK">
+      <div class="w3-col" style="width:15%">
+        <input class="w3-input"  id="local_amt" placeholder="Local Amount" type="number" name="local_amt">
       </div>
+      <div class="w3-col" style="width:15%">
+        <input class="w3-input"  id="sat_per_byte" placeholder="Target Fee (sats/byte)" type="number" name="sat_per_byte">
+      </div>   
+      <div class="w3-col" style="width:10%">  
+        <input class="w3-button"  type="submit" value="OK">
+      </div> 
     </form>
   </div>
 </div>
