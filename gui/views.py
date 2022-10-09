@@ -187,8 +187,6 @@ def home(request):
                 detailed_channel['amt_routed_in_1day'] = int(forwards_df_in_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['amt_routed_out_1day'] = int(forwards_df_out_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['htlc_count'] = channel.htlc_count
-                detailed_channel['auto_rebalance'] = channel.auto_rebalance
-                detailed_channel['ar_in_target'] = channel.ar_in_target
                 detailed_channel['local_cltv'] = channel.local_cltv
                 detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
