@@ -110,8 +110,7 @@
           <th>Unsettled</th>
           <th>Routed In</th>
           <th title="y = ax + b">In fee</th>
-          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
-          <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
+          <th title="CLTV">CLTV</th>
           <th title="Select channels to update policy">Update</th>
         </tr>
         {% for channel in active_channels %}
@@ -132,27 +131,7 @@
             <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_in_7day|intcomma }}M ({{ channel.routed_in_7day }})</small></div></div>
           </td>
           <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
-          <td>
-            {% if channel.auto_rebalance %}
-              <form action="/update_channel/" method="post">
-                {% csrf_token %}
-                <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
-                <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-                <input type="hidden" name="update_target" value="3">
-              </form>
-            {% else %}
-              ---
-            {% endif %}
-          </td>
-          <td>
-            <form action="/update_channel/" method="post">
-              {% csrf_token %}
-              <input type="submit" class="w3-btn" value="{% if channel.auto_rebalance %}Disable{% else %}Enable{% endif %}">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="5">
-              <input type="hidden" name="target" value="0">
-            </form>
-          </td>
+          <td>{{channel.local_cltv}}</td>
           <td><input name="target_chans" id="id_target_chans_{{forloop.counter0}}" class="w3-check" type="checkbox" value="{{channel.chan_id}}"/></td>
         </tr>
         {% endfor %}

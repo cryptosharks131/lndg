@@ -189,6 +189,7 @@ def home(request):
                 detailed_channel['htlc_count'] = channel.htlc_count
                 detailed_channel['auto_rebalance'] = channel.auto_rebalance
                 detailed_channel['ar_in_target'] = channel.ar_in_target
+                detailed_channel['local_cltv'] = channel.local_cltv
                 detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
             inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
