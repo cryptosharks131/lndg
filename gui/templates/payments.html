@@ -21,7 +21,7 @@
     {% for payment in payments %}
     <tr>
       <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td>{{ payment.payment_hash }}</td>
+      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
       <td>{{ payment.ppm|intcomma }}</td>

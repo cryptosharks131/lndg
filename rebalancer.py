@@ -6,7 +6,6 @@ from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect
-from lndg import settings
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
@@ -29,7 +28,7 @@ def run_rebalancer(rebalance):
     rebalance.start = datetime.now()
     try:
         #Open connection with lnd via grpc
-        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
+        connection = lnd_connect()
         stub = lnrpc.LightningStub(connection)
         routerstub = lnrouter.RouterStub(connection)
         chan_ids = json.loads(rebalance.outgoing_chan_ids)

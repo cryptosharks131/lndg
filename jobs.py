@@ -1,5 +1,5 @@
 import django
-from django.db.models import Max, Min
+from django.db.models import Max
 from datetime import datetime, timedelta
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -12,15 +12,15 @@ from pandas import DataFrame
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels
-from lndg.settings import LND_NETWORK
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels, Rebalancer
 
 def update_payments(stub):
     self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
         payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
-        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash:
+        #Ignore inflight payments before 30 days
+        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash and payment.creation_date > (datetime.now() - timedelta(days=30)):
             update_payment(stub, payment_data[0], self_pubkey)
         else:
             payment.status = 3
@@ -28,43 +28,14 @@ def update_payments(stub):
     last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
     payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
     for payment in payments:
+        #print (f"{datetime.now().strftime('%c')} : Processing New {payment.payment_index=} {payment.status=} {payment.payment_hash=}")
         try:
             new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
             new_payment.save()
-            if payment.status == 2:
-                for attempt in payment.htlcs:
-                    if attempt.status == 1:
-                        hops = attempt.route.hops
-                        hop_count = 0
-                        cost_to = 0
-                        total_hops = len(hops)
-                        for hop in hops:
-                            hop_count += 1
-                            try:
-                                alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=hop.pub_key, include_channels=False)).node.alias
-                            except:
-                                alias = ''
-                            fee = hop.fee_msat/1000
-                            PaymentHops(payment_hash=new_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
-                            cost_to += fee
-                            if hop_count == 1:
-                                if new_payment.chan_out is None:
-                                    new_payment.chan_out = hop.chan_id
-                                    new_payment.chan_out_alias = alias
-                                else:
-                                    new_payment.chan_out = 'MPP'
-                                    new_payment.chan_out_alias = 'MPP'
-                            if hop_count == total_hops and 5482373484 in hop.custom_records and new_payment.keysend_preimage is None:
-                                records = hop.custom_records
-                                message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
-                                new_payment.keysend_preimage = records[5482373484].hex()
-                                new_payment.message = message
-                            if hop_count == total_hops and hop.pub_key == self_pubkey and new_payment.rebal_chan is None:
-                                new_payment.rebal_chan = hop.chan_id
-                        new_payment.save()
-        except:
+        except Exception as e:
             #Error inserting, try to update instead
-            update_payment(stub, payment, self_pubkey)
+            print (f"{datetime.now().strftime('%c')} : Error processing {new_payment=} : {str(e)=}")
+        update_payment(stub, payment, self_pubkey)
 
 def update_payment(stub, payment, self_pubkey):
     db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
@@ -73,11 +44,13 @@ def update_payment(stub, payment, self_pubkey):
     db_payment.fee = round(payment.fee_msat/1000, 3)
     db_payment.status = payment.status
     db_payment.index = payment.payment_index
-    db_payment.save()
-    if payment.status == 2:
+    if payment.status == 2 or payment.status == 1 or payment.status == 3:
         PaymentHops.objects.filter(payment_hash=db_payment).delete()
+        db_payment.chan_out = None
+        db_payment.rebal_chan = None
+        db_payment.save()
         for attempt in payment.htlcs:
-            if attempt.status == 1:
+            if attempt.status == 1 or attempt.status == 0 or (attempt.status == 2 and attempt.failure.code in (1,2,12)) :
                 hops = attempt.route.hops
                 hop_count = 0
                 cost_to = 0
@@ -89,9 +62,14 @@ def update_payment(stub, payment, self_pubkey):
                     except:
                         alias = ''
                     fee = hop.fee_msat/1000
+                    if hop_count == total_hops:
+                        # Add additional HTLC information in last hop alias
+                        alias += f'[ {payment.status}-{attempt.status}-{attempt.failure.code}-{attempt.failure.failure_source_index} ]'
+                    #if hop_count == total_hops:
+                        #print (f"{datetime.now().strftime('%c')} : Debug Hop {attempt.attempt_id=} {attempt.route.total_amt=} {hop.mpp_record.payment_addr.hex()=} {hop.mpp_record.total_amt_msat=} {hop.amp_record=} {db_payment.payment_hash=}")
                     PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                     cost_to += fee
-                    if hop_count == 1:
+                    if hop_count == 1 and attempt.status == 1:
                         if db_payment.chan_out is None:
                             db_payment.chan_out = hop.chan_id
                             db_payment.chan_out_alias = alias
@@ -105,11 +83,60 @@ def update_payment(stub, payment, self_pubkey):
                         db_payment.message = message
                     if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
                         db_payment.rebal_chan = hop.chan_id
-                db_payment.save()
+    db_payment.save()
+    adjust_ar_amt( payment, db_payment.rebal_chan )
+
+def adjust_ar_amt( payment, chan_id ):
+    if payment.status not in (2,3):
+        return
+    #skip rapid fire rebalances
+    last_rebalance_duration = Rebalancer.objects.filter(payment_hash=payment.payment_hash)[0].duration if Rebalancer.objects.filter(payment_hash=payment.payment_hash).exists() else 0
+    #print (f"{datetime.now().strftime('%c')} : DEBUG {last_rebalance_duration=} {payment.payment_hash=}")
+    if last_rebalance_duration <= 1 or payment.status not in (2,3):
+        print (f"{datetime.now().strftime('%c')} : Skipping Liquidity Estimation {last_rebalance_duration=} {payment.payment_hash=}")
+        return
+    #To be coverted to settings later
+    lower_limit = 69420
+    upper_limit = 2
+
+    if LocalSettings.objects.filter(key='AR-Target%').exists():
+        ar_target = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+    else:
+        LocalSettings(key='AR-Target%', value='5').save()
+        ar_target = 5
+
+    #Adjust AR Target Amount, increase if success reduce if failed.
+    if payment.status == 2 and chan_id is not None:
+        db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
+        if db_channel is not None and payment.value_msat/1000 > 1000 :
+            new_ar_amount = int(min(max(db_channel.ar_amt_target * 1.21, payment.value_msat/1000), db_channel.capacity*ar_target*upper_limit/100))
+            if new_ar_amount > db_channel.ar_amt_target:
+                print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
+                db_channel.ar_amt_target = new_ar_amount
+                db_channel.save()
+    if payment.status == 3:
+        estimated_liquidity = 0
+        for attempt in payment.htlcs:
+            total_hops=len(attempt.route.hops)
+            #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
+            if (attempt.failure.code in (1,2) and attempt.failure.failure_source_index == total_hops) or attempt.failure.code == 12:
+                #Failure 1,2 from last hop indicating liquidity available, failure 12 shows fees in sufficient but liquidity available
+                estimated_liquidity += attempt.route.total_amt
+                chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
+                print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+        if payment.value_msat/1000 >= lower_limit and estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
+            #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
+            new_ar_amount = int(estimated_liquidity if estimated_liquidity > lower_limit else lower_limit)
+            db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
+            if db_channel is not None and new_ar_amount < db_channel.ar_amt_target:
+                print (f"{datetime.now().strftime('%c')} : Decrease AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
+                db_channel.ar_amt_target = new_ar_amount
+                db_channel.save()
 
 def update_invoices(stub):
     open_invoices = Invoices.objects.filter(state=0).order_by('index')
     for open_invoice in open_invoices:
+        #print (f"{datetime.now().strftime('%c')} : Processing open invoice {open_invoice.index=} {open_invoice.state=} {open_invoice.r_hash=}")
         invoice_data = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=open_invoice.index-1, num_max_invoices=1)).invoices
         if len(invoice_data) > 0 and open_invoice.r_hash == invoice_data[0].r_hash.hex():
             update_invoice(stub, invoice_data[0], open_invoice)
@@ -132,7 +159,7 @@ def update_invoice(stub, invoice, db_invoice):
             keysend_preimage = records[5482373484].hex() if 5482373484 in records else None
             message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
             if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
-                signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                signerstub = lnsigner.SignerStub(lnd_connect())
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
                 try:
                     valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
@@ -212,28 +239,40 @@ def update_channels(stub):
                 db_channel.local_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
                 db_channel.local_disabled = chan_data.node2_policy.disabled
                 db_channel.local_cltv = chan_data.node2_policy.time_lock_delta
+                db_channel.local_min_htlc_msat = chan_data.node2_policy.min_htlc
+                db_channel.local_max_htlc_msat = chan_data.node2_policy.max_htlc_msat
                 db_channel.remote_base_fee = chan_data.node1_policy.fee_base_msat
                 db_channel.remote_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
                 db_channel.remote_disabled = chan_data.node1_policy.disabled
                 db_channel.remote_cltv = chan_data.node1_policy.time_lock_delta
+                db_channel.remote_min_htlc_msat = chan_data.node1_policy.min_htlc
+                db_channel.remote_max_htlc_msat = chan_data.node1_policy.max_htlc_msat
             else:
                 db_channel.local_base_fee = chan_data.node1_policy.fee_base_msat
                 db_channel.local_fee_rate = chan_data.node1_policy.fee_rate_milli_msat
                 db_channel.local_disabled = chan_data.node1_policy.disabled
                 db_channel.local_cltv = chan_data.node1_policy.time_lock_delta
+                db_channel.local_min_htlc_msat = chan_data.node1_policy.min_htlc
+                db_channel.local_max_htlc_msat = chan_data.node1_policy.max_htlc_msat
                 db_channel.remote_base_fee = chan_data.node2_policy.fee_base_msat
                 db_channel.remote_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
                 db_channel.remote_disabled = chan_data.node2_policy.disabled
                 db_channel.remote_cltv = chan_data.node2_policy.time_lock_delta
+                db_channel.remote_min_htlc_msat = chan_data.node2_policy.min_htlc
+                db_channel.remote_max_htlc_msat = chan_data.node2_policy.max_htlc_msat
         except:
             db_channel.local_base_fee = 0
             db_channel.local_fee_rate = 0
             db_channel.local_disabled = False
             db_channel.local_cltv = 40
+            db_channel.local_min_htlc_msat = 0
+            db_channel.local_max_htlc_msat = 0
             db_channel.remote_base_fee = 0
             db_channel.remote_fee_rate = 0
             db_channel.remote_disabled = False
             db_channel.remote_cltv = 40
+            db_channel.remote_min_htlc_msat = 0
+            db_channel.remote_max_htlc_msat = 0
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
@@ -361,12 +400,12 @@ def network_links():
     return network_links
 
 def get_tx_fees(txid):
-    base_url = network_links() + ('/testnet' if LND_NETWORK == 'testnet' else '') + '/api/tx/'
+    base_url = network_links() + ('/testnet' if settings.LND_NETWORK == 'testnet' else '') + '/api/tx/'
     try:
         request_data = get(base_url + txid).json()
         fee = request_data['fee']
     except Exception as e:
-        print('Error getting closure fees for ', txid, ':', str(e))
+        print(f"{datetime.now().strftime('%c')} : Error getting closure fees {txid=} {str(e)=}")
         fee = 0
     return fee
 
@@ -381,7 +420,7 @@ def update_closures(stub):
                 channel = Channels.objects.filter(chan_id=closure.chan_id)[0] if Channels.objects.filter(chan_id=closure.chan_id).exists() else None
                 resolution_count = len(closure.resolutions)
                 txid, index = closure.channel_point.split(':')
-                closing_costs = get_tx_fees(closure.closing_tx_hash) if closure.open_initiator == 1 else 0
+                closing_costs = get_tx_fees(closure.closing_tx_hash) if (closure.open_initiator != 2 and closure.close_type not in [4, 5]) else 0
                 db_closure = Closures(chan_id=closure.chan_id, funding_txid=txid, funding_index=index, closing_tx=closure.closing_tx_hash, remote_pubkey=closure.remote_pubkey, capacity=closure.capacity, close_height=closure.close_height, settled_balance=closure.settled_balance, time_locked_balance=closure.time_locked_balance, close_type=closure.close_type, open_initiator=closure.open_initiator, close_initiator=closure.close_initiator, resolution_count=resolution_count)
                 try:
                     db_closure.save()
@@ -395,9 +434,8 @@ def update_closures(stub):
                         if resolution.resolution_type != 2:
                             closing_costs += get_tx_fees(resolution.sweep_txid)
                         Resolutions(chan_id=closure.chan_id, resolution_type=resolution.resolution_type, outcome=resolution.outcome, outpoint_tx=resolution.outpoint.txid_str, outpoint_index=resolution.outpoint.output_index, amount_sat=resolution.amount_sat, sweep_txid=resolution.sweep_txid).save()
-                if channel:
-                    channel.closing_costs = closing_costs
-                    channel.save()
+                db_closure.closing_costs = closing_costs
+                db_closure.save()
 
 def reconnect_peers(stub):
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
@@ -410,20 +448,29 @@ def reconnect_peers(stub):
                     print (f"{datetime.now().strftime('%c')} : Reconnecting {peer.alias=} {peer.pubkey=} {peer.last_reconnected=}")
                     if peer.connected == True:
                         print (f"{datetime.now().strftime('%c')} : ... Inactive channel is still connected to peer, disconnecting peer. {peer.alias=} {inactive_peer=}")
-                        stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
-                        peer.connected = False
-                        peer.save()
+                        try:
+                            response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
+                            print (f"{datetime.now().strftime('%c')} : .... Status Disconnect {peer.alias=} {inactive_peer=} {response=}")
+                            peer.connected = False
+                            peer.save()
+                        except Exception as e:
+                            print (f"{datetime.now().strftime('%c')} : .... Error disconnecting {peer.alias} {inactive_peer=} {str(e)=}")
+
                     try:
                         node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
                         host = node.addresses[0].addr
-                    except:
-                        print (f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value {peer.alias=} {peer.pubkey=} {peer.address=}")
+                    except Exception as e:
+                        print (f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value {peer.alias=} {peer.pubkey=} {peer.address=} {str(e)=}")
                         host = peer.address
-                    address = ln.LightningAddress(pubkey=inactive_peer, host=host)
+                    #address = ln.LightningAddress(pubkey=inactive_peer, host=host)
                     print (f"{datetime.now().strftime('%c')} : ... Attempting connection to {peer.alias=} {inactive_peer=} {host=}")
                     try:
-                        response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
-                        print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
+                        #try both the graph value and last know value
+                        stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=ln.LightningAddress(pubkey=inactive_peer, host=host), perm=True, timeout=5))
+                        if host != peer.address and peer.address[:9] != '127.0.0.1':
+                            stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=ln.LightningAddress(pubkey=inactive_peer, host=peer.address), perm=True, timeout=5))
+                        #response = stub.ConnectPeer(request = ln.ConnectPeerRequest(addr=address, perm=False, timeout=5))
+                        #print (f"{datetime.now().strftime('%c')} : .... Status {peer.alias=} {inactive_peer=} {response=}")
                     except Exception as e:
                         error = str(e)
                         details_index = error.find('details =') + 11
@@ -462,7 +509,7 @@ def clean_payments(stub):
             finally:
                 payment.cleaned = True
                 payment.save()
-                print (f"{datetime.now().strftime('%c')} : Cleaned {payment.index=} {payment.status=} {payment.cleaned=} {payment.payment_hash=}")
+                #print (f"{datetime.now().strftime('%c')} : Cleaned {payment.index=} {payment.status=} {payment.cleaned=} {payment.payment_hash=}")
 
 def auto_fees(stub):
     if LocalSettings.objects.filter(key='AF-Enabled').exists():
@@ -501,7 +548,12 @@ def auto_fees(stub):
             else:
                 LocalSettings(key='AF-FailedHTLCs', value='25').save()
                 failed_htlc_limit = 25
-            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > 86400, axis=1)
+            if LocalSettings.objects.filter(key='AF-UpdateHours').exists():
+                update_hours = int(LocalSettings.objects.filter(key='AF-UpdateHours')[0].value)
+            else:
+                LocalSettings(key='AF-UpdateHours', value='24').save()
+                update_hours = 24
+            channels_df['eligible'] = channels_df.apply(lambda row: (datetime.now()-row['fees_updated']).total_seconds() > (update_hours*3600), axis=1)
             channels_df = channels_df[channels_df['eligible']==True]
             if channels_df.shape[0] > 0:
                 failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
@@ -568,8 +620,9 @@ def auto_fees(stub):
                         Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
 
 def main():
+    #print (f"{datetime.now().strftime('%c')} : Entering Jobs")
     try:
-        stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        stub = lnrpc.LightningStub(lnd_connect())
         #Update data
         update_peers(stub)
         update_channels(stub)
@@ -582,7 +635,7 @@ def main():
         clean_payments(stub)
         auto_fees(stub)
     except Exception as e:
-        print('Error processing background data: ' + str(e))
-
+        print (f"{datetime.now().strftime('%c')} : Error processing background data: {str(e)=}")
+    #print (f"{datetime.now().strftime('%c')} : Exit Jobs")
 if __name__ == '__main__':
     main()
