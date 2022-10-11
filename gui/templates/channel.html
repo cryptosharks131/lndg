@@ -6,6 +6,7 @@
 <div class="w3-container w3-padding-small">
   <h2>Details For Channel: {{ chan_id }} | Peer: <a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias != "" %}{{ channel.alias }}</a> ({{ channel.remote_pubkey }}){% else %}{{ channel.remote_pubkey }}</a>{% endif %}</h2>
   <h3>Capacity: {{ channel.capacity|intcomma }} | Is Open: {{ channel.is_open }} | Is Active: {{ channel.is_active }} | Is Private: {{ channel.private }} | Channel Updates: {{ channel.num_updates|intcomma }}</h3>
+  {% if peer_info %}<h4>Peer Connected: {{ peer_info.connected }} | Peer Address: {{ peer_info.address }} | {% if not channel.is_open %}Marked Closed:{% elif channel.is_active %}Uptime:{% else %}Downtime:{% endif %} {{ channel.last_update|naturaltime|slice:":-4" }} (since {{ channel.last_update }})</h4>{% endif %}
   <h4>Channel Point: <a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a> | Opened In: <a href="{{ network_links }}/{{ network }}block/{{ channel.open_block }}" target="_blank">{{ channel.open_block|intcomma }}</a> | Opener: {% if channel.initiator == True %}Local{% else %}Remote{% endif %}</h4>
   <h4>Outbound Liquidity: {{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%) | Inbound Liquidity: {{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</h4>
 </div>
@@ -195,6 +196,33 @@
   </table>
 </div>
 {% endif %}
+{% if autofees %}
+<div class="w3-container w3-padding-small">
+  <h2><a href="/autofees/">30 Days Autofees Logs</a></h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Timestamp</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th>Setting</th>
+      <th>Old Value</th>
+      <th>New Value</th>
+      <th>Change</th>
+    </tr>
+    {% for log in autofees %}
+    <tr>
+      <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
+      <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
+      <td><a href="/autofees?={{ log.chan_id }}" target="_blank">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
+      <td>{{ log.setting }}</td>
+      <td>{{ log.old_value }}</td>
+      <td {% if log.new_value > log.old_value %}style="background-color: #d5fadb"{% else %}style="background-color: #fadbd5"{% endif %}>{{ log.new_value }}</td>
+      <td {% if log.new_value > log.old_value %}style="background-color: #d5fadb"{% else %}style="background-color: #fadbd5"{% endif %}>{{ log.change }}%</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% if forwards %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5  <a href="/forwards" target="_blank">Payments Routed</a></h2>
@@ -280,7 +308,7 @@
     {% for payment in payments %}
     <tr>
       <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td>{{ payment.payment_hash }}</td>
+      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
       <td>{{ payment.ppm|intcomma }}</td>
@@ -313,7 +341,7 @@
     <tr>
       <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
       <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td>{{ invoice.r_hash }}</td>
+      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
       <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
