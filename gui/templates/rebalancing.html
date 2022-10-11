@@ -169,52 +169,24 @@
 {% endif %}
 {% if local_settings %}
 <div class="w3-container w3-padding-small">
+  <form action="/autorebalance/" method="post">
+    {% csrf_token %}
   <h2>Auto-Rebalancer Settings</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Key</th>
-      <th>Value</th>
-    </tr>
-    {% for settings in local_settings %}
-    <tr>
-      <td>{{ settings.key }}</td>
-      <td>{{ settings.value|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-<div class="w3-container w3-padding-small">
-  <h2>Update Auto Rebalancer Settings</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/autorebalance/" method="post">
-      {% csrf_token %}
-      <label title="This enables or disables the auto-scheduling function" for="enabled">Enabled: </label>
-      <input id="enabled" type="number" min="0" max="1" name="enabled">
-      <label title="The % of the total capacity to target as the rebalance amount" for="target_percent">Target Amount (%): </label>
-      <input id="target_percent" type="number" step="0.1" min="0.1" max="100" name="target_percent">
-      <label title="The time spent per individual rebalance attempt" for="target_time">Target Time (min): </label>
-      <input id="target_time" type="number" min="1" max="60" name="target_time">
-      <label title="When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel" for="outbound_percent">Target Outbound Above (%): </label>
-      <input id="outbound_percent" type="number" step="1" min="1" max="100" name="outbound_percent">
-      <label title="When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance" for="inbound_percent">Target Inbound Above (%): </label>
-      <input id="inbound_percent" type="number" step="1" min="1" max="100" name="inbound_percent">
-      <label title="The max rate we can ever use to refill a channel with outbound" for="fee_rate">Global Max Fee Rate (ppm): </label>
-      <input id="fee_rate" type="number" min="1" max="2500" name="fee_rate">
-      <label title="The ppm to target which is the % of the outbound fee rate for the channel being refilled" for="max_cost">Max Cost (%): </label>
-      <input id="max_cost" type="number" step="1" min="1" max="100" name="max_cost">
-      <label title="The % of the target amount to be randomly varied with every rebalance attempt" for="variance">Variance (%): </label>
-      <input id="variance" type="number" min="0" max="100" name="variance">
-      <label title="The minutes we should wait after a failed attempt before trying again" for="wait_period">Wait Period (min): </label>
-      <input id="wait_period" type="number" min="1" max="100" name="wait_period">
-      <label title="This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions" for="autopilot">Autopilot: </label>
-      <input id="autopilot" type="number" min="0" max="1" name="autopilot">
-      <label title="Number of days to consider for autopilot. Default 7. " for="autopilotdays">AutopilotDays: </label>
-      <input id="autopilotdays" type="number" min="0" max="100" name="autopilotdays">
-      <label title="Target All Channels for applicable channel level settings. Uncheck if you only want to update local settings for future channels." for="targetallchannels">AllChannels?: </label>
-      <input id="targetallchannels" type="checkbox" name="targetallchannels">
-      <input type="submit" value="OK">
-    </form>
+  <div class="w3-container">
+    <div class="w3-row-padding w3-container">
+      {% for settings in local_settings %}
+      <div class="w3-quarter w3-container">
+        <label class="w3-label" title="{{ settings.title }}">{{ settings.label }}</label>
+        <input class="w3-input" id="{{settings.id}}" name="{{settings.id}}" type="number" min="{{settings.min}}" max="{{settings.max}}" step="{{settings.min}}" value="{{settings.value|intcomma}}"/>
+      </div>
+      {% endfor %}
+      <div class="w3-quarter w3-container">
+        <input class="w3-check" id="targetallchannels" type="checkbox" name="targetallchannels"/>
+        <label class="w3-validate">Target All Channels </label>
+        <input class="w3-btn" type="submit" value="OK">
+      </div>
+    </div>
   </div>
+  </form>
 </div>
 {% endblock %}
