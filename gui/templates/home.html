@@ -1,8 +1,14 @@
 {% extends "base.html" %}
 {% block title %} {{ block.super }} - Dashboard{% endblock %}
+{% block meta %}<meta http-equiv="refresh" content="1260">{% endblock %}
 {% block content %}
 {% load humanize %}
 <div class="w3-container w3-padding-small">
+  <p>Dashboard Last Updated :  <span id='datetime'></span> ... refreshing every 21 minutes</p>
+  <script>
+    var dt = new Date();
+    document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
+  </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
   <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h4>
   {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
@@ -491,7 +497,7 @@
     {% for payment in payments %}
     <tr>
       <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td>{{ payment.payment_hash }}</td>
+      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</a></td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
       <td>{{ payment.ppm|intcomma }}</td>
@@ -524,7 +530,7 @@
     <tr>
       <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
       <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td>{{ invoice.r_hash }}</td>
+      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
       <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
@@ -557,8 +563,8 @@
       <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
       <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td>{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</td>
-      <td>{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</td>
+      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I" target="_blank">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
+      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O" target="_blank">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
       <td>{{ failed_htlc.amount|intcomma }}</td>
       <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
       <td>{{ failed_htlc.missed_fee|intcomma }}</td>

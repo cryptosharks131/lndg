@@ -32,10 +32,53 @@
     </table>
   </div>
 </div>
-{% endif %}
-{% if not open_list %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>No potential peers can be calculated yet, try waiting until you have some payment data.</h1></center>
 </div>
 {% endif %}
+{% if avoid_list %}
+<div class="w3-container w3-padding-small">
+  <h2>Avoid/Exclude List</h2>
+  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <tr>
+        <th width=7%>Updated</th>
+        <th width=18%>Node Pubkey</th>
+        <th width=65%>Notes</th>
+        <th>Remove</th>
+      </tr>
+      {% for node in avoid_list %}
+      <tr>
+        <td>{{ node.updated|naturaltime }}</td>
+        <td>{{ node.pubkey }}</td>
+        <td>{% if node.notes == '' %}---{% else %}{{ node.notes }}{% endif %}</td>
+        <td>
+          <form action="/remove_avoid/" method="post">
+            {% csrf_token %}
+            <input style="border: none" type="submit" value="❌">
+            <input type="hidden" name="pubkey" value="{{ node.pubkey }}">
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No node added to the exclusion list yet. Add nodes here you want to avoid connecting to in the future.</h1></center>
+</div>
+{% endif %}
+<div class="w3-container w3-padding-small">
+  <h2>Add Node To Exclusion List Or Update Existing Notes</h2>
+  <form action="/add_avoid/" method="post">
+    {% csrf_token %}
+    <label for="pubkey">Node Pubkey: </label>
+    <input id="pubkey" type="text" name="pubkey" style="width:19%">
+    <label for="notes">Notes: </label>
+    <input id="notes" type="text" name="notes" style="width:70%">
+    <input type="submit" value="OK">
+  </form>
+</div>
 {% endblock %}

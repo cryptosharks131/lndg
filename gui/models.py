@@ -47,6 +47,7 @@ class Invoices(models.Model):
     sender = models.CharField(null=True, max_length=66)
     sender_alias = models.CharField(null=True, max_length=32)
     index = models.IntegerField()
+    is_revenue = models.BooleanField(default=False)
     class Meta:
         app_label = 'gui'
 
@@ -86,10 +87,14 @@ class Channels(models.Model):
     local_fee_rate = models.IntegerField()
     local_disabled = models.BooleanField()
     local_cltv = models.IntegerField()
+    local_min_htlc_msat = models.BigIntegerField()
+    local_max_htlc_msat = models.BigIntegerField()
     remote_base_fee = models.IntegerField()
     remote_fee_rate = models.IntegerField()
     remote_disabled = models.BooleanField()
     remote_cltv = models.IntegerField()
+    remote_min_htlc_msat = models.BigIntegerField()
+    remote_max_htlc_msat = models.BigIntegerField()
     is_active = models.BooleanField()
     is_open = models.BooleanField()
     last_update = models.DateTimeField()
@@ -100,7 +105,6 @@ class Channels(models.Model):
     ar_max_cost = models.IntegerField()
     fees_updated = models.DateTimeField(default=timezone.now)
     auto_fees = models.BooleanField()
-    closing_costs = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
         if self.auto_fees is None:
@@ -203,6 +207,7 @@ class Closures(models.Model):
     open_initiator = models.IntegerField()
     close_initiator = models.IntegerField()
     resolution_count = models.IntegerField()
+    closing_costs = models.IntegerField(default=0)
     class Meta:
         app_label = 'gui'
         unique_together = (('funding_txid', 'funding_index'),)
@@ -280,3 +285,10 @@ class PendingChannels(models.Model):
     class Meta:
         app_label = 'gui'
         unique_together = (('funding_txid', 'output_index'),)
+
+class AvoidNodes(models.Model):
+    pubkey = models.CharField(max_length=66, primary_key=True)
+    notes = models.CharField(null=True, max_length=1000)
+    updated = models.DateTimeField(default=timezone.now)
+    class Meta:
+        app_label = 'gui'
