@@ -22,6 +22,8 @@
             <th>AR</th>
             <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
             <th>Active</th>
+            <th title="Select outbound channel for a manual rebalance request">Out</th>
+            <th width="5%" title="Remote (peer) public key">PK</th>
         </tr>
       {% for channel in channels %}
       <tr>
@@ -89,13 +91,38 @@
         </td>
         <td>{% if channel.attempts == 0 %}---{% else %} {{ channel.success }}/{{ channel.attempts }} ({{ channel.success_rate }}%){% endif %}</td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
+        <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
+        <td><input type="button" class="w3-btn w3-hover-blue" onclick="navigator.clipboard.writeText('{{channel.remote_pubkey}}')" value="Copy"/></td>
       </tr>
       {% endfor %}
-    </table>
-  </div>
+      </table>
+    </div>
+    <br/>
+    <h3>Manual rebalance request options: </h3>
+    <div class="w3-row-padding">
+      <div class="w3-col" style="width:10%">
+        <label class="w3-label" for="duration">Run Time (min): </label>
+        <input class="w3-input" id="duration" type="number" name="duration">
+      </div>
+      <div class="w3-col" style="width:10%">
+        <label class="w3-label" for="value">Amount (sats): </label>
+        <input class="w3-input" id="value" type="number" min="10" max="5000000" name="value">
+      </div>
+      <div class="w3-col" style="width:10%">
+        <label class="w3-label" for="fee_limit">Fee Limit (ppm): </label>
+        <input  class="w3-input" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+      </div>
+      <div class="w3-col" style="width:60%">
+        <label class="w3-label" for="last_hop_pubkey">Last Hop Pubkey: </label>
+        <input class="w3-input" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+      </div>
+      <div class="w3-col" style="width:10%">
+        <input class="w3-btn large" type="submit" value="OK">
+      </div>
+    </div>
+  </form>
 </div>
-{% endif %}
-{% if not channels %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any channels to rebalance yet.</h1></center>
 </div>
@@ -190,29 +217,4 @@
     </form>
   </div>
 </div>
-{% if channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Manual Rebalancer Request</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
-      {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
-      <label for="value">Rebalance Amount (sats): </label>
-      <input id="value" type="number" min="10" max="5000000" name="value">
-      <label for="fee_limit">Fee Limit (ppm): </label>
-      <input id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
-    </form>
-  </div>
-</div>
-{% endif %}
 {% endblock %}
