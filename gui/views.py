@@ -1300,6 +1300,9 @@ def channel(request):
             rebalancer_df = DataFrame()
             failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
+
+        autofees = Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
+
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
@@ -1313,7 +1316,8 @@ def channel(request):
             'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
-            'network_links': network_links()
+            'network_links': network_links(),
+            'autofees': autofees
         }
         try:
             return render(request, 'channel.html', context)
