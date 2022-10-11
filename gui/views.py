@@ -205,8 +205,7 @@ def home(request):
                 detailed_channel['amt_routed_in_1day'] = int(forwards_df_in_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['amt_routed_out_1day'] = int(forwards_df_out_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['htlc_count'] = channel.htlc_count
-                detailed_channel['auto_rebalance'] = channel.auto_rebalance
-                detailed_channel['ar_in_target'] = channel.ar_in_target
+                detailed_channel['local_cltv'] = channel.local_cltv
                 detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
             inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
@@ -289,7 +288,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'rebalances': rebalances[:12],
-                'chan_policy_form': ChanPolicyForm,
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
@@ -1692,9 +1690,8 @@ def rebalancing(request):
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
-            'rebalancer_form': RebalancerForm,
             'local_settings': local_settings,
-            'network': 'testnet/' if LND_NETWORK == 'testnet' else '',
+            'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
         return render(request, 'rebalancing.html', context)
