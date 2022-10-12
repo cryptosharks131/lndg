@@ -50,7 +50,7 @@ def update_payment(stub, payment, self_pubkey):
         db_payment.rebal_chan = None
         db_payment.save()
         for attempt in payment.htlcs:
-            if attempt.status == 1 or attempt.status == 0 or (attempt.status == 2 and attempt.failure.code in (1,2,12)) :
+            if attempt.status == 1 or attempt.status == 0 or attempt.status == 2:
                 hops = attempt.route.hops
                 hop_count = 0
                 cost_to = 0
@@ -67,7 +67,8 @@ def update_payment(stub, payment, self_pubkey):
                         alias += f'[ {payment.status}-{attempt.status}-{attempt.failure.code}-{attempt.failure.failure_source_index} ]'
                     #if hop_count == total_hops:
                         #print (f"{datetime.now().strftime('%c')} : Debug Hop {attempt.attempt_id=} {attempt.route.total_amt=} {hop.mpp_record.payment_addr.hex()=} {hop.mpp_record.total_amt_msat=} {hop.amp_record=} {db_payment.payment_hash=}")
-                    PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
+                    if attempt.status == 1 or attempt.status == 0 or (attempt.status == 2 and attempt.failure.code in (1,2,12)):
+                        PaymentHops(payment_hash=db_payment, attempt_id=attempt.attempt_id, step=hop_count, chan_id=hop.chan_id, alias=alias, chan_capacity=hop.chan_capacity, node_pubkey=hop.pub_key, amt=round(hop.amt_to_forward_msat/1000, 3), fee=round(fee, 3), cost_to=round(cost_to, 3)).save()
                     cost_to += fee
                     if hop_count == 1 and attempt.status == 1:
                         if db_payment.chan_out is None:
@@ -106,14 +107,15 @@ def adjust_ar_amt( payment, chan_id ):
         ar_target = 5
 
     #Adjust AR Target Amount, increase if success reduce if failed.
+    db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
     if payment.status == 2 and chan_id is not None:
-        db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
         if db_channel is not None and payment.value_msat/1000 > 1000 :
-            new_ar_amount = int(min(max(db_channel.ar_amt_target * 1.21, payment.value_msat/1000), db_channel.capacity*ar_target*upper_limit/100))
+            new_ar_amount = int(min(max(db_channel.ar_amt_target * 1.11, payment.value_msat/1000), db_channel.capacity*ar_target*upper_limit/100))
             if new_ar_amount > db_channel.ar_amt_target:
                 print (f"{datetime.now().strftime('%c')} : Increase AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
                 db_channel.ar_amt_target = new_ar_amount
                 db_channel.save()
+
     if payment.status == 3:
         estimated_liquidity = 0
         for attempt in payment.htlcs:
@@ -123,11 +125,16 @@ def adjust_ar_amt( payment, chan_id ):
                 #Failure 1,2 from last hop indicating liquidity available, failure 12 shows fees in sufficient but liquidity available
                 estimated_liquidity += attempt.route.total_amt
                 chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
-                print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+                print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+
+        if estimated_liquidity == 0:
+            #Could not estimate liquidity, reduce by half
+            estimated_liquidity = db_channel.ar_amt_target/2 if db_channel is not None else 0
+            print (f"{datetime.now().strftime('%c')} : Liquidity Estimation not possible, halving {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+
         if payment.value_msat/1000 >= lower_limit and estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
             #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
             new_ar_amount = int(estimated_liquidity if estimated_liquidity > lower_limit else lower_limit)
-            db_channel = Channels.objects.filter(chan_id = chan_id)[0] if Channels.objects.filter(chan_id = chan_id).exists() else None
             if db_channel is not None and new_ar_amount < db_channel.ar_amt_target:
                 print (f"{datetime.now().strftime('%c')} : Decrease AR Target Amount {chan_id=} {db_channel.alias=} {db_channel.ar_amt_target=} {new_ar_amount=}")
                 db_channel.ar_amt_target = new_ar_amount
