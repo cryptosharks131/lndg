@@ -17,7 +17,7 @@ from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps import wtclient_pb2 as wtrpc
 from gui.lnd_deps import wtclient_pb2_grpc as wtstub
-from .lnd_deps.lnd_connect import lnd_connect
+from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
 from pandas import DataFrame, merge
@@ -1851,7 +1851,12 @@ def new_address_form(request):
     if request.method == 'POST':
         try:
             stub = lnrpc.LightningStub(lnd_connect())
-            response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            version = stub.GetInfo(ln.GetInfoRequest()).version
+            # Verify sufficient version to handle p2tr address creation
+            if float(version[:4]) >= 0.15:
+                response = stub.NewAddress(ln.NewAddressRequest(type=4))
+            else:
+                response = stub.NewAddress(ln.NewAddressRequest(type=0))
             messages.success(request, 'Deposit Address: ' + str(response.address))
         except Exception as e:
             error = str(e)
@@ -2863,7 +2868,12 @@ def add_invoice(request):
 def new_address(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
-        response = stub.NewAddress(ln.NewAddressRequest(type=0))
+        version = stub.GetInfo(ln.GetInfoRequest()).version
+        # Verify sufficient version to handle p2tr address creation
+        if float(version[:4]) >= 0.15:
+            response = stub.NewAddress(ln.NewAddressRequest(type=4))
+        else:
+            response = stub.NewAddress(ln.NewAddressRequest(type=0))
         return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
     except Exception as e:
         error = str(e)
