@@ -1292,6 +1292,7 @@ def channel(request):
                 channels_df['cv_30day'] = round((channels_df['revenue_30day']*1216.6667)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_30day'], 2)
                 channels_df['cv_7day'] = round((channels_df['revenue_7day']*5214.2857)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_7day'], 2)
                 channels_df['cv_1day'] = round((channels_df['revenue_1day']*36500)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_1day'], 2)
+            autofees = Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
@@ -1300,9 +1301,7 @@ def channel(request):
             rebalancer_df = DataFrame()
             failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
-
-        autofees = Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
-
+            autofees = []
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
