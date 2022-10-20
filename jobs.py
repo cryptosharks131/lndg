@@ -241,6 +241,7 @@ def update_channels(stub):
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
         try:
             chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
+            old_fee_rate = db_channel.local_fee_rate if db_channel.local_fee_rate is not None else 0
             if chan_data.node1_pub == channel.remote_pubkey:
                 db_channel.local_base_fee = chan_data.node2_policy.fee_base_msat
                 db_channel.local_fee_rate = chan_data.node2_policy.fee_rate_milli_msat
@@ -268,6 +269,7 @@ def update_channels(stub):
                 db_channel.remote_min_htlc_msat = chan_data.node2_policy.min_htlc
                 db_channel.remote_max_htlc_msat = chan_data.node2_policy.max_htlc_msat
         except:
+            old_fee_rate = 0
             db_channel.local_base_fee = 0
             db_channel.local_fee_rate = 0
             db_channel.local_disabled = False
@@ -345,6 +347,11 @@ def update_channels(stub):
                 db_channel.auto_fees = pending_channel.auto_fees
             pending_channel.delete()
         db_channel.save()
+        if db_channel.local_fee_rate != old_fee_rate:
+            print (f"{datetime.now().strftime('%c')} : Ext Fee Change Detected {db_channel.chan_id=} {db_channel.alias=} {old_fee_rate=} {db_channel.local_fee_rate=}")
+            #External Fee change detected, update auto fee log
+            Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()
@@ -624,7 +631,7 @@ def auto_fees(stub):
                         channel.local_fee_rate = target_channel['new_rate']
                         channel.fees_updated = datetime.now()
                         channel.save()
-                        Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting='Fee Rate', old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
+                        Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
 
 def main():
     #print (f"{datetime.now().strftime('%c')} : Entering Jobs")
