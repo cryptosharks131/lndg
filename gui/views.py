@@ -1668,10 +1668,10 @@ def rebalancing(request):
             query = request.GET.urlencode()[1:]
             if query == '1':
                 #Filter Sink (AR Enabled)
-                channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False, auto_rebalance=True).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
+                channels_df = channels_df[channels_df['auto_rebalance']==True][channels_df['is_active']==True]
             elif query == '2':
                 #Filter Source (Eligible to rebalance out)
-                channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False, auto_rebalance=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', '-percent_outbound').values())
+                channels_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True].sort_values(by=['percent_outbound'], ascending=False)
             else:
                 #Proceed
                 pass
