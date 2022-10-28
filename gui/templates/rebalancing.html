@@ -9,6 +9,7 @@
     <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
             <th title="Select outbound channel for a manual rebalance request">Out</th>
+            <th width="5%" title="Remote (peer) public key">PK</th>
             <th>Channel ID</th>
             <th>Peer Alias</th>
             <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target (%)</th>
@@ -18,16 +19,16 @@
             <th>Rebal</th>
             <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
             <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-            <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
-            <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">iTarget%</th>
+            <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost (%)</th>
+            <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">In Target (%)</th>
             <th>AR</th>
             <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
             <th>Active</th>
-            <th width="5%" title="Remote (peer) public key">PK</th>
         </tr>
       {% for channel in channels %}
       <tr>
         <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
+        <td><input type="button" class="w3-btn w3-hover-blue" onclick="navigator.clipboard.writeText('{{channel.remote_pubkey}}')" value="Copy"/></td>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td width=5% {% if channel.auto_rebalance == False %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
@@ -82,7 +83,6 @@
         </td>
         <td>{% if channel.attempts == 0 %}---{% else %} {{ channel.success }}/{{ channel.attempts }} ({{ channel.success_rate }}%){% endif %}</td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
-        <td><input type="button" class="w3-btn w3-hover-blue" onclick="navigator.clipboard.writeText('{{channel.remote_pubkey}}')" value="Copy"/></td>
       </tr>
       {% endfor %}
       </table>
