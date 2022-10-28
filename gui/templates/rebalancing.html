@@ -21,8 +21,8 @@
             <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
             <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost (%)</th>
             <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">In Target (%)</th>
-            <th>AR</th>
             <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
+            <th>AR</th>
         </tr>
       {% for channel in channels %}
       <tr>
@@ -71,16 +71,16 @@
             <input type="hidden" name="update_target" value="3">
           </form>
         </td>
-        <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
+        <td>{% if channel.attempts == 0 %}---{% else %} {{ channel.success }}/{{ channel.attempts }} ({{ channel.success_rate }}%){% endif %}</td>
+        <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            <input type="submit" class="w3-btn w3-hover-{% if channel.auto_rebalance %}red{% else %}green{% endif %}" value="{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
             <input type="hidden" name="target" value="0">
           </form>
         </td>
-        <td>{% if channel.attempts == 0 %}---{% else %} {{ channel.success }}/{{ channel.attempts }} ({{ channel.success_rate }}%){% endif %}</td>
       </tr>
       {% endfor %}
       </table>
