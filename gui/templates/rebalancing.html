@@ -48,7 +48,7 @@
             <input type="hidden" name="update_target" value="3">
           </form>
         </td>
-        <td {% if channel.fee_check < 100 %}style="background-color: #a6dce2">{{ channel.fee_ratio }}%{% else %}style="background-color: #fadbd5">{{ channel.fee_ratio }}%{% endif %}</td>
+        <td width=3% {% if channel.fee_check >= 100 %}style="background-color: #fadbd599"{% endif %}>{{ channel.fee_ratio }}%</td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
