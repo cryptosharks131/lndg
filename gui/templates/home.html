@@ -131,7 +131,10 @@
           <th>Routed In</th>
           <th title="y = ax + b">In fee</th>
           <th>Unsettled</th>
+          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
+          <th>AR</th>
         </tr>
+        <form></form>
         {% for channel in active_channels %}
         <tr title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}">
           <td><input name="target_chans" id="id_target_chans_{{forloop.counter0}}" class="w3-check" type="checkbox" value="{{channel.chan_id}}"/></td>
@@ -152,6 +155,27 @@
           </td>
           <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
           <td><small>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</small></td>
+          <td>
+            {% if channel.auto_rebalance %}
+              <form action="/update_channel/" method="post">
+                {% csrf_token %}
+                <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
+                <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+                <input type="hidden" name="update_target" value="3">
+              </form>
+            {% else %}
+              ---
+            {% endif %}
+          </td>
+          <td>
+            <form action="/update_channel/" method="post">
+              {% csrf_token %}
+              <input type="submit" value="{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able"/>
+              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+              <input type="hidden" name="update_target" value="5">
+              <input type="hidden" name="target" value="0">
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </table>
