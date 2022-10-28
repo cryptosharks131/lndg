@@ -8,6 +8,7 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
+            <th title="Select outbound channel for a manual rebalance request">Out</th>
             <th>Channel ID</th>
             <th>Peer Alias</th>
             <th>Outbound Liquidity</th>
@@ -22,11 +23,11 @@
             <th>AR</th>
             <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
             <th>Active</th>
-            <th title="Select outbound channel for a manual rebalance request">Out</th>
             <th width="5%" title="Remote (peer) public key">PK</th>
         </tr>
       {% for channel in channels %}
       <tr>
+        <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td><small>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</small></td>
@@ -91,7 +92,6 @@
         </td>
         <td>{% if channel.attempts == 0 %}---{% else %} {{ channel.success }}/{{ channel.attempts }} ({{ channel.success_rate }}%){% endif %}</td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
-        <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
         <td><input type="button" class="w3-btn w3-hover-blue" onclick="navigator.clipboard.writeText('{{channel.remote_pubkey}}')" value="Copy"/></td>
       </tr>
       {% endfor %}
