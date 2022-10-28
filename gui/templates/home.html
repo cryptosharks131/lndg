@@ -32,7 +32,7 @@
       <br/>
       Public Addresses:
       <br/>
-      {% for info in node_info.uris %}<span class="w3-tag w3-round w3-border w3-pale-blue w3-center">{{ info }}</span>{% endfor %}
+      {% for info in node_info.uris %}<button onclick="navigator.clipboard.writeText('{{ info }}')" class="w3-btn w3-round w3-medium" title="Click to copy">{{ info }}</button>{% endfor %}
     </h4>
   </div>
   <form id="newAddr" action="/newaddress/" method="post">
