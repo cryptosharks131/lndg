@@ -33,20 +33,10 @@
         <td><small>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</small></td>
         <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:9%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.percent_outbound > 0 %}width:{{ channel.percent_outbound|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
         <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.percent_inbound }}%)</small></td>
-          {% if channel.auto_rebalance == False %}
-          <td {% if channel.percent_outbound >= channel.ar_out_target %}
-                style="background-color: #a6dce2" 
-              {% else %}
-                style="background-color: #fadbd5"
-              {% endif %}"> Out
-          </td>
-          {% else %}  
-            <td title="Steps: {{ channel.steps }}" {% if channel.inbound_can >= 1 and channel.fee_check < 100 %}
-              style="background-color: #a6dce2"  
-            {% else %}
-              style="background-color: #fadbd5"
-            {% endif %}"> In 
-          </td>
+        {% if channel.auto_rebalance %}
+        <td title="Steps: {{ channel.steps }}">{% if channel.inbound_can >= 1 and channel.fee_check < 100%}In{% else %} --- {% endif %}</td>
+        {% else %}  
+          <td>{% if channel.percent_outbound >= channel.ar_out_target %}Out{% else %} --- {% endif %}</td>
         {% endif %}
         <td {% if channel.fee_check < 100 %}style="background-color: #a6dce2">{{ channel.fee_ratio }}%{% else %}style="background-color: #fadbd5">{{ channel.fee_ratio }}%{% endif %}</td>
         <td>
