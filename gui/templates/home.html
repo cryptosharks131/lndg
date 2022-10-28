@@ -12,22 +12,28 @@
   <div class="w3-panel w3-pale-green w3-leftbar w3-rightbar w3-border-green w3-border">
     <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> <span class="w3-tag w3-round w3-center">{{ node_info.identity_pubkey }}</span></h3>
     <h4>
+      Network Statistics:
       <span class="w3-tag w3-round w3-border w3-pale-{% if not node_info.synced_to_graph %}red{% else %}blue{% endif %} w3-center" title="{% if not node_info.synced_to_graph %}Not{% endif %} Synced">LND</span>
       <span class="w3-tag w3-round w3-border w3-pale-{% if not node_info.synced_to_chain %}red{% else %}blue{% endif %} w3-center" title="{% if not node_info.synced_to_chain %}Not{% endif %} Synced">{% for info in node_info.chains %}{{ info }}{% endfor %}</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center" title="Latest block">{{ node_info.block_height }} # {{ node_info.block_hash }}</span>
+      <br/>
+      Channels Statistics:
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Public Capacity: {{ total_capacity|intcomma }}</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center"><a href="/peers" target="_blank">Active Channels</a>: {{ node_info.num_active_channels }} / {{ total_channels }} ({{node_info.num_peers}} Peers)</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Total States Updates: {{ num_updates|intcomma|default:"---" }}</span>
       {% if total_private > 0 %}
-      <span class="w3-tag w3-padding-small w3-round w3-gray w3-border w3-center"> Private
+      <span class="w3-tag w3-round w3-gray w3-center"> Private
         <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Capacity: {{ private_capacity|intcomma }}</span>
         <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Locked Liquidity: {{ private_outbound|intcomma }}</span>
         <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Active Channels: {{ active_private }} / {{ total_private }}</span>
       </span>  
       {% endif %}
+      <br/>
+      Public Addresses:
+      <br/>
+      {% for info in node_info.uris %}<span class="w3-tag w3-round w3-border w3-pale-blue w3-center">{{ info }}</span>{% endfor %}
     </h4>
-    <h4>Public Addresses: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
   </div>
   <form id="newAddr" action="/newaddress/" method="post">
     {% csrf_token %}
