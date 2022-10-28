@@ -19,8 +19,14 @@
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center"><a href="/peers" target="_blank">Active Channels</a>: {{ node_info.num_active_channels }} / {{ total_channels }} ({{node_info.num_peers}} Peers)</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Total States Updates: {{ num_updates|intcomma|default:"---" }}</span>
+      {% if total_private > 0 %}
+      <span class="w3-tag w3-padding-small w3-round w3-gray w3-border w3-center"> Private
+        <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Capacity: {{ private_capacity|intcomma }}</span>
+        <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Locked Liquidity: {{ private_outbound|intcomma }}</span>
+        <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Active Channels: {{ active_private }} / {{ total_private }}</span>
+      </span>  
+      {% endif %}
     </h4>
-    {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
     <h4>Public Addresses: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
   </div>
   <form id="newAddr" action="/newaddress/" method="post">
