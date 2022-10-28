@@ -262,14 +262,12 @@
     <tr>
       <th>Channel ID</th>
       <th>Peer Alias</th>
-      <th>Capacity</th>
+      <th width=4%>oLife</th>
+      <th title="y = ax + b">Out Fee</th>
       <th width=9%>Outbound Liquidity</th>
-      <th width=10%></th>
+      <th width=15%>Capacity</th>
       <th width=9%>Inbound Liquidity</th>
       <th width=6%>Unsettled</th>
-      <th width=4%>oRate</th>
-      <th width=4%>oBase</th>
-      <th width=4%>oLife</th>
       <th width=4%>iLife</th>
       <th width=5%>Local Commit</th>
       <th width=5%>Local Reserve</th>
@@ -280,14 +278,12 @@
     <tr>
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
       <td>{{ channel.total_sent|intcomma }}</td>
+      <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
+      <td><small>{{ channel.local_balance|intcomma }}</small></td>
+      <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
+      <td><small>{{ channel.remote_balance|intcomma }}</small></td>
+      <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td>{{ channel.total_received|intcomma }}</td>
       <td>{{ channel.local_commit|intcomma }}</td>
       <td>{{ channel.local_chan_reserve|intcomma }}</td>
