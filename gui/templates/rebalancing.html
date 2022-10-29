@@ -27,7 +27,7 @@
       <tr>
         <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
         <td title="{{ channel.remote_pubkey }}"><input type="button" class="w3-btn w3-hover-blue" onclick="navigator.clipboard.writeText('{{channel.remote_pubkey}}')" value="Copy"/></td>
-        <td title="{% if channel.is_active %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if not channel.is_active %}style="background-color: #fadbd5"{% endif %}><a title="{{ channel.funding_txid }}:{{ channel.output_index }}" href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{% if channel.is_active %}Up{% else %}Down{% endif %}time: {{ channel.last_update|naturaltime|slice:":-4" }}" {% if not channel.is_active %}style="background-color: #fadbd599"{% endif %}><a title="{{ channel.funding_txid }}:{{ channel.output_index }}" href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>
           <form action="/update_channel/" method="post">
