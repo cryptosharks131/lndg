@@ -1469,10 +1469,20 @@ def invoices(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalances(request):
     if request.method == 'GET':
-        context = {
-            'rebalances': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:150],
-        }
-        return render(request, 'rebalances.html', context)
+        try:
+            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
+            rebalances_success = rebalances.filter(status=2)
+            context = {
+                'rebalances': rebalances[:150],
+                'rebalances_success' : rebalances_success[:69]
+            }
+            return render(request, 'rebalances.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
