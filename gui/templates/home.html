@@ -19,7 +19,7 @@
       <br/>
       Channels Statistics:
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Public Capacity: {{ total_capacity|intcomma }}</span>
-      <span class="w3-tag w3-round w3-border w3-pale-blue w3-center"><a href="/peers" target="_blank">Active Channels</a>: {{ node_info.num_active_channels }} / {{ total_channels }} ({{node_info.num_peers}} Peers)</span>
+      <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} (<a href="/peers" target="_blank">{{node_info.num_peers}} Peers</a>)</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
       <span class="w3-tag w3-round w3-border w3-pale-blue w3-center">Total States Updates: {{ num_updates|intcomma|default:"---" }}</span>
       {% if total_private > 0 %}
