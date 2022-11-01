@@ -1936,10 +1936,13 @@ def update_chan_policy(request):
                             stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
                             db_channel = Channels.objects.get(chan_id=channel.chan_id)
                             db_channel.local_base_fee = new_base_fee
+                            old_fee_rate = db_channel.local_fee_rate
                             db_channel.local_fee_rate = new_fee_rate*1000000
                             db_channel.local_cltv = new_cltv
                             if form.cleaned_data['new_fee_rate'] is not None:
                                 db_channel.fees_updated = datetime.now()
+                                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+
                             db_channel.save()
                     else:
                         messages.error(request, 'No channels were specified in the update request!')
@@ -2128,9 +2131,11 @@ def update_channel(request):
                 channel_point.funding_txid_str = db_channel.funding_txid
                 channel_point.output_index = db_channel.output_index
                 stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
+                old_fee_rate = db_channel.local_fee_rate
                 db_channel.local_fee_rate = target
                 db_channel.fees_updated = datetime.now()
                 db_channel.save()
+                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
                 messages.success(request, 'Fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             elif update_target == 2:
                 db_channel.ar_amt_target = target
@@ -2427,9 +2432,11 @@ def update_setting(request):
                     channel_point.funding_txid_str = db_channel.funding_txid
                     channel_point.output_index = db_channel.output_index
                     stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
+                    old_fee_rate = db_channel.local_fee_rate
                     db_channel.local_fee_rate = target
                     db_channel.fees_updated = datetime.now()
                     db_channel.save()
+                    Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
                 messages.success(request, 'Fee rate for all open channels updated to a value of: ' + str(target))
             elif key == 'ALL-oBase':
                 target = int(value)
