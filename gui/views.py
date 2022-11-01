@@ -205,6 +205,7 @@ def home(request):
                 detailed_channel['amt_routed_in_1day'] = int(forwards_df_in_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['amt_routed_out_1day'] = int(forwards_df_out_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['htlc_count'] = channel.htlc_count
+                detailed_channel['local_cltv'] = channel.local_cltv
                 detailed_channel['auto_rebalance'] = channel.auto_rebalance
                 detailed_channel['ar_in_target'] = channel.ar_in_target
                 detailed_active_channels.append(detailed_channel)
@@ -289,7 +290,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'rebalances': rebalances[:12],
-                'chan_policy_form': ChanPolicyForm,
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
@@ -1673,7 +1673,6 @@ def rebalancing(request):
             eligible_count = 0
             enabled_count = 0
             available_count = 0
-
         try:
             query = request.GET.urlencode()[1:]
             if query == '1':
@@ -1691,15 +1690,34 @@ def rebalancing(request):
             except:
                 error = str(e)
             return render(request, 'error.html', {'error': error})
-
+        ar_settings = LocalSettings.objects.filter(key__contains='AR-').values('key', 'value').order_by('key')
+        form = [{'id': 'enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1}, 
+                {'id': 'target_percent', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100},
+                {'id': 'target_time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60},
+                {'id': 'fee_rate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500},
+                {'id': 'outbound_percent', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100},
+                {'id': 'inbound_percent', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100},
+                {'id': 'max_cost', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100},
+                {'id': 'variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100},
+                {'id': 'wait_period', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100},
+                {'id': 'autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1},
+                {'id': 'autopilotdays', 'title': 'Number of days to consider for autopilot. Default 7.', 'min':0, 'max':100}]
+        local_settings = []
+        for sett in ar_settings:
+            sett_text = sett['key'].replace("AR-", "").replace("%","percent").replace("AP","autopilot").lower()
+            for field in form:
+                field_text=field['id'].replace("_", "")
+                if field_text in sett_text or sett_text in field_text:
+                    local_settings.append({'id': field['id'], 'title': field['title'], 'min': field['min'], 'max':field['max'], 'label': sett['key'], 'value': sett['value']})
+                    form.remove(field)
+                    break
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
-            'rebalancer_form': RebalancerForm,
-            'local_settings': LocalSettings.objects.filter(key__contains='AR-').order_by('key'),
+            'local_settings': local_settings,
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }

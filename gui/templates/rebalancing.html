@@ -7,37 +7,48 @@
   <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
-        <th width=10%></th>
-        <th>Inbound Liquidity</th>
-        <th><a href="/rebalancing?=2">Rebal Out?</a></th>
-        <th><a href="/rebalancing?=1">Enabled?</a></th>
-        <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-        <th>Rebal In?</th>
-        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
-        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">iTarget%</th>
-        <th>AR</th>
-        <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-        <th>Active</th>
-      </tr>
+        <tr>
+            <th title="Select outbound channel for a manual rebalance request">Out</th>
+            <th width="5%" title="Remote (peer) public key">PK</th>
+            <th>Channel ID</th>
+            <th>Peer Alias</th>
+            <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target (%)</th>
+            <th>Outbound Liquidity</th>
+            <th width=10%>Capacity</th>
+            <th>Inbound Liquidity</th>
+            <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">In Target (%)</th>
+            <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+            <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+            <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost (%)</th>
+            <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
+            <th>AR</th>
+        </tr>
       {% for channel in channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td>{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.percent_inbound == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.percent_outbound == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.percent_outbound }}%"></div>{% endif %}</div></td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.percent_inbound }}%)</td>
-        <td {% if channel.percent_outbound >= channel.ar_out_target and channel.auto_rebalance == False %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
-        <td {% if channel.auto_rebalance  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
-        <td {% if channel.fee_check < 100 %}style="background-color: #a6dce2">{{ channel.fee_ratio }}%{% else %}style="background-color: #fadbd5">{{ channel.fee_ratio }}%{% endif %}</td>
-        <td {% if channel.inbound_can >= 1 and channel.fee_check < 100 and channel.auto_rebalance == True %}style="background-color: #a6dce2">True ({{ channel.steps }}){% else %}style="background-color: #fadbd5">False{% endif %}</td>
+        <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
+        <td title="{{ channel.remote_pubkey }}"><input type="button" class="w3-btn w3-hover-blue" onclick="navigator.clipboard.writeText('{{channel.remote_pubkey}}')" value="Copy"/></td>
+        <td title="{% if channel.is_active %}Up{% else %}Down{% endif %}time: {{ channel.last_update|naturaltime|slice:":-4" }}" {% if not channel.is_active %}style="background-color: #fadbd599"{% endif %}><a title="{{ channel.funding_txid }}:{{ channel.output_index }}" href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:60px" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="4">
+          </form>
+        </td>
+        <td><small>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</small></td>
+        <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:9%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.percent_outbound > 0 %}width:{{ channel.percent_outbound|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
+        <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.percent_inbound }}%)</small></td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:60px" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="3">
+          </form>
+        </td>
+        <td width=3% {% if channel.fee_check >= 100 %}style="background-color: #fadbd599"{% endif %}>{{ channel.fee_ratio }}%</td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
@@ -49,45 +60,57 @@
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_max_cost }}">
+            <input style="text-align:center;width:60px" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_max_cost }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="6">
           </form>
         </td>
-        <td {% if channel.auto_rebalance == False %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
+        <td>{% if channel.attempts == 0 %}---{% else %} {{ channel.success }}/{{ channel.attempts }} ({{ channel.success_rate }}%){% endif %}</td>
+        <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="4">
-          </form>
-        </td>
-        <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="3">
-          </form>
-        </td>
-        <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% else %}style="background-color: #fadbd5"{% endif %}>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            {% if channel.percent_outbound >= channel.ar_out_target %}
+            <input type="submit" class="w3-button {% if not channel.auto_rebalance %}w3-disabled{% endif %}" {% if not channel.auto_rebalance %}title="Consider lowering this channel's Out Target value to make it accept AR in."{% endif %} value="Out"/>
+            {% elif channel.inbound_can < 1 and channel.fee_check >= 100 %}
+            <input type="submit" class="w3-button w3-disabled" title="Fee ratio is too high or this channel doesn't have enough Inbound Liquidity" value="---"/>
+            {% else %}
+            <input type="submit" class="w3-button w3-hover-{% if not channel.auto_rebalance %}blue{% else %}red{% endif %}" value="{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able"/>
+            {% endif %}
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
             <input type="hidden" name="target" value="0">
           </form>
         </td>
-        <td>{% if channel.attempts == 0 %}---{% else %}{{ channel.success_rate }}% ({{ channel.success }}/{{ channel.attempts }}){% endif %}</td>
-        <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: #a6dce2">True{% else %}style="background-color: #fadbd5">False{% endif %}</td>
       </tr>
       {% endfor %}
-    </table>
-  </div>
+      </table>
+    </div>
+    <br/>
+    <h3>Manual rebalance request options: </h3>
+    <div class="w3-row-padding">
+      <div class="w3-col" style="width:10%">
+        <label class="w3-label" for="duration">Run Time (min): </label>
+        <input class="w3-input" id="duration" type="number" name="duration">
+      </div>
+      <div class="w3-col" style="width:10%">
+        <label class="w3-label" for="value">Amount (sats): </label>
+        <input class="w3-input" id="value" type="number" min="10" max="5000000" name="value">
+      </div>
+      <div class="w3-col" style="width:10%">
+        <label class="w3-label" for="fee_limit">Fee Limit (ppm): </label>
+        <input  class="w3-input" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+      </div>
+      <div class="w3-col" style="width:60%">
+        <label class="w3-label" for="last_hop_pubkey">Last Hop Pubkey: </label>
+        <input class="w3-input" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+      </div>
+      <div class="w3-col" style="width:10%">
+        <input class="w3-btn large" type="submit" value="OK">
+      </div>
+    </div>
+  </form>
 </div>
-{% endif %}
-{% if not channels %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any channels to rebalance yet.</h1></center>
 </div>
@@ -98,8 +121,8 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Requested</th>
-      <th>Start</th>
-      <th>Stop</th>
+      <th>Started</th>
+      <th>Stopped</th>
       <th>Scheduled Duration</th>
       <th>Actual Duration</th>
       <th>Value</th>
@@ -136,77 +159,25 @@
 {% endif %}
 {% if local_settings %}
 <div class="w3-container w3-padding-small">
+  <form action="/autorebalance/" method="post">
+    {% csrf_token %}
   <h2>Auto-Rebalancer Settings</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Key</th>
-      <th>Value</th>
-    </tr>
-    {% for settings in local_settings %}
-    <tr>
-      <td>{{ settings.key }}</td>
-      <td>{{ settings.value|intcomma }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-<div class="w3-container w3-padding-small">
-  <h2>Update Auto Rebalancer Settings</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/autorebalance/" method="post">
-      {% csrf_token %}
-      <label title="This enables or disables the auto-scheduling function" for="enabled">Enabled: </label>
-      <input id="enabled" type="number" min="0" max="1" name="enabled">
-      <label title="The % of the total capacity to target as the rebalance amount" for="target_percent">Target Amount (%): </label>
-      <input id="target_percent" type="number" step="0.1" min="0.1" max="100" name="target_percent">
-      <label title="The time spent per individual rebalance attempt" for="target_time">Target Time (min): </label>
-      <input id="target_time" type="number" min="1" max="60" name="target_time">
-      <label title="When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel" for="outbound_percent">Target Outbound Above (%): </label>
-      <input id="outbound_percent" type="number" step="1" min="1" max="100" name="outbound_percent">
-      <label title="When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance" for="inbound_percent">Target Inbound Above (%): </label>
-      <input id="inbound_percent" type="number" step="1" min="1" max="100" name="inbound_percent">
-      <label title="The max rate we can ever use to refill a channel with outbound" for="fee_rate">Global Max Fee Rate (ppm): </label>
-      <input id="fee_rate" type="number" min="1" max="2500" name="fee_rate">
-      <label title="The ppm to target which is the % of the outbound fee rate for the channel being refilled" for="max_cost">Max Cost (%): </label>
-      <input id="max_cost" type="number" step="1" min="1" max="100" name="max_cost">
-      <label title="The % of the target amount to be randomly varied with every rebalance attempt" for="variance">Variance (%): </label>
-      <input id="variance" type="number" min="0" max="100" name="variance">
-      <label title="The minutes we should wait after a failed attempt before trying again" for="wait_period">Wait Period (min): </label>
-      <input id="wait_period" type="number" min="1" max="100" name="wait_period">
-      <label title="This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions" for="autopilot">Autopilot: </label>
-      <input id="autopilot" type="number" min="0" max="1" name="autopilot">
-      <label title="Number of days to consider for autopilot. Default 7. " for="autopilotdays">AutopilotDays: </label>
-      <input id="autopilotdays" type="number" min="0" max="100" name="autopilotdays">
-      <label title="Target All Channels for applicable channel level settings. Uncheck if you only want to update local settings for future channels." for="targetallchannels">AllChannels?: </label>
-      <input id="targetallchannels" type="checkbox" name="targetallchannels">
-      <input type="submit" value="OK">
-    </form>
+  <div class="w3-container">
+    <div class="w3-row-padding w3-container">
+      {% for settings in local_settings %}
+      <div class="w3-quarter w3-container">
+        <label class="w3-label" title="{{ settings.title }}">{{ settings.label }}</label>
+        <input class="w3-input" id="{{settings.id}}" name="{{settings.id}}" type="number" min="{{settings.min}}" max="{{settings.max}}" step="{{settings.min}}" value="{{settings.value|intcomma}}"/>
+      </div>
+      {% endfor %}
+      <div class="w3-quarter w3-container">
+        <input class="w3-check" id="targetallchannels" type="checkbox" name="targetallchannels"/>
+        <label class="w3-validate">Target All Channels </label>
+        <input class="w3-btn" type="submit" value="OK">
+      </div>
+    </div>
   </div>
-</div>
-{% if channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Manual Rebalancer Request</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
-      {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
-      <label for="value">Rebalance Amount (sats): </label>
-      <input id="value" type="number" min="10" max="5000000" name="value">
-      <label for="fee_limit">Fee Limit (ppm): </label>
-      <input id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
-    </form>
-  </div>
+  </form>
 </div>
 {% endif %}
 {% endblock %}
