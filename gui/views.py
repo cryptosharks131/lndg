@@ -1691,25 +1691,23 @@ def rebalancing(request):
                 error = str(e)
             return render(request, 'error.html', {'error': error})
         ar_settings = LocalSettings.objects.filter(key__contains='AR-').values('key', 'value').order_by('key')
-        form = [{'id': 'enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1}, 
-                {'id': 'target_percent', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100},
-                {'id': 'target_time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60},
-                {'id': 'fee_rate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500},
-                {'id': 'outbound_percent', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100},
-                {'id': 'inbound_percent', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100},
-                {'id': 'max_cost', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100},
-                {'id': 'variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100},
-                {'id': 'wait_period', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100},
-                {'id': 'autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1},
-                {'id': 'autopilotdays', 'title': 'Number of days to consider for autopilot. Default 7.', 'min':0, 'max':100}]
-        local_settings = []
-        for sett in ar_settings:
-            sett_text = sett['key'].replace("AR-", "").replace("%","percent").replace("AP","autopilot").lower()
-            for field in form:
-                field_text=field['id'].replace("_", "")
+        form = [{'label': 'Enabled', 'id': 'enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1}, 
+                {'label': 'Target Amount (%)', 'id': 'target_percent', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100},
+                {'label': 'Target Time (min)', 'id': 'target_time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60},
+                {'label': 'Global Max Fee Rate (ppm)', 'id': 'fee_rate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500},
+                {'label': 'Target Outbound Above (%)', 'id': 'outbound_percent', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100},
+                {'label': 'Target Inbound Above (%)', 'id': 'inbound_percent', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100},
+                {'label': 'Max Cost (%)', 'id': 'max_cost', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100},
+                {'label': 'Variance (%)', 'id': 'variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100},
+                {'label': 'Wait Period (min)', 'id': 'wait_period', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100},
+                {'label': 'Autopilot', 'id': 'autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1},
+                {'label': 'Autopilot Days', 'id': 'autopilotdays', 'title': 'Number of days to consider for autopilot. Default 7.', 'min':0, 'max':100}]
+        for field in form:
+            field_text=field['id'].replace("_", "")
+            for sett in ar_settings:
+                sett_text = sett['key'].replace("AR-", "").replace("%","percent").replace("AP","autopilot").lower()
                 if field_text in sett_text or sett_text in field_text:
-                    local_settings.append({'id': field['id'], 'title': field['title'], 'min': field['min'], 'max':field['max'], 'label': sett['key'], 'value': sett['value']})
-                    form.remove(field)
+                    field['value'] = sett['value']
                     break
         context = {
             'eligible_count': eligible_count,
@@ -1717,7 +1715,7 @@ def rebalancing(request):
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
-            'local_settings': local_settings,
+            'local_settings': form,
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
