@@ -1649,9 +1649,9 @@ def forwards(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalancing(request):
     if request.method == 'GET':
+        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
-        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
         if channels_df.shape[0] > 0:
             channels_df['inbound_can'] = channels_df['percent_inbound'] / channels_df['ar_in_target']
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
@@ -1673,6 +1673,25 @@ def rebalancing(request):
             eligible_count = 0
             enabled_count = 0
             available_count = 0
+
+        try:
+            query = request.GET.urlencode()[1:]
+            if query == '1':
+                #Filter Sink (AR Enabled)
+                channels_df = channels_df[channels_df['auto_rebalance']==True][channels_df['is_active']==True]
+            elif query == '2':
+                #Filter Source (Eligible to rebalance out)
+                channels_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True].sort_values(by=['percent_outbound'], ascending=False)
+            else:
+                #Proceed
+                pass
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,

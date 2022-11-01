@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
-  <h2>Channel Rebalancing (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
+  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
@@ -14,8 +14,8 @@
         <th>Outbound Liquidity</th>
         <th width=10%></th>
         <th>Inbound Liquidity</th>
-        <th>Rebal Out?</th>
-        <th>Enabled?</th>
+        <th><a href="/rebalancing?=2">Rebal Out?</a></th>
+        <th><a href="/rebalancing?=1">Enabled?</a></th>
         <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
         <th>Rebal In?</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
