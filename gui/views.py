@@ -1292,6 +1292,7 @@ def channel(request):
                 channels_df['cv_30day'] = round((channels_df['revenue_30day']*1216.6667)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_30day'], 2)
                 channels_df['cv_7day'] = round((channels_df['revenue_7day']*5214.2857)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_7day'], 2)
                 channels_df['cv_1day'] = round((channels_df['revenue_1day']*36500)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_1day'], 2)
+            autofees = Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
@@ -1300,9 +1301,7 @@ def channel(request):
             rebalancer_df = DataFrame()
             failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
-
-        autofees = Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
-
+            autofees = []
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
@@ -1473,10 +1472,20 @@ def invoices(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalances(request):
     if request.method == 'GET':
-        context = {
-            'rebalances': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:150],
-        }
-        return render(request, 'rebalances.html', context)
+        try:
+            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
+            rebalances_success = rebalances.filter(status=2)
+            context = {
+                'rebalances': rebalances[:150],
+                'rebalances_success' : rebalances_success[:69]
+            }
+            return render(request, 'rebalances.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
 
@@ -1640,9 +1649,9 @@ def forwards(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalancing(request):
     if request.method == 'GET':
+        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
-        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
         if channels_df.shape[0] > 0:
             channels_df['inbound_can'] = channels_df['percent_inbound'] / channels_df['ar_in_target']
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
@@ -1664,6 +1673,23 @@ def rebalancing(request):
             eligible_count = 0
             enabled_count = 0
             available_count = 0
+        try:
+            query = request.GET.urlencode()[1:]
+            if query == '1':
+                #Filter Sink (AR Enabled)
+                channels_df = channels_df[channels_df['auto_rebalance']==True][channels_df['is_active']==True]
+            elif query == '2':
+                #Filter Source (Eligible to rebalance out)
+                channels_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True].sort_values(by=['percent_outbound'], ascending=False)
+            else:
+                #Proceed
+                pass
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
         ar_settings = LocalSettings.objects.filter(key__contains='AR-').values('key', 'value').order_by('key')
         form = [{'id': 'enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1}, 
                 {'id': 'target_percent', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100},
@@ -1676,7 +1702,6 @@ def rebalancing(request):
                 {'id': 'wait_period', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100},
                 {'id': 'autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1},
                 {'id': 'autopilotdays', 'title': 'Number of days to consider for autopilot. Default 7.', 'min':0, 'max':100}]
-        
         local_settings = []
         for sett in ar_settings:
             sett_text = sett['key'].replace("AR-", "").replace("%","percent").replace("AP","autopilot").lower()
@@ -1948,10 +1973,13 @@ def update_chan_policy(request):
                             stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
                             db_channel = Channels.objects.get(chan_id=channel.chan_id)
                             db_channel.local_base_fee = new_base_fee
+                            old_fee_rate = db_channel.local_fee_rate
                             db_channel.local_fee_rate = new_fee_rate*1000000
                             db_channel.local_cltv = new_cltv
                             if form.cleaned_data['new_fee_rate'] is not None:
                                 db_channel.fees_updated = datetime.now()
+                                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+
                             db_channel.save()
                     else:
                         messages.error(request, 'No channels were specified in the update request!')
@@ -2140,9 +2168,11 @@ def update_channel(request):
                 channel_point.funding_txid_str = db_channel.funding_txid
                 channel_point.output_index = db_channel.output_index
                 stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
+                old_fee_rate = db_channel.local_fee_rate
                 db_channel.local_fee_rate = target
                 db_channel.fees_updated = datetime.now()
                 db_channel.save()
+                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
                 messages.success(request, 'Fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
             elif update_target == 2:
                 db_channel.ar_amt_target = target
@@ -2439,9 +2469,11 @@ def update_setting(request):
                     channel_point.funding_txid_str = db_channel.funding_txid
                     channel_point.output_index = db_channel.output_index
                     stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(target/1000000), time_lock_delta=db_channel.local_cltv))
+                    old_fee_rate = db_channel.local_fee_rate
                     db_channel.local_fee_rate = target
                     db_channel.fees_updated = datetime.now()
                     db_channel.save()
+                    Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
                 messages.success(request, 'Fee rate for all open channels updated to a value of: ' + str(target))
             elif key == 'ALL-oBase':
                 target = int(value)
