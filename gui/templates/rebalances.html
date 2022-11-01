@@ -2,6 +2,43 @@
 {% block title %} {{ block.super }} - Rebalances{% endblock %}
 {% block content %}
 {% load humanize %}
+{% if rebalances_success %}
+<div class="w3-container w3-padding-small">
+  <h2>Last Successful Rebalances</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Requested</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Scheduled Duration</th>
+      <th>Actual Duration</th>
+      <th>Value</th>
+      <th>Fee Limit</th>
+      <th>Target PPM</th>
+      <th>Fees Paid</th>
+      <th>Last Hop Alias</th>
+      <th>Status</th>
+      <th>Hash</th>
+    </tr>
+    {% for rebalance in rebalances_success %}
+      <tr>
+        <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
+        <td {% if rebalance.status == 0 %}>---{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
+        <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>---{% endif %}</td>
+        <td>{{ rebalance.duration }} minutes</td>
+        <td>{% if rebalance.status == 2 %}{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}---{% endif %}</td>
+        <td>{{ rebalance.value|intcomma }}</td>
+        <td>{{ rebalance.fee_limit|intcomma }}</td>
+        <td>{{ rebalance.ppm|intcomma }}</td>
+        <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
+        <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
+        <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
+        <td>{% if rebalance.payment_hash == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash }}</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% if rebalances %}
 <div class="w3-container w3-padding-small">
   <h2>Last 150 Rebalances</h2>
@@ -18,6 +55,7 @@
       <th>Fees Paid</th>
       <th>Last Hop Alias</th>
       <th>Status</th>
+      <th>Hash</th>
     </tr>
     {% for rebalance in rebalances %}
     <tr>
@@ -30,8 +68,9 @@
       <td>{{ rebalance.fee_limit|intcomma }}</td>
       <td>{{ rebalance.ppm|intcomma }}</td>
       <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if rebalance.target_alias == '' %}None Specified{% else %}{{ rebalance.target_alias }}{% endif %}</td>
+      <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
       <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
+      <td>{% if rebalance.payment_hash == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash }}</a>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
