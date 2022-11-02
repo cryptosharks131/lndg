@@ -99,7 +99,7 @@
         <input class="w3-input" placeholder="Last Hop Pubkey:" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
       </div>
       <div class="w3-col" style="width:10%">
-        <input class="w3-btn large" style="width:100%" type="submit" value="OK">
+        <input class="w3-button large" style="width:100%" type="submit" value="OK">
       </div>
     </div>
   </form>
@@ -159,15 +159,17 @@
   <div class="w3-container">
     <div class="w3-row-padding w3-container">
       {% for settings in local_settings %}
-      <div class="w3-quarter w3-container">
+      <div class="w3-col w3-container" style="width:20%">
         <label class="w3-label" title="{{ settings.title }}">{{ settings.label }}</label>
         <input class="w3-input" id="{{settings.id}}" name="{{settings.id}}" type="number" min="{{settings.min}}" max="{{settings.max}}" step="{{settings.min}}" value="{{settings.value|intcomma}}"/>
       </div>
       {% endfor %}
-      <div class="w3-quarter w3-container">
+      <div class="w3-col w3-container w3-margin-top" style="width:20%">
         <input class="w3-check" id="targetallchannels" type="checkbox" name="targetallchannels"/>
         <label class="w3-validate">Target All Channels </label>
-        <input class="w3-btn" type="submit" value="OK">
+      </div>
+      <div class="w3-col w3-container w3-margin-top" style="width:20%">
+        <input class="w3-button" type="submit" style="width:100%" value="OK">
       </div>
     </div>
   </div>
