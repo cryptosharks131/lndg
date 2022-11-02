@@ -70,11 +70,11 @@
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             {% if channel.percent_outbound >= channel.ar_out_target %}
-            <input type="submit" class="w3-button w3-disabled" title="Consider increasing this channel's Out Target value to make it accept AR in." value="Out"/>
+            <input type="submit" class="w3-button w3-disabled w3-text-green" title="Consider increasing this channel's Out Target value to make it accept AR in." value="Out"/>
             {% elif channel.inbound_can < 1 and channel.fee_check >= 100 %}
-            <input type="submit" class="w3-button w3-disabled" title="This channel has In Fees higher than your Max Cost. Consider increasing Out Fee or Max Cost of this channel for a profitable AR" value="---"/>
+            <input type="submit" class="w3-button w3-disabled" title="This channel has In Fees higher than your Max Cost. Consider increasing Out Fee or Max Cost of this channel for a profitable AR" value="Enable"/>
             {% else %}
-            <input type="submit" class="w3-button w3-hover-{% if not channel.auto_rebalance %}blue{% else %}red{% endif %}" value="{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able"/>
+            <input type="submit" onmouseleave="event.target.value = '{% if channel.auto_rebalance %}En{% else %}Dis{% endif %}abled'" onmouseenter="event.target.value = '{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able'" class="w3-button w3-hover-{% if channel.auto_rebalance %}red w3-text-green{% else %}blue{% endif %}" value="{% if channel.auto_rebalance %}En{% else %}Dis{% endif %}abled"/>
             {% endif %}
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
