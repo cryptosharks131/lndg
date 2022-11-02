@@ -70,7 +70,7 @@
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             {% if channel.percent_outbound >= channel.ar_out_target %}
-            <input type="submit" class="w3-button {% if not channel.auto_rebalance %}w3-disabled{% endif %}" {% if not channel.auto_rebalance %}title="Consider increasing this channel's Out Target value to make it accept AR in."{% endif %} value="Out"/>
+            <input type="submit" class="w3-button w3-disabled" title="Consider increasing this channel's Out Target value to make it accept AR in." value="Out"/>
             {% elif channel.inbound_can < 1 and channel.fee_check >= 100 %}
             <input type="submit" class="w3-button w3-disabled" title="This channel has In Fees higher than your Max Cost. Consider increasing Out Fee or Max Cost of this channel for a profitable AR" value="---"/>
             {% else %}
