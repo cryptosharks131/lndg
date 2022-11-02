@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
-  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
+  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling <a href="rebalancing?=1"> {{ eligible_count }} of {{ enabled_count }} enabled channels </a> for rebalancing via <a href="/rebalancing?=2"> {{ available_count }} outbound channels </a>)</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
