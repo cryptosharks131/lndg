@@ -85,27 +85,21 @@
       {% endfor %}
       </table>
     </div>
-    <br/>
-    <h3>Manual rebalance request options: </h3>
     <div class="w3-row-padding">
       <div class="w3-col" style="width:10%">
-        <label class="w3-label" for="duration">Run Time (min): </label>
-        <input class="w3-input" id="duration" type="number" name="duration">
+        <input class="w3-input" placeholder="Run Time (min):" id="duration" type="number" name="duration">
       </div>
       <div class="w3-col" style="width:10%">
-        <label class="w3-label" for="value">Amount (sats): </label>
-        <input class="w3-input" id="value" type="number" min="10" max="5000000" name="value">
+        <input class="w3-input" placeholder="Amount (sats):" id="value" type="number" min="10" max="5000000" name="value">
       </div>
       <div class="w3-col" style="width:10%">
-        <label class="w3-label" for="fee_limit">Fee Limit (ppm): </label>
-        <input  class="w3-input" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+        <input  class="w3-input" placeholder="Fee Limit (ppm):" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
       </div>
       <div class="w3-col" style="width:60%">
-        <label class="w3-label" for="last_hop_pubkey">Last Hop Pubkey: </label>
-        <input class="w3-input" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+        <input class="w3-input" placeholder="Last Hop Pubkey:" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
       </div>
       <div class="w3-col" style="width:10%">
-        <input class="w3-btn large" type="submit" value="OK">
+        <input class="w3-btn large" style="width:100%" type="submit" value="OK">
       </div>
     </div>
   </form>
