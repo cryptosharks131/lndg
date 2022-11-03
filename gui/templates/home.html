@@ -123,7 +123,6 @@
           <th>Channel ID</th>
           <th>Peer Alias</th>
           <th title="y = ax + b">Out Fee</th>
-          <th>CLTV</th>
           <th>Routed Out</th>
           <th>Outbound Liquidity</th>
           <th width=15%>Capacity</th>
@@ -141,7 +140,6 @@
           <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
           <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
           <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
-          <td>{{channel.local_cltv}}</td>
           <td><div class="w3-row">
             <div title="1 day: {{ channel.amt_routed_out_1day|intcomma }}M sats - {{ channel.routed_out_1day }} routing(s)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_out_1day|intcomma }}M ({{ channel.routed_out_1day }})</small></div>
             <div title="7 days: {{ channel.amt_routed_out_7day|intcomma }}M sats - {{ channel.routed_out_7day }} rounting(s)" class="w3-lime w3-half"><small>{{ channel.amt_routed_out_7day|intcomma }}M ({{ channel.routed_out_7day }})</small></div></div>
@@ -180,16 +178,13 @@
         {% endfor %}
       </table>
     </div>
-    <div class="w3-col" style="width:25%" >
+    <div class="w3-third w3-padding">
       <input class="w3-input" placeholder="New Fee Rate" id="new_fee_rate" type="number" min="0" name="new_fee_rate">
     </div>
-    <div class="w3-col" style="width:25%" >
+    <div class="w3-third w3-padding">
       <input class="w3-input" placeholder="New Base Fee" id="new_base_fee" type="number" min="0" name="new_base_fee">
     </div>
-    <div class="w3-col" style="width:25%" >
-      <input class="w3-input" placeholder="New CLTV" id="new_cltv" type="number" min="18" name="new_cltv">
-    </div>
-    <div class="w3-col" style="width:25%">
+    <div class="w3-third w3-padding">
       <input class="w3-button" style="width:100%" type="submit" value="OK">
     </div>
   </form>
