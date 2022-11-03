@@ -1973,7 +1973,7 @@ def update_chan_policy(request):
                         db_channel.local_fee_rate = form.cleaned_data['new_fee_rate']
                         db_channel.fees_updated = datetime.now()
 
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=db_channel.local_fee_rate/10000, time_lock_delta=channel.local_cltv))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=db_channel.local_fee_rate/1000000, time_lock_delta=channel.local_cltv))
                     db_channel.save()
             else:
                 messages.error(request, 'No channels were specified in the update request!')
