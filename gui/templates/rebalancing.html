@@ -5,7 +5,8 @@
 {% if channels %}
 <div class="w3-container w3-padding-small">
   <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
-  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+  <form action="/rebalancer/" method="post">
+    <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
             <th title="Select outbound channel for a manual rebalance request">Out</th>
