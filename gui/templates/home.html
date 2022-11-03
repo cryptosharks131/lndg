@@ -143,15 +143,15 @@
           <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.local_fee_rate|intcomma}} | Base fee: {{channel.local_base_fee|intcomma}}"><small>{{ channel.local_fee_rate|intcomma }}x{% if channel.local_base_fee > 0 %} + {{channel.local_base_fee|intcomma}}{% endif %}</small></td>
           <td>{{channel.local_cltv}}</td>
           <td><div class="w3-row">
-            <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_out_1day|intcomma }}M ({{ channel.routed_out_1day }})</small></div>
-            <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_out_7day|intcomma }}M ({{ channel.routed_out_7day }})</small></div></div>
+            <div title="1 day: {{ channel.amt_routed_out_1day|intcomma }}M sats - {{ channel.routed_out_1day }} routing(s)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_out_1day|intcomma }}M ({{ channel.routed_out_1day }})</small></div>
+            <div title="7 days: {{ channel.amt_routed_out_7day|intcomma }}M sats - {{ channel.routed_out_7day }} rounting(s)" class="w3-lime w3-half"><small>{{ channel.amt_routed_out_7day|intcomma }}M ({{ channel.routed_out_7day }})</small></div></div>
           </td>
           <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
           <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
           <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
           <td><div class="w3-row">
-            <div title="1 day amount (events)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_in_1day|intcomma }}M ({{ channel.routed_in_1day }})</small></div>
-            <div title="7 days amount (events)" class="w3-lime w3-half"><small>{{ channel.amt_routed_in_7day|intcomma }}M ({{ channel.routed_in_7day }})</small></div></div>
+            <div title="1 day: {{ channel.amt_routed_in_1day|intcomma }}M sats - {{ channel.routed_in_1day }} rounting(s)" class="w3-pale-green w3-half"><small>{{ channel.amt_routed_in_1day|intcomma }}M ({{ channel.routed_in_1day }})</small></div>
+            <div title="7 days: {{ channel.amt_routed_in_7day|intcomma }}M sats - {{ channel.routed_in_7day }} rounting(s)" class="w3-lime w3-half"><small>{{ channel.amt_routed_in_7day|intcomma }}M ({{ channel.routed_in_7day }})</small></div></div>
           </td>
           <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% endif %} title="Fee rate: {{channel.remote_fee_rate|intcomma}} | Base fee: {{channel.remote_base_fee|intcomma}}"><small>{{ channel.remote_fee_rate|intcomma }}x{% if channel.remote_base_fee > 0 %} + {{channel.remote_base_fee|intcomma}}{% endif %}</small></td>
           <td><small>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</small></td>
