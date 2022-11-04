@@ -26,7 +26,6 @@
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
-        <th>Active</th>
       </tr>
       <tr>
         <th colspan="6"></th>
@@ -97,7 +96,7 @@
         <th></th>
       </tr>
       {% for channel in channels %}
-      <tr>
+      <tr title="{% if channel.is_active %}Up{% else %}Down{% endif %}time: {{ channel.last_update|naturaltime|slice:":-4" }}" {% if not channel.is_active %}style="background-color: #fadbd599"{% endif %}>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
         <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
@@ -199,7 +198,6 @@
             <input type="hidden" name="target" value="0">
           </form>
         </td>
-        <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}">{{ channel.is_active }}</td>
       </tr>
       {% endfor %}
     </table>
