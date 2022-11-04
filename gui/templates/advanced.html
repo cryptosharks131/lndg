@@ -8,6 +8,28 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th>Capacity</th>
+        <th>Outbound Liquidity</th>
+        <th width=10%></th>
+        <th>Inbound Liquidity</th>
+        <th>Channel State</th>
+        <th>oRate</th>
+        <th>oBase</th>
+        <th>oCLTV</th>
+        <th>minHTLC</th>
+        <th>maxHTLC</th>
+        <th>iRate</th>
+        <th>iBase</th>
+        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
+        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
+        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
+        <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
+        <th>Active</th>
+      </tr>
+      <tr>
         <th colspan="7"></th>
         <td title="Update all channel outgoing fee rates">
           <form action="/update_setting/" method="post">
@@ -74,28 +96,6 @@
           </form>
         </td>
         <th></th>
-      </tr>
-      <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
-        <th width=10%></th>
-        <th>Inbound Liquidity</th>
-        <th>Channel State</th>
-        <th>oRate</th>
-        <th>oBase</th>
-        <th>oCLTV</th>
-        <th>minHTLC</th>
-        <th>maxHTLC</th>
-        <th>iRate</th>
-        <th>iBase</th>
-        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
-        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
-        <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
-        <th>Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -207,8 +207,7 @@
     </table>
   </div>
 </div>
-{% endif %}
-{% if not channels %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any channels to setup yet!</h1></center>
 </div>
