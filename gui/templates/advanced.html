@@ -6,29 +6,44 @@
 <div class="w3-container w3-padding-small">
   <h2>Advanced Channel Settings</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table class="w3-table-all w3-centered w3-hoverable w3-tiny">
+      <tr class="w3-light-grey">
+        <th colspan="4" class="w3-hover-white">Channel</th>
+        <th colspan="2" class="w3-hover-white">Out fee</th>
+        <th colspan="3" class="w3-hover-white">Liquidity</th>
+        <th colspan="2" class="w3-hover-white">HTCL</th>
+        <th colspan="2" class="w3-hover-white">In fee</th>
+        <th colspan="5" class="w3-hover-white" title="AR Options">AR Target</th>
+      </tr>
       <tr>
-        <th>Channel ID</th>
+        <th>State</th>
+        <th>ID</th>
         <th>Peer Alias</th>
-        <th>Outbound Liquidity</th>
-        <th width=15%></th>
-        <th>Inbound Liquidity</th>
-        <th>Channel State</th>
-        <th>oRate</th>
-        <th>oBase</th>
         <th>CLTV</th>
-        <th>minHTLC</th>
-        <th>maxHTLC</th>
-        <th>iRate</th>
-        <th>iBase</th>
-        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
-        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
+        <th>Rate</th>
+        <th>Base</th>
+        <th>Outbound</th>
+        <th width=15%>Capacity</th>
+        <th>Inbound</th>
+        <th>Min</th>
+        <th>Max</th>
+        <th>Rate</th>
+        <th>Base</th>
+        <th width=5% title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
+        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Amount</th>
+        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out (%)</th>
+        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">In (%)</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
       </tr>
       <tr>
-        <th colspan="6"></th>
+        <th colspan="3"></th>
+        <td title="Update all channel CLTVs">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="value" type="number" min="18" max="1000" name="value" value="">
+            <input type="hidden" name="key" value="ALL-CLTV">
+          </form>
+        </td>
         <td title="Update all channel outgoing fee rates">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -43,13 +58,7 @@
             <input type="hidden" name="key" value="ALL-oBase">
           </form>
         </td>
-        <td title="Update all channel CLTVs">
-          <form action="/update_setting/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center" id="value" type="number" min="18" max="1000" name="value" value="">
-            <input type="hidden" name="key" value="ALL-CLTV">
-          </form>
-        </td>
+        <td colspan="3"></td>
         <td title="Update all channel min HTLCs">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -58,6 +67,13 @@
           </form>
         </td>
         <th colspan="3"></th>
+        <td title="Update all channel AR max cost %s">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:45px" id="value" type="number" min="0" max="100" name="value" value="">
+            <input type="hidden" name="key" value="ALL-MaxCost">
+          </form>
+        </td>
         <td title="Update all channel AR amount amounts">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -65,24 +81,17 @@
             <input type="hidden" name="key" value="ALL-Amts">
           </form>
         </td>
-        <td title="Update all channel AR max cost %s">
-          <form action="/update_setting/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center;width:60px" id="value" type="number" min="0" max="100" name="value" value="">
-            <input type="hidden" name="key" value="ALL-MaxCost">
-          </form>
-        </td>
         <td title="Update all channel AR outbound liquidity amount %s">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
-            <input style="text-align:center;width:60px" id="value" type="number" min="0" max="100" name="value" value="">
+            <input style="text-align:center;width:45px" id="value" type="number" min="0" max="100" name="value" value="">
             <input type="hidden" name="key" value="ALL-oTarget">
           </form>
         </td>
         <td title="Update all channel AR inbound liquidity amount %s">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
-            <input style="text-align:center;width:60px" id="value" type="number" min="0" max="100" name="value" value="">
+            <input style="text-align:center;width:45px" id="value" type="number" min="0" max="100" name="value" value="">
             <input type="hidden" name="key" value="ALL-iTarget">
           </form>
         </td>
@@ -93,29 +102,29 @@
             <input type="hidden" name="key" value="ALL-AR">
           </form>
         </td>
-        <th></th>
       </tr>
       {% for channel in channels %}
       <tr title="{% if channel.is_active %}Up{% else %}Down{% endif %}time: {{ channel.last_update|naturaltime|slice:":-4" }}" {% if not channel.is_active %}style="background-color: #fadbd599"{% endif %}>
+        <td style="background-color: #{% if channel.local_disabled %}fadbd5{% elif channel.private %}dbd5fa{% endif %}">
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" class="{% if not channel.is_active or channel.private %}w3-disabled{% endif %}" value="{% if channel.local_disabled == False %}Dis{% else %}En{% endif %}able">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="7">
+            <input type="hidden" name="target" value="{% if channel.local_disabled == False %}0{% else %}1{% endif %}">
+          </form>
+        </td>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
-        <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
-        <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.out_percent > 0 %}width:{{ channel.out_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
-        <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
-          {% if channel.is_active == True and channel.private == False %}
-            <form action="/update_channel/" method="post">
-              {% csrf_token %}
-              <input type="submit" value="{% if channel.local_disabled == False %}Disable{% else %}Enable{% endif %}">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="7">
-              <input type="hidden" name="target" value="{% if channel.local_disabled == False %}0{% else %}1{% endif %}">
-            </form>
-          {% else %}
-            ---
-          {% endif %}
+        <td style="background-color: #{% if channel.local_disabled %}fadbd5{% elif channel.private %}dbd5fa{% endif %}">
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="9">
+          </form>
         </td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td style="background-color: #{% if channel.local_disabled %}fadbd5{% elif channel.private %}dbd5fa{% endif %}">
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
@@ -123,7 +132,7 @@
             <input type="hidden" name="update_target" value="1">
           </form>
         </td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td style="background-color: #{% if channel.local_disabled %}fadbd5{% elif channel.private %}dbd5fa{% endif %}">
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
@@ -131,18 +140,13 @@
             <input type="hidden" name="update_target" value="0">
           </form>
         </td>
+        <td><small>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</small></td>
+        <td><div class="w3-orange w3-round"><p style="z-index:1;position:absolute;float:left;margin: 5px 5px">{{ channel.capacity|intword|slice:"-6"|title }}</p><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.out_percent > 0 %}width:{{ channel.out_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
+        <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</small></td>
         <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center;width:60px" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="9">
-          </form>
-        </td>
-        <td {% if channel.local_disabled %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center;width:60px" id="target" type="number" step="0.001" min="1" name="target" value="{{ channel.local_min_htlc }}">
+            <input style="text-align:center;width:100px" id="target" type="number" step="0.001" min="1" name="target" value="{{ channel.local_min_htlc }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="10">
           </form>
@@ -156,7 +160,15 @@
           </form>
         </td>
         <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
+        <td {% if channel.remote_disabled %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_max_cost }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="6">
+          </form>
+        </td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
@@ -165,18 +177,10 @@
             <input type="hidden" name="update_target" value="2">
           </form>
         </td>
-        <td>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center;width:60px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_max_cost }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="6">
-          </form>
-        </td>
         <td {% if not channel.auto_rebalance %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center;width:60px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
+              <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="4">
             </form>
@@ -184,7 +188,7 @@
         <td {% if channel.auto_rebalance %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center;width:60px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
+              <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="3">
             </form>
