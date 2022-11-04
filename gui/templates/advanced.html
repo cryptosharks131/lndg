@@ -10,9 +10,8 @@
       <tr>
         <th>Channel ID</th>
         <th>Peer Alias</th>
-        <th>Capacity</th>
         <th>Outbound Liquidity</th>
-        <th width=10%></th>
+        <th width=15%></th>
         <th>Inbound Liquidity</th>
         <th>Channel State</th>
         <th>oRate</th>
@@ -30,7 +29,7 @@
         <th>Active</th>
       </tr>
       <tr>
-        <th colspan="7"></th>
+        <th colspan="6"></th>
         <td title="Update all channel outgoing fee rates">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -101,10 +100,9 @@
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
-        <td>{{ channel.capacity|intcomma }}</td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
+        <td><small>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</small></td>
+        <td><div class="w3-orange w3-round"><div style="z-index:1;position:absolute;display:flex;justify-content:center;width:14%;">{{ channel.capacity|intcomma }}</div><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.out_percent > 0 %}width:{{ channel.out_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"></div></div></td>
+        <td><small>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</small></td>
         <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
           {% if channel.is_active == True and channel.private == False %}
             <form action="/update_channel/" method="post">
