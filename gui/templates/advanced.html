@@ -177,26 +177,26 @@
             <input type="hidden" name="update_target" value="2">
           </form>
         </td>
-        <td {% if not channel.auto_rebalance %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
-            <form action="/update_channel/" method="post">
-              {% csrf_token %}
-              <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="4">
-            </form>
-        </td>
-        <td {% if channel.auto_rebalance %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
-            <form action="/update_channel/" method="post">
-              {% csrf_token %}
-              <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="3">
-            </form>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="4">
+          </form>
         </td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
+            <input style="text-align:center;width:45px" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="3">
+          </form>
+        </td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input type="submit" onmouseleave="event.target.value = '{% if channel.auto_rebalance %}En{% else %}Dis{% endif %}abled'" onmouseenter="event.target.value = '{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able'" class="w3-button w3-hover-{% if channel.auto_rebalance %}red w3-text-green{% else %}blue{% endif %}" value="{% if channel.auto_rebalance %}En{% else %}Dis{% endif %}abled"/>
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
             <input type="hidden" name="target" value="0">
