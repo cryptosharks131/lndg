@@ -174,6 +174,8 @@ def home(request):
             pending_outbound = channels.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if channels.filter(is_open=True).exists() else 0
             pending_inbound = channels.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if channels.filter(is_open=True).exists() else 0
             num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
+            eligible_count = 0
+            available_count = 0
             detailed_active_channels = []
             for channel in active_channels:
                 detailed_channel = {}
@@ -207,6 +209,14 @@ def home(request):
                 detailed_channel['htlc_count'] = channel.htlc_count
                 detailed_channel['auto_rebalance'] = channel.auto_rebalance
                 detailed_channel['ar_in_target'] = channel.ar_in_target
+                detailed_channel['inbound_can'] = (detailed_channel['remote_balance']/channel.capacity)*100
+                detailed_channel['outbound_can'] = (detailed_channel['local_balance']/channel.capacity)*100
+                detailed_channel['fee_ratio'] = (channel.remote_fee_rate/channel.local_fee_rate)*100
+                if channel.auto_rebalance == True and detailed_channel['inbound_can'] >= channel.ar_in_target and detailed_channel['fee_ratio'] <= channel.ar_max_cost:
+                    print(channel.chan_id)
+                    eligible_count += 1
+                if channel.auto_rebalance == False and detailed_channel['outbound_can'] >= channel.ar_out_target:
+                    available_count += 1
                 detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
             inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
@@ -298,9 +308,9 @@ def home(request):
                 '1day_payments_ppm': 0 if payments_1day_amt == 0 else int((total_1day_fees/payments_1day_amt)*1000000),
                 '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
                 'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
-                'eligible_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
+                'eligible_count': eligible_count,
                 'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
-                'available_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=False).annotate(outbound_can=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).filter(outbound_can__gte=F('ar_out_target')).count(),
+                'available_count': available_count,
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
@@ -1675,7 +1685,6 @@ def rebalancing(request):
             eligible_count = 0
             enabled_count = 0
             available_count = 0
-
         try:
             query = request.GET.urlencode()[1:]
             if query == '1':
