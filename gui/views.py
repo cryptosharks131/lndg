@@ -174,6 +174,8 @@ def home(request):
             pending_outbound = channels.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if channels.filter(is_open=True).exists() else 0
             pending_inbound = channels.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if channels.filter(is_open=True).exists() else 0
             num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
+            eligible_count = 0
+            available_count = 0
             detailed_active_channels = []
             for channel in active_channels:
                 detailed_channel = {}
@@ -208,6 +210,14 @@ def home(request):
                 detailed_channel['local_cltv'] = channel.local_cltv
                 detailed_channel['auto_rebalance'] = channel.auto_rebalance
                 detailed_channel['ar_in_target'] = channel.ar_in_target
+                detailed_channel['inbound_can'] = (detailed_channel['remote_balance']/channel.capacity)*100
+                detailed_channel['outbound_can'] = (detailed_channel['local_balance']/channel.capacity)*100
+                detailed_channel['fee_ratio'] = 100 if channel.local_fee_rate == 0 else (channel.remote_fee_rate/channel.local_fee_rate)*100
+                if channel.auto_rebalance == True and detailed_channel['inbound_can'] >= channel.ar_in_target and detailed_channel['fee_ratio'] <= channel.ar_max_cost:
+                    print(channel.chan_id)
+                    eligible_count += 1
+                if channel.auto_rebalance == False and detailed_channel['outbound_can'] >= channel.ar_out_target:
+                    available_count += 1
                 detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
             inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
@@ -298,9 +308,9 @@ def home(request):
                 '1day_payments_ppm': 0 if payments_1day_amt == 0 else int((total_1day_fees/payments_1day_amt)*1000000),
                 '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
                 'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
-                'eligible_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=True).annotate(inbound_can=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(fee_ratio=(Sum('remote_fee_rate')*100)/Sum('local_fee_rate')).filter(inbound_can__gte=F('ar_in_target'), fee_ratio__lte=F('ar_max_cost')).count(),
+                'eligible_count': eligible_count,
                 'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
-                'available_count': channels.filter(is_active=True, is_open=True, private=False, auto_rebalance=False).annotate(outbound_can=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).filter(outbound_can__gte=F('ar_out_target')).count(),
+                'available_count': available_count,
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
@@ -1292,7 +1302,9 @@ def channel(request):
                 channels_df['cv_30day'] = round((channels_df['revenue_30day']*1216.6667)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_30day'], 2)
                 channels_df['cv_7day'] = round((channels_df['revenue_7day']*5214.2857)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_7day'], 2)
                 channels_df['cv_1day'] = round((channels_df['revenue_1day']*36500)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_1day'], 2)
-            autofees = Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
+            autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
+            if autofees_df.shape[0]> 0:
+                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else (row.new_value-row.old_value)*100/row.old_value, axis=1)
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
@@ -1301,7 +1313,7 @@ def channel(request):
             rebalancer_df = DataFrame()
             failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
-            autofees = []
+            autofees_df = DataFrame()
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
@@ -1316,7 +1328,7 @@ def channel(request):
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links(),
-            'autofees': autofees
+            'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
         }
         try:
             return render(request, 'channel.html', context)
@@ -1753,11 +1765,13 @@ def autofees(request):
     if request.method == 'GET':
         chan_id = request.GET.urlencode()[1:]
         filter_7d = datetime.now() - timedelta(days=7)
-        autofees = Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value')) if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').annotate(change=(Sum('new_value')-Sum('old_value'))*100/Sum('old_value'))
+        autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+        if autofees_df.shape[0]> 0:
+            autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else (row.new_value-row.old_value)*100/row.old_value, axis=1)
         #print (f"{datetime.now().strftime('%c')} : {chan_id=} {autofees=}")
         try:
             context = {
-                'autofees': autofees
+                'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
             }
             return render(request, 'autofees.html', context)
         except Exception as e:
