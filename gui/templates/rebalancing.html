@@ -70,13 +70,7 @@
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            {% if channel.percent_outbound >= channel.ar_out_target %}
-            <input type="submit" class="w3-button w3-disabled w3-text-green" title="Consider increasing this channel's Out Target value to make it accept AR in." value="Out"/>
-            {% elif channel.inbound_can < 1 and channel.fee_check >= 100 %}
-            <input type="submit" class="w3-button w3-disabled" title="This channel has In Fees higher than your Max Cost. Consider increasing Out Fee or Max Cost of this channel for a profitable AR" value="Enable"/>
-            {% else %}
-            <input type="submit" onmouseleave="event.target.value = '{% if channel.auto_rebalance %}En{% else %}Dis{% endif %}abled'" onmouseenter="event.target.value = '{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able'" class="w3-button w3-hover-{% if channel.auto_rebalance %}red w3-text-green{% else %}blue{% endif %}" value="{% if channel.auto_rebalance %}En{% else %}Dis{% endif %}abled"/>
-            {% endif %}
+            <input type="submit" onmouseleave="event.target.value='{% if channel.auto_rebalance %}Enabled{% elif channel.percent_outbound >= channel.ar_out_target %}Out{% else %}Disabled{% endif %}'" onmouseenter="event.target.value='{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able'" class="w3-button w3-hover-{% if channel.auto_rebalance %}red{% else %}blue{% endif %} {% if channel.percent_outbound >= channel.ar_out_target or channel.auto_rebalance %}w3-text-green{% endif %}" {% if channel.inbound_can < 1 and channel.fee_check >= 100 %}title="This channel has In Fees higher than your Max Cost. AR will not be made until your peer lower it's fee or your Max Cost is higher that Fee ratio."{% endif %} value="{% if channel.auto_rebalance %}Enabled{% elif channel.percent_outbound >= channel.ar_out_target %}Out{% else %}Disabled{% endif %}"/>
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
             <input type="hidden" name="target" value="0">
