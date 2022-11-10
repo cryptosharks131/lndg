@@ -213,7 +213,6 @@ def home(request):
                 detailed_channel['outbound_can'] = (detailed_channel['local_balance']/channel.capacity)*100
                 detailed_channel['fee_ratio'] = 100 if channel.local_fee_rate == 0 else (channel.remote_fee_rate/channel.local_fee_rate)*100
                 if channel.auto_rebalance == True and detailed_channel['inbound_can'] >= channel.ar_in_target and detailed_channel['fee_ratio'] <= channel.ar_max_cost:
-                    print(channel.chan_id)
                     eligible_count += 1
                 if channel.auto_rebalance == False and detailed_channel['outbound_can'] >= channel.ar_out_target:
                     available_count += 1
