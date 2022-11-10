@@ -193,7 +193,11 @@ def auto_enable():
             for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
                 #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
 
-                if oapD > (iapD*1.10) and outbound_percent > 75:
+                if peer_channel.ar_out_target == 100 and peer_channel.auto_rebalance == True:
+                    #Special Case for LOOP, Wos, etc. Always Auto Rebalance if enabled to keep outbound full.
+                    print (f"{datetime.now().strftime('%c')} : Pass {peer_channel.alias=} {peer_channel.chan_id=} {peer_channel.ar_out_target=} {peer_channel.auto_rebalance=}")
+                    pass
+                elif oapD > (iapD*1.10) and outbound_percent > 75:
                     #print('Case 1: Pass')
                     pass
                 elif oapD > (iapD*1.10) and inbound_percent > 75 and peer_channel.auto_rebalance == False:
