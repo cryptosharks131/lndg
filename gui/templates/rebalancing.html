@@ -4,26 +4,26 @@
 {% load humanize %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
-  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
+  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling <a href="rebalancing?=1"> {{ eligible_count }} of {{ enabled_count }} enabled channels </a> for rebalancing via <a href="/rebalancing?=2"> {{ available_count }} outbound channels </a>)</h2>
   <form action="/rebalancer/" method="post">
     <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
-        <tr>
-            <th title="Select outbound channel for a manual rebalance request">Out</th>
-            <th width="5%" title="Remote (peer) public key">PK</th>
-            <th>Channel ID</th>
-            <th>Peer Alias</th>
-            <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target (%)</th>
-            <th>Outbound Liquidity</th>
-            <th width=10%>Capacity</th>
-            <th>Inbound Liquidity</th>
-            <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">In Target (%)</th>
-            <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-            <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-            <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost (%)</th>
-            <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-            <th>AR</th>
-        </tr>
+      <tr>
+        <th title="Select outbound channel for a manual rebalance request">Out</th>
+        <th width="5%" title="Remote (peer) public key">PK</th>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target (%)</th>
+        <th>Outbound Liquidity</th>
+        <th width=10%>Capacity</th>
+        <th>Inbound Liquidity</th>
+        <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">In Target (%)</th>
+        <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+        <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
+        <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost (%)</th>
+        <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
+        <th>AR</th>
+      </tr>
       {% for channel in channels %}
       <tr>
         <td><input value="{{channel.chan_id}}" id="outgoing_chan_ids_{{forloop.counter0}}" name="outgoing_chan_ids" class="w3-check" type="checkbox"></td>
