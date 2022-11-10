@@ -5,7 +5,8 @@
 {% if channels %}
 <div class="w3-container w3-padding-small">
   <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
-  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+  <form action="/rebalancer/" method="post">
+    <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
         <tr>
             <th title="Select outbound channel for a manual rebalance request">Out</th>
@@ -69,13 +70,7 @@
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            {% if channel.percent_outbound >= channel.ar_out_target %}
-            <input type="submit" class="w3-button {% if not channel.auto_rebalance %}w3-disabled{% endif %}" {% if not channel.auto_rebalance %}title="Consider lowering this channel's Out Target value to make it accept AR in."{% endif %} value="Out"/>
-            {% elif channel.inbound_can < 1 and channel.fee_check >= 100 %}
-            <input type="submit" class="w3-button w3-disabled" title="Fee ratio is too high or this channel doesn't have enough Inbound Liquidity" value="---"/>
-            {% else %}
-            <input type="submit" class="w3-button w3-hover-{% if not channel.auto_rebalance %}blue{% else %}red{% endif %}" value="{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able"/>
-            {% endif %}
+            <input type="submit" onmouseleave="event.target.value='{% if channel.auto_rebalance %}Enabled{% elif channel.percent_outbound >= channel.ar_out_target %}Out{% else %}Disabled{% endif %}'" onmouseenter="event.target.value='{% if channel.auto_rebalance %}Dis{% else %}En{% endif %}able'" class="w3-button w3-hover-{% if channel.auto_rebalance %}red{% else %}blue{% endif %} {% if channel.percent_outbound >= channel.ar_out_target or channel.auto_rebalance %}w3-text-green{% endif %}" {% if channel.inbound_can < 1 and channel.fee_check >= 100 %}title="This channel has In Fees higher than your Max Cost. AR will not be made until your peer lower it's fee or your Max Cost is higher than the Fee ratio."{% endif %} value="{% if channel.auto_rebalance %}Enabled{% elif channel.percent_outbound >= channel.ar_out_target %}Out{% else %}Disabled{% endif %}"/>
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="5">
             <input type="hidden" name="target" value="0">
@@ -85,27 +80,21 @@
       {% endfor %}
       </table>
     </div>
-    <br/>
-    <h3>Manual rebalance request options: </h3>
     <div class="w3-row-padding">
       <div class="w3-col" style="width:10%">
-        <label class="w3-label" for="duration">Run Time (min): </label>
-        <input class="w3-input" id="duration" type="number" name="duration">
+        <input class="w3-input" placeholder="Run Time (min):" id="duration" type="number" name="duration">
       </div>
       <div class="w3-col" style="width:10%">
-        <label class="w3-label" for="value">Amount (sats): </label>
-        <input class="w3-input" id="value" type="number" min="10" max="5000000" name="value">
+        <input class="w3-input" placeholder="Amount (sats):" id="value" type="number" min="10" max="5000000" name="value">
       </div>
       <div class="w3-col" style="width:10%">
-        <label class="w3-label" for="fee_limit">Fee Limit (ppm): </label>
-        <input  class="w3-input" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+        <input  class="w3-input" placeholder="Fee Limit (ppm):" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
       </div>
       <div class="w3-col" style="width:60%">
-        <label class="w3-label" for="last_hop_pubkey">Last Hop Pubkey: </label>
-        <input class="w3-input" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+        <input class="w3-input" placeholder="Last Hop Pubkey:" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
       </div>
       <div class="w3-col" style="width:10%">
-        <input class="w3-btn large" type="submit" value="OK">
+        <input class="w3-button large" style="width:100%" type="submit" value="OK">
       </div>
     </div>
   </form>
@@ -165,15 +154,17 @@
   <div class="w3-container">
     <div class="w3-row-padding w3-container">
       {% for settings in local_settings %}
-      <div class="w3-quarter w3-container">
+      <div class="w3-col w3-container" style="width:20%">
         <label class="w3-label" title="{{ settings.title }}">{{ settings.label }}</label>
         <input class="w3-input" id="{{settings.id}}" name="{{settings.id}}" type="number" min="{{settings.min}}" max="{{settings.max}}" step="{{settings.min}}" value="{{settings.value|intcomma}}"/>
       </div>
       {% endfor %}
-      <div class="w3-quarter w3-container">
+      <div class="w3-col w3-container w3-margin-top" style="width:20%">
         <input class="w3-check" id="targetallchannels" type="checkbox" name="targetallchannels"/>
         <label class="w3-validate">Target All Channels </label>
-        <input class="w3-btn" type="submit" value="OK">
+      </div>
+      <div class="w3-col w3-container w3-margin-top" style="width:20%">
+        <input class="w3-button" type="submit" style="width:100%" value="OK">
       </div>
     </div>
   </div>
