@@ -10,7 +10,7 @@
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ node_info.num_active_channels }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h4>
+  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ active_count }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h4>
   {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
   <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
   <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>

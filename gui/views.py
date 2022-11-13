@@ -242,6 +242,7 @@ def home(request):
             total_costs_1day = total_1day_fees + onchain_costs_1day
             #Get list of recent rebalance requests
             rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
+            active_count = node_info.num_active_channels - active_private
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
             local_settings = LocalSettings.objects.filter(key__contains='AR-').order_by('key')
             try:
@@ -251,6 +252,7 @@ def home(request):
             #Build context for front-end and render page
             context = {
                 'node_info': node_info,
+                'active_count': active_count,
                 'total_channels': total_channels,
                 'balances': balances,
                 'total_balance': balances.total_balance + sum_outbound + pending_open_balance + limbo_balance + private_outbound,
@@ -1303,7 +1305,7 @@ def channel(request):
                 channels_df['cv_1day'] = round((channels_df['revenue_1day']*36500)/(channels_df['capacity']*outbound_ratio) + channels_df['assisted_apy_1day'], 2)
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
-                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else (row.new_value-row.old_value)*100/row.old_value, axis=1)
+                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
@@ -1747,7 +1749,7 @@ def autofees(request):
         filter_7d = datetime.now() - timedelta(days=7)
         autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
         if autofees_df.shape[0]> 0:
-            autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else (row.new_value-row.old_value)*100/row.old_value, axis=1)
+            autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
         #print (f"{datetime.now().strftime('%c')} : {chan_id=} {autofees=}")
         try:
             context = {

@@ -376,13 +376,13 @@
       <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
       <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td>{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</td>
-      <td>{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</td>
+      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I" target="_blank">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
+      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O" target="_blank">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
       <td>{{ failed_htlc.amount|intcomma }}</td>
       <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
       <td>{{ failed_htlc.missed_fee|intcomma }}</td>
       <td>{% if failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
-      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
+      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 13 %}Invoice Not Open{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
