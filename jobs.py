@@ -333,7 +333,7 @@ def update_channels(stub):
                 db_channel.local_fee_rate = fee_rate
                 db_channel.local_cltv = cltv
                 db_channel.fees_updated = datetime.now()
-            if pending_channel.auto_rebalance:
+            if pending_channel.auto_rebalance is not None:
                 db_channel.auto_rebalance = pending_channel.auto_rebalance
             if pending_channel.ar_amt_target:
                 db_channel.ar_amt_target = pending_channel.ar_amt_target
@@ -343,7 +343,7 @@ def update_channels(stub):
                 db_channel.ar_out_target = pending_channel.ar_out_target
             if pending_channel.ar_max_cost:
                 db_channel.ar_max_cost = pending_channel.ar_max_cost
-            if pending_channel.auto_fees:
+            if pending_channel.auto_fees is not None:
                 db_channel.auto_fees = pending_channel.auto_fees
             pending_channel.delete()
         db_channel.save()
