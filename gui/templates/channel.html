@@ -167,7 +167,7 @@
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
-      <td>{{ htlc.hash_lock }}</td>
+      <td><a href="/route?={{ htlc.hash_lock }}" target="_blank">{{ htlc.hash_lock }}</a></td>
     </tr>
     {% endfor %}
   </table>
