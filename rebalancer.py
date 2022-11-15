@@ -76,7 +76,7 @@ def run_rebalancer(rebalance):
             print(error)
     finally:
         rebalance.stop = datetime.now()
-        rebalance.save()
+
         original_alias = rebalance.target_alias
         inc=1.21
         dec=2
@@ -90,7 +90,7 @@ def run_rebalancer(rebalance):
 
         if rebalance.status ==2:
 
-            rebalance.target_alias += ' ==> (' + str(int(payment_response.fee_msat/payment_response.value_msat*1000000)) + ')'
+            #rebalance.target_alias += ' ==> (' + str(int(payment_response.fee_msat/payment_response.value_msat*1000000)) + ')'
 
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=int(rebalance.fee_limit*inc), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
@@ -109,6 +109,9 @@ def run_rebalancer(rebalance):
                 next_rebalance = None
         else:
             next_rebalance = None
+
+        rebalance.save()
+
         return next_rebalance
 
 def update_channels(stub, incoming_channel, outgoing_channel):
