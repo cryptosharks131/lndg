@@ -77,14 +77,34 @@ def run_rebalancer(rebalance):
     finally:
         rebalance.stop = datetime.now()
         rebalance.save()
-        if rebalance.status == 2:
+        original_alias = rebalance.target_alias
+        inc=1.21
+        dec=2
+
+        if rebalance.status ==2:
             update_channels(stub, rebalance.last_hop_pubkey, successful_out)
-            auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
-            inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
-            outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
+
+        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
+        inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
+        outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
+
+        if rebalance.status ==2:
+
+            rebalance.target_alias += ' ==> (' + str(int(payment_response.fee_msat/payment_response.value_msat*1000000)) + ')'
+
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
-                next_rebalance = Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
+                next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=int(rebalance.fee_limit*inc), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                 next_rebalance.save()
+                print (f"{datetime.now().strftime('%c')} : RapidFire up {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
+
+            else:
+                next_rebalance = None
+        elif rebalance.status > 2 and rebalance.duration <= 1 and rebalance.value > 69420:
+            #Previous Rapidfire with increased value failed, try with lower value up to 69420.
+            if len(inbound_cans) > 0 and len(outbound_cans) > 0:
+                next_rebalance = Rebalancer(value=int(rebalance.value/dec), fee_limit=int(rebalance.fee_limit/dec), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
+                next_rebalance.save()
+                print (f"{datetime.now().strftime('%c')} : RapidFire Down {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
             else:
                 next_rebalance = None
         else:
@@ -120,7 +140,7 @@ def auto_schedule():
             if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
                 LocalSettings(key='AR-Inbound%', value='100').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
-            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
+            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).order_by('-remote_balance')
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)

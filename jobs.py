@@ -85,7 +85,10 @@ def update_payment(stub, payment, self_pubkey):
                     if hop_count == total_hops and hop.pub_key == self_pubkey and db_payment.rebal_chan is None:
                         db_payment.rebal_chan = hop.chan_id
     db_payment.save()
-    adjust_ar_amt( payment, db_payment.rebal_chan )
+    try:
+        adjust_ar_amt( payment, db_payment.rebal_chan )
+    except Exception as e:
+        print (f"{datetime.now().strftime('%c')} : Error adjusting AR Amount {payment=} {db_payment.rebal_chan=} : {str(e)=}")
 
 def adjust_ar_amt( payment, chan_id ):
     if payment.status not in (2,3):
@@ -118,6 +121,7 @@ def adjust_ar_amt( payment, chan_id ):
 
     if payment.status == 3:
         estimated_liquidity = 0
+        attempt = None
         for attempt in payment.htlcs:
             total_hops=len(attempt.route.hops)
             #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
@@ -128,9 +132,13 @@ def adjust_ar_amt( payment, chan_id ):
                 print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
 
         if estimated_liquidity == 0:
-            #Could not estimate liquidity, reduce by half
-            estimated_liquidity = db_channel.ar_amt_target/2 if db_channel is not None else 0
-            print (f"{datetime.now().strftime('%c')} : Liquidity Estimation not possible, halving {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+            if attempt is not None:
+                #Could not estimate liquidity for valid attempts, reduce by half
+                estimated_liquidity = db_channel.ar_amt_target/2 if db_channel is not None else 0
+                print (f"{datetime.now().strftime('%c')} : Liquidity Estimation not possible, halving {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+            else:
+                #Mostly a case of NO ROUTE
+                print (f"{datetime.now().strftime('%c')} : Liquidity Estimation not performed {payment.payment_hash=} {payment.status=} {chan_id=} {estimated_liquidity=} {attempt=}")
 
         if payment.value_msat/1000 >= lower_limit and estimated_liquidity <= payment.value_msat/1000 and estimated_liquidity > 0:
             #Change AR amount. Ignore zero liquidity case which implies breakout from rapid fire AR
