@@ -207,6 +207,7 @@ def home(request):
                 detailed_channel['amt_routed_in_1day'] = int(forwards_df_in_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['amt_routed_out_1day'] = int(forwards_df_out_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_1d_sum.index == channel.chan_id).any() else 0
                 detailed_channel['htlc_count'] = channel.htlc_count
+                detailed_channel['local_cltv'] = channel.local_cltv
                 detailed_channel['auto_rebalance'] = channel.auto_rebalance
                 detailed_channel['ar_in_target'] = channel.ar_in_target
                 detailed_channel['inbound_can'] = (detailed_channel['remote_balance']/channel.capacity)*100
@@ -300,7 +301,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'rebalances': rebalances[:12],
-                'chan_policy_form': ChanPolicyForm,
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
@@ -1703,15 +1703,32 @@ def rebalancing(request):
             except:
                 error = str(e)
             return render(request, 'error.html', {'error': error})
-
+        ar_settings = LocalSettings.objects.filter(key__contains='AR-').values('key', 'value').order_by('key')
+        form = [{'label': 'Enabled', 'id': 'enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1}, 
+                {'label': 'Target Amount (%)', 'id': 'target_percent', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100},
+                {'label': 'Target Time (min)', 'id': 'target_time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60},
+                {'label': 'Global Max Fee Rate (ppm)', 'id': 'fee_rate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500},
+                {'label': 'Target Outbound Above (%)', 'id': 'outbound_percent', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100},
+                {'label': 'Target Inbound Above (%)', 'id': 'inbound_percent', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100},
+                {'label': 'Max Cost (%)', 'id': 'max_cost', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100},
+                {'label': 'Variance (%)', 'id': 'variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100},
+                {'label': 'Wait Period (min)', 'id': 'wait_period', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100},
+                {'label': 'Autopilot', 'id': 'autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1},
+                {'label': 'Autopilot Days', 'id': 'autopilotdays', 'title': 'Number of days to consider for autopilot. Default 7.', 'min':0, 'max':100}]
+        for field in form:
+            field_text=field['id'].replace("_", "")
+            for sett in ar_settings:
+                sett_text = sett['key'].replace("AR-", "").replace("%","percent").replace("AP","autopilot").lower()
+                if field_text in sett_text or sett_text in field_text:
+                    field['value'] = sett['value']
+                    break
         context = {
             'eligible_count': eligible_count,
             'enabled_count': enabled_count,
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
-            'rebalancer_form': RebalancerForm,
-            'local_settings': LocalSettings.objects.filter(key__contains='AR-').order_by('key'),
+            'local_settings': form,
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -1941,56 +1958,48 @@ def rebalance(request):
 def update_chan_policy(request):
     if request.method == 'POST':
         form = ChanPolicyForm(request.POST)
-        if form.is_valid():
-            if form.cleaned_data['new_base_fee'] is not None or form.cleaned_data['new_fee_rate'] is not None or form.cleaned_data['new_cltv'] is not None:
-                try:
-                    stub = lnrpc.LightningStub(lnd_connect())
-                    if form.cleaned_data['target_all']:
-                        if form.cleaned_data['new_base_fee'] is not None and form.cleaned_data['new_fee_rate'] is not None and form.cleaned_data['new_cltv'] is not None:
-                            args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': form.cleaned_data['new_cltv']}
-                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
-                            channels = Channels.objects.filter(is_open=True)
-                            channels.update(local_base_fee=form.cleaned_data['new_base_fee'])
-                            channels.update(local_fee_rate=form.cleaned_data['new_fee_rate'])
-                            channels.update(local_cltv=form.cleaned_data['new_cltv'])
-                            channels.update(fees_updated=datetime.now())
-                        else:
-                            messages.error(request, 'You must specify all parameters when updating all channels.')
-                            return redirect('home')
-                    elif len(form.cleaned_data['target_chans']) > 0:
-                        for channel in form.cleaned_data['target_chans']:
-                            channel_point = ln.ChannelPoint()
-                            channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                            channel_point.funding_txid_str = channel.funding_txid
-                            channel_point.output_index = channel.output_index
-                            new_base_fee = form.cleaned_data['new_base_fee'] if form.cleaned_data['new_base_fee'] is not None else channel.local_base_fee
-                            new_fee_rate = form.cleaned_data['new_fee_rate']/1000000 if form.cleaned_data['new_fee_rate'] is not None else channel.local_fee_rate/1000000
-                            new_cltv = form.cleaned_data['new_cltv'] if form.cleaned_data['new_cltv'] is not None else channel.local_cltv
-                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
-                            db_channel = Channels.objects.get(chan_id=channel.chan_id)
-                            db_channel.local_base_fee = new_base_fee
-                            old_fee_rate = db_channel.local_fee_rate
-                            db_channel.local_fee_rate = new_fee_rate*1000000
-                            db_channel.local_cltv = new_cltv
-                            if form.cleaned_data['new_fee_rate'] is not None:
-                                db_channel.fees_updated = datetime.now()
-                                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+        if not form.is_valid() or (form.cleaned_data['new_base_fee'] is None and form.cleaned_data['new_fee_rate'] is None):
+            messages.error(request, 'Invalid Request. You must specify at least one parameter.')
+            return redirect('home')
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            if form.cleaned_data['target_all']:
+                if form.cleaned_data['new_base_fee'] is not None and form.cleaned_data['new_fee_rate'] is not None:
+                    args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': 40 }
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
+                    channels = Channels.objects.filter(is_open=True)
+                    channels.update(local_base_fee=form.cleaned_data['new_base_fee'])
+                    channels.update(local_fee_rate=form.cleaned_data['new_fee_rate'])
+                    channels.update(local_cltv=40) #default
+                    channels.update(fees_updated=datetime.now())
+                else:
+                    messages.error(request, 'You must specify all parameters when updating all channels.')
+                    return redirect('home')
+            elif len(form.cleaned_data['target_chans']) > 0:
+                for channel in form.cleaned_data['target_chans']:
+                    channel_point = ln.ChannelPoint()
+                    channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
+                    channel_point.funding_txid_str = channel.funding_txid
+                    channel_point.output_index = channel.output_index
+                    db_channel = Channels.objects.get(chan_id=channel.chan_id)
+                    db_channel.local_base_fee = form.cleaned_data['new_base_fee'] if form.cleaned_data['new_base_fee'] is not None else channel.local_base_fee
+                    if form.cleaned_data['new_fee_rate'] is not None:
+                        Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=db_channel.local_fee_rate, new_value=form.cleaned_data['new_fee_rate']).save()
+                        db_channel.local_fee_rate = form.cleaned_data['new_fee_rate']
+                        db_channel.fees_updated = datetime.now()
 
-                            db_channel.save()
-                    else:
-                        messages.error(request, 'No channels were specified in the update request!')
-                        return redirect('home')
-                    messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
-                except Exception as e:
-                    error = str(e)
-                    details_index = error.find('details =') + 11
-                    debug_error_index = error.find('debug_error_string =') - 3
-                    error_msg = error[details_index:debug_error_index]
-                    messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=db_channel.local_fee_rate/1000000, time_lock_delta=channel.local_cltv))
+                    db_channel.save()
             else:
-                messages.error(request, 'You must specify at least one parameter.')
-        else:
-            messages.error(request, 'Invalid Request. Please try again.')
+                messages.error(request, 'No channels were specified in the update request!')
+                return redirect('home')
+            messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
     return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
