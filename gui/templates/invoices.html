@@ -21,7 +21,7 @@
     <tr>
       <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
       <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td>{{ invoice.r_hash }}</td>
+      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
       <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>

@@ -87,7 +87,8 @@ EOF
 
 function setup_nginx() {
     cat << EOF > /etc/nginx/sites-enabled/lndg
-user $INSTALL_USER
+# the below setting can sometimes help resolve permission issues
+# user $INSTALL_USER
 
 upstream django {
     server unix://$HOME_DIR/lndg/lndg.sock; # for a file socket

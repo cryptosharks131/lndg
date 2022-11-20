@@ -2,7 +2,6 @@ import django
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect
-from lndg import settings
 from os import environ
 from time import sleep
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
@@ -11,7 +10,7 @@ from gui.models import Channels, FailedHTLCs
 
 def main():
     try:
-        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
+        connection = lnd_connect()
         routerstub = lnrouter.RouterStub(connection)
         for response in routerstub.SubscribeHtlcEvents(lnr.SubscribeHtlcEventsRequest()):
             if response.event_type == 3 and str(response.link_fail_event) != '':
@@ -26,7 +25,7 @@ def main():
                 amount = int(response.link_fail_event.info.outgoing_amt_msat/1000)
                 wire_failure = response.link_fail_event.wire_failure
                 failure_detail = response.link_fail_event.failure_detail
-                missed_fee = 0 if out_chan == None else round(((amount/1000000) * out_chan.local_fee_rate) + (out_chan.local_base_fee/1000), 3)
+                missed_fee = (response.link_fail_event.info.incoming_amt_msat - response.link_fail_event.info.outgoing_amt_msat)/1000
                 FailedHTLCs(amount=amount, chan_id_in=in_chan_id, chan_id_out=out_chan_id, chan_in_alias=in_chan_alias, chan_out_alias=out_chan_alias, chan_out_liq=out_chan_liq, chan_out_pending=out_chan_pending, wire_failure=wire_failure, failure_detail=failure_detail, missed_fee=missed_fee).save()
     except Exception as e:
         print('Error while running failed HTLC stream: ' + str(e))

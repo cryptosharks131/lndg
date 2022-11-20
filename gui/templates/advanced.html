@@ -30,7 +30,14 @@
             <input type="hidden" name="key" value="ALL-CLTV">
           </form>
         </td>
-        <th colspan="2"></th>
+        <td title="Update all channel min HTLCs">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:100px" id="value" type="number" step="0.001" min="1" name="value" value="">
+            <input type="hidden" name="key" value="ALL-minHTLC">
+          </form>
+        </td>
+        <th colspan="3"></th>
         <td title="Update all channel AR amount amounts">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -79,6 +86,8 @@
         <th>oRate</th>
         <th>oBase</th>
         <th>oCLTV</th>
+        <th>minHTLC</th>
+        <th>maxHTLC</th>
         <th>iRate</th>
         <th>iBase</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
@@ -131,6 +140,22 @@
             <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="9">
+          </form>
+        </td>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:100px" id="target" type="number" step="0.001" min="1" name="target" value="{{ channel.local_min_htlc }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="10">
+          </form>
+        </td>
+        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center;width:150px" id="target" type="number" step="0.001" min="1" name="target" value="{{ channel.local_max_htlc }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="11">
           </form>
         </td>
         <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
@@ -204,7 +229,7 @@
           {% csrf_token %}
           {% if settings.key == 'AR-Target%' %}
             <input style="text-align:center" id="value" type="number" step="0.1" min="0.1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod' or settings.key == 'AR-APDays' %}
+          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod' or settings.key == 'AR-APDays' or settings.key == 'AF-UpdateHours' %}
           <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
           {% elif settings.key == 'AR-Time' %}
             <input style="text-align:center" id="value" type="number" min="1" max="60" name="value" value="{{ settings.value }}">

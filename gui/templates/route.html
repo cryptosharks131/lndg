@@ -4,9 +4,10 @@
 {% load humanize %}
 {% if route %}
 <div class="w3-container w3-padding-small">
-  <h2>Route For : {{ payment_hash }}</h2>
+  <h2>Route For : {{ payment_hash }}{% if total_cost %} | Total Costs: {{ total_cost }} [{{ total_ppm }}]{% endif %}</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
+      <th>Attempt Id</th>
       <th>Step</th>
       <th>Amount</th>
       <th>Fee</th>
@@ -19,6 +20,7 @@
     </tr>
     {% for hop in route %}
     <tr>
+      <td>{{ hop.attempt_id }}</td>
       <td>{{ hop.step }}</td>
       <td>{{ hop.amt|intcomma }}</td>
       <td>{{ hop.fee|intcomma }}</td>
@@ -36,6 +38,126 @@
 {% if not route %}
 <div class="w3-container w3-padding-small">
   <center><h1>A route was not found for this payment hash!</h1></center>
+</div>
+{% endif %}
+{% if rebalances %}
+<div class="w3-container w3-padding-small">
+  <h2>Associated Rebalances</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Requested</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Scheduled Duration</th>
+      <th>Actual Duration</th>
+      <th>Value</th>
+      <th>Fee Limit</th>
+      <th>Target PPM</th>
+      <th>Fees Paid</th>
+      <th>Last Hop Alias</th>
+      <th>Status</th>
+    </tr>
+    {% for rebalance in rebalances %}
+    <tr>
+      <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
+      <td {% if rebalance.status == 0 %}>---{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
+      <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>---{% endif %}</td>
+      <td>{{ rebalance.duration }} minutes</td>
+      <td>{% if rebalance.status == 2 %}{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}---{% endif %}</td>
+      <td>{{ rebalance.value|intcomma }}</td>
+      <td>{{ rebalance.fee_limit|intcomma }}</td>
+      <td>{{ rebalance.ppm|intcomma }}</td>
+      <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
+      <td>{% if rebalance.target_alias == '' %}None Specified{% else %}{{ rebalance.target_alias }}{% endif %}</td>
+      <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if invoices %}
+<div class="w3-container w3-padding-small">
+  <h2>Linked Invoice</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Created</th>
+      <th>Settled</th>
+      <th width=25%>Payment Hash</th>
+      <th>Value</th>
+      <th>Amount Paid</th>
+      <th>State</th>
+      <th>Channel In Alias</th>
+      <th width=10%>Channel In</th>
+      <th><a href="/keysends" target="_blank">Keysend</a></th>
+    </tr>
+    {% for invoice in invoices %}
+    <tr>
+      <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
+      <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
+      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
+      <td>{{ invoice.value|add:"0"|intcomma }}</td>
+      <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
+      <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
+      <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
+      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
+      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}<a href="/keysends?={{ invoice.r_hash }}" target="_blank">Yes</a>{% else %}No{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if outgoing_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Outgoing HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th width=10%>Channel Alias</th>
+      <th>Forwarding Channel</th>
+      <th width=10%>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration</th>
+      <th width=25%>Hash Lock</th>
+    </tr>
+    {% for htlc in outgoing_htlcs %}
+    <tr>
+      <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
+      <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if incoming_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2>Incoming HTLCs</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Channel ID</th>
+      <th width=10%>Channel Alias</th>
+      <th>Forwarding Channel</th>
+      <th width=10%>Forwarding Alias</th>
+      <th>Amount</th>
+      <th>Expiration</th>
+      <th width=25%>Hash Lock</th>
+    </tr>
+    {% for htlc in incoming_htlcs %}
+    <tr>
+      <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
+      <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
+      <td>{{ htlc.amount|intcomma }}</td>
+      <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
+      <td>{{ htlc.hash_lock }}</td>
+    </tr>
+    {% endfor %}
+  </table>
 </div>
 {% endif %}
 {% endblock %}

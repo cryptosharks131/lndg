@@ -6,7 +6,6 @@ from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect
-from lndg import settings
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
@@ -29,7 +28,7 @@ def run_rebalancer(rebalance):
     rebalance.start = datetime.now()
     try:
         #Open connection with lnd via grpc
-        connection = lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER)
+        connection = lnd_connect()
         stub = lnrpc.LightningStub(connection)
         routerstub = lnrouter.RouterStub(connection)
         chan_ids = json.loads(rebalance.outgoing_chan_ids)
@@ -78,14 +77,27 @@ def run_rebalancer(rebalance):
     finally:
         rebalance.stop = datetime.now()
         rebalance.save()
-        if rebalance.status == 2:
+        original_alias = rebalance.target_alias
+        inc=1.21
+        dec=2
+        if rebalance.status ==2:
             update_channels(stub, rebalance.last_hop_pubkey, successful_out)
             auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
             inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
-            outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
+            outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
-                next_rebalance = Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
+                next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                 next_rebalance.save()
+                print (f"{datetime.now().strftime('%c')} : RapidFire up {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
+            else:
+                next_rebalance = None
+        elif rebalance.status > 2 and rebalance.duration <= 1 and rebalance.value > 69420:
+            #Previous Rapidfire with increased value failed, try with lower value up to 69420.
+            inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
+            if len(inbound_cans) > 0 and len(outbound_cans) > 0:
+                next_rebalance = Rebalancer(value=int(rebalance.value/dec), fee_limit=round(rebalance.fee_limit/dec, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
+                next_rebalance.save()
+                print (f"{datetime.now().strftime('%c')} : RapidFire Down {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
             else:
                 next_rebalance = None
         else:
@@ -121,7 +133,7 @@ def auto_schedule():
             if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
                 LocalSettings(key='AR-Inbound%', value='100').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
-            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1)
+            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).order_by('-remote_balance')
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
@@ -194,7 +206,11 @@ def auto_enable():
             for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
                 #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
 
-                if oapD > (iapD*1.10) and outbound_percent > 75:
+                if peer_channel.ar_out_target == 100 and peer_channel.auto_rebalance == True:
+                    #Special Case for LOOP, Wos, etc. Always Auto Rebalance if enabled to keep outbound full.
+                    print (f"{datetime.now().strftime('%c')} : Pass {peer_channel.alias=} {peer_channel.chan_id=} {peer_channel.ar_out_target=} {peer_channel.auto_rebalance=}")
+                    pass
+                elif oapD > (iapD*1.10) and outbound_percent > 75:
                     #print('Case 1: Pass')
                     pass
                 elif oapD > (iapD*1.10) and inbound_percent > 75 and peer_channel.auto_rebalance == False:

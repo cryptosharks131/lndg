@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
-  <h2>Channel Rebalancing (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
+  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
@@ -14,14 +14,14 @@
         <th>Outbound Liquidity</th>
         <th width=10%></th>
         <th>Inbound Liquidity</th>
-        <th>Rebal Out?</th>
-        <th>Enabled?</th>
+        <th><a href="/rebalancing?=2">Rebal Out?</a></th>
+        <th><a href="/rebalancing?=1">Enabled?</a></th>
         <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
         <th>Rebal In?</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN the channel until its inbound liquidity is above the iTarget%.">iTarget%</th>
+        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th>AR</th>
         <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
         <th>Active</th>
@@ -108,6 +108,7 @@
       <th>Fees Paid</th>
       <th>Last Hop Alias</th>
       <th>Status</th>
+      <th>Hash</th>
     </tr>
     {% for rebalance in rebalancer %}
     <tr>
@@ -120,8 +121,9 @@
       <td>{{ rebalance.fee_limit|intcomma }}</td>
       <td>{{ rebalance.ppm|intcomma }}</td>
       <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if rebalance.target_alias == '' %}None Specified{% else %}{{ rebalance.target_alias }}{% endif %}</td>
+      <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
       <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
+      <td>{% if rebalance.payment_hash == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash }}</a>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

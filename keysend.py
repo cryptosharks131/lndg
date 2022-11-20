@@ -1,6 +1,5 @@
 import secrets, time, struct
 from hashlib import sha256
-from lndg import settings
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -12,7 +11,7 @@ from gui.lnd_deps.lnd_connect import lnd_connect
 def keysend(target_pubkey, msg, amount, fee_limit, timeout, sign):
     #Construct and send
     try:
-        routerstub = lnrouter.RouterStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+        routerstub = lnrouter.RouterStub(lnd_connect())
         secret = secrets.token_bytes(32)
         hashed_secret = sha256(secret).hexdigest()
         custom_records = [(5482373484, secret),]
@@ -20,8 +19,8 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout, sign):
         if len(msg) > 0:
             custom_records.append((34349334, bytes.fromhex(msg.encode('utf-8').hex())))
             if sign == True:
-                stub = lnrpc.LightningStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
-                signerstub = lnsigner.SignerStub(lnd_connect(settings.LND_DIR_PATH, settings.LND_NETWORK, settings.LND_RPC_SERVER))
+                stub = lnrpc.LightningStub(lnd_connect())
+                signerstub = lnsigner.SignerStub(lnd_connect())
                 self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
                 timestamp = struct.pack(">i", int(time.time()))
                 signature = signerstub.SignMessage(lns.SignMessageReq(msg=(bytes.fromhex(self_pubkey)+bytes.fromhex(target_pubkey)+timestamp+bytes.fromhex(msg.encode('utf-8').hex())), key_loc=lns.KeyLocator(key_family=6, key_index=0))).signature

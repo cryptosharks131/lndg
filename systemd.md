@@ -93,7 +93,7 @@ User=<run_as_user>
 Group=<run_as_user>
 ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/htlc_stream.sh
 StandardError=append:/var/log/lnd_htlc_stream_error.log
-Restart=on-failure
+Restart=always
 RestartSec=60s
 [Install]
 WantedBy=multi-user.target
