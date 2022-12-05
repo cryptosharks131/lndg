@@ -6,3 +6,4 @@ protobuf
 pytz
 pandas
 requests
+asyncio
