@@ -13,16 +13,20 @@ django.setup()
 from gui.models import Rebalancer, Channels, LocalSettings, Forwards, Autopilot
 
 @sync_to_async
-def get_out_cands(rebalance, auto_rebalance_channels):
+def get_out_cans(rebalance, auto_rebalance_channels):
     return list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
 
 @sync_to_async
 def save_record(record):
     record.save()
 
+@sync_to_async
+def inbound_cans_len(inbound_cans):
+    return len(inbound_cans)
+
 async def run_rebalancer(rebalance, worker):
     auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
-    outbound_cans = await get_out_cands(rebalance, auto_rebalance_channels)
+    outbound_cans = await get_out_cans(rebalance, auto_rebalance_channels)
     if len(outbound_cans) == 0 and rebalance.manual == False:
         print ('No outbound_cans')
         return None
@@ -84,11 +88,11 @@ async def run_rebalancer(rebalance, worker):
         inc=1.21
         dec=2
         if rebalance.status ==2:
-            update_channels(stub, rebalance.last_hop_pubkey, successful_out)
+            await update_channels(stub, rebalance.last_hop_pubkey, successful_out)
             auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
             inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
-            outbound_cans = get_out_cands()
-            if len(inbound_cans) > 0 and len(outbound_cans) > 0:
+            outbound_cans = await get_out_cans(rebalance, auto_rebalance_channels)
+            if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                 await save_record(next_rebalance)
                 print (f"{datetime.now().strftime('%c')} : RapidFire up {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
@@ -97,7 +101,7 @@ async def run_rebalancer(rebalance, worker):
         elif rebalance.status > 2 and rebalance.duration <= 1 and rebalance.value > 69420:
             #Previous Rapidfire with increased value failed, try with lower value up to 69420.
             inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
-            if len(inbound_cans) > 0 and len(outbound_cans) > 0:
+            if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 next_rebalance = Rebalancer(value=int(rebalance.value/dec), fee_limit=round(rebalance.fee_limit/dec, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                 await save_record(next_rebalance)
                 print (f"{datetime.now().strftime('%c')} : RapidFire Down {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
@@ -107,6 +111,7 @@ async def run_rebalancer(rebalance, worker):
             next_rebalance = None
         return next_rebalance
 
+@sync_to_async
 def update_channels(stub, incoming_channel, outgoing_channel):
     # Incoming channel update
     channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(incoming_channel))).channels[0]
