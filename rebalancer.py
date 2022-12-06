@@ -244,9 +244,8 @@ async def async_run_rebalancer(worker, rebalancer_queue):
     while not rebalancer_queue.empty():
         print(datetime.now(), worker + ' is starting a new request...')
         rebalance = await rebalancer_queue.get()
-        rebalance = await run_rebalancer(rebalance, worker)
-        if rebalance != None:
-            await rebalancer_queue.put(rebalance)
+        while rebalance != None:
+            rebalance = await run_rebalancer(rebalance, worker)
 
 async def start_queue(rebalances, worker_count=1):
     rebalancer_queue = asyncio.Queue()
