@@ -126,6 +126,7 @@ def update_channels(stub, incoming_channel, outgoing_channel):
     db_channel.remote_balance = channel.remote_balance
     db_channel.save()
 
+@sync_to_async
 def auto_schedule():
     #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
     if LocalSettings.objects.filter(key='AR-Enabled').exists():
@@ -133,6 +134,7 @@ def auto_schedule():
     else:
         LocalSettings(key='AR-Enabled', value='0').save()
         enabled = 0
+    scheduled_ids = []
     if enabled == 1:
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
         if len(auto_rebalance_channels) > 0:
@@ -141,7 +143,8 @@ def auto_schedule():
             if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
                 LocalSettings(key='AR-Inbound%', value='100').save()
             outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
-            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).order_by('-remote_balance')
+            already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
+            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-remote_balance')
             if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                 if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                     max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
@@ -184,8 +187,12 @@ def auto_schedule():
                             print('Target Value:', target_value, '/', target.ar_amt_target)
                             print('Target Fee:', target_fee)
                             print('Target Time:', target_time)
-                            Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time).save()
+                            new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
+                            new_rebalance.save()
+                            scheduled_ids.append(new_rebalance.id)
+    return scheduled_ids
 
+@sync_to_async
 def auto_enable():
     if LocalSettings.objects.filter(key='AR-Autopilot').exists():
         enabled = int(LocalSettings.objects.filter(key='AR-Autopilot')[0].value)
@@ -210,10 +217,8 @@ def auto_enable():
             routed_out_apday = forwards.filter(chan_id_out__in=chan_list).count()
             iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in__in=chan_list).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
             oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out__in=chan_list).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
-
             for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
                 #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
-
                 if peer_channel.ar_out_target == 100 and peer_channel.auto_rebalance == True:
                     #Special Case for LOOP, Wos, etc. Always Auto Rebalance if enabled to keep outbound full.
                     print (f"{datetime.now().strftime('%c')} : Pass {peer_channel.alias=} {peer_channel.chan_id=} {peer_channel.ar_out_target=} {peer_channel.auto_rebalance=}")
@@ -240,40 +245,83 @@ def auto_enable():
                     #print('Case 5: Pass')
                     pass
 
-async def async_run_rebalancer(worker, rebalancer_queue):
-    while not rebalancer_queue.empty():
-        print(datetime.now(), worker + ' is starting a new request...')
-        rebalance = await rebalancer_queue.get()
-        while rebalance != None:
-            rebalance = await run_rebalancer(rebalance, worker)
+@sync_to_async
+def get_scheduled_rebal(id):
+    return Rebalancer.objects.get(id=id)
 
-async def start_queue(rebalances, worker_count=1):
+@sync_to_async
+def get_pending_rebals():
+    rebalances = Rebalancer.objects.filter(status=0).order_by('id')
+    return rebalances, len(rebalances)
+
+shutdown_rebalancer = False
+active_rebalances = []
+async def async_queue_manager(rebalancer_queue):
+    print('Queue manager is starting...')
+    pending_rebalances, rebal_count = await get_pending_rebals()
+    if rebal_count > 0:
+        for rebalance in pending_rebalances:
+            await rebalancer_queue.put(rebalance)
+    while True:
+        global active_rebalances
+        print('Queue currently has', rebalancer_queue.qsize(), 'items...')
+        print('There are currently', len(active_rebalances), 'tasks in progress...')
+        print('Queue manager is checking for more work...')
+        await auto_enable()
+        scheduled_ids = await auto_schedule()
+        if len(scheduled_ids) > 0:
+            print('Scheduling', len(scheduled_ids), 'more jobs...')
+            for id in scheduled_ids:
+                scheduled_rebal = await get_scheduled_rebal(id)
+                await rebalancer_queue.put(scheduled_rebal)
+        elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
+            print('Queue is still empty, stoping the rebalancer...')
+            global shutdown_rebalancer
+            shutdown_rebalancer = True
+            return
+        await asyncio.sleep(30)
+
+async def async_run_rebalancer(worker, rebalancer_queue):
+    while True:
+        global active_rebalances, shutdown_rebalancer
+        if not rebalancer_queue.empty():
+            rebalance = await rebalancer_queue.get()
+            print(datetime.now(), worker + ' is starting a new request...')
+            active_rebalance_id = None
+            if rebalance != None:
+                active_rebalance_id = rebalance.id
+                active_rebalances.append(active_rebalance_id)
+            while rebalance != None:
+                rebalance = await run_rebalancer(rebalance, worker)
+            if active_rebalance_id != None:
+                active_rebalances.remove(active_rebalance_id)
+            print(datetime.now(), worker + ' completed its request...')
+        else:
+            if shutdown_rebalancer == True:
+                return
+        await asyncio.sleep(3)
+
+async def start_queue(worker_count=1):
     rebalancer_queue = asyncio.Queue()
-    for rebalance in rebalances:
-        await rebalancer_queue.put(rebalance)
-    workers = []
-    for worker_num in range(worker_count):
-        workers.append(asyncio.create_task(async_run_rebalancer("Worker " + str(worker_num+1), rebalancer_queue)))
-    await asyncio.gather(*workers)
+    manager = asyncio.create_task(async_queue_manager(rebalancer_queue))
+    workers = [asyncio.create_task(async_run_rebalancer("Worker " + str(worker_num+1), rebalancer_queue)) for worker_num in range(worker_count)]
+    await asyncio.gather(manager, *workers)
+    print('Manager and workers have stopped...')
 
 def main():
-    rebalances = Rebalancer.objects.filter(status=0).order_by('id')
-    if len(rebalances) == 0:
-        auto_enable()
-        auto_schedule()
+    if Rebalancer.objects.filter(status=1).exists():
+        unknown_errors = Rebalancer.objects.filter(status=1)
+        for unknown_error in unknown_errors:
+            unknown_error.status = 400
+            unknown_error.stop = datetime.now()
+            unknown_error.save()
+    if LocalSettings.objects.filter(key='AR-Workers').exists():
+        worker_count = int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
     else:
-        if Rebalancer.objects.filter(status=1).exists():
-            unknown_errors = Rebalancer.objects.filter(status=1)
-            for unknown_error in unknown_errors:
-                unknown_error.status = 400
-                unknown_error.stop = datetime.now()
-                unknown_error.save()
-        if LocalSettings.objects.filter(key='AR-Workers').exists():
-            worker_count = int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
-        else:
-            LocalSettings(key='AR-Workers', value='1').save()
-            worker_count = 1
-        asyncio.run(start_queue(rebalances, worker_count))
+        LocalSettings(key='AR-Workers', value='1').save()
+        worker_count = 1
+    asyncio.run(start_queue(worker_count))
+    print('Rebalancer successfully shutdown...')
 
 if __name__ == '__main__':
     main()
