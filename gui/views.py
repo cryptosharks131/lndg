@@ -2325,6 +2325,16 @@ def update_setting(request):
                 db_time_target.value = target_time
                 db_time_target.save()
                 messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
+            elif key == 'AR-Workers':
+                workers = int(value)
+                try:
+                    db_workers = LocalSettings.objects.get(key='AR-Workers')
+                except:
+                    LocalSettings(key='AR-Workers', value='5').save()
+                    db_workers = LocalSettings.objects.get(key='AR-Workers')
+                db_workers.value = workers
+                db_workers.save()
+                messages.success(request, 'Updated auto rebalancer workers setting to: ' + str(workers))
             elif key == 'AR-Enabled':
                 enabled = int(value)
                 try:
