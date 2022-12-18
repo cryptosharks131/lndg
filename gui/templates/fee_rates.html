@@ -35,25 +35,25 @@
 <div class="w3-container w3-padding-small">
   <h2>Suggested Fee Rates</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table id="feeTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
+        <th onclick="sortTable(0, 'String', 'feeTable')">Channel ID</th>
+        <th onclick="sortTable(1, 'String', 'feeTable', 0, true)">Peer Alias</th>
+        <th onclick="sortTable(2, 'int', 'feeTable')">Capacity</th>
+        <th onclick="sortTable(3, ' (', 'feeTable')">Outbound Liquidity</th>
         <th width=10%></th>
-        <th>Inbound Liquidity</th>
+        <th onclick="sortTable(5, ' (', 'feeTable')">Inbound Liquidity</th>
         <th title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
-        <th title="The average rate earned outgoing on this channel">Out Rate</th>
-        <th title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
-        <th title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
-        <th>Adjustment</th>
-        <th title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
+        <th onclick="sortTable(7, 'int', 'feeTable')" title="The average rate earned outgoing on this channel">Out Rate</th>
+        <th onclick="sortTable(8, 'int', 'feeTable')" title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
+        <th onclick="sortTable(9, 'int', 'feeTable')" title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
+        <th onclick="sortTable(10, 'int', 'feeTable')">Adjustment</th>
+        <th onclick="sortTable(11, 'int', 'feeTable')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
         <th>oRate</th>
-        <th>oBase</th>
-        <th>Max Cost</th>
-        <th>iRate</th>
-        <th>iBase</th>
+        <th onclick="sortTable(13, 'int', 'feeTable')">oBase</th>
+        <th onclick="sortTable(14, '%', 'feeTable')">Max Cost</th>
+        <th onclick="sortTable(15, 'int', 'feeTable')">iRate</th>
+        <th onclick="sortTable(16, 'int', 'feeTable')">iBase</th>
         <th>Updated</th>
         <th>
           <form action="/update_setting/" method="post">
