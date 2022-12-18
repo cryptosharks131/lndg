@@ -21,7 +21,7 @@ function sortTable(n, type, tableName, skip=0, link=false) {
             if (dir == "asc") {
                 if (type == "String" && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()
                     || type == "int" && parseInt(x.innerHTML.replace(/,/g, '')) > parseInt(y.innerHTML.replace(/,/g, ''))
-                    || type != "String" && type != "int" && parseInt(x.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) > parseInt(y.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
+                    || type != "String" && type != "int" && Number(x.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) > Number(y.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
                 {
                     shouldSwitch = true;
                     break;
@@ -29,7 +29,7 @@ function sortTable(n, type, tableName, skip=0, link=false) {
             } else if (dir == "desc") {
                 if (type == "String" && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()
                     || type == "int" && parseInt(x.innerHTML.replace(/,/g, '')) < parseInt(y.innerHTML.replace(/,/g, ''))
-                    || type != "String" && type != "int" && parseInt(x.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) < parseInt(y.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
+                    || type != "String" && type != "int" && Number(x.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) < Number(y.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
                 {
                     shouldSwitch = true;
                     break;

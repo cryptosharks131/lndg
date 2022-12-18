@@ -43,7 +43,7 @@
         <th onclick="sortTable(3, ' (', 'feeTable')">Outbound Liquidity</th>
         <th width=10%></th>
         <th onclick="sortTable(5, ' (', 'feeTable')">Inbound Liquidity</th>
-        <th title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
+        <th onclick="sortTable(6, ' | ', 'feeTable')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
         <th onclick="sortTable(7, 'int', 'feeTable')" title="The average rate earned outgoing on this channel">Out Rate</th>
         <th onclick="sortTable(8, 'int', 'feeTable')" title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
         <th onclick="sortTable(9, 'int', 'feeTable')" title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
@@ -72,7 +72,7 @@
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
         <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
-        <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}{% if channel.net_routed_7day != 0 %} | {{ channel.net_routed_7day }}{% endif %}</td>
+        <td>{% if channel.net_routed_7day != 0 %}{{ channel.net_routed_7day }} | {% endif %}{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}</td>
         <td>{{ channel.out_rate }}</td>
         <td>{{ channel.rebal_ppm }}</td>
         <td>{{ channel.assisted_ratio }}</td>
