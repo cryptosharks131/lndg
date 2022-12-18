@@ -37,23 +37,23 @@
 <div class="w3-container w3-padding-small">
   <h2>Active Channels</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table id="activeChannels" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
+        <th onclick="sortTable(0, 'String', 'activeChannels')">Channel ID</th>
+        <th onclick="sortTable(1, 'String', 'activeChannels', 0, true)">Peer Alias</th>
+        <th onclick="sortTable(2, 'int', 'activeChannels')">Capacity</th>
+        <th onclick="sortTable(3, ' (', 'activeChannels')">Outbound Liquidity</th>
         <th width=10%></th>
-        <th>Inbound Liquidity</th>
-        <th>Unsettled</th>
-        <th>oRate</th>
-        <th>oBase</th>
-        <th>o1D</th>
-        <th>i1D</th>
-        <th>o7D</th>
-        <th>i7D</th>
-        <th>iRate</th>
-        <th>iBase</th>
+        <th onclick="sortTable(5, ' (', 'activeChannels')">Inbound Liquidity</th>
+        <th onclick="sortTable(6, ' (', 'activeChannels')">Unsettled</th>
+        <th onclick="sortTable(7, 'int', 'activeChannels')">oRate</th>
+        <th onclick="sortTable(8, 'int', 'activeChannels')">oBase</th>
+        <th onclick="sortTable(9, ' M (', 'activeChannels')">o1D</th>
+        <th onclick="sortTable(10, ' M (', 'activeChannels')">i1D</th>
+        <th onclick="sortTable(11, ' M (', 'activeChannels')">o7D</th>
+        <th onclick="sortTable(12, ' M (', 'activeChannels')">i7D</th>
+        <th onclick="sortTable(13, 'int', 'activeChannels')">iRate</th>
+        <th onclick="sortTable(14, 'int', 'activeChannels')">iBase</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
       </tr>
@@ -104,19 +104,19 @@
 {% if inactive_channels %}
 <div class="w3-container w3-padding-small">
   <h2>Inactive Channels</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="inactiveChannels" class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th width=9%>Outbound Liquidity</th>
+      <th onclick="sortTable(0, 'String', 'inactiveChannels')">Channel ID</th>
+      <th onclick="sortTable(1, 'String', 'inactiveChannels', 0, true)">Peer Alias</th>
+      <th onclick="sortTable(2, 'int', 'inactiveChannels')">Capacity</th>
+      <th onclick="sortTable(3, ' (', 'inactiveChannels')" width=9%>Outbound Liquidity</th>
       <th width=10%></th>
-      <th width=9%>Inbound Liquidity</th>
-      <th width=6%>Unsettled</th>
-      <th width=4%>oRate</th>
-      <th width=4%>oBase</th>
-      <th width=4%>iRate</th>
-      <th width=4%>iBase</th>
+      <th onclick="sortTable(5, ' (', 'inactiveChannels')" width=9%>Inbound Liquidity</th>
+      <th onclick="sortTable(6, ' (', 'inactiveChannels')" width=6%>Unsettled</th>
+      <th onclick="sortTable(7, 'int', 'inactiveChannels')" width=4%>oRate</th>
+      <th onclick="sortTable(8, 'int', 'inactiveChannels')" width=4%>oBase</th>
+      <th onclick="sortTable(9, 'int', 'inactiveChannels')" width=4%>iRate</th>
+      <th onclick="sortTable(10, 'int', 'inactiveChannels')" width=4%>iBase</th>
       <th width=5%>Local Commit</th>
       <th width=5%>Local Reserve</th>
       <th width=5%>Downtime</th>

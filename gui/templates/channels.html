@@ -6,7 +6,7 @@
 <div class="w3-container w3-padding-small">
   <h2>Channel Performance</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table id="channelsTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th></th>
         <th></th>
@@ -16,9 +16,9 @@
         <th colspan="2"> Channel Health</th>
       </tr>
       <tr>
-        <th width=1%>Channel ID</th>
-        <th>Peer Alias</th>
-        <th width=1%>Capacity</th>
+        <th onclick="sortTable(0, 'String', 'channelsTable', 1)" width=1%>Channel ID</th>
+        <th onclick="sortTable(1, 'String', 'channelsTable', 1, true)">Peer Alias</th>
+        <th onclick="sortTable(2, 'int', 'channelsTable', 1)" width=1%>Capacity</th>
         <th title="7-Day Routed Out | Rebalanced In">Outbound Flow</th>
         <th title="7-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
         <th title="7-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
@@ -27,8 +27,8 @@
         <th title="30-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
         <th title="30-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
         <th title="30-Day Routed In | Rebalanced Out">Inbound Flow</th>
-        <th title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
-        <th title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
+        <th onclick="sortTable(11, 'int', 'channelsTable', 1)" title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
+        <th onclick="sortTable(12, 'String', 'channelsTable', 1)" title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
       </tr>
       {% for channel in channels %}
       <tr>

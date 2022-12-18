@@ -1,12 +1,13 @@
 <!DOCTYPE html>
+{% load static %}
 <html>
   <style>
   </style>
+  <script src="{% static 'sort_table.js' %}"></script>
   <head>
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
     <title>{% block title %}LNDg{% endblock %}</title>
-    {% load static %}
     {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
