@@ -1,16 +1,18 @@
 <!DOCTYPE html>
+{% load static %}
 <html>
   <style>
   </style>
+  <script src="{% static 'sort_table.js' %}"></script>
+  <script src="{% static 'dark_mode.js' %}"></script>
   <head>
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
     <title>{% block title %}LNDg{% endblock %}</title>
-    {% load static %}
     {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
-  <body>
+  <body onload="checkDarkMode()">
     <div id="content">
         {% if messages %}
         <div class="w3-container w3-padding-small">
@@ -28,6 +30,9 @@
   </body>
   <footer>
     <div id="footer">
+      <div class="w3-container w3-padding-small">
+        <center><button onclick="darkMode()">Toggle dark mode</button></center>
+      </div>
       <div class="w3-container w3-padding-small">
         <center>LNDg v1.5.0</center>
       </div>
