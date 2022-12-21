@@ -12,6 +12,18 @@ class PaymentSerializer(serializers.HyperlinkedModelSerializer):
 
 class InvoiceSerializer(serializers.HyperlinkedModelSerializer):
     r_hash = serializers.ReadOnlyField()
+    creation_date = serializers.ReadOnlyField()
+    settle_date = serializers.ReadOnlyField()
+    value = serializers.ReadOnlyField()
+    amt_paid = serializers.ReadOnlyField()
+    state = serializers.ReadOnlyField()
+    chan_in = serializers.ReadOnlyField()
+    chan_in_alias = serializers.ReadOnlyField()
+    keysend_preimage = serializers.ReadOnlyField()
+    message = serializers.ReadOnlyField()
+    sender = serializers.ReadOnlyField()
+    sender_alias = serializers.ReadOnlyField()
+    index = serializers.ReadOnlyField()
     class Meta:
         model = Invoices
         exclude = []

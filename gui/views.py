@@ -2717,6 +2717,15 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Invoices.objects.all()
     serializer_class = InvoiceSerializer
 
+    def update(self, request, pk=None):
+        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
+        serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors)
+
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all()
