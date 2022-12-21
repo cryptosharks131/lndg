@@ -181,6 +181,7 @@ def home(request):
                 detailed_channel = {}
                 detailed_channel['remote_pubkey'] = channel.remote_pubkey
                 detailed_channel['chan_id'] = channel.chan_id
+                detailed_channel['short_chan_id'] = channel.short_chan_id
                 detailed_channel['capacity'] = channel.capacity
                 detailed_channel['local_balance'] = channel.local_balance + channel.pending_outbound
                 detailed_channel['remote_balance'] = channel.remote_balance + channel.pending_inbound

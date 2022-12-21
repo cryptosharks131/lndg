@@ -3,6 +3,14 @@
 from django.db import migrations, models
 import django.utils.timezone
 
+def update_short_chan_id(apps, schedma_editor):
+    channels = apps.get_model('gui', 'channels')
+    for channel in channels.objects.all().iterator():
+        channel.short_chan_id = str(int(channel.chan_id) >> 40) + 'x' + str(int(channel.chan_id) >> 16 & 0xFFFFFF) + 'x' + str(int(channel.chan_id) & 0xFFFF)
+        channel.save()
+
+def revert_short_chan_id(apps, schedma_editor):
+    pass
 
 class Migration(migrations.Migration):
 
@@ -22,5 +30,76 @@ class Migration(migrations.Migration):
                 ('old_value', models.BigIntegerField()),
                 ('new_value', models.BigIntegerField()),
             ],
+        ),
+        migrations.AddField(
+            model_name='channels',
+            name='short_chan_id',
+            field=models.CharField(default=0, max_length=20),
+        ),
+        migrations.RunPython(update_short_chan_id, revert_short_chan_id),
+        migrations.AlterField(
+            model_name='channels',
+            name='short_chan_id',
+            field=models.CharField(max_length=20),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='local_base_fee',
+            field=models.IntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='local_cltv',
+            field=models.IntegerField(default=40),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='local_disabled',
+            field=models.BooleanField(default=False),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='local_fee_rate',
+            field=models.IntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='local_max_htlc_msat',
+            field=models.BigIntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='local_min_htlc_msat',
+            field=models.BigIntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='remote_base_fee',
+            field=models.IntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='remote_cltv',
+            field=models.IntegerField(default=40),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='remote_disabled',
+            field=models.BooleanField(default=False),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='remote_fee_rate',
+            field=models.IntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='remote_max_htlc_msat',
+            field=models.BigIntegerField(default=0),
+        ),
+        migrations.AlterField(
+            model_name='channels',
+            name='remote_min_htlc_msat',
+            field=models.BigIntegerField(default=0),
         ),
     ]
