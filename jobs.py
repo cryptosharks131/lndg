@@ -369,6 +369,7 @@ def update_channels(stub):
         #A channel must have been closed, mark it as closed
         channels = Channels.objects.filter(is_open=True).exclude(chan_id__in=chan_list)
         for channel in channels:
+            channel.last_update = datetime.now()
             channel.is_active = False
             channel.is_open = False
             channel.save()
