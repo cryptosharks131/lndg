@@ -292,3 +292,13 @@ class AvoidNodes(models.Model):
     updated = models.DateTimeField(default=timezone.now)
     class Meta:
         app_label = 'gui'
+
+class PeerEvents(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    chan_id = models.CharField(max_length=20)
+    peer_alias = models.CharField(max_length=32)
+    event = models.CharField(max_length=20)
+    old_value = models.BigIntegerField()
+    new_value = models.BigIntegerField()
+    class Meta:
+        app_label = 'gui'
