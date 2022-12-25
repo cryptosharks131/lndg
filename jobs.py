@@ -265,15 +265,43 @@ def update_channels(stub):
         else:
             local_policy = chan_data.node1_policy
             remote_policy = chan_data.node2_policy
+        old_fee_rate = db_channel.local_fee_rate if db_channel.local_fee_rate is not None else 0
         db_channel.local_base_fee = local_policy.fee_base_msat
-        if db_channel.local_fee_rate != local_policy.fee_rate_milli_msat:
-            old_fee_rate = db_channel.local_fee_rate if db_channel.local_fee_rate is not None else 0
+        db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
+        db_channel.local_cltv = local_policy.time_lock_delta
+        # Check for pending settings to be applied
+        if pending_channel:
+            if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:
+                base_fee = pending_channel.local_base_fee if pending_channel.local_base_fee else db_channel.local_base_fee
+                fee_rate = pending_channel.local_fee_rate if pending_channel.local_fee_rate else db_channel.local_fee_rate
+                cltv = pending_channel.local_cltv if pending_channel.local_cltv else db_channel.local_cltv
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = int(db_channel.output_index)
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee, fee_rate=(fee_rate/1000000), time_lock_delta=cltv))
+                db_channel.local_base_fee = base_fee
+                db_channel.local_fee_rate = fee_rate
+                db_channel.local_cltv = cltv
+                db_channel.fees_updated = datetime.now()
+            if pending_channel.auto_rebalance is not None:
+                db_channel.auto_rebalance = pending_channel.auto_rebalance
+            if pending_channel.ar_amt_target:
+                db_channel.ar_amt_target = pending_channel.ar_amt_target
+            if pending_channel.ar_in_target:
+                db_channel.ar_in_target = pending_channel.ar_in_target
+            if pending_channel.ar_out_target:
+                db_channel.ar_out_target = pending_channel.ar_out_target
+            if pending_channel.ar_max_cost:
+                db_channel.ar_max_cost = pending_channel.ar_max_cost
+            if pending_channel.auto_fees is not None:
+                db_channel.auto_fees = pending_channel.auto_fees
+            pending_channel.delete()
+        if old_fee_rate != local_policy.fee_rate_milli_msat:
             print (f"{datetime.now().strftime('%c')} : Ext Fee Change Detected {db_channel.chan_id=} {db_channel.alias=} {old_fee_rate=} {db_channel.local_fee_rate=}")
             #External Fee change detected, update auto fee log
-            db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
             Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
         db_channel.local_disabled = local_policy.disabled
-        db_channel.local_cltv = local_policy.time_lock_delta
         db_channel.local_min_htlc_msat = local_policy.min_htlc
         db_channel.local_max_htlc_msat = local_policy.max_htlc_msat
         if db_channel.remote_base_fee != remote_policy.fee_base_msat:
@@ -285,11 +313,11 @@ def update_channels(stub):
             db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
             PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='FeeRate', old_value=old_setting, new_value=db_channel.remote_fee_rate).save()
         if db_channel.remote_disabled != remote_policy.disabled:
+            db_channel.remote_disabled = remote_policy.disabled
             if db_channel.remote_disabled:
                 PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=0, new_value=1).save()
             else:
                 PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0).save()
-            db_channel.remote_disabled = remote_policy.disabled
         if db_channel.remote_cltv != remote_policy.time_lock_delta:
             old_setting = db_channel.remote_cltv if db_channel.remote_cltv is not None else 0
             db_channel.remote_cltv = remote_policy.time_lock_delta
@@ -334,33 +362,6 @@ def update_channels(stub):
         db_channel.pending_outbound = pending_out
         db_channel.pending_inbound = pending_in
         db_channel.htlc_count = htlc_counter
-        if pending_channel:
-            if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:
-                base_fee = pending_channel.local_base_fee if pending_channel.local_base_fee else db_channel.local_base_fee
-                fee_rate = pending_channel.local_fee_rate if pending_channel.local_fee_rate else db_channel.local_fee_rate
-                cltv = pending_channel.local_cltv if pending_channel.local_cltv else db_channel.local_cltv
-                channel_point = ln.ChannelPoint()
-                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
-                channel_point.funding_txid_str = db_channel.funding_txid
-                channel_point.output_index = int(db_channel.output_index)
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee, fee_rate=(fee_rate/1000000), time_lock_delta=cltv))
-                db_channel.local_base_fee = base_fee
-                db_channel.local_fee_rate = fee_rate
-                db_channel.local_cltv = cltv
-                db_channel.fees_updated = datetime.now()
-            if pending_channel.auto_rebalance is not None:
-                db_channel.auto_rebalance = pending_channel.auto_rebalance
-            if pending_channel.ar_amt_target:
-                db_channel.ar_amt_target = pending_channel.ar_amt_target
-            if pending_channel.ar_in_target:
-                db_channel.ar_in_target = pending_channel.ar_in_target
-            if pending_channel.ar_out_target:
-                db_channel.ar_out_target = pending_channel.ar_out_target
-            if pending_channel.ar_max_cost:
-                db_channel.ar_max_cost = pending_channel.ar_max_cost
-            if pending_channel.auto_fees is not None:
-                db_channel.auto_fees = pending_channel.auto_fees
-            pending_channel.delete()
         db_channel.save()
         counter += 1
         chan_list.append(channel.chan_id)
