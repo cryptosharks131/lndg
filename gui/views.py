@@ -1339,13 +1339,17 @@ def channel(request):
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
             peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(chan_id=chan_id).order_by('-id')[:10].values())
             if peer_events_df.shape[0]> 0:
-                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/channels_df['capacity'][0])*100, 1)
                 peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
                 peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
                 peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
                 peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df['old_value'] = peer_events_df['old_value'].astype(int)
-                peer_events_df['new_value']= peer_events_df['new_value'].astype(int)
+                peer_events_df = peer_events_df.fillna('')
+                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
+                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
+                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
+                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
@@ -1788,17 +1792,50 @@ def autopilot(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def autofees(request):
     if request.method == 'GET':
-        chan_id = request.GET.urlencode()[1:]
-        filter_7d = datetime.now() - timedelta(days=7)
-        autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
-        if autofees_df.shape[0]> 0:
-            autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-        #print (f"{datetime.now().strftime('%c')} : {chan_id=} {autofees=}")
         try:
+            chan_id = request.GET.urlencode()[1:]
+            filter_7d = datetime.now() - timedelta(days=7)
+            autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            if autofees_df.shape[0]> 0:
+                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
             context = {
                 'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
             }
             return render(request, 'autofees.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+    else:
+        return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def peerevents(request):
+    if request.method == 'GET':
+        try:
+            chan_id = request.GET.urlencode()[1:]
+            filter_7d = datetime.now() - timedelta(days=7)
+            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else PeerEvents.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            channels_df = DataFrame.from_records(Channels.objects.values() if chan_id == "" else Channels.objects.filter(chan_id=chan_id).values())
+            if peer_events_df.shape[0]> 0:
+                peer_events_df = peer_events_df.merge(channels_df)
+                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/peer_events_df['capacity'])*100, 1)
+                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
+                peer_events_df = peer_events_df.fillna('')
+                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
+                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
+                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
+                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
+            context = {
+                'peer_events': [] if peer_events_df.empty else peer_events_df.to_dict(orient='records')
+            }
+            return render(request, 'peerevents.html', context)
         except Exception as e:
             try:
                 error = str(e.code())

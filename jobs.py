@@ -248,88 +248,7 @@ def update_channels(stub):
             db_channel.capacity = channel.capacity
             db_channel.private = channel.private
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
-        # Check for peer events
-        if db_channel.is_active != channel.active:
-            db_channel.last_update = datetime.now()
-            peer_alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias if Peers.objects.filter(pubkey=db_channel.remote_pubkey).exists() else None
-            db_channel.alias = '' if peer_alias is None else peer_alias
-            db_channel.is_active = channel.active
-            if db_channel.is_active:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Connection', old_value=0, new_value=1).save()
-            else:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Connection', old_value=1, new_value=0).save()
-        chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
-        if chan_data.node1_pub == channel.remote_pubkey:
-            local_policy = chan_data.node2_policy
-            remote_policy = chan_data.node1_policy
-        else:
-            local_policy = chan_data.node1_policy
-            remote_policy = chan_data.node2_policy
-        old_fee_rate = db_channel.local_fee_rate if db_channel.local_fee_rate is not None else 0
-        db_channel.local_base_fee = local_policy.fee_base_msat
-        db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
-        db_channel.local_cltv = local_policy.time_lock_delta
-        # Check for pending settings to be applied
-        if pending_channel:
-            if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:
-                base_fee = pending_channel.local_base_fee if pending_channel.local_base_fee else db_channel.local_base_fee
-                fee_rate = pending_channel.local_fee_rate if pending_channel.local_fee_rate else db_channel.local_fee_rate
-                cltv = pending_channel.local_cltv if pending_channel.local_cltv else db_channel.local_cltv
-                channel_point = ln.ChannelPoint()
-                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
-                channel_point.funding_txid_str = db_channel.funding_txid
-                channel_point.output_index = int(db_channel.output_index)
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee, fee_rate=(fee_rate/1000000), time_lock_delta=cltv))
-                db_channel.local_base_fee = base_fee
-                db_channel.local_fee_rate = fee_rate
-                db_channel.local_cltv = cltv
-                db_channel.fees_updated = datetime.now()
-            if pending_channel.auto_rebalance is not None:
-                db_channel.auto_rebalance = pending_channel.auto_rebalance
-            if pending_channel.ar_amt_target:
-                db_channel.ar_amt_target = pending_channel.ar_amt_target
-            if pending_channel.ar_in_target:
-                db_channel.ar_in_target = pending_channel.ar_in_target
-            if pending_channel.ar_out_target:
-                db_channel.ar_out_target = pending_channel.ar_out_target
-            if pending_channel.ar_max_cost:
-                db_channel.ar_max_cost = pending_channel.ar_max_cost
-            if pending_channel.auto_fees is not None:
-                db_channel.auto_fees = pending_channel.auto_fees
-            pending_channel.delete()
-        if old_fee_rate != local_policy.fee_rate_milli_msat:
-            print (f"{datetime.now().strftime('%c')} : Ext Fee Change Detected {db_channel.chan_id=} {db_channel.alias=} {old_fee_rate=} {db_channel.local_fee_rate=}")
-            #External Fee change detected, update auto fee log
-            Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
-        db_channel.local_disabled = local_policy.disabled
-        db_channel.local_min_htlc_msat = local_policy.min_htlc
-        db_channel.local_max_htlc_msat = local_policy.max_htlc_msat
-        if db_channel.remote_base_fee != remote_policy.fee_base_msat:
-            old_setting = db_channel.remote_base_fee if db_channel.remote_base_fee is not None else 0
-            db_channel.remote_base_fee = remote_policy.fee_base_msat
-            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=old_setting, new_value=db_channel.remote_base_fee).save()
-        if db_channel.remote_fee_rate != remote_policy.fee_rate_milli_msat:
-            old_setting = db_channel.remote_fee_rate if db_channel.remote_fee_rate is not None else 0
-            db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
-            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='FeeRate', old_value=old_setting, new_value=db_channel.remote_fee_rate).save()
-        if db_channel.remote_disabled != remote_policy.disabled:
-            db_channel.remote_disabled = remote_policy.disabled
-            if db_channel.remote_disabled:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=0, new_value=1).save()
-            else:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0).save()
-        if db_channel.remote_cltv != remote_policy.time_lock_delta:
-            old_setting = db_channel.remote_cltv if db_channel.remote_cltv is not None else 0
-            db_channel.remote_cltv = remote_policy.time_lock_delta
-            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=old_setting, new_value=db_channel.remote_cltv).save()
-        if db_channel.remote_min_htlc_msat != remote_policy.min_htlc:
-            old_setting = db_channel.remote_min_htlc_msat if db_channel.remote_min_htlc_msat is not None else 0
-            db_channel.remote_min_htlc_msat = remote_policy.min_htlc
-            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=old_setting, new_value=db_channel.remote_min_htlc_msat).save()
-        if db_channel.remote_max_htlc_msat != remote_policy.max_htlc_msat:
-            old_setting = db_channel.remote_max_htlc_msat if db_channel.remote_max_htlc_msat is not None else 0
-            db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
-            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=old_setting, new_value=db_channel.remote_max_htlc_msat).save()
+        # Update basic channel data
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
@@ -362,6 +281,102 @@ def update_channels(stub):
         db_channel.pending_outbound = pending_out
         db_channel.pending_inbound = pending_in
         db_channel.htlc_count = htlc_counter
+        # Check for peer events
+        if db_channel.is_active != channel.active:
+            db_channel.last_update = datetime.now()
+            peer_alias = Peers.objects.filter(pubkey=db_channel.remote_pubkey)[0].alias if Peers.objects.filter(pubkey=db_channel.remote_pubkey).exists() else None
+            db_channel.alias = '' if peer_alias is None else peer_alias
+            if db_channel.is_active is None:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Connection', old_value=None, new_value=(1 if channel.active else 0), out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+            elif db_channel.is_active:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Connection', old_value=0, new_value=1, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+            else:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Connection', old_value=1, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+            db_channel.is_active = channel.active
+        try:
+            chan_data = stub.GetChanInfo(ln.ChanInfoRequest(chan_id=channel.chan_id))
+            if chan_data.node1_pub == channel.remote_pubkey:
+                local_policy = chan_data.node2_policy
+                remote_policy = chan_data.node1_policy
+            else:
+                local_policy = chan_data.node1_policy
+                remote_policy = chan_data.node2_policy
+            old_fee_rate = db_channel.local_fee_rate if db_channel.local_fee_rate is not None else 0
+            db_channel.local_base_fee = local_policy.fee_base_msat
+            db_channel.local_fee_rate = local_policy.fee_rate_milli_msat
+            db_channel.local_cltv = local_policy.time_lock_delta
+            db_channel.local_disabled = local_policy.disabled
+            db_channel.local_min_htlc_msat = local_policy.min_htlc
+            db_channel.local_max_htlc_msat = local_policy.max_htlc_msat
+            if db_channel.remote_base_fee != remote_policy.fee_base_msat:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=db_channel.remote_base_fee, new_value=remote_policy.fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                db_channel.remote_base_fee = remote_policy.fee_base_msat
+            if db_channel.remote_fee_rate != remote_policy.fee_rate_milli_msat:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='FeeRate', old_value=db_channel.remote_fee_rate, new_value=remote_policy.fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
+            if db_channel.remote_disabled != remote_policy.disabled:
+                if db_channel.remote_disabled is None:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=(1 if remote_policy.disabled else 0), out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                elif db_channel.remote_disabled:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=0, new_value=1, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                else:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                db_channel.remote_disabled = remote_policy.disabled
+            if db_channel.remote_cltv != remote_policy.time_lock_delta:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                db_channel.remote_cltv = remote_policy.time_lock_delta
+            if db_channel.remote_min_htlc_msat != remote_policy.min_htlc:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=db_channel.remote_min_htlc_msat, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                db_channel.remote_min_htlc_msat = remote_policy.min_htlc
+            if db_channel.remote_max_htlc_msat != remote_policy.max_htlc_msat:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=db_channel.remote_max_htlc_msat, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
+        except:
+            old_fee_rate = None
+            db_channel.local_base_fee = 0 if db_channel.local_base_fee is None else db_channel.local_base_fee
+            db_channel.local_fee_rate = 0 if db_channel.local_fee_rate is None else db_channel.local_fee_rate
+            db_channel.local_cltv = 40 if db_channel.local_cltv is None else db_channel.local_cltv
+            db_channel.local_disabled = False if db_channel.local_disabled is None else db_channel.local_disabled
+            db_channel.local_min_htlc_msat = 0 if db_channel.local_min_htlc_msat is None else db_channel.local_min_htlc_msat
+            db_channel.local_max_htlc_msat = 0 if db_channel.local_max_htlc_msat is None else db_channel.local_max_htlc_msat
+            db_channel.remote_base_fee = 0 if db_channel.remote_base_fee is None else db_channel.remote_base_fee
+            db_channel.remote_fee_rate = 0 if db_channel.remote_fee_rate is None else db_channel.remote_fee_rate
+            db_channel.remote_cltv = 40 if db_channel.remote_cltv is None else db_channel.remote_cltv
+            db_channel.remote_disabled = False if db_channel.remote_disabled is None else db_channel.remote_disabled
+            db_channel.remote_min_htlc_msat = 0 if db_channel.remote_min_htlc_msat is None else db_channel.remote_min_htlc_msat
+            db_channel.remote_max_htlc_msat = 0 if db_channel.remote_max_htlc_msat is None else db_channel.remote_max_htlc_msat
+        # Check for pending settings to be applied
+        if pending_channel:
+            if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:
+                base_fee = pending_channel.local_base_fee if pending_channel.local_base_fee else db_channel.local_base_fee
+                fee_rate = pending_channel.local_fee_rate if pending_channel.local_fee_rate else db_channel.local_fee_rate
+                cltv = pending_channel.local_cltv if pending_channel.local_cltv else db_channel.local_cltv
+                channel_point = ln.ChannelPoint()
+                channel_point.funding_txid_bytes = bytes.fromhex(db_channel.funding_txid)
+                channel_point.funding_txid_str = db_channel.funding_txid
+                channel_point.output_index = int(db_channel.output_index)
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee, fee_rate=(fee_rate/1000000), time_lock_delta=cltv))
+                db_channel.local_base_fee = base_fee
+                db_channel.local_fee_rate = fee_rate
+                db_channel.local_cltv = cltv
+                db_channel.fees_updated = datetime.now()
+            if pending_channel.auto_rebalance is not None:
+                db_channel.auto_rebalance = pending_channel.auto_rebalance
+            if pending_channel.ar_amt_target:
+                db_channel.ar_amt_target = pending_channel.ar_amt_target
+            if pending_channel.ar_in_target:
+                db_channel.ar_in_target = pending_channel.ar_in_target
+            if pending_channel.ar_out_target:
+                db_channel.ar_out_target = pending_channel.ar_out_target
+            if pending_channel.ar_max_cost:
+                db_channel.ar_max_cost = pending_channel.ar_max_cost
+            if pending_channel.auto_fees is not None:
+                db_channel.auto_fees = pending_channel.auto_fees
+            pending_channel.delete()
+        if old_fee_rate is not None and old_fee_rate != local_policy.fee_rate_milli_msat:
+            print (f"{datetime.now().strftime('%c')} : Ext Fee Change Detected {db_channel.chan_id=} {db_channel.alias=} {old_fee_rate=} {db_channel.local_fee_rate=}")
+            #External Fee change detected, update auto fee log
+            Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
         db_channel.save()
         counter += 1
         chan_list.append(channel.chan_id)

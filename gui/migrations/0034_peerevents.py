@@ -27,8 +27,9 @@ class Migration(migrations.Migration):
                 ('chan_id', models.CharField(max_length=20)),
                 ('peer_alias', models.CharField(max_length=32)),
                 ('event', models.CharField(max_length=20)),
-                ('old_value', models.BigIntegerField()),
+                ('old_value', models.BigIntegerField(null=True)),
                 ('new_value', models.BigIntegerField()),
+                ('out_liq', models.BigIntegerField()),
             ],
         ),
         migrations.AddField(
@@ -41,65 +42,5 @@ class Migration(migrations.Migration):
             model_name='channels',
             name='short_chan_id',
             field=models.CharField(max_length=20),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='local_base_fee',
-            field=models.IntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='local_cltv',
-            field=models.IntegerField(default=40),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='local_disabled',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='local_fee_rate',
-            field=models.IntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='local_max_htlc_msat',
-            field=models.BigIntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='local_min_htlc_msat',
-            field=models.BigIntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='remote_base_fee',
-            field=models.IntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='remote_cltv',
-            field=models.IntegerField(default=40),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='remote_disabled',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='remote_fee_rate',
-            field=models.IntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='remote_max_htlc_msat',
-            field=models.BigIntegerField(default=0),
-        ),
-        migrations.AlterField(
-            model_name='channels',
-            name='remote_min_htlc_msat',
-            field=models.BigIntegerField(default=0),
         ),
     ]

@@ -64,6 +64,7 @@ urlpatterns = [
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
     path('autofees/', views.autofees, name='autofees'),
+    path('peerevents/', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
