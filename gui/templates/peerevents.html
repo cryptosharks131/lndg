@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if peer_events %}
 <div class="w3-container w3-padding-small">
-  <h2><a href="/peerevents/">Peer Events</a></h2>
+  <h2><a href="/peerevents/">Last 150 Peer Events</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
@@ -20,7 +20,7 @@
     <tr>
       <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
-      <td><a href="/peerevents?={{ log.chan_id }}" target="_blank">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
+      <td><a href="/peerevents?={{ log.chan_id }}">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
       <td>{{ log.event }}</td>
       <td>{% if log.old_value == "" %}---{% elif log.event == "Connection" %}{% if log.old_value == 1 %}Online{% else %}Offline{% endif %}{% elif log.event == "Disabled" %}{% if log.old_value == 1 %}True{% else %}False{% endif %}{% else %}{{ log.old_value|intcomma }}{% endif %}</td>
       <td {% if log.event == "Disabled" and log.new_value == 0 %}style="background-color: #d5fadb"{% elif log.event == "Connection" and log.new_value == 1 %}style="background-color: #d5fadb"{% elif log.new_value > log.old_value and log.event != "Disabled" %}style="background-color: #d5fadb"{% else %}style="background-color: #fadbd5"{% endif %}>{% if log.event == "Connection" %}{% if log.new_value == 1 %}Online{% else %}Offline{% endif %}{% elif log.event == "Disabled" %}{% if log.new_value == 1 %}True{% else %}False{% endif %}{% else %}{{ log.new_value|intcomma }}{% endif %}</td>

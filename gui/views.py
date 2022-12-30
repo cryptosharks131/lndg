@@ -1817,7 +1817,7 @@ def peerevents(request):
         try:
             chan_id = request.GET.urlencode()[1:]
             filter_7d = datetime.now() - timedelta(days=7)
-            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else PeerEvents.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(timestamp__gte=filter_7d).order_by('-id')[:150].values() if chan_id == "" else PeerEvents.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id')[:150].values())
             channels_df = DataFrame.from_records(Channels.objects.values() if chan_id == "" else Channels.objects.filter(chan_id=chan_id).values())
             if peer_events_df.shape[0]> 0:
                 peer_events_df = peer_events_df.merge(channels_df)
@@ -1833,7 +1833,7 @@ def peerevents(request):
                 peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
                 peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
             context = {
-                'peer_events': [] if peer_events_df.empty else peer_events_df.to_dict(orient='records')
+                'peer_events': [] if peer_events_df.empty else peer_events_df.sort_values(by=['id'], ascending=False).to_dict(orient='records')
             }
             return render(request, 'peerevents.html', context)
         except Exception as e:
