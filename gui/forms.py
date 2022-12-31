@@ -63,16 +63,6 @@ class RebalancerForm(forms.ModelForm):
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
 
-class ChanPolicyForm(forms.ModelForm):
-    class Meta:
-        model = Channels
-        fields = []
-    new_base_fee = forms.IntegerField(label='new_base_fee', required=False)
-    new_fee_rate = forms.IntegerField(label='new_fee_rate', required=False)
-    new_cltv = forms.IntegerField(label='new_cltv', required=False)
-    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1).order_by('-alias'), required=False)
-    target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
-
 class AutoRebalanceForm(forms.Form):
     chan_id = forms.IntegerField(label='chan_id', required=False)
     enabled = forms.IntegerField(label='enabled', required=False)
