@@ -308,43 +308,60 @@ def update_channels(stub):
             db_channel.local_disabled = local_policy.disabled
             db_channel.local_min_htlc_msat = local_policy.min_htlc
             db_channel.local_max_htlc_msat = local_policy.max_htlc_msat
-            if db_channel.remote_base_fee != remote_policy.fee_base_msat:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=db_channel.remote_base_fee, new_value=remote_policy.fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+            if db_channel.remote_cltv == -1:
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=None, new_value=remote_policy.fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_base_fee = remote_policy.fee_base_msat
-            if db_channel.remote_fee_rate != remote_policy.fee_rate_milli_msat:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='FeeRate', old_value=db_channel.remote_fee_rate, new_value=remote_policy.fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='FeeRate', old_value=None, new_value=remote_policy.fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
-            if db_channel.remote_disabled != remote_policy.disabled:
-                if db_channel.remote_disabled is None:
-                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=(1 if remote_policy.disabled else 0), out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
-                elif db_channel.remote_disabled:
-                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=0, new_value=1, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                if remote_policy.disabled:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=1, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 else:
-                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_disabled = remote_policy.disabled
-            if db_channel.remote_cltv != remote_policy.time_lock_delta:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=None, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_cltv = remote_policy.time_lock_delta
-            if db_channel.remote_min_htlc_msat != remote_policy.min_htlc:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=db_channel.remote_min_htlc_msat, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=None, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_min_htlc_msat = remote_policy.min_htlc
-            if db_channel.remote_max_htlc_msat != remote_policy.max_htlc_msat:
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=db_channel.remote_max_htlc_msat, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=None, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
+            else:
+                if db_channel.remote_base_fee != remote_policy.fee_base_msat:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=db_channel.remote_base_fee, new_value=remote_policy.fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    db_channel.remote_base_fee = remote_policy.fee_base_msat
+                if db_channel.remote_fee_rate != remote_policy.fee_rate_milli_msat:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='FeeRate', old_value=db_channel.remote_fee_rate, new_value=remote_policy.fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    db_channel.remote_fee_rate = remote_policy.fee_rate_milli_msat
+                if db_channel.remote_disabled != remote_policy.disabled:
+                    if db_channel.remote_disabled is None:
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=(1 if remote_policy.disabled else 0), out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    elif remote_policy.disabled:
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=0, new_value=1, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    else:
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    db_channel.remote_disabled = remote_policy.disabled
+                if db_channel.remote_cltv != remote_policy.time_lock_delta:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    db_channel.remote_cltv = remote_policy.time_lock_delta
+                if db_channel.remote_min_htlc_msat != remote_policy.min_htlc:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=db_channel.remote_min_htlc_msat, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    db_channel.remote_min_htlc_msat = remote_policy.min_htlc
+                if db_channel.remote_max_htlc_msat != remote_policy.max_htlc_msat:
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=db_channel.remote_max_htlc_msat, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
         except:
             old_fee_rate = None
-            db_channel.local_base_fee = 0 if db_channel.local_base_fee is None else db_channel.local_base_fee
-            db_channel.local_fee_rate = 0 if db_channel.local_fee_rate is None else db_channel.local_fee_rate
-            db_channel.local_cltv = 40 if db_channel.local_cltv is None else db_channel.local_cltv
+            db_channel.local_base_fee = -1 if db_channel.local_base_fee is None else db_channel.local_base_fee
+            db_channel.local_fee_rate = -1 if db_channel.local_fee_rate is None else db_channel.local_fee_rate
+            db_channel.local_cltv = -1 if db_channel.local_cltv is None else db_channel.local_cltv
             db_channel.local_disabled = False if db_channel.local_disabled is None else db_channel.local_disabled
-            db_channel.local_min_htlc_msat = 0 if db_channel.local_min_htlc_msat is None else db_channel.local_min_htlc_msat
-            db_channel.local_max_htlc_msat = 0 if db_channel.local_max_htlc_msat is None else db_channel.local_max_htlc_msat
-            db_channel.remote_base_fee = 0 if db_channel.remote_base_fee is None else db_channel.remote_base_fee
-            db_channel.remote_fee_rate = 0 if db_channel.remote_fee_rate is None else db_channel.remote_fee_rate
-            db_channel.remote_cltv = 40 if db_channel.remote_cltv is None else db_channel.remote_cltv
+            db_channel.local_min_htlc_msat = -1 if db_channel.local_min_htlc_msat is None else db_channel.local_min_htlc_msat
+            db_channel.local_max_htlc_msat = -1 if db_channel.local_max_htlc_msat is None else db_channel.local_max_htlc_msat
+            db_channel.remote_base_fee = -1 if db_channel.remote_base_fee is None else db_channel.remote_base_fee
+            db_channel.remote_fee_rate = -1 if db_channel.remote_fee_rate is None else db_channel.remote_fee_rate
+            db_channel.remote_cltv = -1 if db_channel.remote_cltv is None else db_channel.remote_cltv
             db_channel.remote_disabled = False if db_channel.remote_disabled is None else db_channel.remote_disabled
-            db_channel.remote_min_htlc_msat = 0 if db_channel.remote_min_htlc_msat is None else db_channel.remote_min_htlc_msat
-            db_channel.remote_max_htlc_msat = 0 if db_channel.remote_max_htlc_msat is None else db_channel.remote_max_htlc_msat
+            db_channel.remote_min_htlc_msat = -1 if db_channel.remote_min_htlc_msat is None else db_channel.remote_min_htlc_msat
+            db_channel.remote_max_htlc_msat = -1 if db_channel.remote_max_htlc_msat is None else db_channel.remote_max_htlc_msat
         # Check for pending settings to be applied
         if pending_channel:
             if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:
