@@ -19,7 +19,7 @@
     </tr>
     {% for channel in pending_closed %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
         <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
@@ -52,7 +52,7 @@
     </tr>
     {% for channel in pending_force_closed %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
         <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
@@ -85,7 +85,7 @@
     </tr>
     {% for channel in waiting_for_close %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
         <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>

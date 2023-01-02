@@ -48,10 +48,8 @@ def get_tx_fees(txid):
 def pending_channel_details(channels, channel_point):
     funding_txid, output_index = channel_point.split(':')
     if channels.filter(funding_txid=funding_txid, output_index=output_index).exists():
-        short_chan_id = channels.filter(funding_txid=funding_txid, output_index=output_index)[0].short_chan_id,
-        chan_id = channels.filter(funding_txid=funding_txid, output_index=output_index)[0].chan_id,
-        alias = channels.filter(funding_txid=funding_txid, output_index=output_index)[0].alias
-        return {'short_chan_id':short_chan_id,'chan_id':chan_id,'alias':alias}
+        channel = channels.filter(funding_txid=funding_txid, output_index=output_index)[0]
+        return {'short_chan_id':channel.short_chan_id,'chan_id':channel.chan_id,'alias':channel.alias}
     else:
         return {'short_chan_id':None,'chan_id':None,'alias':None}
 
