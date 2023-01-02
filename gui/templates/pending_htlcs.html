@@ -19,7 +19,7 @@
     <tr>
       <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
       <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
-      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == '0' %}Self{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
@@ -46,7 +46,7 @@
     <tr>
       <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
       <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
-      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == '0' %}Self{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>

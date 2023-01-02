@@ -163,7 +163,7 @@
     </tr>
     {% for htlc in outgoing_htlcs %}
     <tr>
-      <td>{{ htlc.forwarding_channel }}</td>
+      <td>{% if htlc.forwarding_channel == '0' %}Self{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
@@ -186,7 +186,7 @@
     </tr>
     {% for htlc in incoming_htlcs %}
     <tr>
-      <td>{{ htlc.forwarding_channel }}</td>
+      <td>{% if htlc.forwarding_channel == '0' %}Self{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td>{{ htlc.expiration_height|intcomma }}</td>
