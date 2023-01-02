@@ -983,7 +983,8 @@ def channel(request):
             filter_30day = datetime.now() - timedelta(days=30)
             forwards_df = DataFrame.from_records(Forwards.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).values())
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).values())
-            invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
+            rebal_payments = Payments.objects.filter(status=2).filter(rebal_chan=chan_id)
+            invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=rebal_payments).values())
             channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).values())
             if channels_df.empty:
                 node_outbound = 0
@@ -1226,10 +1227,7 @@ def channel(request):
                 channels_df['amt_rebal_in_30day'] = int(invoices_df_30d_sum.loc[chan_id].amt_paid) if invoices_df_30d_count.empty == False else 0
                 channels_df['amt_rebal_in_7day'] = int(invoices_df_7d_sum.loc[chan_id].amt_paid) if invoices_df_7d_count.empty == False else 0
                 channels_df['amt_rebal_in_1day'] = int(invoices_df_1d_sum.loc[chan_id].amt_paid) if invoices_df_1d_count.empty == False else 0
-                rebal_payments_df = DataFrame()
-                if payments_df.shape[0] > 0:
-                    rebal_payments_df = payments_df.loc[payments_df['rebal_chan']==chan_id]
-                    rebal_payments_df = rebal_payments_df.loc[rebal_payments_df['value']>=1000]
+                rebal_payments_df = DataFrame.from_records(rebal_payments.filter(value__gte=1000).values())
                 if rebal_payments_df.shape[0] > 0:
                     invoice_hashes = DataFrame() if invoices_df.empty else invoices_df.loc[invoices_df['value'] >= 1000].groupby('chan_in', as_index=True)['r_hash'].apply(list)
                     invoice_hashes_30d = DataFrame() if invoices_df_30d.empty else invoices_df_30d.loc[invoices_df_30d['value'] >= 1000].groupby('chan_in', as_index=True)['r_hash'].apply(list)
