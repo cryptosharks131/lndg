@@ -26,8 +26,8 @@ function darkMode() {
     }
     var element = document.body;
     element.classList.toggle("dark-mode");
-    element.classList.toggle("dark-table1");
-    element.classList.toggle("dark-table2");
+    element.classList.toggle("dark-mode-table1");
+    element.classList.toggle("dark-mode-table2");
 }
 
 function checkDarkMode() {
