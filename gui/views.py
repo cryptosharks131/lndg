@@ -313,7 +313,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'rebalances': rebalances[:12],
-                'chan_policy_form': ChanPolicyForm,
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
@@ -2012,62 +2011,6 @@ def rebalance(request):
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def update_chan_policy(request):
-    if request.method == 'POST':
-        form = ChanPolicyForm(request.POST)
-        if form.is_valid():
-            if form.cleaned_data['new_base_fee'] is not None or form.cleaned_data['new_fee_rate'] is not None or form.cleaned_data['new_cltv'] is not None:
-                try:
-                    stub = lnrpc.LightningStub(lnd_connect())
-                    if form.cleaned_data['target_all']:
-                        if form.cleaned_data['new_base_fee'] is not None and form.cleaned_data['new_fee_rate'] is not None and form.cleaned_data['new_cltv'] is not None:
-                            args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': form.cleaned_data['new_cltv']}
-                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
-                            channels = Channels.objects.filter(is_open=True)
-                            channels.update(local_base_fee=form.cleaned_data['new_base_fee'])
-                            channels.update(local_fee_rate=form.cleaned_data['new_fee_rate'])
-                            channels.update(local_cltv=form.cleaned_data['new_cltv'])
-                            channels.update(fees_updated=datetime.now())
-                        else:
-                            messages.error(request, 'You must specify all parameters when updating all channels.')
-                            return redirect('home')
-                    elif len(form.cleaned_data['target_chans']) > 0:
-                        for channel in form.cleaned_data['target_chans']:
-                            channel_point = ln.ChannelPoint()
-                            channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                            channel_point.funding_txid_str = channel.funding_txid
-                            channel_point.output_index = channel.output_index
-                            new_base_fee = form.cleaned_data['new_base_fee'] if form.cleaned_data['new_base_fee'] is not None else channel.local_base_fee
-                            new_fee_rate = form.cleaned_data['new_fee_rate']/1000000 if form.cleaned_data['new_fee_rate'] is not None else channel.local_fee_rate/1000000
-                            new_cltv = form.cleaned_data['new_cltv'] if form.cleaned_data['new_cltv'] is not None else channel.local_cltv
-                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
-                            db_channel = Channels.objects.get(chan_id=channel.chan_id)
-                            db_channel.local_base_fee = new_base_fee
-                            old_fee_rate = db_channel.local_fee_rate
-                            db_channel.local_fee_rate = new_fee_rate*1000000
-                            db_channel.local_cltv = new_cltv
-                            if form.cleaned_data['new_fee_rate'] is not None:
-                                db_channel.fees_updated = datetime.now()
-                                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
-
-                            db_channel.save()
-                    else:
-                        messages.error(request, 'No channels were specified in the update request!')
-                        return redirect('home')
-                    messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
-                except Exception as e:
-                    error = str(e)
-                    details_index = error.find('details =') + 11
-                    debug_error_index = error.find('debug_error_string =') - 3
-                    error_msg = error[details_index:debug_error_index]
-                    messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
-            else:
-                messages.error(request, 'You must specify at least one parameter.')
-        else:
-            messages.error(request, 'Invalid Request. Please try again.')
-    return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def auto_rebalance(request):
