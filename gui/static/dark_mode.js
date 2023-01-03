@@ -25,7 +25,9 @@ function darkMode() {
         document.cookie = "darkmode=true"; 
     }
     var element = document.body;
-    element.classList.toggle("dark-mode");  
+    element.classList.toggle("dark-mode");
+    element.classList.toggle("dark-table1");
+    element.classList.toggle("dark-table2");
 }
 
 function checkDarkMode() {
