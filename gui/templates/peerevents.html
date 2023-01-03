@@ -5,16 +5,16 @@
 {% if peer_events %}
 <div class="w3-container w3-padding-small">
   <h2><a href="/peerevents/">Last 150 Peer Events</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="peerEvents" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Setting</th>
-      <th>Old Value</th>
-      <th>New Value</th>
-      <th>Change</th>
-      <th width=12% title="Outbound | Inbound"">Channel Liquidity</th>
+      <th onclick="sortTable(1, 'String', 'peerEvents')">Channel ID</th>
+      <th onclick="sortTable(2, 'String', 'peerEvents', 0, true)">Peer Alias</th>
+      <th onclick="sortTable(3, 'String', 'peerEvents')">Setting</th>
+      <th onclick="sortTable(4, 'String', 'peerEvents')">Old Value</th>
+      <th onclick="sortTable(5, 'String', 'peerEvents')">New Value</th>
+      <th onclick="sortTable(6, '%', 'peerEvents')">Change</th>
+      <th onclick="sortTable(6, '% | ', 'peerEvents')" width=12% title="Outbound | Inbound"">Channel Liquidity</th>
     </tr>
     {% for log in peer_events %}
     <tr>
