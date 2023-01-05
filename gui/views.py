@@ -671,9 +671,12 @@ def closures(request):
                 if channels_df.empty:
                     merged = closures_df
                     merged['alias'] = ''
+                    merged['short_chan_id'] = merged.apply(lambda row: str(int(row.chan_id) >> 40) + 'x' + str(int(int(row.chan_id) >> 16) & 0xFFFFFF) + 'x' + str(int(row.chan_id) & 0xFFFF), axis=1)
                 else:
                     merged = merge(closures_df, channels_df, on='chan_id', how='left')
                     merged['alias'] = merged['alias'].fillna('')
+                    merged['short_chan_id'] = merged['short_chan_id'].fillna('')
+                    merged['short_chan_id'] = merged.apply(lambda row: str(int(row.chan_id) >> 40) + 'x' + str(int(int(row.chan_id) >> 16) & 0xFFFFFF) + 'x' + str(int(row.chan_id) & 0xFFFF) if row.short_chan_id == '' else row.short_chan_id, axis=1)
             context = {
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
@@ -2704,11 +2707,14 @@ def get_fees(request):
         missing_fees = Closures.objects.exclude(close_type__in=[4, 5]).exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
         if missing_fees:
             for missing_fee in missing_fees:
+                swept = Resolutions.objects.filter(id__lt=missing_fee.id).values_list('sweep_txid', flat=True)
                 try:
                     txid = missing_fee.closing_tx
                     closing_costs = get_tx_fees(txid) if missing_fee.open_initiator == 1 else 0
                     for resolution in Resolutions.objects.filter(chan_id=missing_fee.chan_id).exclude(resolution_type=2):
-                        closing_costs += get_tx_fees(resolution.sweep_txid)
+                        if resolution.sweep_txid not in swept:
+                            closing_costs += get_tx_fees(resolution.sweep_txid)
+                            swept.append(resolution.sweep_txid)
                     missing_fee.closing_costs = closing_costs
                     missing_fee.save()
                 except Exception as error:

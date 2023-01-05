@@ -489,7 +489,7 @@ def update_closures(stub):
                 if resolution_count > 0:
                     Resolutions.objects.filter(chan_id=closure.chan_id).delete()
                     for resolution in closure.resolutions:
-                        if resolution.resolution_type != 2:
+                        if resolution.resolution_type != 2 and not Resolutions.objects.filter(sweep_txid=resolution.sweep_txid).exists():
                             closing_costs += get_tx_fees(resolution.sweep_txid)
                         Resolutions(chan_id=closure.chan_id, resolution_type=resolution.resolution_type, outcome=resolution.outcome, outpoint_tx=resolution.outpoint.txid_str, outpoint_index=resolution.outpoint.output_index, amount_sat=resolution.amount_sat, sweep_txid=resolution.sweep_txid).save()
                 db_closure.closing_costs = closing_costs
