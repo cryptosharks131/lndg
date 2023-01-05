@@ -99,7 +99,7 @@ class OpenChannelSerializer(serializers.Serializer):
     sat_per_byte = serializers.IntegerField(label='sat_per_btye')
 
 class CloseChannelSerializer(serializers.Serializer):
-    chan_id = serializers.IntegerField(label='chan_id')
+    chan_id = serializers.CharField(label='chan_id')
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 

@@ -33,7 +33,7 @@ class OpenChannelForm(forms.Form):
     sat_per_byte = forms.IntegerField(label='sat_per_btye')
 
 class CloseChannelForm(forms.Form):
-    chan_id = forms.IntegerField(label='chan_id')
+    chan_id = forms.CharField(label='chan_id')
     target_fee = forms.IntegerField(label='target_fee')
     force = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 

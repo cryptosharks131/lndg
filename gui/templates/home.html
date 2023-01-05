@@ -659,7 +659,7 @@
     <form action="/closechannel/" method="post">
       {% csrf_token %}
       <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="number" name="chan_id">
+      <input id="chan_id" type="text" name="chan_id">
       <label for="target_fee">Target Fee: </label>
       <input id="target_fee" type="number" min="1" max="100" name="target_fee">
       <label for="force">Force Close? </label>

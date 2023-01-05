@@ -1888,8 +1888,12 @@ def close_channel_form(request):
         if form.is_valid():
             try:
                 chan_id = form.cleaned_data['chan_id']
-                if Channels.objects.filter(chan_id=chan_id).exists():
-                    target_channel = Channels.objects.filter(chan_id=chan_id).get()
+                if chan_id.count('x') == 2 and len(chan_id) >= 5:
+                    target_channel = Channels.objects.filter(short_chan_id=chan_id)
+                else:
+                    target_channel = Channels.objects.filter(chan_id=chan_id)
+                if target_channel.exists():
+                    target_channel = target_channel.get()
                     funding_txid = target_channel.funding_txid
                     output_index = target_channel.output_index
                     target_fee = form.cleaned_data['target_fee']
@@ -2894,8 +2898,12 @@ def close_channel(request):
     if serializer.is_valid():
         try:
             chan_id = serializer.validated_data['chan_id']
-            if Channels.objects.filter(chan_id=chan_id).exists():
-                target_channel = Channels.objects.filter(chan_id=chan_id).get()
+            if chan_id.count('x') == 2 and len(chan_id) >= 5:
+                target_channel = Channels.objects.filter(short_chan_id=chan_id)
+            else:
+                target_channel = Channels.objects.filter(chan_id=chan_id)
+            if target_channel.exists():
+                target_channel = target_channel.get()
                 funding_txid = target_channel.funding_txid
                 output_index = target_channel.output_index
                 target_fee = serializer.validated_data['target_fee']
