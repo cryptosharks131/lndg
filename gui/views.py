@@ -2707,7 +2707,8 @@ def get_fees(request):
         missing_fees = Closures.objects.exclude(close_type__in=[4, 5]).exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
         if missing_fees:
             for missing_fee in missing_fees:
-                swept = Resolutions.objects.filter(id__lt=missing_fee.id).values_list('sweep_txid', flat=True)
+                prior_closures = Closures.objects.filter(id__lt=missing_fee.id).values_list('chan_id', flat=True)
+                swept = list(Resolutions.objects.filter(chan_id__in=prior_closures).values_list('sweep_txid', flat=True))
                 try:
                     txid = missing_fee.closing_tx
                     closing_costs = get_tx_fees(txid) if missing_fee.open_initiator == 1 else 0
