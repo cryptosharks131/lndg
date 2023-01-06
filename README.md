@@ -101,6 +101,9 @@ When updating, follow the same steps as above. You will also need to restart the
 `sudo systemctl restart uwsgi.service`  
 
 ## Key Features
+### Track Peer Events
+LNDg will track the changes your peers make to channel policies you have in open channels and any connection events that may happen with those channels.
+
 ### Batch Opens
 You can use LNDg to batch open up to 10 channels at a time with a single transaction. This can help to signicantly reduce the channel open fees incurred when opening multiple channels.
 
@@ -125,6 +128,8 @@ LNDg will make suggestions for new peers to open channels to based on your node'
 3. Inbound Flow Details - This shows the amount routed inbound next to the amount rebalanced out
 4. Updates - This is the number of updates the channel has had and is directly correlated to the space it takes up in channel.db
 
+#### LNDg also provides a P&L page in order to track overall metrics and profitability of the node.
+
 ### Password Protected Login
 The initial login username is `lndg-admin` but can be easily modified by going to the page found here: `/lndg-admin`
 
@@ -146,7 +151,7 @@ LNDg will automatically try to resolve any channels that are seen as inactive, n
 
 ## Auto-Fees
 ### Here are some additional notes to help you get started using Auto-Fees (AF).
-LNDg can update your fees on a channel every 24 hours if there is a suggestion listed on the fee rates page. You must make sure the `AF-Enabled` setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
+LNDg can update your fees on a channel every 24 hours (default) if there is a suggestion listed on the fee rates page. You must make sure the `AF-Enabled` setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
 
 You can customize some settings of AF by updating the following settings:  
 `AF-FailedHTLCs` - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)  
@@ -154,9 +159,10 @@ You can customize some settings of AF by updating the following settings:
 `AF-MaxRate` - The maximum fee rate in which we can adjust to  
 `AF-MinRate` - The minimum fee rate in which we can adjust to  
 `AF-Multiplier` - Multiplier used against the flow pattern algorithm, the larger the multiplier, the larger the potential moves  
+`AF-UpdateHours` - Change the number of hours that must pass since the last fee rate change before AF may adjust the fee rate again  
 
 AF Notes:
-1. AF changes only trigger after 24 hours of no fee updates via LNDg
+1. AF changes only trigger after 24 hours (default) of no fee updates via LNDg
 2. Single step maximum increase set to 15% or 25 ppm (which ever is increase smaller)
 3. Single step maximum decrease set to 25% or 50 ppm (which ever is decrease smaller)
 4. Channels with less than 25% outbound liquidty will not have their fees decreased
@@ -167,12 +173,12 @@ AF Notes:
 
 The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucarative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
 
-1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities.
-2. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts. Example: If a channel size is 1M Sats and AR-Target% = 0.05 LNDg will select an amount of 5% of 1M = 50K for rebalancing.
-3. The AR variable `AR-Time` defines the maximum amount of time we will spend looking for a route. Example: 5 minutes
-4. The AR variable `AR-MaxFeeRate` defines the maximum amount in ppm a rebalance attempt can ever use for a fee limit. This is the maximum limit to ensure the total fee does not exceed this amount. Example: AR-MaxFeeRate = 800 will ensure the rebalance fee is always less than 800 ppm.
-5. The AR variable `AR-MaxCost%	` defines the maximum % of the ppm being charged on the `INBOUND` receving channel that will be used as the fee limit for the rebalance attempt. Example: If your fee to node A is 1000ppm and AR-MaxCost% = 0.5 LNDg will use 50% of 1000ppm = 500ppm max fee limit for rebalancing.
-6. The AR variable `AR-Outbound%` helps identify all the channels that would be a candidate for rebalancing targetd channels. Rebalances will only consider any `OUTBOUND` channel that has more outbound liquidity than the current `AR-Outbound%` setting AND the channel is not currently being targeted as an `INBOUND` receving channel for rebalances.  Example: AR-Outboud% = 0.6 would make all channels with an outbound capacity of 60% or more AND not enabled under AR on the channel line to be a candidate for rebalancing. 
+1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities. (default=0)
+2. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts. Example: If a channel size is 1M Sats and AR-Target% = 0.05 LNDg will select an amount of 5% of 1M = 50K for rebalancing. (default=5)
+3. The AR variable `AR-Time` defines the maximum amount of time (minutes) we will spend looking for a route. (default=5)
+4. The AR variable `AR-MaxFeeRate` defines the maximum amount in ppm a rebalance attempt can ever use for a fee limit. This is the maximum limit to ensure the total fee does not exceed this amount. Example: AR-MaxFeeRate = 800 will ensure the rebalance fee is always less than 800 ppm. (default=100)
+5. The AR variable `AR-MaxCost%	` defines the maximum % of the ppm being charged on the `INBOUND` receving channel that will be used as the fee limit for the rebalance attempt. Example: If your fee to node A is 1000ppm and AR-MaxCost% = 0.5 LNDg will use 50% of 1000ppm = 500ppm max fee limit for rebalancing. (default=65)
+6. The AR variable `AR-Outbound%` helps identify all the channels that would be a candidate for rebalancing targetd channels. Rebalances will only consider any `OUTBOUND` channel that has more outbound liquidity than the current `AR-Outbound%` setting AND the channel is not currently being targeted as an `INBOUND` receving channel for rebalances.  Example: AR-Outboud% = 0.6 would make all channels with an outbound capacity of 60% or more AND not enabled under AR on the channel line to be a candidate for rebalancing. (default=75)
 7. Channels need to be targeted in order to be refilled with outbound liquidity and in order to control costs as a first prioirty, all calculations are based on the specific `INBOUND` receving channel.
 8. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%` on the specific channel. Rebalance attempts will be made until inbound liquidity falls below this channel settting.
 9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
@@ -180,9 +186,12 @@ The objective of the Auto-Rebalancer is to "refill" the liquidity on the local s
 11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed. The 30 minute window can be customized by updating the `AR-WaitPeriod` setting.
 
 Additional customization options:
-1. `AR-Autopilot` - Automatically act upon suggestions on the AR Actions page
-2. `AR-WaitPeriod` - How long AR should wait before scheduling a channel that has recently failed an attempt
-3. `AR-Variance` - How much to randomly vary the target rebalance amount by this % of the target amount
+1. `AR-Autopilot` - Automatically act upon suggestions on the AR Actions page. (default=0)
+2. `AR-WaitPeriod` - How much time (minutes) AR should wait before scheduling a channel that has recently failed an attempt. (default=30)
+3. `AR-Variance` - How much to randomly vary the target rebalance amount by this % of the target amount.  (default=0)
+4. `AR-Inbound%` - The default `iTarget%` value to assign to new channels.  (default=100)
+5. `AR-APDays` - The number of days of historical data AP should use to decide actions to take. (default=7)
+6. `AR-Workers` - Define how many parallel rebalances to spin up at once. (default=1)
 
 #### Steps to start the Auto-Rebalancer:
 1. Update Channel Specific Settings  
