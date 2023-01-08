@@ -12,6 +12,18 @@ class PaymentSerializer(serializers.HyperlinkedModelSerializer):
 
 class InvoiceSerializer(serializers.HyperlinkedModelSerializer):
     r_hash = serializers.ReadOnlyField()
+    creation_date = serializers.ReadOnlyField()
+    settle_date = serializers.ReadOnlyField()
+    value = serializers.ReadOnlyField()
+    amt_paid = serializers.ReadOnlyField()
+    state = serializers.ReadOnlyField()
+    chan_in = serializers.ReadOnlyField()
+    chan_in_alias = serializers.ReadOnlyField()
+    keysend_preimage = serializers.ReadOnlyField()
+    message = serializers.ReadOnlyField()
+    sender = serializers.ReadOnlyField()
+    sender_alias = serializers.ReadOnlyField()
+    index = serializers.ReadOnlyField()
     class Meta:
         model = Invoices
         exclude = []
@@ -44,6 +56,26 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     local_disabled = serializers.ReadOnlyField()
     remote_disabled = serializers.ReadOnlyField()
     last_update = serializers.ReadOnlyField()
+    short_chan_id = serializers.ReadOnlyField()
+    total_sent = serializers.ReadOnlyField()
+    total_received = serializers.ReadOnlyField()
+    private = serializers.ReadOnlyField()
+    pending_outbound = serializers.ReadOnlyField()
+    pending_inbound = serializers.ReadOnlyField()
+    htlc_count = serializers.ReadOnlyField()
+    local_cltv = serializers.ReadOnlyField()
+    local_min_htlc_msat = serializers.ReadOnlyField()
+    local_max_htlc_msat = serializers.ReadOnlyField()
+    remote_cltv = serializers.ReadOnlyField()
+    remote_min_htlc_msat = serializers.ReadOnlyField()
+    remote_max_htlc_msat = serializers.ReadOnlyField()
+    alias = serializers.ReadOnlyField()
+    fees_updated = serializers.ReadOnlyField()
+    ar_max_cost = serializers.IntegerField(required=False)
+    ar_amt_target = serializers.IntegerField(required=False)
+    ar_out_target = serializers.IntegerField(required=False)
+    ar_in_target = serializers.IntegerField(required=False)
+    auto_fees = serializers.BooleanField(required=False)
     class Meta:
         model = Channels
         exclude = []
@@ -67,7 +99,7 @@ class OpenChannelSerializer(serializers.Serializer):
     sat_per_byte = serializers.IntegerField(label='sat_per_btye')
 
 class CloseChannelSerializer(serializers.Serializer):
-    chan_id = serializers.IntegerField(label='chan_id')
+    chan_id = serializers.CharField(label='chan_id')
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 

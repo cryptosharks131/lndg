@@ -33,7 +33,7 @@ class OpenChannelForm(forms.Form):
     sat_per_byte = forms.IntegerField(label='sat_per_btye')
 
 class CloseChannelForm(forms.Form):
-    chan_id = forms.IntegerField(label='chan_id')
+    chan_id = forms.CharField(label='chan_id')
     target_fee = forms.IntegerField(label='target_fee')
     force = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
@@ -62,16 +62,6 @@ class RebalancerForm(forms.ModelForm):
     outgoing_chan_ids = RebalancerModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-local_balance'), required=False)
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
-
-class ChanPolicyForm(forms.ModelForm):
-    class Meta:
-        model = Channels
-        fields = []
-    new_base_fee = forms.IntegerField(label='new_base_fee', required=False)
-    new_fee_rate = forms.IntegerField(label='new_fee_rate', required=False)
-    new_cltv = forms.IntegerField(label='new_cltv', required=False)
-    target_chans = ChanPolicyModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1).order_by('-alias'), required=False)
-    target_all = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class AutoRebalanceForm(forms.Form):
     chan_id = forms.IntegerField(label='chan_id', required=False)

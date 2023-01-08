@@ -6,29 +6,29 @@
 <div class="w3-container w3-padding-small">
   <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table id="rebalancingTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
+        <th onclick="sortTable(0, 'String', 'rebalancingTable')">Channel ID</th>
+        <th onclick="sortTable(1, 'String', 'rebalancingTable', 0, true)">Peer Alias</th>
+        <th onclick="sortTable(2, 'int', 'rebalancingTable')">Capacity</th>
+        <th onclick="sortTable(3, ' (', 'rebalancingTable')">Outbound Liquidity</th>
         <th width=10%></th>
-        <th>Inbound Liquidity</th>
+        <th onclick="sortTable(5, ' (', 'rebalancingTable')">Inbound Liquidity</th>
         <th><a href="/rebalancing?=2">Rebal Out?</a></th>
         <th><a href="/rebalancing?=1">Enabled?</a></th>
-        <th title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-        <th>Rebal In?</th>
+        <th onclick="sortTable(8, '%', 'rebalancingTable')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+        <th onclick="sortTable(9, 'String', 'rebalancingTable')">Rebal In?</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th>AR</th>
         <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-        <th>Active</th>
+        <th onclick="sortTable(16, 'String', 'rebalancingTable')">Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</td>

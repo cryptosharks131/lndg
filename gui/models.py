@@ -66,6 +66,7 @@ class Forwards(models.Model):
 class Channels(models.Model):
     remote_pubkey = models.CharField(max_length=66)
     chan_id = models.CharField(max_length=20, primary_key=True)
+    short_chan_id = models.CharField(max_length=20)
     funding_txid = models.CharField(max_length=64)
     output_index = models.IntegerField()
     capacity = models.BigIntegerField()
@@ -290,5 +291,16 @@ class AvoidNodes(models.Model):
     pubkey = models.CharField(max_length=66, primary_key=True)
     notes = models.CharField(null=True, max_length=1000)
     updated = models.DateTimeField(default=timezone.now)
+    class Meta:
+        app_label = 'gui'
+
+class PeerEvents(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    chan_id = models.CharField(max_length=20)
+    peer_alias = models.CharField(max_length=32)
+    event = models.CharField(max_length=20)
+    old_value = models.BigIntegerField(null=True)
+    new_value = models.BigIntegerField()
+    out_liq = models.BigIntegerField()
     class Meta:
         app_label = 'gui'

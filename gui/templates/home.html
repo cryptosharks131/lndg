@@ -31,35 +31,35 @@
   <h4>Active Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }}</h4>
   <h4>Inactive Inbound Liquidity: {{ inactive_inbound|intcomma }} | Outbound Liquidity: {{ inactive_outbound|intcomma }} | Unsettled Liquidity: {{ inactive_unsettled|intcomma }}</h4>
   <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Total Unsettled Liquidity: {{ total_unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-  <h4><a href="/income" target="_blank">P&L</a> | <a href="/closures" target="_blank">Closures</a> | <a href="/opens" target="_blank">New Peers</a> | <a href="/actions" target="_blank">AR Actions</a> | <a href="/fees" target="_blank">Fee Rates</a> | <a href="/autopilot" target="_blank">Autopilot</a> | <a href="/autofees" target="_blank">Autofees</a> | <a href="/channels" target="_blank">Channel Performance</a> | <a href="/keysends" target="_blank">Keysends</a> | <a href="/rebalancing" target="_blank">Rebalancing</a> | <a href="/towers" target="_blank">Towers</a> | <a href="/batch" target="_blank">Batching</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
+  <h4><a href="/income" target="_blank">P&L</a> | <a href="/closures" target="_blank">Closures</a> | <a href="/opens" target="_blank">New Peers</a> | <a href="/peerevents" target="_blank">Peer Events</a> | <a href="/actions" target="_blank">AR Actions</a> | <a href="/fees" target="_blank">Fee Rates</a> | <a href="/autopilot" target="_blank">Autopilot</a> | <a href="/autofees" target="_blank">Autofees</a> | <a href="/channels" target="_blank">Channel Performance</a> | <a href="/keysends" target="_blank">Keysends</a> | <a href="/rebalancing" target="_blank">Rebalancing</a> | <a href="/towers" target="_blank">Towers</a> | <a href="/batch" target="_blank">Batching</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
   <h2>Active Channels</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table id="activeChannels" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th>Channel ID</th>
-        <th>Peer Alias</th>
-        <th>Capacity</th>
-        <th>Outbound Liquidity</th>
+        <th onclick="sortTable(0, 'String', 'activeChannels')">Channel ID</th>
+        <th onclick="sortTable(1, 'String', 'activeChannels', 0, true)">Peer Alias</th>
+        <th onclick="sortTable(2, 'int', 'activeChannels')">Capacity</th>
+        <th onclick="sortTable(3, ' (', 'activeChannels')">Outbound Liquidity</th>
         <th width=10%></th>
-        <th>Inbound Liquidity</th>
-        <th>Unsettled</th>
-        <th>oRate</th>
-        <th>oBase</th>
-        <th>o1D</th>
-        <th>i1D</th>
-        <th>o7D</th>
-        <th>i7D</th>
-        <th>iRate</th>
-        <th>iBase</th>
+        <th onclick="sortTable(5, ' (', 'activeChannels')">Inbound Liquidity</th>
+        <th onclick="sortTable(6, ' (', 'activeChannels')">Unsettled</th>
+        <th onclick="sortTable(7, 'int', 'activeChannels')">oRate</th>
+        <th onclick="sortTable(8, 'int', 'activeChannels')">oBase</th>
+        <th onclick="sortTable(9, ' m (', 'activeChannels')">o1D</th>
+        <th onclick="sortTable(10, ' m (', 'activeChannels')">i1D</th>
+        <th onclick="sortTable(11, ' m (', 'activeChannels')">o7D</th>
+        <th onclick="sortTable(12, ' m (', 'activeChannels')">i7D</th>
+        <th onclick="sortTable(13, 'int', 'activeChannels')">iRate</th>
+        <th onclick="sortTable(14, 'int', 'activeChannels')">iBase</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
       </tr>
       {% for channel in active_channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}">{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
@@ -104,19 +104,19 @@
 {% if inactive_channels %}
 <div class="w3-container w3-padding-small">
   <h2>Inactive Channels</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="inactiveChannels" class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th width=9%>Outbound Liquidity</th>
+      <th onclick="sortTable(0, 'String', 'inactiveChannels')">Channel ID</th>
+      <th onclick="sortTable(1, 'String', 'inactiveChannels', 0, true)">Peer Alias</th>
+      <th onclick="sortTable(2, 'int', 'inactiveChannels')">Capacity</th>
+      <th onclick="sortTable(3, ' (', 'inactiveChannels')" width=9%>Outbound Liquidity</th>
       <th width=10%></th>
-      <th width=9%>Inbound Liquidity</th>
-      <th width=6%>Unsettled</th>
-      <th width=4%>oRate</th>
-      <th width=4%>oBase</th>
-      <th width=4%>iRate</th>
-      <th width=4%>iBase</th>
+      <th onclick="sortTable(5, ' (', 'inactiveChannels')" width=9%>Inbound Liquidity</th>
+      <th onclick="sortTable(6, ' (', 'inactiveChannels')" width=6%>Unsettled</th>
+      <th onclick="sortTable(7, 'int', 'inactiveChannels')" width=4%>oRate</th>
+      <th onclick="sortTable(8, 'int', 'inactiveChannels')" width=4%>oBase</th>
+      <th onclick="sortTable(9, 'int', 'inactiveChannels')" width=4%>iRate</th>
+      <th onclick="sortTable(10, 'int', 'inactiveChannels')" width=4%>iBase</th>
       <th width=5%>Local Commit</th>
       <th width=5%>Local Reserve</th>
       <th width=5%>Downtime</th>
@@ -126,7 +126,7 @@
     </tr>
     {% for channel in inactive_channels %}
     <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
@@ -190,7 +190,7 @@
     </tr>
     {% for channel in private_channels %}
     <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
@@ -310,7 +310,7 @@
           <input type="hidden" name="update_target" value="3">
         </form>
       </td>
-      <td>
+      <td {% if channel.auto_rebalance == False %}style="background-color: #f18973"{% else %}style="background-color: #80ced6"{% endif %}>
         <form action="/update_pending/" method="post">
           {% csrf_token %}
           <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
@@ -341,7 +341,7 @@
     </tr>
     {% for channel in pending_closed %}
     <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
@@ -370,7 +370,7 @@
     </tr>
     {% for channel in pending_force_closed %}
     <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
@@ -399,7 +399,7 @@
     </tr>
     {% for channel in waiting_for_close %}
     <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
@@ -659,7 +659,7 @@
     <form action="/closechannel/" method="post">
       {% csrf_token %}
       <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="number" name="chan_id">
+      <input id="chan_id" type="text" name="chan_id">
       <label for="target_fee">Target Fee: </label>
       <input id="target_fee" type="number" min="1" max="100" name="target_fee">
       <label for="force">Force Close? </label>
@@ -676,29 +676,6 @@
       <label for="value">Invoice Amount: </label>
       <input id="value" type="number" name="value">
       <input type="submit" value="OK">
-    </form>
-  </div>
-</div>
-<div class="w3-container w3-padding-small">
-  <h2>Update Channel Policy</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/updatechanpolicy/" method="post">
-      {% csrf_token %}
-      <label for="new_base_fee">New Base Fee: </label>
-      <input id="new_base_fee" type="number" min="0" name="new_base_fee">
-      <label for="new_fee_rate">New Fee Rate: </label>
-      <input id="new_fee_rate" type="number" min="0" name="new_fee_rate">
-      <label for="new_cltv">New CLTV: </label>
-      <input id="new_cltv" type="number" min="18" name="new_cltv">
-      <label for="target_all">Target All Channels? </label>
-      <input id="target_all" type="checkbox" name="target_all">
-      <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:35.2%">
-        <li><h3><label for="target_chans">Select Channels To Update: </label></h3></li>
-        {% for channel in chan_policy_form.target_chans %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
     </form>
   </div>
 </div>

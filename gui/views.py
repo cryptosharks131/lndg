@@ -8,8 +8,8 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, ChanPolicyForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -44,6 +44,14 @@ def get_tx_fees(txid):
     request_data = get(base_url + txid).json()
     fee = request_data['fee']
     return fee
+
+def pending_channel_details(channels, channel_point):
+    funding_txid, output_index = channel_point.split(':')
+    if channels.filter(funding_txid=funding_txid, output_index=output_index).exists():
+        channel = channels.filter(funding_txid=funding_txid, output_index=output_index)[0]
+        return {'short_chan_id':channel.short_chan_id,'chan_id':channel.chan_id,'alias':channel.alias}
+    else:
+        return {'short_chan_id':None,'chan_id':None,'alias':None}
 
 class is_login_required(object):
     def __init__(self, dec, condition):
@@ -115,25 +123,29 @@ def home(request):
                     pending_open.append(item)
             if pending_channels.pending_closing_channels:
                 target_resp = pending_channels.pending_closing_channels
-                pending_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0],output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,
-                'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0],output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,
-                'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
-                'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat,'limbo_balance':target_resp[i].limbo_balance,
-                'closing_txid':target_resp[i].closing_txid} for i in range(0,len(target_resp))]
+                pending_closed = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat,'limbo_balance':target_resp[i].limbo_balance,'closing_txid':target_resp[i].closing_txid}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_closed.append(pending_item)
             if pending_channels.pending_force_closing_channels:
                 target_resp = pending_channels.pending_force_closing_channels
-                pending_force_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0],output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,
-                'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0],output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,
-                'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
-                'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),
-                'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))} for i in range(0,len(target_resp))]
+                pending_force_closed = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
+                    'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),
+                    'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_force_closed.append(pending_item)
             if pending_channels.waiting_close_channels:
                 target_resp = pending_channels.waiting_close_channels
-                waiting_for_close = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,
-                'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,
-                'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
-                'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance,
-                'closing_txid':target_resp[i].closing_txid} for i in range(0,len(target_resp))]
+                waiting_for_close = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance,'closing_txid':target_resp[i].closing_txid}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    waiting_for_close.append(pending_item)
             #Get recorded payment events
             payments = Payments.objects.exclude(status=3)
             #Get recorded invoice details
@@ -181,6 +193,7 @@ def home(request):
                 detailed_channel = {}
                 detailed_channel['remote_pubkey'] = channel.remote_pubkey
                 detailed_channel['chan_id'] = channel.chan_id
+                detailed_channel['short_chan_id'] = channel.short_chan_id
                 detailed_channel['capacity'] = channel.capacity
                 detailed_channel['local_balance'] = channel.local_balance + channel.pending_outbound
                 detailed_channel['remote_balance'] = channel.remote_balance + channel.pending_inbound
@@ -300,7 +313,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'rebalances': rebalances[:12],
-                'chan_policy_form': ChanPolicyForm,
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
@@ -628,24 +640,43 @@ def closures(request):
             waiting_for_close = None
             if pending_channels.pending_closing_channels:
                 target_resp = pending_channels.pending_closing_channels
-                pending_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance, 'closing_txid':target_resp[i].closing_txid} for i in range(0,len(target_resp))]
+                pending_closed = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance, 'closing_txid':target_resp[i].closing_txid}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_closed.append(pending_item)
             if pending_channels.pending_force_closing_channels:
                 target_resp = pending_channels.pending_force_closing_channels
-                pending_force_closed = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))} for i in range(0,len(target_resp))]
+                pending_force_closed = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
+                    'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),
+                    'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_force_closed.append(pending_item)
             if pending_channels.waiting_close_channels:
                 target_resp = pending_channels.waiting_close_channels
-                waiting_for_close = [{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance, 'closing_txid':target_resp[i].closing_txid} for i in range(0,len(target_resp))]
+                waiting_for_close = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance, 'closing_txid':target_resp[i].closing_txid}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    waiting_for_close.append(pending_item)
             closures_df = DataFrame.from_records(Closures.objects.all().values())
             if closures_df.empty:
                 merged = DataFrame()
             else:
-                channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'alias'))
+                channels_df = DataFrame.from_records(Channels.objects.all().values('chan_id', 'short_chan_id', 'alias'))
                 if channels_df.empty:
                     merged = closures_df
                     merged['alias'] = ''
+                    merged['short_chan_id'] = merged.apply(lambda row: str(int(row.chan_id) >> 40) + 'x' + str(int(int(row.chan_id) >> 16) & 0xFFFFFF) + 'x' + str(int(row.chan_id) & 0xFFFF), axis=1)
                 else:
                     merged = merge(closures_df, channels_df, on='chan_id', how='left')
                     merged['alias'] = merged['alias'].fillna('')
+                    merged['short_chan_id'] = merged['short_chan_id'].fillna('')
+                    merged['short_chan_id'] = merged.apply(lambda row: str(int(row.chan_id) >> 40) + 'x' + str(int(int(row.chan_id) >> 16) & 0xFFFFFF) + 'x' + str(int(row.chan_id) & 0xFFFF) if row.short_chan_id == '' else row.short_chan_id, axis=1)
             context = {
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
@@ -954,7 +985,8 @@ def channel(request):
             filter_30day = datetime.now() - timedelta(days=30)
             forwards_df = DataFrame.from_records(Forwards.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).values())
             payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(chan_out=chan_id).filter(rebal_chan__isnull=False).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).values())
-            invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=Payments.objects.filter(status=2).filter(rebal_chan=chan_id)).values())
+            rebal_payments = Payments.objects.filter(status=2).filter(rebal_chan=chan_id)
+            invoices_df = DataFrame.from_records(Invoices.objects.filter(state=1).filter(chan_in=chan_id).filter(r_hash__in=rebal_payments).values())
             channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True).values())
             if channels_df.empty:
                 node_outbound = 0
@@ -1197,19 +1229,16 @@ def channel(request):
                 channels_df['amt_rebal_in_30day'] = int(invoices_df_30d_sum.loc[chan_id].amt_paid) if invoices_df_30d_count.empty == False else 0
                 channels_df['amt_rebal_in_7day'] = int(invoices_df_7d_sum.loc[chan_id].amt_paid) if invoices_df_7d_count.empty == False else 0
                 channels_df['amt_rebal_in_1day'] = int(invoices_df_1d_sum.loc[chan_id].amt_paid) if invoices_df_1d_count.empty == False else 0
-                rebal_payments_df = DataFrame.from_records(Payments.objects.filter(status=2).filter(value__gte=1000.0).filter(rebal_chan=chan_id).values())
+                rebal_payments_df = DataFrame.from_records(rebal_payments.filter(value__gte=1000).values())
                 if rebal_payments_df.shape[0] > 0:
-                    rebal_payments_df_30d = rebal_payments_df.loc[rebal_payments_df['creation_date'] >= filter_30day]
-                    rebal_payments_df_7d = rebal_payments_df_30d.loc[rebal_payments_df_30d['creation_date'] >= filter_7day]
-                    rebal_payments_df_1d = rebal_payments_df_7d.loc[rebal_payments_df_7d['creation_date'] >= filter_1day]
                     invoice_hashes = DataFrame() if invoices_df.empty else invoices_df.loc[invoices_df['value'] >= 1000].groupby('chan_in', as_index=True)['r_hash'].apply(list)
                     invoice_hashes_30d = DataFrame() if invoices_df_30d.empty else invoices_df_30d.loc[invoices_df_30d['value'] >= 1000].groupby('chan_in', as_index=True)['r_hash'].apply(list)
                     invoice_hashes_7d = DataFrame() if invoices_df_7d.empty else invoices_df_7d.loc[invoices_df_7d['value'] >= 1000].groupby('chan_in', as_index=True)['r_hash'].apply(list)
                     invoice_hashes_1d = DataFrame() if invoices_df_1d.empty else invoices_df_1d.loc[invoices_df_1d['value'] >= 1000].groupby('chan_in', as_index=True)['r_hash'].apply(list)
                     channels_df['costs'] = 0 if channels_df['rebal_in'][0] == 0 or invoice_hashes.empty == True else int(rebal_payments_df.set_index('payment_hash', inplace=False).loc[invoice_hashes[chan_id]]['fee'].sum())
-                    channels_df['costs_30day'] = 0 if channels_df['rebal_in_30day'][0] == 0 or invoice_hashes_30d.empty == True else int(rebal_payments_df_30d.set_index('payment_hash', inplace=False).loc[invoice_hashes_30d[chan_id]]['fee'].sum())
-                    channels_df['costs_7day'] = 0 if channels_df['rebal_in_7day'][0] == 0 or invoice_hashes_7d.empty == True else int(rebal_payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[chan_id]]['fee'].sum())
-                    channels_df['costs_1day'] = 0 if channels_df['rebal_in_1day'][0] == 0 or invoice_hashes_1d.empty == True else int(rebal_payments_df_1d.set_index('payment_hash', inplace=False).loc[invoice_hashes_1d[chan_id]]['fee'].sum())
+                    channels_df['costs_30day'] = 0 if channels_df['rebal_in_30day'][0] == 0 or invoice_hashes_30d.empty == True else int(rebal_payments_df.set_index('payment_hash', inplace=False).loc[invoice_hashes_30d[chan_id]]['fee'].sum())
+                    channels_df['costs_7day'] = 0 if channels_df['rebal_in_7day'][0] == 0 or invoice_hashes_7d.empty == True else int(rebal_payments_df.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[chan_id]]['fee'].sum())
+                    channels_df['costs_1day'] = 0 if channels_df['rebal_in_1day'][0] == 0 or invoice_hashes_1d.empty == True else int(rebal_payments_df.set_index('payment_hash', inplace=False).loc[invoice_hashes_1d[chan_id]]['fee'].sum())
             channels_df['costs'] += Closures.objects.filter(funding_txid=channels_df['funding_txid'][0],funding_index=channels_df['output_index'][0])[0].closing_costs if Closures.objects.filter(funding_txid=channels_df['funding_txid'][0],funding_index=channels_df['output_index'][0]).exists() else 0
             channels_df['profits'] = channels_df['revenue'] - channels_df['costs']
             channels_df['profits_30day'] = channels_df['revenue_30day'] - channels_df['costs_30day']
@@ -1306,6 +1335,19 @@ def channel(request):
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(chan_id=chan_id).order_by('-id')[:10].values())
+            if peer_events_df.shape[0]> 0:
+                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/channels_df['capacity'][0])*100, 1)
+                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
+                peer_events_df = peer_events_df.fillna('')
+                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
+                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
+                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
+                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
         else:
             channels_df = DataFrame()
             forwards_df = DataFrame()
@@ -1315,6 +1357,7 @@ def channel(request):
             failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
             autofees_df = DataFrame()
+            peer_events_df = DataFrame()
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
@@ -1329,7 +1372,8 @@ def channel(request):
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links(),
-            'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
+            'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records'),
+            'peer_events': [] if peer_events_df.empty else peer_events_df.to_dict(orient='records')
         }
         try:
             return render(request, 'channel.html', context)
@@ -1374,6 +1418,7 @@ def actions(request):
         for channel in channels:
             result = {}
             result['chan_id'] = channel.chan_id
+            result['short_chan_id'] = channel.short_chan_id
             result['alias'] = channel.alias
             result['capacity'] = channel.capacity
             result['local_balance'] = channel.local_balance + channel.pending_outbound
@@ -1745,17 +1790,50 @@ def autopilot(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def autofees(request):
     if request.method == 'GET':
-        chan_id = request.GET.urlencode()[1:]
-        filter_7d = datetime.now() - timedelta(days=7)
-        autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
-        if autofees_df.shape[0]> 0:
-            autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-        #print (f"{datetime.now().strftime('%c')} : {chan_id=} {autofees=}")
         try:
+            chan_id = request.GET.urlencode()[1:]
+            filter_7d = datetime.now() - timedelta(days=7)
+            autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            if autofees_df.shape[0]> 0:
+                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
             context = {
                 'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
             }
             return render(request, 'autofees.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+    else:
+        return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def peerevents(request):
+    if request.method == 'GET':
+        try:
+            chan_id = request.GET.urlencode()[1:]
+            filter_7d = datetime.now() - timedelta(days=7)
+            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(timestamp__gte=filter_7d).order_by('-id')[:150].values() if chan_id == "" else PeerEvents.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id')[:150].values())
+            channels_df = DataFrame.from_records(Channels.objects.values() if chan_id == "" else Channels.objects.filter(chan_id=chan_id).values())
+            if peer_events_df.shape[0]> 0:
+                peer_events_df = peer_events_df.merge(channels_df)
+                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/peer_events_df['capacity'])*100, 1)
+                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
+                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
+                peer_events_df = peer_events_df.fillna('')
+                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
+                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
+                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
+                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
+            context = {
+                'peer_events': [] if peer_events_df.empty else peer_events_df.sort_values(by=['id'], ascending=False).to_dict(orient='records')
+            }
+            return render(request, 'peerevents.html', context)
         except Exception as e:
             try:
                 error = str(e.code())
@@ -1810,8 +1888,12 @@ def close_channel_form(request):
         if form.is_valid():
             try:
                 chan_id = form.cleaned_data['chan_id']
-                if Channels.objects.filter(chan_id=chan_id).exists():
-                    target_channel = Channels.objects.filter(chan_id=chan_id).get()
+                if chan_id.count('x') == 2 and len(chan_id) >= 5:
+                    target_channel = Channels.objects.filter(short_chan_id=chan_id)
+                else:
+                    target_channel = Channels.objects.filter(chan_id=chan_id)
+                if target_channel.exists():
+                    target_channel = target_channel.get()
                     funding_txid = target_channel.funding_txid
                     output_index = target_channel.output_index
                     target_fee = form.cleaned_data['target_fee']
@@ -1938,62 +2020,6 @@ def rebalance(request):
     return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def update_chan_policy(request):
-    if request.method == 'POST':
-        form = ChanPolicyForm(request.POST)
-        if form.is_valid():
-            if form.cleaned_data['new_base_fee'] is not None or form.cleaned_data['new_fee_rate'] is not None or form.cleaned_data['new_cltv'] is not None:
-                try:
-                    stub = lnrpc.LightningStub(lnd_connect())
-                    if form.cleaned_data['target_all']:
-                        if form.cleaned_data['new_base_fee'] is not None and form.cleaned_data['new_fee_rate'] is not None and form.cleaned_data['new_cltv'] is not None:
-                            args = {'global': True, 'base_fee_msat': form.cleaned_data['new_base_fee'], 'fee_rate': (form.cleaned_data['new_fee_rate']/1000000), 'time_lock_delta': form.cleaned_data['new_cltv']}
-                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**args))
-                            channels = Channels.objects.filter(is_open=True)
-                            channels.update(local_base_fee=form.cleaned_data['new_base_fee'])
-                            channels.update(local_fee_rate=form.cleaned_data['new_fee_rate'])
-                            channels.update(local_cltv=form.cleaned_data['new_cltv'])
-                            channels.update(fees_updated=datetime.now())
-                        else:
-                            messages.error(request, 'You must specify all parameters when updating all channels.')
-                            return redirect('home')
-                    elif len(form.cleaned_data['target_chans']) > 0:
-                        for channel in form.cleaned_data['target_chans']:
-                            channel_point = ln.ChannelPoint()
-                            channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                            channel_point.funding_txid_str = channel.funding_txid
-                            channel_point.output_index = channel.output_index
-                            new_base_fee = form.cleaned_data['new_base_fee'] if form.cleaned_data['new_base_fee'] is not None else channel.local_base_fee
-                            new_fee_rate = form.cleaned_data['new_fee_rate']/1000000 if form.cleaned_data['new_fee_rate'] is not None else channel.local_fee_rate/1000000
-                            new_cltv = form.cleaned_data['new_cltv'] if form.cleaned_data['new_cltv'] is not None else channel.local_cltv
-                            stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=new_base_fee, fee_rate=new_fee_rate, time_lock_delta=new_cltv))
-                            db_channel = Channels.objects.get(chan_id=channel.chan_id)
-                            db_channel.local_base_fee = new_base_fee
-                            old_fee_rate = db_channel.local_fee_rate
-                            db_channel.local_fee_rate = new_fee_rate*1000000
-                            db_channel.local_cltv = new_cltv
-                            if form.cleaned_data['new_fee_rate'] is not None:
-                                db_channel.fees_updated = datetime.now()
-                                Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
-
-                            db_channel.save()
-                    else:
-                        messages.error(request, 'No channels were specified in the update request!')
-                        return redirect('home')
-                    messages.success(request, 'Channel policies updated! This will be broadcast during the next graph update!')
-                except Exception as e:
-                    error = str(e)
-                    details_index = error.find('details =') + 11
-                    debug_error_index = error.find('debug_error_string =') - 3
-                    error_msg = error[details_index:debug_error_index]
-                    messages.error(request, 'Error updating channel policies! Error: ' + error_msg)
-            else:
-                messages.error(request, 'You must specify at least one parameter.')
-        else:
-            messages.error(request, 'Invalid Request. Please try again.')
-    return redirect('home')
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def auto_rebalance(request):
     if request.method == 'POST':
         form = AutoRebalanceForm(request.POST)
@@ -2066,7 +2092,7 @@ def auto_rebalance(request):
                 db_inbound_target.value = inbound_percent
                 db_inbound_target.save()
                 if form.cleaned_data['targetallchannels']:
-                    Channels.objects.all().update(ar_out_target=int(outbound_percent))
+                    Channels.objects.all().update(ar_in_target=int(inbound_percent))
                     messages.success(request, 'Updated auto rebalancer target inbound percent setting for all channels to: ' + str(inbound_percent))
                 else:
                     messages.success(request, 'Updated auto rebalancer target inbound percent setting in local settigs to: ' + str(inbound_percent))
@@ -2277,7 +2303,7 @@ def update_pending(request):
                 pending_channel.save()
                 messages.success(request, 'Auto rebalancer outbound target for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(target) + '%')
             elif update_target == 5:
-                pending_channel.auto_rebalance = True if pending_channel.auto_rebalance == False else False
+                pending_channel.auto_rebalance = True if pending_channel.auto_rebalance == False or pending_channel.auto_rebalance == None else False
                 pending_channel.save()
                 messages.success(request, 'Auto rebalancer status for pending pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(pending_channel.auto_rebalance))
             elif update_target == 6:
@@ -2285,7 +2311,8 @@ def update_pending(request):
                 pending_channel.save()
                 messages.success(request, 'Auto rebalancer max cost for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(target) + '%')
             elif update_target == 8:
-                pending_channel.auto_fees = True if pending_channel.auto_fees == False else False
+                auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) if LocalSettings.objects.filter(key='AF-Enabled').exists() else 0
+                pending_channel.auto_fees = True if pending_channel.auto_fees == False or (pending_channel.auto_fees == None and auto_fees == 0) else False
                 pending_channel.save()
                 messages.success(request, 'Auto fees status for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(pending_channel.auto_fees))
             elif update_target == 9:
@@ -2325,6 +2352,16 @@ def update_setting(request):
                 db_time_target.value = target_time
                 db_time_target.save()
                 messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
+            elif key == 'AR-Workers':
+                workers = int(value)
+                try:
+                    db_workers = LocalSettings.objects.get(key='AR-Workers')
+                except:
+                    LocalSettings(key='AR-Workers', value='5').save()
+                    db_workers = LocalSettings.objects.get(key='AR-Workers')
+                db_workers.value = workers
+                db_workers.save()
+                messages.success(request, 'Updated auto rebalancer workers setting to: ' + str(workers))
             elif key == 'AR-Enabled':
                 enabled = int(value)
                 try:
@@ -2674,11 +2711,15 @@ def get_fees(request):
         missing_fees = Closures.objects.exclude(close_type__in=[4, 5]).exclude(open_initiator=2, resolution_count=0).filter(closing_costs=0)
         if missing_fees:
             for missing_fee in missing_fees:
+                prior_closures = Closures.objects.filter(id__lt=missing_fee.id).values_list('chan_id', flat=True)
+                swept = list(Resolutions.objects.filter(chan_id__in=prior_closures).values_list('sweep_txid', flat=True))
                 try:
                     txid = missing_fee.closing_tx
                     closing_costs = get_tx_fees(txid) if missing_fee.open_initiator == 1 else 0
                     for resolution in Resolutions.objects.filter(chan_id=missing_fee.chan_id).exclude(resolution_type=2):
-                        closing_costs += get_tx_fees(resolution.sweep_txid)
+                        if resolution.sweep_txid not in swept:
+                            closing_costs += get_tx_fees(resolution.sweep_txid)
+                            swept.append(resolution.sweep_txid)
                     missing_fee.closing_costs = closing_costs
                     missing_fee.save()
                 except Exception as error:
@@ -2700,6 +2741,15 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Invoices.objects.all()
     serializer_class = InvoiceSerializer
+
+    def update(self, request, pk=None):
+        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
+        serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors)
 
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2848,8 +2898,12 @@ def close_channel(request):
     if serializer.is_valid():
         try:
             chan_id = serializer.validated_data['chan_id']
-            if Channels.objects.filter(chan_id=chan_id).exists():
-                target_channel = Channels.objects.filter(chan_id=chan_id).get()
+            if chan_id.count('x') == 2 and len(chan_id) >= 5:
+                target_channel = Channels.objects.filter(short_chan_id=chan_id)
+            else:
+                target_channel = Channels.objects.filter(chan_id=chan_id)
+            if target_channel.exists():
+                target_channel = target_channel.get()
                 funding_txid = target_channel.funding_txid
                 output_index = target_channel.output_index
                 target_fee = serializer.validated_data['target_fee']
@@ -3038,23 +3092,43 @@ def pending_channels(request):
             if response.pending_open_channels:
                 target_resp = response.pending_open_channels
                 peers = Peers.objects.all()
-                pending_open_channels = {'pending_open':[{'alias':peers.filter(pubkey=target_resp[i].channel.remote_node_pub)[0].alias if peers.filter(pubkey=target_resp[i].channel.remote_node_pub).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'commit_fee':target_resp[i].commit_fee,'commit_weight':target_resp[i].commit_weight,'fee_per_kw':target_resp[i].fee_per_kw} for i in range(0,len(target_resp))]}
-                target.update(pending_open_channels)
+                pending_open_channels = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'alias':peers.filter(pubkey=target_resp[i].channel.remote_node_pub)[0].alias if peers.filter(pubkey=target_resp[i].channel.remote_node_pub).exists() else None,
+                    'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'commit_fee':target_resp[i].commit_fee,'commit_weight':target_resp[i].commit_weight,'fee_per_kw':target_resp[i].fee_per_kw}
+                    pending_open_channels.append(pending_item)
+                target.update({'pending_open': pending_open_channels})
             if response.pending_closing_channels:
                 target_resp = response.pending_closing_channels
                 channels = Channels.objects.all()
-                pending_closing_channels = {'pending_closing':[{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]}
-                target.update(pending_closing_channels)
+                pending_closing_channels = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_closing_channels.append(pending_item)
+                target.update({'pending_closing':pending_closing_channels})
             if response.pending_force_closing_channels:
                 target_resp = response.pending_force_closing_channels
                 channels = Channels.objects.all()
-                pending_force_closing_channels = {'pending_force_closing':[{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity,'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity)))} for i in range(0,len(target_resp))]}
-                target.update(pending_force_closing_channels)
+                pending_force_closing_channels = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
+                    'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity,'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity)))}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_force_closing_channels.append(pending_item)
+                target.update({'pending_force_closing':pending_force_closing_channels})
             if response.waiting_close_channels:
                 target_resp = response.waiting_close_channels
                 channels = Channels.objects.all()
-                waiting_close_channels = {'waiting_close':[{'chan_id':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].chan_id if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'alias':channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1])[0].alias if channels.filter(funding_txid=target_resp[i].channel.channel_point.split(':')[0], output_index=target_resp[i].channel.channel_point.split(':')[1]).exists() else None,'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance} for i in range(0,len(target_resp))]}
-                target.update(waiting_close_channels)
+                waiting_close_channels = []
+                for i in range(0,len(target_resp)):
+                    pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
+                    'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance}
+                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    waiting_close_channels.append(pending_item)
+                target.update({'waiting_close':waiting_close_channels})
             if response.total_limbo_balance:
                 total_limbo_balance = {'total_limbo_balance':response.total_limbo_balance}
                 target.update(total_limbo_balance)
