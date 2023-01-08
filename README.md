@@ -83,7 +83,7 @@ Alternatively, you may also make your own task for these files with your preferr
 
 ### Setup lndg initialize.py options
 1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
-2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths - default: `~/.lnd`
+2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths (or see commands below to set custom values) - default: `~/.lnd`
 3. `-net` or `--network` - Network LND will run over - default: `mainnet`
 4. `-server` or `--rpcserver` - Server address to use for rpc communications with LND - default: `localhost:10009`
 5. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
@@ -91,7 +91,13 @@ Alternatively, you may also make your own task for these files with your preferr
 7. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
 8. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
 9. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
+10. `-u` or `--adminuser` Setup a custom admin username - default: `lndg-admin`
 10. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
+10. `-csrf` or `--csrftrusted` Set trusted CSRF origins - default: `None`
+10. `-tls` or `--tlscert` Set a custom path to the tls cert - default: `--lnddir used`
+10. `-mcrn` or `--macaroon` Set a custom path to the macroon file - default: `--lnddir used`
+10. `-lnddb` or `--lnddatabase` Set a custom path to the channel.db for monitoring - default: `--lnddir used`
+10. `-nologin` or `--nologinrequired` Remove authentication requirements from LNDg - default: `False`
 
 ### Using A Webserver
 You can serve the dashboard at all times using a webserver instead of the development server.  Using a webserver will serve your static files and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aide in the setup of a nginx webserver.  

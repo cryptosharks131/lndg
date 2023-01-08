@@ -264,14 +264,11 @@ def main():
     parser.add_argument('-u', '--adminuser', help = 'Setup a custom admin username', default='lndg-admin')
     parser.add_argument('-pw', '--adminpw', help = 'Setup a custom admin password', default=None)
     parser.add_argument('-csrf', '--csrftrusted', help = 'Set trusted CSRF origins', default=None)
-    parser.add_argument('-tls', '--tlscert', help = 'Set the path to the tls cert', default=None)
-    parser.add_argument('-mcrn', '--macaroon', help = 'Set the path to the macroon file', default=None)
+    parser.add_argument('-tls', '--tlscert', help = 'Set the path to a custom tls cert', default=None)
+    parser.add_argument('-mcrn', '--macaroon', help = 'Set the path to a custom macroon file', default=None)
     parser.add_argument('-lnddb', '--lnddatabase', help = 'Set the path to the channel.db for monitoring', default=None)
     parser.add_argument('-nologin', '--nologinrequired', help = 'By default, force all connections to be authenticated', action='store_true')
     args = parser.parse_args()
-    if args.lnddir and (args.tlscert or args.macaroon or args.lnddatabase):
-        parser.error("You may not use tlscert or macaroon flags with the lnddir flag")
-        exit
     node_ip = args.nodeip
     lnd_dir_path = args.lnddir if args.lnddir else '~/.lnd'
     lnd_network = args.network
