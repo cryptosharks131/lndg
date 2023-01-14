@@ -80,6 +80,7 @@ def home(request):
             pending_force_closed = None
             waiting_for_close = None
             pending_open_balance = 0
+            pending_closing_balance = 0
             if pending_channels.pending_open_channels:
                 target_resp = pending_channels.pending_open_channels
                 peers = Peers.objects.all()
@@ -142,10 +143,12 @@ def home(request):
                 target_resp = pending_channels.waiting_close_channels
                 waiting_for_close = []
                 for i in range(0,len(target_resp)):
+                    pending_closing_balance += target_resp[i].limbo_balance
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance,'closing_txid':target_resp[i].closing_txid}
                     pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
                     waiting_for_close.append(pending_item)
+            limbo_balance -= pending_closing_balance 
             #Get recorded payment events
             payments = Payments.objects.exclude(status=3)
             #Get recorded invoice details
