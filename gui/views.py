@@ -27,8 +27,8 @@ def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
         graph_links = str(LocalSettings.objects.filter(key='GUI-GraphLinks')[0].value)
     else:
-        LocalSettings(key='GUI-GraphLinks', value='https://1ml.com').save()
-        graph_links = 'https://1ml.com'
+        LocalSettings(key='GUI-GraphLinks', value='https://amboss.space').save()
+        graph_links = 'https://amboss.space'
     return graph_links
 
 def network_links():
