@@ -179,12 +179,11 @@ def auto_schedule():
                                 last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
                                 if not (last_rebalance.status == 2 or (last_rebalance.status in [3, 4, 5, 6, 7, 400, 408] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > wait_period)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > wait_period))):
                                     continue
-                            print('Creating Auto Rebalance Request')
-                            print('Request for:', target.chan_id)
-                            print('Request routing through:', outbound_cans)
-                            print('Target Value:', target_value, '/', target.ar_amt_target)
-                            print('Target Fee:', target_fee)
-                            print('Target Time:', target_time)
+                            print(datetime.now(), 'Creating Auto Rebalance Request for:', target.chan_id)
+                            print(datetime.now(), 'Request routing through:', outbound_cans)
+                            print(datetime.now(), 'Target Value:', target_value, '/', target.ar_amt_target)
+                            print(datetime.now(), 'Target Fee:', target_fee)
+                            print(datetime.now(), 'Target Time:', target_time)
                             new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
                             new_rebalance.save()
                             scheduled_ids.append(new_rebalance.id)
@@ -229,13 +228,13 @@ def auto_enable():
                     peer_channel.auto_rebalance = True
                     peer_channel.save()
                     Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=0, new_value=1).save()
-                    print('Auto Pilot Enabled: ', peer_channel.alias, ' : ', peer_channel.chan_id , ' Out: ', oapD, ' In: ', iapD)
+                    print(datetime.now(), 'Auto Pilot Enabled: ', peer_channel.alias, ' : ', peer_channel.chan_id , ' Out: ', oapD, ' In: ', iapD)
                 elif oapD < (iapD*1.10) and outbound_percent > 75 and peer_channel.auto_rebalance == True:
                     #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
                     peer_channel.auto_rebalance = False
                     peer_channel.save()
                     Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=1, new_value=0).save()
-                    print('Auto Pilot Disabled (3): ', peer_channel.alias, ' : ', peer_channel.chan_id, ' Out: ', oapD, ' In: ', iapD )
+                    print(datetime.now(), 'Auto Pilot Disabled (3): ', peer_channel.alias, ' : ', peer_channel.chan_id, ' Out: ', oapD, ' In: ', iapD )
                 elif oapD < (iapD*1.10) and inbound_percent > 75:
                     #print('Case 4: Pass')
                     pass
@@ -255,7 +254,7 @@ def get_pending_rebals():
 shutdown_rebalancer = False
 active_rebalances = []
 async def async_queue_manager(rebalancer_queue):
-    print('Queue manager is starting...')
+    print(datetime.now(), 'Queue manager is starting...')
     pending_rebalances, rebal_count = await get_pending_rebals()
     if rebal_count > 0:
         for rebalance in pending_rebalances:
