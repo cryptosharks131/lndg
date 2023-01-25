@@ -219,7 +219,7 @@ def auto_enable():
                 #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
                 if peer_channel.ar_out_target == 100 and peer_channel.auto_rebalance == True:
                     #Special Case for LOOP, Wos, etc. Always Auto Rebalance if enabled to keep outbound full.
-                    print (f"{datetime.now()} Skipping AR enabled and 100% oTarget channel... {peer_channel.alias=} {peer_channel.chan_id=} {peer_channel.ar_out_target=} {peer_channel.auto_rebalance=}")
+                    print (f"{datetime.now()} Skipping AR enabled and 100% oTarget channel... {peer_channel.alias=} {peer_channel.chan_id=}")
                     pass
                 elif oapD > (iapD*1.10) and outbound_percent > 75:
                     #print('Case 1: Pass')
