@@ -24,7 +24,7 @@ def save_record(record):
     try:
         record.save()
     except Exception as e:
-        print(datetime.now(), 'Error saving databse record:', str(e))
+        print(datetime.now(), 'Error saving database record:', str(e))
 
 @sync_to_async
 def inbound_cans_len(inbound_cans):
