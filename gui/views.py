@@ -2746,8 +2746,8 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InvoiceSerializer
 
     def update(self, request, pk=None):
-        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
-        serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
+        setting = get_object_or_404(Invoices.objects.all(), pk=pk)
+        serializer = InvoiceSerializer(setting, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
