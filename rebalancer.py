@@ -57,7 +57,7 @@ async def run_rebalancer(rebalance, worker):
             invoice_response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
             print (f"{datetime.now().strftime('%c')} : {worker=} starting rebalance for: {rebalance.target_alias=} {rebalance.last_hop_pubkey=} {rebalance.value=} {rebalance.duration=} {chan_ids=}")
             async for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
-                print (f"{datetime.now().strftime('%c')} : {worker=} got a payment response: {payment_response.status=} {payment_response.failure_reason=} {payment_response.payment_hash=}")
+                #print (f"{datetime.now().strftime('%c')} : DEBUG {worker=} got a payment response: {payment_response.status=} {payment_response.failure_reason=} {payment_response.payment_hash=}")
                 if payment_response.status == 1 and rebalance.status == 0:
                     #IN-FLIGHT
                     rebalance.payment_hash = payment_response.payment_hash
