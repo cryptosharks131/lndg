@@ -164,7 +164,7 @@ def auto_schedule():
                     LocalSettings(key='AR-Inbound%', value='100').save()
                 outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
                 already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
-                inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-remote_balance')
+                inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
                 if len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
                         max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
