@@ -301,27 +301,27 @@ async def async_queue_manager(rebalancer_queue):
             await auto_enable()
             scheduled_ids = await auto_schedule()
             if len(scheduled_ids) > 0:
-                print (f"{datetime.now().strftime('%c')} Scheduling {len(scheduled_ids)=} more jobs...")
+                print (f"{datetime.now().strftime('%c')} : Scheduling {len(scheduled_ids)=} more jobs...")
                 for id in scheduled_ids:
                     scheduled_rebal = await get_scheduled_rebal(id)
                     await rebalancer_queue.put(scheduled_rebal)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
-                print (f"{datetime.now().strftime('%c')} Queue is still empty, stoping the rebalancer...")
+                print (f"{datetime.now().strftime('%c')} : Queue is still empty, stoping the rebalancer...")
                 global shutdown_rebalancer
                 shutdown_rebalancer = True
                 return
             await asyncio.sleep(30)
     except Exception as e:
-        print (f"{datetime.now().strftime('%c')} Queue manager exception: {str(e)=}")
+        print (f"{datetime.now().strftime('%c')} : Queue manager exception: {str(e)=}")
     finally:
-        print (f"{datetime.now().strftime('%c')} Queue manager has shut down...")
+        print (f"{datetime.now().strftime('%c')} : Queue manager has shut down...")
 
 async def async_run_rebalancer(worker, rebalancer_queue):
     while True:
         global active_rebalances, shutdown_rebalancer
         if not rebalancer_queue.empty():
             rebalance = await rebalancer_queue.get()
-            print (f"{datetime.now().strftime('%c')} {worker=} is starting a new request...")
+            print (f"{datetime.now().strftime('%c')} : {worker=} is starting a new request...")
             active_rebalance_id = None
             if rebalance != None:
                 active_rebalance_id = rebalance.id
@@ -330,7 +330,7 @@ async def async_run_rebalancer(worker, rebalancer_queue):
                 rebalance = await run_rebalancer(rebalance, worker)
             if active_rebalance_id != None:
                 active_rebalances.remove(active_rebalance_id)
-            print (f"{datetime.now().strftime('%c')} {worker=} completed its request...")
+            print (f"{datetime.now().strftime('%c')} : {worker=} completed its request...")
         else:
             if shutdown_rebalancer == True:
                 return
@@ -341,7 +341,7 @@ async def start_queue(worker_count=1):
     manager = asyncio.create_task(async_queue_manager(rebalancer_queue))
     workers = [asyncio.create_task(async_run_rebalancer("Worker " + str(worker_num+1), rebalancer_queue)) for worker_num in range(worker_count)]
     await asyncio.gather(manager, *workers)
-    print (f"{datetime.now().strftime('%c')} Manager and workers have stopped...")
+    print (f"{datetime.now().strftime('%c')} : Manager and workers have stopped...")
 
 def main():
     if Rebalancer.objects.filter(status=1).exists():
@@ -356,7 +356,7 @@ def main():
         LocalSettings(key='AR-Workers', value='1').save()
         worker_count = 1
     asyncio.run(start_queue(worker_count))
-    print (f"{datetime.now().strftime('%c')} Rebalancer successfully shutdown...")
+    print (f"{datetime.now().strftime('%c')} : Rebalancer successfully shutdown...")
 
 if __name__ == '__main__':
     main()
