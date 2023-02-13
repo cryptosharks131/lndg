@@ -40,4 +40,34 @@
   <center><h1>You dont have any failed HTLCs yet.</h1></center>
 </div>
 {% endif %}
+{% if agg_failed_htlcs %}
+<div class="w3-container w3-padding-small">
+  <h2><a href="/failed_htlcs">Top 21 Failed Downstream Routes</a></h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Chan In ID</th>
+      <th>Chan Out ID</th>
+      <th>Chan In Alias</th>
+      <th>Chan Out Alias</th>
+      <th>Count</th>
+      <th>Volume</th>
+    </tr>
+    {% for failed_htlc in agg_failed_htlcs %}
+    <tr>
+      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
+      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
+      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
+      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
+      <td>{{ failed_htlc.amount|intcomma }}</td>
+      <td>{{ failed_htlc.volume|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not agg_failed_htlcs %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any failed downstream routes in the last 7 days.</h1></center>
+</div>
+{% endif %}
 {% endblock %}

@@ -49,10 +49,10 @@ def main():
                     out_chan_alias = out_chan.alias if out_chan is not None else None
                     out_chan_liq = out_chan.local_balance if out_chan is not None else None
                     out_chan_pending = out_chan.pending_outbound if out_chan is not None else None
-                    amount = (forward_event.info.incoming_amt_msat/1000)
+                    amount = int(forward_event.info.incoming_amt_msat/1000)
                     wire_failure = 99
                     failure_detail = 99
-                    missed_fee = 0
+                    missed_fee = (forward_event.info.incoming_amt_msat - forward_event.info.outgoing_amt_msat)/1000
                     FailedHTLCs(amount=amount, chan_id_in=in_chan_id, chan_id_out=out_chan_id, chan_in_alias=in_chan_alias, chan_out_alias=out_chan_alias, chan_out_liq=out_chan_liq, chan_out_pending=out_chan_pending, wire_failure=wire_failure, failure_detail=failure_detail, missed_fee=missed_fee).save()
                     del all_forwards[key]
     except Exception as e:

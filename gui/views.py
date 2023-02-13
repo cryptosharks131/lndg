@@ -318,7 +318,7 @@ def home(request):
                 'rebalances': rebalances[:12],
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
-                'failed_htlcs': FailedHTLCs.objects.all().order_by('-id')[:10],
+                'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
                 '1day_routed_ppm': 0 if routed_1day_amt == 0 else int((total_earned_1day/routed_1day_amt)*1000000),
                 '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
                 '1day_payments_ppm': 0 if payments_1day_amt == 0 else int((total_1day_fees/payments_1day_amt)*1000000),
@@ -476,7 +476,7 @@ def fees(request):
             else:
                 LocalSettings(key='AF-UpdateHours', value='24').save()
                 update_hours = 24
-            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(timestamp__gte=filter_1day).order_by('-id').values())
+            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(timestamp__gte=filter_1day).order_by('-id').values())
             if failed_htlc_df.shape[0] > 0:
                 failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
             forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
@@ -999,7 +999,7 @@ def channel(request):
                 node_capacity = channels_df['capacity'].sum()
             channels_df = DataFrame.from_records(Channels.objects.filter(chan_id=chan_id).values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
-            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
+            failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
             peer_info_df = DataFrame.from_records(Peers.objects.filter(pubkey=channels_df['remote_pubkey'][0]).values())
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
             channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
@@ -1490,15 +1490,18 @@ def pending_htlcs(request):
 def failed_htlcs(request):
     if request.method == 'GET':
         try:
-            #print (f"{datetime.now().strftime('%c')} : {request.GET.urlencode()=}")
             query = None if request.GET.urlencode()[1:] == '' else request.GET.urlencode()[1:].split('_')
             chan_id = None if query is None or len(query) < 1 else query[0]
             direction = None if query is None or len(query) < 2 else query[1]
-            #print (f"{datetime.now().strftime('%c')} : {query=} {chan_id=} {direction=}")
-            failed_htlcs=FailedHTLCs.objects.all().order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.filter(chan_id_in=chan_id).order_by('-id')[:150])
-
+            failed_htlcs = FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_in=chan_id).order_by('-id')[:150])
+            filter_7day = datetime.now() - timedelta(days=7)
+            agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id')).annotate(volume=Sum('amount')).order_by('-count')[:21]
+            for failed_htlc in agg_failed_htlcs:
+                failed_htlc['chan_in_alias'] = Channels.objects.get(chan_id=failed_htlc['chan_id_in']).alias
+                failed_htlc['chan_out_alias'] = Channels.objects.get(chan_id=failed_htlc['chan_id_out']).alias
             context = {
-                'failed_htlcs': failed_htlcs
+                'failed_htlcs': failed_htlcs,
+                'agg_failed_htlcs': agg_failed_htlcs
             }
             return render(request, 'failed_htlcs.html', context)
         except Exception as e:
