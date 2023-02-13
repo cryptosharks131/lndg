@@ -1495,7 +1495,7 @@ def failed_htlcs(request):
             direction = None if query is None or len(query) < 2 else query[1]
             failed_htlcs = FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_in=chan_id).order_by('-id')[:150])
             filter_7day = datetime.now() - timedelta(days=7)
-            agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id')).annotate(volume=Sum('amount')).order_by('-count')[:21]
+            agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp__gte=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id')).annotate(volume=Sum('amount')).order_by('-count')[:21]
             for failed_htlc in agg_failed_htlcs:
                 failed_htlc['chan_in_alias'] = Channels.objects.get(chan_id=failed_htlc['chan_id_in']).alias
                 failed_htlc['chan_out_alias'] = Channels.objects.get(chan_id=failed_htlc['chan_id_out']).alias
