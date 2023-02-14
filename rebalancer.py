@@ -205,7 +205,7 @@ def auto_schedule():
                                 print (f"{datetime.now().strftime('%c')} : Request routing through: {outbound_cans=}")
                                 print (f"{datetime.now().strftime('%c')} : {target_value=} / {target.ar_amt_target=}")
                                 print (f"{datetime.now().strftime('%c')} : {target_fee=}")
-                                print (f"{datetime.now().strftime('%c')} : {target_time}")
+                                print (f"{datetime.now().strftime('%c')} : {target_time=}")
                                 new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
                                 new_rebalance.save()
                                 scheduled_ids.append(new_rebalance.id)
