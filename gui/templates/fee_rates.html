@@ -87,11 +87,11 @@
           </form>
         </td>
         <td>{{ channel.local_base_fee|intcomma }}</td>
-        <td {% if channel.auto_rebalance == True %}style="background-color: #a6dce2"{% endif %}>{{ channel.ar_max_cost }}%</td>
+        <td {% if channel.auto_rebalance == True %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>{{ channel.ar_max_cost }}%</td>
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
         <td>{{ channel.remote_base_fee|intcomma }}</td>
-        <td {% if channel.eligible == True %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>{{ channel.fees_updated|naturaltime }}</td>
-        <td {% if channel.auto_fees == False %}style="background-color: #fadbd5"{% else %}style="background-color: #a6dce2"{% endif %}>
+        <td {% if channel.eligible == True %}style="background-color: rgba(46,160,67,0.15);"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>{{ channel.fees_updated|naturaltime }}</td>
+        <td {% if channel.auto_fees == False %}style="background-color: rgba(46,160,67,0.15);"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input type="submit" value="{% if channel.auto_fees == True %}Disable{% else %}Enable{% endif %}">

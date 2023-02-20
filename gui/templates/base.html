@@ -12,7 +12,7 @@
     {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
-  <body onload="checkDarkMode()">
+  <body onload="applyTheme()">
     <div id="content">
         {% if messages %}
         <div class="w3-container w3-padding-small">
@@ -31,7 +31,7 @@
   <footer>
     <div id="footer">
       <div class="w3-container w3-padding-small">
-        <center><button onclick="darkMode()">Toggle dark mode</button></center>
+        <center><button onclick="toggleTheme()">Toggle dark mode</button></center>
       </div>
       <div class="w3-container w3-padding-small">
         <center>LNDg v1.6.0</center>
