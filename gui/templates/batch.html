@@ -2,6 +2,11 @@
 {% block title %} {{ block.super }} - Batch Open{% endblock %}
 {% block content %}
 {% load humanize %}
+<script>
+  function update_total(input){
+    document.getElementById("total").innerHTML = "Onchain balance: " + ({{balances.total_balance}} - parseInt(input.value))
+  }
+</script>
 <div class="w3-container w3-padding-small">
   <h2>Batch Open Up To 10 Channels</h2>
   <form action="/batchopen/" method="post">
@@ -10,19 +15,20 @@
       <tr>
         <th>ID</th>
         <th>Pubkey</th>
-        <th>Amt</th>
+        <th>Amount (sats)</th>
       </tr>
       {% for num in iterator %}
       <tr>
         <td>{{ num }}</td>
-        <td><input style="text-align:center" id="pubkey{{ num }}" name="pubkey{{ num }}" value=""></td>
-        <td><input style="text-align:center" id="amt{{ num }}" type="number" min="0" name="amt{{ num }}" value=""></td>
+        <td><input style="text-align:center;min-width:800px" id="pubkey{{ num }}" name="pubkey{{ num }}" value=""></td>
+        <td><input style="text-align:center" oninput="update_total(event.target)" id="amt{{ num }}" type="number" min="0" name="amt{{ num }}" value=""></td>
       </tr>
       {% endfor %}
     </table>
     <ul>
       Opening Fee Rate (sats/vbyte): <input style="text-align:center" id="fee_rate" type="number" min="1" name="fee_rate" value="">
       <input type="submit" value="OK">
+      <label id="total" class="w3-margin-left w3-right w3-margin-right w3-large">Onchain balance: {{balances.total_balance}}</label>
     </ul>
   </form>
 </div>

@@ -1553,8 +1553,10 @@ def rebalances(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def batch(request):
     if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect())
         context = {
             'iterator': range(1,11),
+            'balances': stub.WalletBalance(ln.WalletBalanceRequest())
         }
         return render(request, 'batch.html', context)
     else:
