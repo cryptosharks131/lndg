@@ -15,7 +15,7 @@
     </tr>
     {% for keysend in keysends %}
     <tr>
-      <td {% if keysend.is_revenue == True %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
+      <td {% if keysend.is_revenue == True %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>
         <form action="/update_keysend/" method="post">
           {% csrf_token %}
           <input type="submit" value="{% if keysend.is_revenue == True %}Unmark{% else %}Mark{% endif %}">
