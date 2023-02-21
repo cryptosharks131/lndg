@@ -7,12 +7,12 @@
   <h2>Peers List ({{ num_peers }})</h2>
   <table id="peersTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th onclick="sortTable(0, 'String', 'peersTable')" width=40%>Peer PubKey</th>
-      <th onclick="sortTable(1, 'String', 'peersTable')">Peer Alias</th>
-      <th onclick="sortTable(2, 'String', 'peersTable')">Network Address</th>
-      <th onclick="sortTable(3, 'String', 'peersTable')">Inbound</th>
-      <th onclick="sortTable(4, 'int', 'peersTable')">Sats Sent</th>
-      <th onclick="sortTable(5, 'int', 'peersTable')">Sats Received</th>
+      <th onclick="sortTable(event.target, 0, 'String')" width=40%>Peer PubKey</th>
+      <th onclick="sortTable(event.target, 1, 'String')">Peer Alias</th>
+      <th onclick="sortTable(event.target, 2, 'String')">Network Address</th>
+      <th onclick="sortTable(event.target, 3, 'String')">Inbound</th>
+      <th onclick="sortTable(event.target, 4, 'int')">Sats Sent</th>
+      <th onclick="sortTable(event.target, 5, 'int')">Sats Received</th>
     </tr>
     {% for peer in peers %}
     <tr>
