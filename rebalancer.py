@@ -106,7 +106,8 @@ async def run_rebalancer(rebalance, worker):
                     print (f"{datetime.now()} RapidFire up {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
                 else:
                     next_rebalance = None
-            elif rebalance.status > 2 and rebalance.duration <= 1 and rebalance.value > 69420:
+            # For failed rebalances, try in rapid fire with reduced balances until give up.
+            elif rebalance.status > 2 and rebalance.value > 69420:
                 #Previous Rapidfire with increased value failed, try with lower value up to 69420.
                 inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
