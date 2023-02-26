@@ -10,16 +10,17 @@
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ active_count }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h4>
-  {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
-  <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
-  <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
+  <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">Lnd</span>
+  <span class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+  <h5>Active Channels: {{ active_count }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h5>
+  {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h5>{% endif %}
+  <h5>Addresses: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h5>
 </div>
 <div class="w3-container w3-padding-small">
-  <h4>Total Balance: {{ total_balance|intcomma }} | Onchain Balance: {{ balances.total_balance|intcomma }} | Confirmed Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>
+  <h5>Public Capacity: {{ total_capacity|intcomma }} | Total Balance: {{ total_balance|intcomma }} | Onchain Balance: {{ balances.total_balance|intcomma }} | Confirmed Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h5>
   <form action="/newaddress/" method="post">
     {% csrf_token %}
-    <input type="submit" value="Get New Onchain Address">
+    <input type="submit" value="New Onchain Address">
   </form>
 </div>
 <div class="w3-container w3-padding-small">
