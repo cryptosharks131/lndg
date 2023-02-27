@@ -19,25 +19,25 @@
 <div class="w3-row w3-container w3-padding-small" >
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:30%">
     <tr>
-      <th>Status</h>
+      <th title="Total Inbound/Total Outbound">Ratio: {{ liq_ratio }}%</h>
       <th>Inbound</th>
       <th>Outbound</th>
       <th>Unsettled</th>
     </tr>
     <tr>
-      <td>Active</td>
+      <th>Active</th>
       <td>{{ inbound|intcomma }}</td>
       <td>{{ outbound|intcomma }}</td>
       <td>{{ unsettled|intcomma }}</td>
     </tr>
     <tr>
-      <td>Inactive</td>
+      <th>Inactive</th>
       <td>{{ inactive_inbound|intcomma }}</td>
       <td>{{ inactive_outbound|intcomma }}</td>
       <td>{{ inactive_unsettled|intcomma }}</td>
     </tr>
     <tr>
-      <td>Total (Ratio: {{ liq_ratio }}%)</td>
+      <th>Total</th>
       <td>{{ sum_inbound|intcomma }}</td>
       <td>{{ sum_outbound|intcomma }}</td>
       <td>{{ total_unsettled|intcomma }}</td>
@@ -45,9 +45,9 @@
   </table>
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:70%">
     <tr>
-      <th class="w3-border"><a href="/balances" target="_blank">Balance</a></th>
-      <th class="w3-border">Total: {{ total_balance|intcomma }}</th>
+      <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
       <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
+      <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
       <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
       <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
       <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>

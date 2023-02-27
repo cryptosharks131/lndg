@@ -233,6 +233,7 @@ hr{border:0;border-top:1px solid #eee;margin:20px 0}
 .w3-border-dark-grey,.w3-hover-border-dark-grey:hover,.w3-border-dark-gray,.w3-hover-border-dark-gray:hover{border-color:#616161!important}
 .w3-border-pale-red,.w3-hover-border-pale-red:hover{border-color:#ffe7e7!important}.w3-border-pale-green,.w3-hover-border-pale-green:hover{border-color:#e7ffe7!important}
 .w3-border-pale-yellow,.w3-hover-border-pale-yellow:hover{border-color:#ffffcc!important}.w3-border-pale-blue,.w3-hover-border-pale-blue:hover{border-color:#e7ffff!important}
+table th{background-color: #f0f0f5;}
 .dark-mode {color-scheme: dark;background-color: #0d1117;color: #c9d1d9}
 .dark-mode table tr {background-color: #161b22!important;border: 1px solid #30363d;}
 .dark-mode table tr:nth-child(even) {background-color: #0d1117!important}
@@ -246,3 +247,5 @@ button {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 a {color: #0969da}.dark-mode a {color: #58a6ff}
 a:link {text-decoration: none}
 .dark-mode .w3-hoverable tbody tr:hover,.dark-mode .w3-ul.w3-hoverable li:hover {background-color: #30363d !important}
+.dark-mode .w3-green{background-color: #238636!important}.dark-mode .w3-border-green{border-color: #238636!important}
+.dark-mode .w3-red{background-color: #f85149!important}.dark-mode .w3-border-red{border-color: #f85149!important}
