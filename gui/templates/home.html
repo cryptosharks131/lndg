@@ -3,8 +3,8 @@
 {% block meta %}<meta http-equiv="refresh" content="1260">{% endblock %}
 {% block content %}
 {% load humanize %}
+<span style="position: absolute;top: 0;right: 0;">Dashboard Last Updated:  <span id='datetime'></span> ... refreshing every 21 minutes</span>
 <div class="w3-container w3-padding-small">
-  <p>Dashboard Last Updated :  <span id='datetime'></span> ... refreshing every 21 minutes</p>
   <script>
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
