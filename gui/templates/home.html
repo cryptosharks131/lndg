@@ -3,8 +3,8 @@
 {% block meta %}<meta http-equiv="refresh" content="1260">{% endblock %}
 {% block content %}
 {% load humanize %}
+<span style="position: absolute;top: 0;right: 0;">Dashboard Last Updated:  <span id='datetime'></span> ... refreshing every 21 minutes</span>
 <div class="w3-container w3-padding-small">
-  <p>Dashboard Last Updated :  <span id='datetime'></span> ... refreshing every 21 minutes</p>
   <script>
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
@@ -39,21 +39,20 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table id="activeChannels" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th onclick="sortTable(0, 'String', 'activeChannels')">Channel ID</th>
-        <th onclick="sortTable(1, 'String', 'activeChannels', 0, true)">Peer Alias</th>
-        <th onclick="sortTable(2, 'int', 'activeChannels')">Capacity</th>
-        <th onclick="sortTable(3, ' (', 'activeChannels')">Outbound Liquidity</th>
-        <th width=10%></th>
-        <th onclick="sortTable(5, ' (', 'activeChannels')">Inbound Liquidity</th>
-        <th onclick="sortTable(6, ' (', 'activeChannels')">Unsettled</th>
-        <th onclick="sortTable(7, 'int', 'activeChannels')">oRate</th>
-        <th onclick="sortTable(8, 'int', 'activeChannels')">oBase</th>
-        <th onclick="sortTable(9, ' m (', 'activeChannels')">o1D</th>
-        <th onclick="sortTable(10, ' m (', 'activeChannels')">i1D</th>
-        <th onclick="sortTable(11, ' m (', 'activeChannels')">o7D</th>
-        <th onclick="sortTable(12, ' m (', 'activeChannels')">i7D</th>
-        <th onclick="sortTable(13, 'int', 'activeChannels')">iRate</th>
-        <th onclick="sortTable(14, 'int', 'activeChannels')">iBase</th>
+        <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'span')">Capacity</th>
+        <th onclick="sortTable(event.target, 5, ' (')">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 6, ' (')">Unsettled</th>
+        <th onclick="sortTable(event.target, 7, 'int')">oRate</th>
+        <th onclick="sortTable(event.target, 8, 'int')">oBase</th>
+        <th onclick="sortTable(event.target, 9, ' m (')">o1D</th>
+        <th onclick="sortTable(event.target, 10, ' m (')">i1D</th>
+        <th onclick="sortTable(event.target, 11, ' m (')">o7D</th>
+        <th onclick="sortTable(event.target, 12, ' m (')">i7D</th>
+        <th onclick="sortTable(event.target, 13, 'int')">iRate</th>
+        <th onclick="sortTable(event.target, 14, 'int')">iBase</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
       </tr>
@@ -61,9 +60,8 @@
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td title="Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}">{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+        <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -106,17 +104,16 @@
   <h2>Inactive Channels</h2>
   <table id="inactiveChannels" class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th onclick="sortTable(0, 'String', 'inactiveChannels')">Channel ID</th>
-      <th onclick="sortTable(1, 'String', 'inactiveChannels', 0, true)">Peer Alias</th>
-      <th onclick="sortTable(2, 'int', 'inactiveChannels')">Capacity</th>
-      <th onclick="sortTable(3, ' (', 'inactiveChannels')" width=9%>Outbound Liquidity</th>
-      <th width=10%></th>
-      <th onclick="sortTable(5, ' (', 'inactiveChannels')" width=9%>Inbound Liquidity</th>
-      <th onclick="sortTable(6, ' (', 'inactiveChannels')" width=6%>Unsettled</th>
-      <th onclick="sortTable(7, 'int', 'inactiveChannels')" width=4%>oRate</th>
-      <th onclick="sortTable(8, 'int', 'inactiveChannels')" width=4%>oBase</th>
-      <th onclick="sortTable(9, 'int', 'inactiveChannels')" width=4%>iRate</th>
-      <th onclick="sortTable(10, 'int', 'inactiveChannels')" width=4%>iBase</th>
+      <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
+      <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+      <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
+      <th onclick="sortTable(event.target, 3, 'int', 0, 'span')">Capacity</th>
+      <th onclick="sortTable(event.target, 5, ' (')" width=9%>Inbound Liquidity</th>
+      <th onclick="sortTable(event.target, 6, ' (')" width=6%>Unsettled</th>
+      <th onclick="sortTable(event.target, 7, 'int')" width=4%>oRate</th>
+      <th onclick="sortTable(event.target, 8, 'int')" width=4%>oBase</th>
+      <th onclick="sortTable(event.target, 9, 'int')" width=4%>iRate</th>
+      <th onclick="sortTable(event.target, 10, 'int')" width=4%>iBase</th>
       <th width=5%>Local Commit</th>
       <th width=5%>Local Reserve</th>
       <th width=5%>Downtime</th>
@@ -128,9 +125,8 @@
     <tr>
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+      <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -174,9 +170,8 @@
     <tr>
       <th>Channel ID</th>
       <th>Peer Alias</th>
-      <th>Capacity</th>
       <th width=9%>Outbound Liquidity</th>
-      <th width=10%></th>
+      <th>Capacity</th>
       <th width=9%>Inbound Liquidity</th>
       <th width=6%>Unsettled</th>
       <th width=4%>oRate</th>
@@ -192,9 +187,8 @@
     <tr>
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+      <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
