@@ -1,35 +1,33 @@
-function sortTable(n, type, tableName, skip=0, link=false) {
-    var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+function sortTable(header, n, type, skip=0, tag="td") {
+    var switching, i, curr_row, next_row, shouldSwitch, dir, switchcount = 0;
     var upArrow = " ▲", downArrow = " ▼";
-    table = document.getElementById(tableName);
-    header = table.rows[0+skip].getElementsByTagName("TH")[n];
+    var table = header.parentElement.parentElement.parentElement; //th.tr.tbody.table
+    var rows = table.rows;
 
     switching = true;
     dir = "asc";
     while (switching) {
         switching = false;
-        rows = table.rows;
         for (i=1+skip; i<(rows.length-1); i++) {
             shouldSwitch = false;
-            if (link == true) {
-                x = rows[i].getElementsByTagName("A")[n];
-                y = rows[i+1].getElementsByTagName("A")[n];                
-            } else {
-                x = rows[i].getElementsByTagName("TD")[n];
-                y = rows[i+1].getElementsByTagName("TD")[n];
-            }
+            curr_row = rows[i].children[n]
+            next_row = rows[i+1].children[n]
+            if(tag !== "td"){
+                curr_row = curr_row.getElementsByTagName(tag)[0];
+                next_row = next_row.getElementsByTagName(tag)[0];
+            }   
             if (dir == "asc") {
-                if (type == "String" && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()
-                    || type == "int" && parseInt(x.innerHTML.replace(/,/g, '')) > parseInt(y.innerHTML.replace(/,/g, ''))
-                    || type != "String" && type != "int" && Number(x.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) > Number(y.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
+                if (type == "String" && curr_row.innerHTML.toLowerCase() > next_row.innerHTML.toLowerCase()
+                    || type == "int" && parseInt(curr_row.innerHTML.replace(/,/g, '')) > parseInt(next_row.innerHTML.replace(/,/g, ''))
+                    || type != "String" && type != "int" && Number(curr_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) > Number(next_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
                 {
                     shouldSwitch = true;
                     break;
                 }
             } else if (dir == "desc") {
-                if (type == "String" && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()
-                    || type == "int" && parseInt(x.innerHTML.replace(/,/g, '')) < parseInt(y.innerHTML.replace(/,/g, ''))
-                    || type != "String" && type != "int" && Number(x.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) < Number(y.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
+                if (type == "String" && curr_row.innerHTML.toLowerCase() < next_row.innerHTML.toLowerCase()
+                    || type == "int" && parseInt(curr_row.innerHTML.replace(/,/g, '')) < parseInt(next_row.innerHTML.replace(/,/g, ''))
+                    || type != "String" && type != "int" && Number(curr_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) < Number(next_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
                 {
                     shouldSwitch = true;
                     break;

@@ -245,4 +245,4 @@ button {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 .dark-mode button {background-color: #30363d;color: #c9d1d9;border-radius: 6px;border-color: rgba(240,246,252,0.1);}
 a {color: #0969da}.dark-mode a {color: #58a6ff}
 a:link {text-decoration: none}
-.dark-mode .w3-hoverable tbody tr:hover,.dark-mode .w3-ul.w3-hoverable li:hover {/*Apparently it's not possible to change bg-color within dark-mode class, so changing the color to highlight hovered row*/color: white }
+.dark-mode .w3-hoverable tbody tr:hover,.dark-mode .w3-ul.w3-hoverable li:hover {background-color: #30363d !important}

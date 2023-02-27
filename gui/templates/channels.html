@@ -16,19 +16,19 @@
         <th colspan="2"> Channel Health</th>
       </tr>
       <tr>
-        <th onclick="sortTable(0, 'String', 'channelsTable', 1)" width=1%>Channel ID</th>
-        <th onclick="sortTable(1, 'String', 'channelsTable', 1, true)">Peer Alias</th>
-        <th onclick="sortTable(2, ' m', 'channelsTable', 1)" width=1%>Capacity</th>
-        <th onclick="sortTable(3, ' m (', 'channelsTable', 1)" title="7-Day Routed Out | Rebalanced In">Outbound Flow</th>
-        <th onclick="sortTable(4, '% | ', 'channelsTable', 1)" title="7-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
-        <th onclick="sortTable(5, ' [', 'channelsTable', 1)" title="7-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th onclick="sortTable(6, ' m (', 'channelsTable', 1)" title="7-Day Routed In | Rebalanced Out">Inbound Flow</th>
-        <th onclick="sortTable(7, ' m (', 'channelsTable', 1)" title="30-Day Routed Out | Rebalanced In">Outbound Flow</th>
-        <th onclick="sortTable(8, '% | ', 'channelsTable', 1)" title="30-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
-        <th onclick="sortTable(9, ' [', 'channelsTable', 1)" title="30-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th onclick="sortTable(10, ' m (', 'channelsTable', 1)" title="30-Day Routed In | Rebalanced Out">Inbound Flow</th>
-        <th onclick="sortTable(11, 'int', 'channelsTable', 1)" title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
-        <th onclick="sortTable(12, 'String', 'channelsTable', 1)" title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
+        <th onclick="sortTable(event.target, 0, 'String', 1)" width=1%>Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 1, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' m', 1)" width=1%>Capacity</th>
+        <th onclick="sortTable(event.target, 3, ' m (', 1)" title="7-Day Routed Out | Rebalanced In">Outbound Flow</th>
+        <th onclick="sortTable(event.target, 4, '% | ', 1)" title="7-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
+        <th onclick="sortTable(event.target, 5, ' [', 1)" title="7-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
+        <th onclick="sortTable(event.target, 6, ' m (', 1)" title="7-Day Routed In | Rebalanced Out">Inbound Flow</th>
+        <th onclick="sortTable(event.target, 7, ' m (', 1)" title="30-Day Routed Out | Rebalanced In">Outbound Flow</th>
+        <th onclick="sortTable(event.target, 8, '% | ', 1)" title="30-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
+        <th onclick="sortTable(event.target, 9, ' [', 1)" title="30-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
+        <th onclick="sortTable(event.target, 10, ' m (', 1)" title="30-Day Routed In | Rebalanced Out">Inbound Flow</th>
+        <th onclick="sortTable(event.target, 11, 'int', 1)" title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
+        <th onclick="sortTable(event.target, 12, 'String', 1)" title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
       </tr>
       {% for channel in channels %}
       <tr>
