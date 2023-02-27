@@ -51,7 +51,12 @@
       <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
       <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
       <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
-      <th class="w3-border"><a href="#" onclick="document.getElementById('newAddr').submit()" value="Get New Onchain Address">New Onchain Address</a></th>
+      <th class="w3-border">
+        <form method="post" action="/newaddress/">
+          {% csrf_token %}
+          <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
+        </form>
+      </th>
     </tr>
     <tr>
       <th>Period</th>
