@@ -8,31 +8,29 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table id="rebalancingTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th onclick="sortTable(0, 'String', 'rebalancingTable')">Channel ID</th>
-        <th onclick="sortTable(1, 'String', 'rebalancingTable', 0, true)">Peer Alias</th>
-        <th onclick="sortTable(2, 'int', 'rebalancingTable')">Capacity</th>
-        <th onclick="sortTable(3, ' (', 'rebalancingTable')">Outbound Liquidity</th>
-        <th width=10%></th>
-        <th onclick="sortTable(5, ' (', 'rebalancingTable')">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'span')">Capacity</th>
+        <th onclick="sortTable(event.target, 5, ' (')">Inbound Liquidity</th>
         <th><a href="/rebalancing?=2">Rebal Out?</a></th>
         <th><a href="/rebalancing?=1">Enabled?</a></th>
-        <th onclick="sortTable(8, '%', 'rebalancingTable')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-        <th onclick="sortTable(9, 'String', 'rebalancingTable')">Rebal In?</th>
+        <th onclick="sortTable(event.target, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+        <th onclick="sortTable(event.target, 9, 'String')">Rebal In?</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th>AR</th>
         <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-        <th onclick="sortTable(16, 'String', 'rebalancingTable')">Active</th>
+        <th onclick="sortTable(event.target, 16, 'String')">Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.percent_inbound == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.percent_outbound == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.percent_outbound }}%"></div>{% endif %}</div></td>
+        <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.percent_outbound > 0 %}width:{{ channel.percent_outbound|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.percent_inbound }}%)</td>
         <td {% if channel.percent_outbound >= channel.ar_out_target and channel.auto_rebalance == False %}style="background-color: rgba(46,160,67,0.15);">True{% else %}style="background-color: rgba(248,81,73,0.15)">False{% endif %}</td>
         <td {% if channel.auto_rebalance  == True %}style="background-color: rgba(46,160,67,0.15);">True{% else %}style="background-color: rgba(248,81,73,0.15)">False{% endif %}</td>
