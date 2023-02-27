@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, AutoFeesForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
@@ -2030,6 +2030,7 @@ def rebalance(request):
 def get_local_settings(*prefixes):
     form = []
     if 'AR-' in prefixes:
+        form.append({'form_id': 'update_channels', 'id': 'update_channels'})
         form.append({'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
         form.append({'form_id': 'target_percent', 'value': 0, 'label': 'AR Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
         form.append({'form_id': 'target_time', 'value': 0, 'label': 'AR Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
@@ -2041,25 +2042,27 @@ def get_local_settings(*prefixes):
         form.append({'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
         form.append({'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
         form.append({'form_id': 'autopilotdays', 'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
+        form.append({'form_id': 'workers', 'value': 0, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':0, 'max':12})
     if 'AF-' in prefixes:
-        form.append({'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'value': 0, 'label': 'AF Failed HTLC', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLC', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':0, 'max':5000})
-        form.append({'value': 0, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum fee', 'min':0, 'max':5000})
-        form.append({'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum fee', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AF Update Hours', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
+        form.append({'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality (1 - Enabled)', 'min':0, 'max':1})
+        form.append({'form_id': 'af_maxRate', 'value': 0, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        form.append({'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        form.append({'form_id': 'af_increment', 'value': 0, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':0, 'max':100})
+        form.append({'form_id': 'af_multiplier', 'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
+        form.append({'form_id': 'af_failedHTLCs', 'value': 0, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':0, 'max':100})
+        form.append({'form_id': 'af_updateHours', 'value': 0, 'label': 'AF Update Hours', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
     if 'GUI-' in prefixes:
-        form.append({'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
-        form.append({'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
+        form.append({'form_id': 'gui_graphLinks', 'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
+        form.append({'form_id': 'gui_netLinks', 'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
     if 'LND-' in prefixes:
-        form.append({'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days'})
+        form.append({'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (1 - Enabled)', 'min':0, 'max':1})
+        form.append({'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days'})
 
     for prefix in prefixes:
         ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
         for field in form:
             for sett in ar_settings:
+                print(field['id'], sett['key'], sep=", ")
                 if field['id'] == sett['key']:
                     field['value'] = sett['value']
                     break
@@ -2079,20 +2082,20 @@ def auto_rebalance(request):
                     {'form_id': 'wait_period', 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
                     {'form_id': 'autopilot', 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
                     {'form_id': 'autopilotdays', 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'},
-                    {'all': False, 'value': 5, 'parse': lambda x: x,'id': 'AR-Workers'},
+                    {'form_id': 'workers', 'value': 5, 'parse': lambda x: x,'id': 'AR-Workers'},
                     #AF
-                    {'all': False, 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
-                    {'all': False, 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
-                    {'all': False, 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
-                    {'all': False, 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
-                    {'all': False, 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
-                    {'all': False, 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'}, 
-                    {'all': False, 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'}, 
+                    {'form_id': 'af_enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
+                    {'form_id': 'af_maxRate', 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
+                    {'form_id': 'af_minRate', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
+                    {'form_id': 'af_increment', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
+                    {'form_id': 'af_multiplier', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
+                    {'form_id': 'af_failedHTLCs', 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'}, 
+                    {'form_id': 'af_updateHours', 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'}, 
                     #TODO: GUI
                     #TODO: LND
                     ]
 
-        form = AutoRebalanceForm(request.POST)
+        form = AutoFeesForm(request.POST)
         if not form.is_valid():
             messages.error(request, 'Invalid Request. Please try again.')
         else:
