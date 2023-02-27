@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
@@ -1556,8 +1556,10 @@ def rebalances(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def batch(request):
     if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect())
         context = {
             'iterator': range(1,11),
+            'balances': stub.WalletBalance(ln.WalletBalanceRequest())
         }
         return render(request, 'batch.html', context)
     else:
@@ -2028,36 +2030,39 @@ def rebalance(request):
 def get_local_settings(*prefixes):
     form = []
     if 'AR-' in prefixes:
-        form.append({'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
-        form.append({'value': 0, 'label': 'AR Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
-        form.append({'value': 0, 'label': 'AR Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
-        form.append({'value': 0, 'label': 'AR Global Max Fee Rate (ppm)', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500})
-        form.append({'value': 0, 'label': 'AR Target Outbound Above (%)', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100})
-        form.append({'value': 0, 'label': 'AR Target Inbound Above (%)', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100})
-        form.append({'value': 0, 'label': 'AR Max Cost (%)', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
-        form.append({'value': 0, 'label': 'AR Variance (%)', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AR Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
-        form.append({'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
-        form.append({'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
+        form.append({'form_id': 'update_channels', 'id': 'update_channels'})
+        form.append({'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
+        form.append({'form_id': 'target_percent', 'value': 0, 'label': 'AR Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
+        form.append({'form_id': 'target_time', 'value': 0, 'label': 'AR Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
+        form.append({'form_id': 'fee_rate', 'value': 0, 'label': 'AR Global Max Fee Rate (ppm)', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500})
+        form.append({'form_id': 'outbound_percent', 'value': 0, 'label': 'AR Target Outbound Above (%)', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100})
+        form.append({'form_id': 'inbound_percent', 'value': 0, 'label': 'AR Target Inbound Above (%)', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100})
+        form.append({'form_id': 'max_cost', 'value': 0, 'label': 'AR Max Cost (%)', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
+        form.append({'form_id': 'variance', 'value': 0, 'label': 'AR Variance (%)', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
+        form.append({'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
+        form.append({'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
+        form.append({'form_id': 'autopilotdays', 'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
+        form.append({'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
     if 'AF-' in prefixes:
-        form.append({'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'value': 0, 'label': 'AF Failed HTLC', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLC', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':0, 'max':5000})
-        form.append({'value': 0, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum fee', 'min':0, 'max':5000})
-        form.append({'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum fee', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
-        form.append({'value': 0, 'label': 'AF Update Hours', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
+        form.append({'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality (1 - Enabled)', 'min':0, 'max':1})
+        form.append({'form_id': 'af_maxRate', 'value': 0, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        form.append({'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        form.append({'form_id': 'af_increment', 'value': 0, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':0, 'max':100})
+        form.append({'form_id': 'af_multiplier', 'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
+        form.append({'form_id': 'af_failedHTLCs', 'value': 0, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':0, 'max':100})
+        form.append({'form_id': 'af_updateHours', 'value': 0, 'label': 'AF Update Hours', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
     if 'GUI-' in prefixes:
-        form.append({'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
-        form.append({'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
+        form.append({'form_id': 'gui_graphLinks', 'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
+        form.append({'form_id': 'gui_netLinks', 'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
     if 'LND-' in prefixes:
-        form.append({'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':100})
+        form.append({'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (1 - Enabled)', 'min':0, 'max':1})
+        form.append({'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days'})
 
     for prefix in prefixes:
         ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
         for field in form:
             for sett in ar_settings:
+                print(field['id'], sett['key'], sep=", ")
                 if field['id'] == sett['key']:
                     field['value'] = sett['value']
                     break
@@ -2066,60 +2071,66 @@ def get_local_settings(*prefixes):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def auto_rebalance(request):
     if request.method == 'POST':
-        form = [{'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
-                {'all': True, 'value': 5, 'parse': lambda x: float(x),'id': 'AR-Target%'},
-                {'all': False, 'value': 5, 'parse': lambda x: x,'id': 'AR-Time'},
-                {'all': False, 'value': 100, 'parse': lambda x: x,'id': 'AR-MaxFeeRate'},
-                {'all': True, 'value': 75, 'parse': lambda x: int(x),'id': 'AR-Outbound%'},
-                {'all': True, 'value': 100, 'parse': lambda x: int(x),'id': 'AR-Inbound%'},
-                {'all': True, 'value': 65, 'parse': lambda x: int(x),'id': 'AR-MaxCost%'},
-                {'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Variance'},
-                {'all': False, 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
-                {'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
-                {'all': False, 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'},
-                {'all': False, 'value': 5, 'parse': lambda x: x,'id': 'AR-Workers'},
-                #AF
-                {'all': False, 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
-                {'all': False, 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
-                {'all': False, 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
-                {'all': False, 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
-                {'all': False, 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
-                {'all': False, 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'}, 
-                {'all': False, 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'}, 
-                #GUI
-                {'all': False, 'value': '0', 'parse': lambda x: x,'id': 'GUI-GraphLinks'}, 
-                {'all': False, 'value': '0', 'parse': lambda x: x,'id': 'GUI-NetLinks'}, 
-                #LND
-                {'all': False, 'value': '0', 'parse': lambda x: x, 'id': 'LND-CleanPayments'}, 
-                {'all': False, 'value': '0', 'parse': lambda x: x, 'id': 'LND-RetentionDays'}, 
-                ]
+        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
+                    {'form_id': 'target_percent', 'value': 5, 'parse': lambda x: float(x),'id': 'AR-Target%'},
+                    {'form_id': 'target_time', 'value': 5, 'parse': lambda x: x,'id': 'AR-Time'},
+                    {'form_id': 'fee_rate', 'value': 100, 'parse': lambda x: x,'id': 'AR-MaxFeeRate'},
+                    {'form_id': 'outbound_percent', 'value': 75, 'parse': lambda x: int(x),'id': 'AR-Outbound%'},
+                    {'form_id': 'inbound_percent', 'value': 100, 'parse': lambda x: int(x),'id': 'AR-Inbound%'},
+                    {'form_id': 'max_cost', 'value': 65, 'parse': lambda x: int(x),'id': 'AR-MaxCost%'},
+                    {'form_id': 'variance', 'value': 0, 'parse': lambda x: x,'id': 'AR-Variance'},
+                    {'form_id': 'wait_period', 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
+                    {'form_id': 'autopilot', 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
+                    {'form_id': 'autopilotdays', 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'},
+                    {'form_id': 'workers', 'value': 5, 'parse': lambda x: x,'id': 'AR-Workers'},
+                    #AF
+                    {'form_id': 'af_enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
+                    {'form_id': 'af_maxRate', 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
+                    {'form_id': 'af_minRate', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
+                    {'form_id': 'af_increment', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
+                    {'form_id': 'af_multiplier', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
+                    {'form_id': 'af_failedHTLCs', 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'}, 
+                    {'form_id': 'af_updateHours', 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'}, 
+                    #GUI
+                    {'form_id': 'gui_graphLinks', 'value': '0', 'parse': lambda x: x,'id': 'GUI-GraphLinks'}, 
+                    {'form_id': 'gui_netLinks', 'value': '0', 'parse': lambda x: x,'id': 'GUI-NetLinks'}, 
+                    #LND
+                    {'form_id': 'lnd_cleanPayments', 'value': '0', 'parse': lambda x: x, 'id': 'LND-CleanPayments'}, 
+                    {'form_id': 'lnd_retentionDays', 'value': '0', 'parse': lambda x: x, 'id': 'LND-RetentionDays'}, 
+                    ]
 
-        for field in form:
-            value = request.POST.get(field['id'])
-            if value is not None:
-                value = field['parse'](value)
-                try:
-                    db_value = LocalSettings.objects.get(key=field['id'])
-                except:
-                    LocalSettings(key=field['id'], value=field['value']).save()
-                    db_value = LocalSettings.objects.get(key=field['id'])
-                if db_value.value != str(value):
+        form = LocalSettingsForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, 'Invalid Request. Please try again.')
+        else:
+            update_channels = form.cleaned_data['update_channels']
+            for field in template:
+                value = form.cleaned_data[field['form_id']]
+                if value is not None:
+                    value = field['parse'](value)
+                    try:
+                        db_value = LocalSettings.objects.get(key=field['id'])
+                    except:
+                        LocalSettings(key=field['id'], value=field['value']).save()
+                        db_value = LocalSettings.objects.get(key=field['id'])
+                    if db_value.value == str(value):
+                        continue
                     db_value.value = value
                     db_value.save()
 
-                    if field['id'] == 'AR-Target%':
-                        Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
-                    elif field['id'] == 'AR-Outbound%':
-                        Channels.objects.all().update(ar_out_target=value)
-                    elif field['id'] == 'AR-Inbound%':
-                        Channels.objects.all().update(ar_in_target=value)
-                    elif field['id'] == 'AR-MaxCost%':
-                        Channels.objects.all().update(ar_max_cost=value)
-                    if field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
+                    if update_channels and field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
+                        if field['id'] == 'AR-Target%':
+                            Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
+                        elif field['id'] == 'AR-Outbound%':
+                            Channels.objects.all().update(ar_out_target=value)
+                        elif field['id'] == 'AR-Inbound%':
+                            Channels.objects.all().update(ar_in_target=value)
+                        elif field['id'] == 'AR-MaxCost%':
+                            Channels.objects.all().update(ar_max_cost=value)
                         messages.success(request, 'All channels ' + field['id'] + ' updated to: ' + str(value))
                     else:
                         messages.success(request, field['id'] + ' updated to: ' + str(value))
-
+            
     return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)

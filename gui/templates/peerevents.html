@@ -8,13 +8,13 @@
   <table id="peerEvents" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
-      <th onclick="sortTable(1, 'String', 'peerEvents')">Channel ID</th>
-      <th onclick="sortTable(2, 'String', 'peerEvents', 0, true)">Peer Alias</th>
-      <th onclick="sortTable(3, 'String', 'peerEvents')">Setting</th>
-      <th onclick="sortTable(4, 'String', 'peerEvents')">Old Value</th>
-      <th onclick="sortTable(5, 'String', 'peerEvents')">New Value</th>
-      <th onclick="sortTable(6, '%', 'peerEvents')">Change</th>
-      <th onclick="sortTable(7, '% | ', 'peerEvents')" width=12% title="Outbound | Inbound"">Channel Liquidity</th>
+      <th onclick="sortTable(event.target, 1, 'String')">Channel ID</th>
+      <th onclick="sortTable(event.target, 2, 'String', 0, 'a')">Peer Alias</th>
+      <th onclick="sortTable(event.target, 3, 'String')">Setting</th>
+      <th onclick="sortTable(event.target, 4, 'String')">Old Value</th>
+      <th onclick="sortTable(event.target, 5, 'String')">New Value</th>
+      <th onclick="sortTable(event.target, 6, '%')">Change</th>
+      <th onclick="sortTable(event.target, 7, '% | ')" width=12% title="Outbound | Inbound"">Channel Liquidity</th>
     </tr>
     {% for log in peer_events %}
     <tr>
