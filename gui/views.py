@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, AutoRebalanceForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
@@ -2048,146 +2048,54 @@ def get_local_settings():
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def auto_rebalance(request):
     if request.method == 'POST':
-        form = AutoRebalanceForm(request.POST)
-        if form.is_valid():
-            if form.cleaned_data['chan_id'] is not None:
-                target_chan_id = form.cleaned_data['chan_id']
-                target_channel = Channels.objects.filter(chan_id=target_chan_id)
-                if len(target_channel) == 1:
-                    target_channel = target_channel[0]
-                    target_channel.auto_rebalance = True if target_channel.auto_rebalance == False else False
-                    target_channel.save()
-                    messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
+        form = [{'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
+                {'all': True, 'value': 5, 'parse': lambda x: float(x),'id': 'AR-Target%'},
+                {'all': False, 'value': 5, 'parse': lambda x: x,'id': 'AR-Time'},
+                {'all': False, 'value': 100, 'parse': lambda x: x,'id': 'AR-MaxFeeRate'},
+                {'all': True, 'value': 75, 'parse': lambda x: int(x),'id': 'AR-Outbound%'},
+                {'all': True, 'value': 100, 'parse': lambda x: int(x),'id': 'AR-Inbound%'},
+                {'all': True, 'value': 65, 'parse': lambda x: int(x),'id': 'AR-MaxCost%'},
+                {'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Variance'},
+                {'all': False, 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
+                {'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
+                {'all': False, 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'}]
+        target_chan_id = request.POST.get('chan_id')
+        all = request.POST.get('targetallchannels')
+
+        if target_chan_id is not None:
+            target_channel = Channels.objects.filter(chan_id=target_chan_id)
+            if len(target_channel) == 1:
+                target_channel = target_channel[0]
+                target_channel.auto_rebalance = target_channel.auto_rebalance == False
+                target_channel.save()
+                messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
+            else:
+                messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
+        for field in form:
+            value = request.POST.get(field['id'])
+            if value is not None:
+                value = field['parse'](value)
+            try:
+                db_value = LocalSettings.objects.get(key=field['id'])
+            except:
+                LocalSettings(key=field['id'], value=field['value']).save()
+                db_value = LocalSettings.objects.get(key=field['id'])
+            if db_value.value != str(value):
+                db_value.value = value
+                db_value.save()
+                if all and field['all'] == True:
+                    if field['id'] == 'AR-Target%':
+                        Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
+                    elif field['id'] == 'AR-Outbound%':
+                        Channels.objects.all().update(ar_out_target=value)
+                    elif field['id'] == 'AR-Inbound%':
+                        Channels.objects.all().update(ar_in_target=value)
+                    elif field['id'] == 'AR-MaxCost%':
+                        Channels.objects.all().update(ar_max_cost=value)
+                    messages.success(request, 'All channels ' + field['id'] + ' updated to: ' + str(value))
                 else:
-                    messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
-            if form.cleaned_data['target_percent'] is not None:
-                target_percent = float(form.cleaned_data['target_percent'])
-                try:
-                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
-                except:
-                    LocalSettings(key='AR-Target%', value='5').save()
-                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
-                db_percent_target.value = target_percent
-                db_percent_target.save()
-                if form.cleaned_data['targetallchannels']:
-                    Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(target_percent/100), output_field=IntegerField()))
-                    messages.success(request, 'Updated auto rebalancer target amount for all channels to: ' + str(target_percent))
-                else:
-                    messages.success(request, 'Updated auto rebalancer target amount in local settings: ' + str(target_percent))
-            if form.cleaned_data['target_time'] is not None:
-                target_time = form.cleaned_data['target_time']
-                try:
-                    db_time_target = LocalSettings.objects.get(key='AR-Time')
-                except:
-                    LocalSettings(key='AR-Time', value='5').save()
-                    db_time_target = LocalSettings.objects.get(key='AR-Time')
-                db_time_target.value = target_time
-                db_time_target.save()
-                messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
-            if form.cleaned_data['enabled'] is not None:
-                enabled = form.cleaned_data['enabled']
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
-                except:
-                    LocalSettings(key='AR-Enabled', value='0').save()
-                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
-            if form.cleaned_data['outbound_percent'] is not None:
-                outbound_percent = int(form.cleaned_data['outbound_percent'])
-                try:
-                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
-                except:
-                    LocalSettings(key='AR-Outbound%', value='75').save()
-                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
-                db_outbound_target.value = outbound_percent
-                db_outbound_target.save()
-                if form.cleaned_data['targetallchannels']:
-                    Channels.objects.all().update(ar_out_target=int(outbound_percent))
-                    messages.success(request, 'Updated auto rebalancer target outbound percent setting for all channels to: ' + str(outbound_percent))
-                else:
-                    messages.success(request, 'Updated auto rebalancer target outbound percent setting in local settings to: ' + str(outbound_percent))
-            if form.cleaned_data['inbound_percent'] is not None:
-                inbound_percent = int(form.cleaned_data['inbound_percent'])
-                try:
-                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
-                except:
-                    LocalSettings(key='AR-Inbound%', value='100').save()
-                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
-                db_inbound_target.value = inbound_percent
-                db_inbound_target.save()
-                if form.cleaned_data['targetallchannels']:
-                    Channels.objects.all().update(ar_in_target=int(inbound_percent))
-                    messages.success(request, 'Updated auto rebalancer target inbound percent setting for all channels to: ' + str(inbound_percent))
-                else:
-                    messages.success(request, 'Updated auto rebalancer target inbound percent setting in local settigs to: ' + str(inbound_percent))
-            if form.cleaned_data['fee_rate'] is not None:
-                fee_rate = form.cleaned_data['fee_rate']
-                try:
-                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
-                except:
-                    LocalSettings(key='AR-MaxFeeRate', value='100').save()
-                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
-                db_fee_rate.value = fee_rate
-                db_fee_rate.save()
-                messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
-            if form.cleaned_data['max_cost'] is not None:
-                max_cost = int(form.cleaned_data['max_cost'])
-                try:
-                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
-                except:
-                    LocalSettings(key='AR-MaxCost%', value='65').save()
-                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
-                db_max_cost.value = max_cost
-                db_max_cost.save()
-                if form.cleaned_data['targetallchannels']:
-                    Channels.objects.all().update(ar_max_cost=int(max_cost))
-                    messages.success(request, 'Updated auto rebalancer max cost setting for all channels to: ' + str(max_cost))
-                else:
-                    messages.success(request, 'Updated auto rebalancer max cost setting in local settings to: ' + str(max_cost))
-            if form.cleaned_data['autopilot'] is not None:
-                autopilot = form.cleaned_data['autopilot']
-                try:
-                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
-                except:
-                    LocalSettings(key='AR-Autopilot', value='0').save()
-                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
-                db_autopilot.value = autopilot
-                db_autopilot.save()
-                messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
-            if form.cleaned_data['autopilotdays'] is not None:
-                autopilotdays = form.cleaned_data['autopilotdays']
-                try:
-                    db_autopilotdays = LocalSettings.objects.get(key='AR-APDays')
-                except:
-                    LocalSettings(key='AR-APDays', value='7').save()
-                    db_autopilotdays = LocalSettings.objects.get(key='AR-APDays')
-                db_autopilotdays.value = autopilotdays
-                db_autopilotdays.save()
-                messages.success(request, 'Updated autopilot days setting to: ' + str(autopilotdays))
-            if form.cleaned_data['variance'] is not None:
-                variance = form.cleaned_data['variance']
-                try:
-                    db_variance = LocalSettings.objects.get(key='AR-Variance')
-                except:
-                    LocalSettings(key='AR-Variance', value='0').save()
-                    db_variance = LocalSettings.objects.get(key='AR-Variance')
-                db_variance.value = variance
-                db_variance.save()
-                messages.success(request, 'Updated variance setting to: ' + str(variance))
-            if form.cleaned_data['wait_period'] is not None:
-                wait_period = form.cleaned_data['wait_period']
-                try:
-                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
-                except:
-                    LocalSettings(key='AR-WaitPeriod', value='30').save()
-                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
-                db_wait_period.value = wait_period
-                db_wait_period.save()
-                messages.success(request, 'Updated wait period setting to: ' + str(wait_period))
-        else:
-            messages.error(request, 'Invalid Request. Please try again.')
+                    messages.success(request, field['id'] + ' updated to: ' + str(value))
+
     return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
