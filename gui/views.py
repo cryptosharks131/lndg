@@ -2059,18 +2059,7 @@ def auto_rebalance(request):
                 {'all': False, 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
                 {'all': False, 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
                 {'all': False, 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'}]
-        target_chan_id = request.POST.get('chan_id')
-        all = request.POST.get('targetallchannels')
-
-        if target_chan_id is not None:
-            target_channel = Channels.objects.filter(chan_id=target_chan_id)
-            if len(target_channel) == 1:
-                target_channel = target_channel[0]
-                target_channel.auto_rebalance = target_channel.auto_rebalance == False
-                target_channel.save()
-                messages.success(request, 'Updated auto rebalancer status for: ' + str(target_channel.chan_id))
-            else:
-                messages.error(request, 'Failed to update auto rebalancer status of channel: ' + str(target_chan_id))
+        
         for field in form:
             value = request.POST.get(field['id'])
             if value is not None:
@@ -2083,15 +2072,16 @@ def auto_rebalance(request):
             if db_value.value != str(value):
                 db_value.value = value
                 db_value.save()
-                if all and field['all'] == True:
-                    if field['id'] == 'AR-Target%':
-                        Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
-                    elif field['id'] == 'AR-Outbound%':
-                        Channels.objects.all().update(ar_out_target=value)
-                    elif field['id'] == 'AR-Inbound%':
-                        Channels.objects.all().update(ar_in_target=value)
-                    elif field['id'] == 'AR-MaxCost%':
-                        Channels.objects.all().update(ar_max_cost=value)
+
+                if field['id'] == 'AR-Target%':
+                    Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
+                elif field['id'] == 'AR-Outbound%':
+                    Channels.objects.all().update(ar_out_target=value)
+                elif field['id'] == 'AR-Inbound%':
+                    Channels.objects.all().update(ar_in_target=value)
+                elif field['id'] == 'AR-MaxCost%':
+                    Channels.objects.all().update(ar_max_cost=value)
+                if field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
                     messages.success(request, 'All channels ' + field['id'] + ' updated to: ' + str(value))
                 else:
                     messages.success(request, field['id'] + ' updated to: ' + str(value))
