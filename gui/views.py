@@ -551,7 +551,7 @@ def advanced(request):
             channels_df['local_max_htlc'] = channels_df['local_max_htlc_msat']/1000
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'local_settings': LocalSettings.objects.all().order_by('key'),
+            'local_settings': get_local_settings('AF-', 'AR-', 'GUI-', 'LND-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -2052,7 +2052,7 @@ def get_local_settings(*prefixes):
         form.append({'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
     if 'LND-' in prefixes:
         form.append({'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days'})
+        form.append({'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':100})
 
     for prefix in prefixes:
         ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
@@ -2086,8 +2086,12 @@ def auto_rebalance(request):
                 {'all': False, 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
                 {'all': False, 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'}, 
                 {'all': False, 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'}, 
-                #TODO: GUI
-                #TODO: LND
+                #GUI
+                {'all': False, 'value': '0', 'parse': lambda x: x,'id': 'GUI-GraphLinks'}, 
+                {'all': False, 'value': '0', 'parse': lambda x: x,'id': 'GUI-NetLinks'}, 
+                #LND
+                {'all': False, 'value': '0', 'parse': lambda x: x, 'id': 'LND-CleanPayments'}, 
+                {'all': False, 'value': '0', 'parse': lambda x: x, 'id': 'LND-RetentionDays'}, 
                 ]
 
         for field in form:
@@ -2286,167 +2290,7 @@ def update_setting(request):
         if form.is_valid():
             key = form.cleaned_data['key']
             value = form.cleaned_data['value']
-            if key == 'AR-Target%':
-                target_percent = float(value)
-                try:
-                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
-                except:
-                    LocalSettings(key='AR-Target%', value='5').save()
-                    db_percent_target = LocalSettings.objects.get(key='AR-Target%')
-                db_percent_target.value = target_percent
-                db_percent_target.save()
-                messages.success(request, 'Updated auto rebalancer target amount to: ' + str(target_percent))
-            elif key == 'AR-Time':
-                target_time = int(value)
-                try:
-                    db_time_target = LocalSettings.objects.get(key='AR-Time')
-                except:
-                    LocalSettings(key='AR-Time', value='5').save()
-                    db_time_target = LocalSettings.objects.get(key='AR-Time')
-                db_time_target.value = target_time
-                db_time_target.save()
-                messages.success(request, 'Updated auto rebalancer target time setting to: ' + str(target_time))
-            elif key == 'AR-Workers':
-                workers = int(value)
-                try:
-                    db_workers = LocalSettings.objects.get(key='AR-Workers')
-                except:
-                    LocalSettings(key='AR-Workers', value='5').save()
-                    db_workers = LocalSettings.objects.get(key='AR-Workers')
-                db_workers.value = workers
-                db_workers.save()
-                messages.success(request, 'Updated auto rebalancer workers setting to: ' + str(workers))
-            elif key == 'AR-Enabled':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
-                except:
-                    LocalSettings(key='AR-Enabled', value='0').save()
-                    db_enabled = LocalSettings.objects.get(key='AR-Enabled')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated auto rebalancer enabled setting to: ' + str(enabled))
-            elif key == 'AR-Outbound%':
-                outbound_percent = int(value)
-                try:
-                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
-                except:
-                    LocalSettings(key='AR-Outbound%', value='75').save()
-                    db_outbound_target = LocalSettings.objects.get(key='AR-Outbound%')
-                db_outbound_target.value = outbound_percent
-                db_outbound_target.save()
-                messages.success(request, 'Updated auto rebalancer target outbound percent setting: ' + str(outbound_percent))
-            elif key == 'AR-Inbound%':
-                inbound_percent = int(value)
-                try:
-                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
-                except:
-                    LocalSettings(key='AR-Inbound%', value='100').save()
-                    db_inbound_target = LocalSettings.objects.get(key='AR-Inbound%')
-                db_inbound_target.value = inbound_percent
-                db_inbound_target.save()
-                messages.success(request, 'Updated auto rebalancer target inbound percent setting: ' + str(inbound_percent))
-            elif key == 'AR-MaxFeeRate':
-                fee_rate = int(value)
-                try:
-                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
-                except:
-                    LocalSettings(key='AR-MaxFeeRate', value='100').save()
-                    db_fee_rate = LocalSettings.objects.get(key='AR-MaxFeeRate')
-                db_fee_rate.value = fee_rate
-                db_fee_rate.save()
-                messages.success(request, 'Updated auto rebalancer max fee rate setting to: ' + str(fee_rate))
-            elif key == 'AR-MaxCost%':
-                max_cost = int(value)
-                try:
-                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
-                except:
-                    LocalSettings(key='AR-MaxCost%', value='65').save()
-                    db_max_cost = LocalSettings.objects.get(key='AR-MaxCost%')
-                db_max_cost.value = max_cost
-                db_max_cost.save()
-                messages.success(request, 'Updated auto rebalancer max cost setting to: ' + str(max_cost))
-            elif key == 'AR-Autopilot':
-                autopilot = int(value)
-                try:
-                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
-                except:
-                    LocalSettings(key='AR-Autopilot', value='0').save()
-                    db_autopilot = LocalSettings.objects.get(key='AR-Autopilot')
-                db_autopilot.value = autopilot
-                db_autopilot.save()
-                messages.success(request, 'Updated autopilot setting to: ' + str(autopilot))
-            elif key == 'AR-APDays':
-                apdays = int(value)
-                try:
-                    db_apdays = LocalSettings.objects.get(key='AR-APDays')
-                except:
-                    LocalSettings(key='AR-APDays', value='7').save()
-                    db_apdays = LocalSettings.objects.get(key='AR-APDays')
-                db_apdays.value = apdays
-                db_apdays.save()
-                messages.success(request, 'Updated Autopilot Days setting to: ' + str(apdays))                
-            elif key == 'AR-Variance':
-                variance = int(value)
-                try:
-                    db_variance = LocalSettings.objects.get(key='AR-Variance')
-                except:
-                    LocalSettings(key='AR-Variance', value='0').save()
-                    db_variance = LocalSettings.objects.get(key='AR-Variance')
-                db_variance.value = variance
-                db_variance.save()
-                messages.success(request, 'Updated variance setting to: ' + str(variance))
-            elif key == 'AR-WaitPeriod':
-                wait_period = int(value)
-                try:
-                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
-                except:
-                    LocalSettings(key='AR-WaitPeriod', value='0').save()
-                    db_wait_period = LocalSettings.objects.get(key='AR-WaitPeriod')
-                db_wait_period.value = wait_period
-                db_wait_period.save()
-                messages.success(request, 'Updated wait period setting to: ' + str(wait_period))
-            elif key == 'GUI-GraphLinks':
-                links = str(value)
-                try:
-                    db_links = LocalSettings.objects.get(key='GUI-GraphLinks')
-                except:
-                    LocalSettings(key='GUI-GraphLinks', value='0').save()
-                    db_links = LocalSettings.objects.get(key='GUI-GraphLinks')
-                db_links.value = links
-                db_links.save()
-                messages.success(request, 'Updated graph links to use: ' + str(links))
-            elif key == 'GUI-NetLinks':
-                links = str(value)
-                try:
-                    db_links = LocalSettings.objects.get(key='GUI-NetLinks')
-                except:
-                    LocalSettings(key='GUI-NetLinks', value='0').save()
-                    db_links = LocalSettings.objects.get(key='GUI-NetLinks')
-                db_links.value = links
-                db_links.save()
-                messages.success(request, 'Updated network links to use: ' + str(links))
-            elif key == 'LND-CleanPayments':
-                clean_payments = int(value)
-                try:
-                    db_clean_payments = LocalSettings.objects.get(key='LND-CleanPayments')
-                except:
-                    LocalSettings(key='LND-CleanPayments', value='0').save()
-                    db_clean_payments = LocalSettings.objects.get(key='LND-CleanPayments')
-                db_clean_payments.value = clean_payments
-                db_clean_payments.save()
-                messages.success(request, 'Updated auto payment cleanup setting to: ' + str(clean_payments))
-            elif key == 'LND-RetentionDays':
-                retention_days = int(value)
-                try:
-                    db_retention_days = LocalSettings.objects.get(key='LND-RetentionDays')
-                except:
-                    LocalSettings(key='LND-RetentionDays', value='0').save()
-                    db_retention_days = LocalSettings.objects.get(key='LND-RetentionDays')
-                db_retention_days.value = retention_days
-                db_retention_days.save()
-                messages.success(request, 'Updated payment cleanup retention days to: ' + str(retention_days))
-            elif key == 'ALL-oRate':
+            if key == 'ALL-oRate':
                 target = int(value)
                 stub = lnrpc.LightningStub(lnd_connect())
                 channels = Channels.objects.filter(is_open=True)
@@ -2528,67 +2372,6 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
-            elif key == 'AF-Enabled':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-Enabled')
-                except:
-                    LocalSettings(key='AF-Enabled', value='0').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-Enabled')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated autofees enabled setting to: ' + str(enabled))
-            elif key == 'AF-MaxRate':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-MaxRate')
-                except:
-                    LocalSettings(key='AF-MaxRate', value='2500').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-MaxRate')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated autofees max rate setting to: ' + str(enabled))
-            elif key == 'AF-MinRate':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-MinRate')
-                except:
-                    LocalSettings(key='AF-MinRate', value='0').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-MinRate')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated autofees min rate setting to: ' + str(enabled))
-            elif key == 'AF-Increment':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-Increment')
-                except:
-                    LocalSettings(key='AF-Increment', value='5').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-Increment')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated autofees fee increment setting to: ' + str(enabled))
-            elif key == 'AF-Multiplier':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-Multiplier')
-                except:
-                    LocalSettings(key='AF-Multiplier', value='5').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-Multiplier')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated autofees fee multiplier setting to: ' + str(enabled))
-            elif key == 'AF-FailedHTLCs':
-                enabled = int(value)
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-FailedHTLCs')
-                except:
-                    LocalSettings(key='AF-FailedHTLCs', value='25').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-FailedHTLCs')
-                db_enabled.value = enabled
-                db_enabled.save()
-                messages.success(request, 'Updated autofees daily failed HTLC trigger limit setting to: ' + str(enabled))
-            elif key == 'AF-UpdateHours':
                 enabled = int(value)
                 try:
                     db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')

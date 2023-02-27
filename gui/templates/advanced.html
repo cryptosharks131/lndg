@@ -214,44 +214,6 @@
 </div>
 {% endif %}
 {% if local_settings %}
-<div class="w3-container w3-padding-small">
-  <h2>Update Local Settings</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Key</th>
-      <th>Value</th>
-    </tr>
-    {% for settings in local_settings %}
-    <tr>
-      <td>{{ settings.key }}</td>
-      <td>
-        <form action="/update_setting/" method="post">
-          {% csrf_token %}
-          {% if settings.key == 'AR-Target%' %}
-            <input style="text-align:center" id="value" type="number" step="0.1" min="0.1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod' or settings.key == 'AR-APDays' or settings.key == 'AF-UpdateHours' %}
-          <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-Time' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="60" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-Workers' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="12" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-MaxFeeRate' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="2500" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AF-MaxRate' or settings.key == 'AF-MinRate' %}
-            <input style="text-align:center" id="value" type="number" min="0" max="5000" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'LND-CleanPayments' or settings.key|slice:":3" == 'AR-' or settings.key|slice:":3" == 'AF-'%}
-            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'LND-RetentionDays' %}
-            <input style="text-align:center" id="value" type="number" min="0" max="1000" name="value" value="{{ settings.value }}">
-          {% else %}
-            <input style="text-align:center" id="value" type="text" name="value" value="{{ settings.value }}">
-          {% endif %}
-          <input type="hidden" name="key" value="{{ settings.key }}">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
+{% include 'local_settings.html' with settings=local_settings title='Update local' %}
 {% endif %}
 {% endblock %}
