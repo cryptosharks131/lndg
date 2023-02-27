@@ -7,10 +7,12 @@
         {% for setting in settings %}
         <div class="w3-quarter w3-container">
           <label class="w3-label" title="{{ setting.title }}">{{ setting.label }}</label>
-          <input class="w3-input" id="{{setting.id}}" name="{{setting.id}}" type="number" min="{{setting.min}}" max="{{setting.max}}" step="{{setting.min}}" value="{{setting.value}}"/>
+          <input class="w3-input" id="{{setting.form_id}}" name="{{setting.form_id}}" type="number" min="{{setting.min}}" max="{{setting.max}}" step="{{setting.min}}" value="{{setting.value}}"/>
         </div>
         {% endfor %}
         <div class="w3-quarter w3-container">
+          <input class="w3-check" id="update_channels" type="checkbox" name="update_channels"/>
+          <label class="w3-validate">Update Channels</label>
           <input class="w3-button w3-margin-top" type="submit" value="OK">
         </div>
       </div>
