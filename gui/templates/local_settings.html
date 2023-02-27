@@ -1,0 +1,21 @@
+<div class="w3-container w3-padding-small">
+    <form action="/autorebalance/" method="post">
+      {% csrf_token %}
+    <h2>Auto-Rebalancer settings</h2>
+    <div class="w3-container">
+      <div class="w3-row-padding w3-container">
+        {% for setting in settings %}
+        <div class="w3-quarter w3-container">
+          <label class="w3-label" title="{{ setting.title }}">{{ setting.label }}</label>
+          <input class="w3-input" id="{{setting.id}}" name="{{setting.id}}" type="number" min="{{setting.min}}" max="{{setting.max}}" step="{{setting.min}}" value="{{setting.value}}"/>
+        </div>
+        {% endfor %}
+        <div class="w3-quarter w3-container">
+          <input class="w3-check" id="targetallchannels" type="checkbox" name="targetallchannels"/>
+          <label class="w3-validate">Target All Channels </label>
+          <input class="w3-btn" type="submit" value="OK">
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

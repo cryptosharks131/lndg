@@ -260,7 +260,7 @@ def home(request):
             rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             active_count = node_info.num_active_channels - active_private
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
-            local_settings = LocalSettings.objects.filter(key__contains='AR-').order_by('key')
+            local_settings = get_local_settings()
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
             except:
@@ -1762,7 +1762,7 @@ def rebalancing(request):
             'channels': channels_df.to_dict(orient='records'),
             'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
-            'local_settings': LocalSettings.objects.filter(key__contains='AR-').order_by('key'),
+            'local_settings': get_local_settings(),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -2024,6 +2024,26 @@ def rebalance(request):
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
+
+def get_local_settings():
+    ar_settings = LocalSettings.objects.filter(key__contains='AR-').values('key', 'value').order_by('key')
+    form = [{'value': 0, 'label': 'Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1}, 
+            {'value': 0, 'label': 'Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100},
+            {'value': 0, 'label': 'Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60},
+            {'value': 0, 'label': 'Global Max Fee Rate (ppm)', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500},
+            {'value': 0, 'label': 'Target Outbound Above (%)', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100},
+            {'value': 0, 'label': 'Target Inbound Above (%)', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100},
+            {'value': 0, 'label': 'Max Cost (%)', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100},
+            {'value': 0, 'label': 'Variance (%)', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100},
+            {'value': 0, 'label': 'Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100},
+            {'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1},
+            {'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7.', 'min':0, 'max':100}]
+    for sett in ar_settings:
+        for field in form:
+            if field['id'] == sett['key']:
+                field['value'] = sett['value']
+                break
+    return form
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def auto_rebalance(request):
