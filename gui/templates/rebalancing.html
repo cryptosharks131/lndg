@@ -30,7 +30,7 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</td>
-        <td><progress class="w3-round" max="100" value="{{channel.percent_outbound|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+        <td><progress max="100" value="{{channel.percent_outbound|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.percent_inbound }}%)</td>
         <td {% if channel.percent_outbound >= channel.ar_out_target and channel.auto_rebalance == False %}style="background-color: rgba(46,160,67,0.15);">True{% else %}style="background-color: rgba(248,81,73,0.15)">False{% endif %}</td>
         <td {% if channel.auto_rebalance  == True %}style="background-color: rgba(46,160,67,0.15);">True{% else %}style="background-color: rgba(248,81,73,0.15)">False{% endif %}</td>

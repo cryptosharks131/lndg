@@ -61,7 +61,7 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><progress class="w3-round" max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+        <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -126,7 +126,7 @@
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><progress class="w3-round" max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+      <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -188,7 +188,7 @@
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><progress class="w3-round" max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+      <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
