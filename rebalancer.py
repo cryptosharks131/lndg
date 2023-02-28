@@ -109,9 +109,17 @@ async def run_rebalancer(rebalance, worker):
             # For failed rebalances, try in rapid fire with reduced balances until give up.
             elif rebalance.status > 2 and rebalance.value > 69420:
                 #Previous Rapidfire with increased value failed, try with lower value up to 69420.
+                if rebalance.duration > 1:
+                    next_value = await estimate_liquidity ( payment_response )
+                    if next_value < 69420:
+                        next_rebalance = None
+                        return next_rebalance
+                else:
+                    next_value = rebalance.value/dec
+
                 inbound_cans = auto_rebalance_channels.filter(remote_pubkey=rebalance.last_hop_pubkey).filter(auto_rebalance=True, inbound_can__gte=1)
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
-                    next_rebalance = Rebalancer(value=int(rebalance.value/dec), fee_limit=round(rebalance.fee_limit/dec, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
+                    next_rebalance = Rebalancer(value=int(next_value), fee_limit=round(rebalance.fee_limit/(rebalance.value/next_value), 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
                     print (f"{datetime.now()} RapidFire Down {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
                 else:
@@ -121,6 +129,27 @@ async def run_rebalancer(rebalance, worker):
             return next_rebalance
     except Exception as e:
         print(datetime.now(), 'Error running rebalance attempt:', str(e))
+
+@sync_to_async
+def estimate_liquidity( payment ):
+    try:
+        estimated_liquidity = 0
+        if payment.status == 3:
+            attempt = None
+            for attempt in payment.htlcs:
+                total_hops=len(attempt.route.hops)
+                #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
+                if (attempt.failure.code in (1,2) and attempt.failure.failure_source_index == total_hops) or attempt.failure.code == 12:
+                    #Failure 1,2 from last hop indicating liquidity available, failure 12 shows fees in sufficient but liquidity available
+                    estimated_liquidity += attempt.route.total_amt
+                    chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
+                    print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+        print (f"{datetime.now().strftime('%c')} : Final Estimated Liquidity {estimated_liquidity=} {payment.payment_hash=} {payment.status=}")
+    except Exception as e:
+        print (f"{datetime.now().strftime('%c')} : Error estimating liquidity: {str(e)=}")
+        estimated_liquidity = 0
+
+    return estimated_liquidity
 
 @sync_to_async
 def update_channels(stub, incoming_channel, outgoing_channel):
