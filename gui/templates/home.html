@@ -42,7 +42,7 @@
         <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 0, 'span')">Capacity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'progress')">Capacity</th>
         <th onclick="sortTable(event.target, 5, ' (')">Inbound Liquidity</th>
         <th onclick="sortTable(event.target, 6, ' (')">Unsettled</th>
         <th onclick="sortTable(event.target, 7, 'int')">oRate</th>
@@ -61,7 +61,7 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
+        <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -107,7 +107,7 @@
       <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
       <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
       <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
-      <th onclick="sortTable(event.target, 3, 'int', 0, 'span')">Capacity</th>
+      <th onclick="sortTable(event.target, 3, 'int', 0, 'progress')">Capacity</th>
       <th onclick="sortTable(event.target, 5, ' (')" width=9%>Inbound Liquidity</th>
       <th onclick="sortTable(event.target, 6, ' (')" width=6%>Unsettled</th>
       <th onclick="sortTable(event.target, 7, 'int')" width=4%>oRate</th>
@@ -126,7 +126,7 @@
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
+      <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -188,7 +188,7 @@
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.outbound_percent > 0 %}width:{{ channel.outbound_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
+      <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
