@@ -972,6 +972,10 @@ def income(request):
             'percent_cost_7day': 0 if total_revenue_7day == 0 else int(((total_fees_7day+onchain_costs_7day)/total_revenue_7day)*100),
             'percent_cost_1day': 0 if total_revenue_1day == 0 else int(((total_fees_1day+onchain_costs_1day)/total_revenue_1day)*100),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
+            'forward_90': int(forwards_90day),
+            'forward_30': int(forwards_30day),
+            'forward_7': int(forwards_7day),
+            'forward_1': int(forwards_1day),
             'graph_links': graph_links()
         }
         return render(request, 'income.html', context)
