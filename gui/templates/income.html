@@ -1,9 +1,82 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %} {{ block.super }} - P&L{% endblock %}
 {% block content %}
+<script src="{% static 'charts.js' %}"></script>
 {% load humanize %}
 <div class="w3-container w3-padding-small">
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <canvas id="myChart"></canvas>
+  <script>
+    const ctx = document.getElementById('myChart');
+  
+const data = {
+  labels: ['a','b','c','d'],
+  datasets: [
+    {
+      label: '1 Day',
+      fill: false,
+      backgroundColor: '#ff0000',
+      borderColor: '#ff0000',
+      data: [1,2,3,4],
+    }, {
+      label: '7 Day',
+      fill: false,
+      backgroundColor: '#00ff00',
+      borderColor: '#00ff00',
+      borderDash: [5, 5],
+      data: [1,2,3,4],
+    }, {
+      label: '30 Day',
+      backgroundColor: '#0000ff',
+      borderColor: '#0000ff',
+      data: [1,2,3,4],
+      fill: true,
+    }, {
+      label: '90 Day',
+      backgroundColor: '#0000ff',
+      borderColor: '#0000ff',
+      data: [1,2,3,4],
+      fill: true,
+    }
+  ]
+};
+
+const config = {
+  type: 'line',
+  data: data,
+  options: {
+    responsive: true,
+    plugins: {
+      title: {
+        display: true,
+        text: 'Chart.js Line Chart'
+      },
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
+    scales: {
+      x: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Month'
+        }
+      },
+      y: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Value'
+        }
+      }
+    }
+  },
+};
+new Chart(ctx, config)
+  </script>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Line Item</th>
