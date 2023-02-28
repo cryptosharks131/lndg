@@ -244,7 +244,7 @@ input[type=submit] {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,
 .dark-mode table th {background-color: #0d1119;}
 button {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 .dark-mode button {background-color: #30363d;color: #c9d1d9;border-radius: 6px;border-color: rgba(240,246,252,0.1);}
-a {color: #0969da}.dark-mode a {color: #58a6ff}
+a {color: #0969da} a svg{fill:#30363d}a svg:hover path{fill:#0969da}.dark-mode a {color: #58a6ff}.dark-mode a svg{fill:#c9d1d9}.dark-mode a svg:hover path{fill:#58a6ff} 
 a:link {text-decoration: none}
 .dark-mode .w3-hoverable tbody tr:hover,.dark-mode .w3-ul.w3-hoverable li:hover {background-color: #30363d !important}
 .dark-mode .w3-green{background-color: #238636!important}.dark-mode .w3-border-green{border-color: #238636!important}
