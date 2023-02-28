@@ -13,13 +13,19 @@
   <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">LND</span>
   <span style="padding:2px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
   <h6>
-    <span style="padding:2px 8px;border-color:#c9d1d999" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
     <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
     <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
     <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
     <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
   </h6>
-  {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h5>{% endif %}
+  {% if total_private > 0 %}
+  <h6>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: {{ private_capacity|intcomma }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: {{ private_outbound|intcomma }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
+  </h6>
+  {% endif %}
   <h5>Addresses: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h5>
 </div>
 <div class="w3-row w3-container w3-padding-small" >
