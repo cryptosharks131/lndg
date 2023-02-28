@@ -78,7 +78,7 @@
         <th onclick="sortTable(event.target, 0, 'String', 1, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 1, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (', 1)">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 1, 'span')">Capacity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 1, 'progress')">Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (', 1)">Inbound Liquidity</th>
         <th>Channel State</th>
         <th>oRate</th>
@@ -100,7 +100,7 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
-        <td><div class="w3-orange w3-round"><div class="w3-container w3-round w3-blue" style="height:25px;{% if channel.out_percent > 0 %}width:{{ channel.out_percent|intcomma }}%{% else %}visibility:hidden{% endif %}"><span style="width:200px;justify-content:space-between;display:flex;justify-content:center;">{{ channel.capacity|intcomma }}</span></div></div></td>
+        <td><progress class="w3-round" max="100" value="{{channel.out_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           {% if channel.is_active == True and channel.private == False %}
