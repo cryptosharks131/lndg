@@ -2062,7 +2062,6 @@ def get_local_settings(*prefixes):
         ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
         for field in form:
             for sett in ar_settings:
-                print(field['id'], sett['key'], sep=", ")
                 if field['id'] == sett['key']:
                     field['value'] = sett['value']
                     break
