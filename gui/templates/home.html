@@ -26,7 +26,7 @@
     <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
   </h6>
   {% endif %}
-  <h5>Addresses: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h5>
+  <h5>Addresses: {% for info in node_info.uris %}{{ info }}{% if not forloop.last %} | {% endif %}{% endfor %}</h5>
 </div>
 <div class="w3-row w3-container w3-padding-small" >
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:30%">
