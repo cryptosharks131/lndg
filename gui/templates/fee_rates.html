@@ -2,9 +2,6 @@
 {% block title %} {{ block.super }} - Fee Rates{% endblock %}
 {% block content %}
 {% load humanize %}
-{% if local_settings %}
-{% include 'local_settings.html' with settings=local_settings title='Auto-Fees' postURL='update_setting' %}
-{% endif %}
 {% if channels %}
 <div class="w3-container w3-padding-small">
   <h2>Suggested Fee Rates</h2>
@@ -79,10 +76,12 @@
     </table>
   </div>
 </div>
-{% endif %}
-{% if not channels %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any channels to analyze yet!</h1></center>
 </div>
+{% endif %}
+{% if local_settings %}
+{% include 'local_settings.html' with settings=local_settings title='Auto-Fees' postURL='update_setting' %}
 {% endif %}
 {% endblock %}
