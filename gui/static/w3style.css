@@ -237,7 +237,7 @@ table th{background-color: #f0f0f5;}
 .dark-mode {color-scheme: dark;background-color: #0d1117;color: #c9d1d9}
 .dark-mode table tr {background-color: #161b22!important;border: 1px solid #30363d;}
 .dark-mode table tr:nth-child(even) {background-color: #0d1117!important}
-input:not([type=submit]) {margin: 2px;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
+input:not([type=submit]) {margin: 2px;border-radius: 6px;border-color: rgba(0,0,0,0.1);} input[type=submit]:disabled{cursor: default;}
 .dark-mode input:not([type=submit]){border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
 input[type=submit] {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 .dark-mode input[type=submit]{background-color: #30363d;color: #c9d1d9;border-color: rgba(240,246,252,0.1);}

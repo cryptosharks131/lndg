@@ -1999,16 +1999,33 @@ def add_invoice_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
+def get_rebalance(requested_at:str) -> Rebalancer:
+    date = dt_parser.parse(requested_at)
+    return Rebalancer.objects.filter(requested__gte=date).first()
+
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def repeat_rebalance(request):
     if request.method == 'POST':
-        requested_at = request.POST.get("requested")
-        date = dt_parser.parse(requested_at)
-        rebalance = Rebalancer.objects.filter(requested__gte=date).first()
-        if rebalance.status in [1,2]: 
+        rebalance = get_rebalance(request.POST.get("requested"))
+        if rebalance.status > 0: 
             Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=rebalance.outgoing_chan_ids, last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=rebalance.duration, manual=rebalance.manual).save()
+            messages.success(request, "Rebalancer request created!")
         else:
-            messages.error(request, "Cannot repeat this request")
+            messages.error(request, "Only In-Flight or completed requests can be duplicated")
+    else:
+        messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def cancel_rebalance(request):
+    if request.method == 'POST':
+        rebalance = get_rebalance(request.POST.get("requested"))
+        if rebalance.status == 0:
+            rebalance.status = 10
+            rebalance.save()
+            messages.success(request, "Cancelled rebalancer request!")
+        else:
+            messages.error(request, "Only pending requests can be cancelled!")
     else:
         messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))

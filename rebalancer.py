@@ -273,6 +273,7 @@ def get_scheduled_rebal(id):
 @sync_to_async
 def get_pending_rebals():
     try:
+        Rebalancer.objects.filter(status=11).delete()
         rebalances = Rebalancer.objects.filter(status=0).order_by('id')
         return rebalances, len(rebalances)
     except Exception as e:
