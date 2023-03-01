@@ -2004,9 +2004,9 @@ def repeat_rebalance(request):
     if request.method == 'POST':
         requested_at = request.POST.get("requested")
         date = dt_parser.parse(requested_at)
-        last_request = Rebalancer.objects.filter(requested__date=date.isoformat()).first()
-        if last_request.status in [1,2]: 
-            Rebalancer(*last_request)
+        rebalance = Rebalancer.objects.filter(requested__gte=date).first()
+        if rebalance.status in [1,2]: 
+            Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=rebalance.outgoing_chan_ids, last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=rebalance.duration, manual=rebalance.manual).save()
         else:
             messages.error(request, "Cannot repeat this request")
     else:
@@ -2020,7 +2020,7 @@ def rebalance(request):
         if form.is_valid():
             try:
                 if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() or form.cleaned_data['last_hop_pubkey'] == '':
-                    chan_ids = [*form.cleaned_data['outgoing_chan_ids']]
+                    chan_ids = [ch.chan_id for ch in form.cleaned_data['outgoing_chan_ids']]
                     if len(chan_ids) > 0:
                         target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
                         fee_limit = round(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001, 3)
