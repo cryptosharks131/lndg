@@ -39,7 +39,7 @@ hr{border:0;border-top:1px solid #eee;margin:20px 0}
 .w3-btn,.w3-button{border:none;display:inline-block;padding:8px 16px;vertical-align:middle;overflow:hidden;text-decoration:none;color:inherit;background-color:inherit;text-align:center;cursor:pointer;white-space:nowrap}
 .w3-btn:hover{box-shadow:0 8px 16px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19)}
 .w3-btn,.w3-button{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}   
-.w3-disabled,.w3-btn:disabled,.w3-button:disabled{cursor:not-allowed;opacity:0.3}.w3-disabled *,:disabled *{pointer-events:none}
+.w3-disabled,.w3-btn:disabled,.w3-button:disabled{cursor:not-allowed;c}.w3-disabled *,:disabled *{pointer-events:none}
 .w3-btn.w3-disabled:hover,.w3-btn:disabled:hover{box-shadow:none}
 .w3-badge,.w3-tag{background-color:#000;color:#fff;display:inline-block;padding-left:8px;padding-right:8px;text-align:center}.w3-badge{border-radius:50%}
 .w3-ul{list-style-type:none;padding:0;margin:0}.w3-ul li{padding:8px 16px;border-bottom:1px solid #ddd}.w3-ul li:last-child{border-bottom:none}
@@ -237,7 +237,7 @@ table th{background-color: #f0f0f5;}
 .dark-mode {color-scheme: dark;background-color: #0d1117;color: #c9d1d9}
 .dark-mode table tr {background-color: #161b22!important;border: 1px solid #30363d;}
 .dark-mode table tr:nth-child(even) {background-color: #0d1117!important}
-input:not([type=submit]) {margin: 2px;border-radius: 6px;border-color: rgba(0,0,0,0.1);} input[type=submit]:disabled{cursor: default;}
+input:not([type=submit]) {margin: 2px;border-radius: 6px;border-color: rgba(0,0,0,0.1);} input[type=submit]:disabled{cursor: default;}.dark-mode input[type=submit]:disabled{opacity:0.3;}
 .dark-mode input:not([type=submit]){border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
 input[type=submit] {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 .dark-mode input[type=submit]{background-color: #30363d;color: #c9d1d9;border-color: rgba(240,246,252,0.1);}
