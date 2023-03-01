@@ -228,11 +228,12 @@ hr{border:0;border-top:1px solid #eee;margin:20px 0}
 .w3-border-yellow,.w3-hover-border-yellow:hover{border-color:#ffeb3b!important}
 .w3-border-white,.w3-hover-border-white:hover{border-color:#fff!important}
 .w3-border-black,.w3-hover-border-black:hover{border-color:#000!important}
-.w3-border-grey,.w3-hover-border-grey:hover,.w3-border-gray,.w3-hover-border-gray:hover{border-color:#9e9e9e!important}
+.w3-border-grey,.w3-hover-border-grey:hover,.w3-border-gray,.w3-hover-border-gray:hover{border-color:#9e9e9e55!important}
 .w3-border-light-grey,.w3-hover-border-light-grey:hover,.w3-border-light-gray,.w3-hover-border-light-gray:hover{border-color:#f1f1f1!important}
 .w3-border-dark-grey,.w3-hover-border-dark-grey:hover,.w3-border-dark-gray,.w3-hover-border-dark-gray:hover{border-color:#616161!important}
 .w3-border-pale-red,.w3-hover-border-pale-red:hover{border-color:#ffe7e7!important}.w3-border-pale-green,.w3-hover-border-pale-green:hover{border-color:#e7ffe7!important}
 .w3-border-pale-yellow,.w3-hover-border-pale-yellow:hover{border-color:#ffffcc!important}.w3-border-pale-blue,.w3-hover-border-pale-blue:hover{border-color:#e7ffff!important}
+table th{background-color: #f0f0f5;}
 .dark-mode {color-scheme: dark;background-color: #0d1117;color: #c9d1d9}
 .dark-mode table tr {background-color: #161b22!important;border: 1px solid #30363d;}
 .dark-mode table tr:nth-child(even) {background-color: #0d1117!important}
@@ -243,9 +244,11 @@ input[type=submit] {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,
 .dark-mode table th {background-color: #0d1119;}
 button {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 .dark-mode button {background-color: #30363d;color: #c9d1d9;border-radius: 6px;border-color: rgba(240,246,252,0.1);}
-a {color: #0969da}.dark-mode a {color: #58a6ff}
+a {color: #0969da} a svg{fill:#30363d}a svg:hover path{fill:#0969da}.dark-mode a {color: #58a6ff}.dark-mode a svg{fill:#c9d1d9}.dark-mode a svg:hover path{fill:#58a6ff} 
 a:link {text-decoration: none}
 .dark-mode .w3-hoverable tbody tr:hover,.dark-mode .w3-ul.w3-hoverable li:hover {background-color: #30363d !important}
+.dark-mode .w3-green{background-color: #238636!important}.dark-mode .w3-border-green{border-color: #238636!important}
+.dark-mode .w3-red{background-color: #f85149!important}.dark-mode .w3-border-red{border-color: #f85149!important}
 progress {border:0;text-align: center;position:relative;min-width: 200px;height: 25px;width: 100%;} 
 progress:before {content: attr(data-label);position:absolute;left:0;right:0;color:white}
 progress::-webkit-progress-bar {border-radius: 4px;background-color: #ff9800;}

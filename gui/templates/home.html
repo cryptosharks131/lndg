@@ -8,30 +8,134 @@
   <script>
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
+    async function toogle(button){
+      button.children[0].style.display = 'none';
+      button.children[1].style.display = 'block';
+      navigator.clipboard.writeText(button.getAttribute('data-addr'))
+      await new Promise(r => setTimeout(r, 1000));
+      button.children[0].style.display = 'block';
+      button.children[1].style.display = 'none'
+    }
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <h4>Public Capacity: {{ total_capacity|intcomma }} | Active Channels: {{ active_count }} / {{ total_channels }} | <a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }} | DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %} | Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</h4>
-  {% if total_private > 0 %}<h4>Private Capacity: {{ private_capacity|intcomma }} | Locked Liquidity: {{ private_outbound|intcomma }} | Active Private Channels: {{ active_private }} / {{ total_private }}</h4>{% endif %}
-  <h4>Public Address: {% for info in node_info.uris %}{{ info }} | {% endfor %}</h4>
-  <h4>Lnd sync: {{ node_info.synced_to_graph }} | chain sync: {{ node_info.synced_to_chain }} | {% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} | {{ node_info.block_hash }}</h4>
+  <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">LND</span>
+  <span style="padding:2px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+  <h6>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
+  </h6>
+  {% if total_private > 0 %}
+  <h6>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: {{ private_capacity|intcomma }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: {{ private_outbound|intcomma }}</span>
+    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
+  </h6>
+  {% endif %}
+  <h5>Addresses: 
+    {% for addr in node_info.uris %}
+      {{ addr }}
+      <a style="position:absolute;height:25px;width:30px;padding:4px 8px" href="#" data-addr="{{addr}}"  onclick="toogle(this)">
+        <svg style="height:21px;width:21px" version="1.1" >
+          <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+          <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+        </svg>
+        <svg style="height:21px;width:21px;display:none" version="1.1" >
+          <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
+        </svg>
+      </a>
+    {% endfor %}
+  </h5>
 </div>
-<div class="w3-container w3-padding-small">
-  <h4>Total Balance: {{ total_balance|intcomma }} | Onchain Balance: {{ balances.total_balance|intcomma }} | Confirmed Balance: {{ balances.confirmed_balance|intcomma }} | Unconfirmed Balance: {{ balances.unconfirmed_balance|intcomma }} | <a href="/balances" target="_blank">Details</a></h4>
-  <form action="/newaddress/" method="post">
-    {% csrf_token %}
-    <input type="submit" value="Get New Onchain Address">
-  </form>
+<div class="w3-row w3-container w3-padding-small" >
+  <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:30%">
+    <tr>
+      <th title="Total Inbound/Total Outbound">Ratio: {{ liq_ratio }}%</h>
+      <th>Inbound</th>
+      <th>Outbound</th>
+      <th>Unsettled</th>
+    </tr>
+    <tr>
+      <th>Active</th>
+      <td>{{ inbound|intcomma }}</td>
+      <td>{{ outbound|intcomma }}</td>
+      <td>{{ unsettled|intcomma }}</td>
+    </tr>
+    <tr>
+      <th>Inactive</th>
+      <td>{{ inactive_inbound|intcomma }}</td>
+      <td>{{ inactive_outbound|intcomma }}</td>
+      <td>{{ inactive_unsettled|intcomma }}</td>
+    </tr>
+    <tr>
+      <th>Total</th>
+      <td>{{ sum_inbound|intcomma }}</td>
+      <td>{{ sum_outbound|intcomma }}</td>
+      <td>{{ total_unsettled|intcomma }}</td>
+    </tr>
+  </table>
+  <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:70%">
+    <tr>
+      <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+      <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
+      <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+      <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
+      <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
+      <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+      <th class="w3-border">
+        <form method="post" action="/newaddress/">
+          {% csrf_token %}
+          <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
+        </form>
+      </th>
+    </tr>
+    <tr>
+      <th>Period</th>
+      <th>Routed</th>
+      <th>Fees earned/paid</th>
+      <th>Offchain fees</th>
+      <th>Cost (%)</th>
+      <th>Profit</th>
+      <th>Outbound Utilization</th>
+    </tr>
+    <tr>
+      <td>1-Day</td>
+      <td>{{ routed_1day|intcomma }} ({{ routed_1day_amt|intcomma }} sats)</td>
+      <td>{{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}]/{{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}]</td>
+      <td>{{ onchain_costs_1day|intcomma }}</td>
+      <td>{{ percent_cost_1day }}%</td>
+      <td>{{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}]</td>
+      <td>{{ routed_1day_percent }}%</td>
+    </tr>
+    <tr>
+      <td>7-Day</td>
+      <td>{{ routed_7day|intcomma }} ({{ routed_7day_amt|intcomma }} sats)</td>
+      <td>{{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}]/{{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}]</td>
+      <td>{{ onchain_costs_7day|intcomma }}</td>
+      <td>{{ percent_cost_7day }}%</td>
+      <td>{{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}]</td>
+      <td>{{ routed_7day_percent }}%</td>
+    </tr>
+  </table>
 </div>
-<div class="w3-container w3-padding-small">
-  <h4>1-Day Routed: {{ routed_1day|intcomma }} | Value: {{ routed_1day_amt|intcomma }} | Fees Earned: {{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_1day|intcomma }} | Offchain Fees: {{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_1day }}% | Profit/Outbound: {{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}] | Outbound Utilization: {{ routed_1day_percent }}%</h4>
-  <h4>7-Day Routed: {{ routed_7day|intcomma }} | Value: {{ routed_7day_amt|intcomma }} | Fees Earned: {{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | Onchain Fees: {{ onchain_costs_7day|intcomma }} | Offchain Fees: {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}] | Percent Cost: {{ percent_cost_7day }}% | Profit/Outbound: {{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}] | Outbound Utilization: {{ routed_7day_percent }}%</h4>
-</div>
-<div class="w3-container w3-padding-small">
-  <h4>Total Inbound Liquidity: {{ sum_inbound|intcomma }} | Outbound Liquidity: {{ sum_outbound|intcomma }} | Liquidity Ratio: {{ liq_ratio }}%</h4>
-  <h4>Active Inbound Liquidity: {{ inbound|intcomma }} | Outbound Liquidity: {{ outbound|intcomma }} | Unsettled Liquidity: {{ unsettled|intcomma }}</h4>
-  <h4>Inactive Inbound Liquidity: {{ inactive_inbound|intcomma }} | Outbound Liquidity: {{ inactive_outbound|intcomma }} | Unsettled Liquidity: {{ inactive_unsettled|intcomma }}</h4>
-  <h4>Balance In Limbo: {{ limbo_balance|intcomma }} | Total Unsettled Liquidity: {{ total_unsettled|intcomma }} | <a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</h4>
-  <h4><a href="/income" target="_blank">P&L</a> | <a href="/closures" target="_blank">Closures</a> | <a href="/opens" target="_blank">New Peers</a> | <a href="/peerevents" target="_blank">Peer Events</a> | <a href="/actions" target="_blank">AR Actions</a> | <a href="/fees" target="_blank">Fee Rates</a> | <a href="/autopilot" target="_blank">Autopilot</a> | <a href="/autofees" target="_blank">Autofees</a> | <a href="/channels" target="_blank">Channel Performance</a> | <a href="/keysends" target="_blank">Keysends</a> | <a href="/rebalancing" target="_blank">Rebalancing</a> | <a href="/towers" target="_blank">Towers</a> | <a href="/batch" target="_blank">Batching</a> | <a href="/advanced" target="_blank">Advanced Settings</a></h4>
+<br/>
+<div class="w3-bar w3-border-top" style="background-color: transparent">
+  <a class="w3-bar-item w3-hover-blue" href="/income" target="_blank">P&L</a>
+  <a class="w3-bar-item w3-hover-blue" href="/closures" target="_blank">Closures</a> 
+  <a class="w3-bar-item w3-hover-blue" href="/opens" target="_blank">New Peers</a>
+  <a class="w3-bar-item w3-hover-blue" href="/peerevents" target="_blank">Peer Events</a>
+  <a class="w3-bar-item w3-hover-blue" href="/actions" target="_blank">AR Actions</a> 
+  <a class="w3-bar-item w3-hover-blue" href="/fees" target="_blank">Fee Rates</a>
+  <a class="w3-bar-item w3-hover-blue" href="/autopilot" target="_blank">Autopilot</a>
+  <a class="w3-bar-item w3-hover-blue" href="/autofees" target="_blank">Autofees</a>
+  <a class="w3-bar-item w3-hover-blue" href="/channels" target="_blank">Channel Performance</a>
+  <a class="w3-bar-item w3-hover-blue" href="/keysends" target="_blank">Keysends</a>
+  <a class="w3-bar-item w3-hover-blue" href="/rebalancing" target="_blank">Rebalancing</a>
+  <a class="w3-bar-item w3-hover-blue" href="/towers" target="_blank">Towers</a>
+  <a class="w3-bar-item w3-hover-blue" href="/batch" target="_blank">Batching</a>
+  <a class="w3-bar-item w3-hover-blue" href="/advanced" target="_blank">Advanced Settings</a>
 </div>
 {% if active_channels %}
 <div class="w3-container w3-padding-small">
