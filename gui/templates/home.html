@@ -146,17 +146,17 @@
         <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 0, 'progress')">Capacity</th>
-        <th onclick="sortTable(event.target, 5, ' (')">Inbound Liquidity</th>
-        <th onclick="sortTable(event.target, 6, ' (')">Unsettled</th>
-        <th onclick="sortTable(event.target, 7, 'int')">oRate</th>
-        <th onclick="sortTable(event.target, 8, 'int')">oBase</th>
-        <th onclick="sortTable(event.target, 9, ' m (')">o1D</th>
-        <th onclick="sortTable(event.target, 10, ' m (')">i1D</th>
-        <th onclick="sortTable(event.target, 11, ' m (')">o7D</th>
-        <th onclick="sortTable(event.target, 12, ' m (')">i7D</th>
-        <th onclick="sortTable(event.target, 13, 'int')">iRate</th>
-        <th onclick="sortTable(event.target, 14, 'int')">iBase</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'text')">Capacity</th>
+        <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
+        <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
+        <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
+        <th onclick="sortTable(event.target, 8, ' m (')">o1D</th>
+        <th onclick="sortTable(event.target, 9, ' m (')">i1D</th>
+        <th onclick="sortTable(event.target, 10, ' m (')">o7D</th>
+        <th onclick="sortTable(event.target, 11, ' m (')">i7D</th>
+        <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
+        <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
       </tr>
@@ -165,7 +165,12 @@
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+        <td>
+          <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
+            <text style="display:none">{{channel.capacity|intcomma}}</text>
+            <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
+          </div>
+        </td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
         <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -211,7 +216,7 @@
       <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
       <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
       <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
-      <th onclick="sortTable(event.target, 3, 'int', 0, 'progress')">Capacity</th>
+      <th onclick="sortTable(event.target, 3, 'int', 0, 'text')">Capacity</th>
       <th onclick="sortTable(event.target, 5, ' (')" width=9%>Inbound Liquidity</th>
       <th onclick="sortTable(event.target, 6, ' (')" width=6%>Unsettled</th>
       <th onclick="sortTable(event.target, 7, 'int')" width=4%>oRate</th>
@@ -230,7 +235,12 @@
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+      <td>
+        <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
+          <text style="display:none">{{channel.capacity|intcomma}}</text>
+          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
+        </div>
+      </td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
@@ -292,7 +302,12 @@
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
-      <td><progress max="100" value="{{channel.outbound_percent|default:"0"|intcomma}}" data-label="{{ channel.capacity|intcomma }}">{{ channel.capacity|intcomma }}</progress></td>
+      <td>
+        <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
+          <text style="display:none">{{channel.capacity|intcomma}}</text>
+          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
+        </div>
+      </td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
