@@ -2068,7 +2068,7 @@ def get_local_settings(*prefixes):
     return form
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def auto_rebalance(request):
+def update_settings(request):
     if request.method == 'POST':
         template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
                     {'form_id': 'target_percent', 'value': 5, 'parse': lambda x: float(x),'id': 'AR-Target%'},

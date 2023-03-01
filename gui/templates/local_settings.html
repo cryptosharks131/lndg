@@ -1,5 +1,5 @@
 <div class="w3-container w3-padding-small">
-    <form action="/autorebalance/" method="post">
+    <form action="/update_settings/" method="post">
       {% csrf_token %}
     <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} settings</h2>
     <div class="w3-container">
@@ -13,7 +13,7 @@
         <div class="w3-quarter w3-container">
           {% if 'update_channels' in settings.0.form_id %}
           <input class="w3-check w3-margin-top" id="update_channels" type="checkbox" name="update_channels"/>
-          <label class="w3-validate">Update Channels</label>
+          <label class="w3-validate" title="Apply updates to every channel setting">Update Channels</label>
           <input class="w3-button w3-margin-left" type="submit" value="OK">
           {% else %}
           <input class="w3-button w3-margin-top" type="submit" value="OK">
