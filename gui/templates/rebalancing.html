@@ -90,61 +90,7 @@
 </div>
 {% endif %}
 {% if rebalancer %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 20 <a href="/rebalances" target="_blank">Rebalance Requests</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Requested</th>
-      <th>Start</th>
-      <th>Stop</th>
-      <th>Scheduled Duration</th>
-      <th>Actual Duration</th>
-      <th>Value</th>
-      <th>Fee Limit</th>
-      <th>Target PPM</th>
-      <th>Fees Paid</th>
-      <th>Last Hop Alias</th>
-      <th>Status</th>
-      <th>Hash</th>
-      <th>Repeat</th>
-      <th>Cancel</th>
-    </tr>
-    {% for rebalance in rebalancer %}
-    <tr>
-      <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
-      <td {% if rebalance.status == 0 %}>---{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>---{% endif %}</td>
-      <td>{{ rebalance.duration }} minutes</td>
-      <td>{% if rebalance.status == 2 %}{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}---{% endif %}</td>
-      <td>{{ rebalance.value|intcomma }}</td>
-      <td>{{ rebalance.fee_limit|intcomma }}</td>
-      <td>{{ rebalance.ppm|intcomma }}</td>
-      <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
-      <td title="{{ rebalance.status }}">
-        {% with arr='Pending In-Flight Successful Timeout No-Route Error Incorrect-Payment-Details Insufficient-Balance Rebalancer-Request-Failed Rebalancer-Request-Timeout Cancelled'  %}
-          {% if rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>
-          {% else %}
-            {% for status in arr.split %}
-              {% if forloop.counter0 == rebalance.status %}{{status}}{% endif %}
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-      <td>{% if rebalance.payment_hash|default:'' == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash|slice:"7" }}</a>{% endif %}</td>
-      <td>
-        <form method="POST" action="/repeat_rebalance/">
-          {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input {% if rebalance.status == 0 %}disabled{% endif %} type="submit" value="🔂"></input>
-        </form>
-      </td>
-      <td>
-        <form method="POST" action="/cancel_rebalance/">
-          {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input {% if rebalance.status > 0 %}disabled{% endif %} type="submit" value="❌"></input>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
+{% include 'rebalances_table.html' with rebalances=rebalancer title='Last 20 <a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 {% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any rebalancer requests yet.</h1></center>
