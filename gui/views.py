@@ -4,6 +4,7 @@ from django.db.models import Sum, IntegerField, Count, F, Q
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
+from dateutil import parser as dt_parser
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -1999,15 +2000,27 @@ def add_invoice_form(request):
     return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def repeat_rebalance(request):
+    if request.method == 'POST':
+        requested_at = request.POST.get("requested")
+        date = dt_parser.parse(requested_at)
+        last_request = Rebalancer.objects.filter(requested__date=date.isoformat()).first()
+        if last_request.status in [1,2]: 
+            Rebalancer(*last_request)
+        else:
+            messages.error(request, "Cannot repeat this request")
+    else:
+        messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalance(request):
     if request.method == 'POST':
         form = RebalancerForm(request.POST)
         if form.is_valid():
             try:
                 if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() or form.cleaned_data['last_hop_pubkey'] == '':
-                    chan_ids = []
-                    for channel in form.cleaned_data['outgoing_chan_ids']:
-                        chan_ids.append(channel.chan_id)
+                    chan_ids = [*form.cleaned_data['outgoing_chan_ids']]
                     if len(chan_ids) > 0:
                         target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
                         fee_limit = round(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001, 3)

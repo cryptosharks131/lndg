@@ -47,6 +47,7 @@ urlpatterns = [
     path('newaddress/', views.new_address_form, name='new-address-form'),
     path('createinvoice/', views.add_invoice_form, name='add-invoice-form'),
     path('rebalancer/', views.rebalance, name='rebalancer'),
+    path('repeat_rebalance/', views.repeat_rebalance, name='repeat-rebalance'),
     path('autorebalance/', views.auto_rebalance, name='auto-rebalance'),
     path('update_channel/', views.update_channel, name='update-channel'),
     path('update_pending/', views.update_pending, name='update-pending'),

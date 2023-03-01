@@ -84,8 +84,7 @@
     </table>
   </div>
 </div>
-{% endif %}
-{% if not channels %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any channels to rebalance yet.</h1></center>
 </div>
@@ -107,6 +106,7 @@
       <th>Last Hop Alias</th>
       <th>Status</th>
       <th>Hash</th>
+      <th>Repeat</th>
     </tr>
     {% for rebalance in rebalancer %}
     <tr>
@@ -120,8 +120,21 @@
       <td>{{ rebalance.ppm|intcomma }}</td>
       <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
       <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
-      <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
-      <td>{% if rebalance.payment_hash == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash }}</a>{% endif %}</td>
+      <td title="{{ rebalance.status }}">
+        {% with arr='Pending In-Flight Successful Timeout No-Route Error Incorrect-Payment-Details Insufficient-Balance Rebalancer-Request-Failed Rebalancer-Request-Timeout'  %}
+          {% if rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>
+          {% else %}
+            {% for status in arr.split %}
+              {% if forloop.counter0 == rebalance.status %}{{status}}{% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      <td>{% if rebalance.payment_hash|default:'' == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash|slice:"7" }}</a>{% endif %}</td>
+      <td>
+        <form method="POST" action="/repeat_rebalance/">
+          {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input {% if rebalance.status == 0 or rebalance.status > 2 %} disabled{% endif %} type="submit" value="🔂"></input>
+        </form>
+      </td>
     </tr>
     {% endfor %}
   </table>
