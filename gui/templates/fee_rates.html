@@ -8,23 +8,22 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table id="feeTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th onclick="sortTable(0, 'String', 'feeTable')">Channel ID</th>
-        <th onclick="sortTable(1, 'String', 'feeTable', 0, true)">Peer Alias</th>
-        <th onclick="sortTable(2, 'int', 'feeTable')">Capacity</th>
-        <th onclick="sortTable(3, ' (', 'feeTable')">Outbound Liquidity</th>
-        <th width=10%></th>
-        <th onclick="sortTable(5, ' (', 'feeTable')">Inbound Liquidity</th>
-        <th onclick="sortTable(6, ' | ', 'feeTable')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
-        <th onclick="sortTable(7, 'int', 'feeTable')" title="The average rate earned outgoing on this channel">Out Rate</th>
-        <th onclick="sortTable(8, 'int', 'feeTable')" title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
-        <th onclick="sortTable(9, 'int', 'feeTable')" title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
-        <th onclick="sortTable(10, 'int', 'feeTable')">Adjustment</th>
-        <th onclick="sortTable(11, 'int', 'feeTable')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
+        <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'text')" width=10%>Capacity</th>
+        <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 5, ' | ')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
+        <th onclick="sortTable(event.target, 6, 'int')" title="The average rate earned outgoing on this channel">Out Rate</th>
+        <th onclick="sortTable(event.target, 7, 'int')" title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
+        <th onclick="sortTable(event.target, 8, 'int')" title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
+        <th onclick="sortTable(event.target, 9, 'int')">Adjustment</th>
+        <th onclick="sortTable(event.target, 10, 'int')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
         <th>oRate</th>
-        <th onclick="sortTable(13, 'int', 'feeTable')">oBase</th>
-        <th onclick="sortTable(14, '%', 'feeTable')">Max Cost</th>
-        <th onclick="sortTable(15, 'int', 'feeTable')">iRate</th>
-        <th onclick="sortTable(16, 'int', 'feeTable')">iBase</th>
+        <th onclick="sortTable(event.target, 12, 'int')">oBase</th>
+        <th onclick="sortTable(event.target, 13, '%')">Max Cost</th>
+        <th onclick="sortTable(event.target, 14, 'int')">iRate</th>
+        <th onclick="sortTable(event.target, 15, 'int')">iBase</th>
         <th>Updated</th>
         <th>
           <form action="/update_setting/" method="post">
@@ -39,9 +38,13 @@
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
-        <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
+        <td>
+          <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
+            <text style="display:none">{{channel.capacity|intcomma}}</text>
+            <span class="value w3-round w3-blue" style="width:{{channel.out_percent|default:"0"}}%"></span>
+          </div>
+        </td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
         <td>{% if channel.net_routed_7day != 0 %}{{ channel.net_routed_7day }} | {% endif %}{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}</td>
         <td>{{ channel.out_rate }}</td>
