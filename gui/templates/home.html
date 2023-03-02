@@ -18,20 +18,22 @@
     }
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
-  <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">LND</span>
-  <span style="padding:2px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
   <h6>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
+    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">LND</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+  </h6>
+  <h6>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
   </h6>
   {% if total_private > 0 %}
   <h6>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: {{ private_capacity|intcomma }}</span>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: {{ private_outbound|intcomma }}</span>
-    <span style="padding:2px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: {{ private_capacity|intcomma }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: {{ private_outbound|intcomma }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
   </h6>
   {% endif %}
   <h6 style="word-wrap: break-word">Addresses: 
@@ -51,7 +53,7 @@
   </h6>
 </div>
 <div class="w3-row w3-container w3-padding-small" >
-  <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:30%">
+  <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:300px;width:25%">
     <tr>
       <th title="Total Inbound/Total Outbound">Ratio: {{ liq_ratio }}%</h>
       <th>Inbound</th>
@@ -77,7 +79,7 @@
       <td>{{ total_unsettled|intcomma }}</td>
     </tr>
   </table>
-  <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="width:70%">
+  <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <tr>
       <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
       <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
