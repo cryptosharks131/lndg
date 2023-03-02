@@ -149,7 +149,7 @@
         <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 0, 'text')">Capacity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
         <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
         <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
@@ -169,8 +169,8 @@
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
         <td>
-          <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
-            <text style="display:none">{{channel.capacity|intcomma}}</text>
+          <label>{{channel.capacity|intcomma}}</label>
+          <div class="progress w3-round w3-grey">
             <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
           </div>
         </td>
@@ -219,7 +219,7 @@
       <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
       <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
       <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
-      <th onclick="sortTable(event.target, 3, 'int', 0, 'text')">Capacity</th>
+      <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
       <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
       <th onclick="sortTable(event.target, 5, ' (')" width=6%>Unsettled</th>
       <th onclick="sortTable(event.target, 6, 'int')" width=4%>oRate</th>
@@ -239,8 +239,8 @@
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>
-        <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
-          <text style="display:none">{{channel.capacity|intcomma}}</text>
+        <label>{{channel.capacity|intcomma}}</label>
+        <div class="progress w3-round w3-grey">
           <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
         </div>
       </td>
@@ -306,8 +306,8 @@
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>
-        <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
-          <text style="display:none">{{channel.capacity|intcomma}}</text>
+        <label>{{channel.capacity|intcomma}}</label>
+        <div class="progress w3-round w3-grey">
           <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
         </div>
       </td>
@@ -408,7 +408,7 @@
           <input type="hidden" name="update_target" value="6">
         </form>
       </td>
-      <td style="background-color: {% if channel.auto_rebalance == False %}rgba(46,160,67,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
+      <td style="background-color: {% if channel.auto_rebalance == False %}rgba(248,81,73,0.15){% else %}rgba(46,160,67,0.15){% endif %}">
         <form action="/update_pending/" method="post">
           {% csrf_token %}
           <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">

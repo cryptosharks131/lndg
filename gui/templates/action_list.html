@@ -28,8 +28,8 @@
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
       <td>
-        <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
-          <text style="display:none">{{channel.capacity|intcomma}}</text>
+        <label>{{channel.capacity|intcomma}}</label>
+        <div class="progress w3-round w3-grey">
           <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
         </div>
       </td>
