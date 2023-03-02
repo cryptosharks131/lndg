@@ -15,7 +15,7 @@
         <th>Last Hop Alias</th>
         <th>Status</th>
         <th>Hash</th>
-        <th>Actions</th>
+        <th>Action</th>
       </tr>
       {% for rebalance in rebalances %}
       <tr>
@@ -41,11 +41,8 @@
         <td>{% if rebalance.payment_hash|default:'' == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash|slice:"7" }}</a>{% endif %}</td>
         <td>
           <div class="w3-cell-row">
-            <form class="w3-cell w3-padding-small" method="POST" action="/repeat_rebalance/">
-              {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input title="Repeat this request" {% if rebalance.status == 0 %}disabled{% endif %} type="submit" value="🔂"></input>
-            </form>
-            <form class="w3-cell" method="POST" action="/cancel_rebalance/">
-              {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input title="Cancel this request" {% if rebalance.status > 0 %}disabled{% endif %} type="submit" value="❌"></input>
+            <form class="w3-cell w3-padding-small" method="POST" action="/{% if rebalance.status != 0 %}repeat{% else %}cancel{%endif%}_rebalance/">
+              {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input type="submit" {% if rebalance.status != 0 %}title="Repeat this request" value="🔂" {% else %}title="Cancel this request" value="❌"{% endif %}></input>
             </form>
           </div>
         </td>
