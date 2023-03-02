@@ -9,35 +9,48 @@
   <canvas id="myChart"></canvas>
   <script>
     const ctx = document.getElementById('myChart');
-  
+function toString(date){
+  return `${date.getDate()}/${date.getMonth()}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes()}`
+}
 const data = {
-  labels: ['a','b','c','d'],
+  labels: [{% for date in chart.dates %}toString(new Date("{{date}}")){% if not forloop.last %},{% endif %}{% endfor %}],
   datasets: [
     {
-      label: '1 Day',
-      fill: false,
-      backgroundColor: '#ff0000',
-      borderColor: '#ff0000',
-      data: [1,2,3,4],
-    }, {
-      label: '7 Day',
-      fill: false,
-      backgroundColor: '#00ff00',
-      borderColor: '#00ff00',
-      borderDash: [5, 5],
-      data: [1,2,3,4],
-    }, {
-      label: '30 Day',
-      backgroundColor: '#0000ff',
-      borderColor: '#0000ff',
-      data: [1,2,3,4],
+      label: 'Balance',
+      yAxisID: 'y',
       fill: true,
-    }, {
-      label: '90 Day',
-      backgroundColor: '#0000ff',
-      borderColor: '#0000ff',
-      data: [1,2,3,4],
+      pointHoverRadius: 10,
+      backgroundColor: 'rgba(251, 192, 147, 0.5)',
+      borderColor: 'rgba(251, 192, 147, 0.5)',
+      cubicInterpolationMode: 'monotone',
+      data: [{% for balance in chart.balance_over_time %}{{balance}}{% if not forloop.last %},{% endif %}{% endfor %}]
+    },
+    {
+      label: 'On chain',
+      fill: false,
+      pointHoverRadius: 10,
+      borderColor: 'orange',
+      cubicInterpolationMode: 'monotone',
+      data: [{% for onchain in chart.on_chain %}{{onchain}}{% if not forloop.last %},{% endif %}{% endfor %}]
+    },
+    {
+      label: 'Off chain',
       fill: true,
+      pointHoverRadius: 10,
+      borderColor: '#2196F3',
+      backgroundColor: 'rgba(100,100,200,.2)',
+      cubicInterpolationMode: 'monotone',
+      data: [{% for offchain in chart.off_chain %}{{offchain}}{% if not forloop.last %},{% endif %}{% endfor %}],
+    },
+    {
+      label: 'Costs',
+      yAxisID: 'y1',
+      fill: true,
+      pointHoverRadius: 10,
+      borderColor: 'rgba(248,81,73)',
+      backgroundColor: 'rgba(248,81,73,0.15)',
+      cubicInterpolationMode: 'monotone',
+      data: [{% for costs in chart.costs %}{{costs}}{% if not forloop.last %},{% endif %}{% endfor %}],
     }
   ]
 };
@@ -50,7 +63,7 @@ const config = {
     plugins: {
       title: {
         display: true,
-        text: 'Chart.js Line Chart'
+        text: 'Profitablity Overview'
       },
     },
     interaction: {
@@ -59,24 +72,52 @@ const config = {
     },
     scales: {
       x: {
-        display: true,
-        title: {
-          display: true,
-          text: 'Month'
-        }
+        display: true
       },
       y: {
         display: true,
         title: {
           display: true,
-          text: 'Value'
+          text: 'sats'
         }
-      }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: {
+          display: true,
+          text: 'Cost'
+        },
+        // grid line settings
+        grid: {
+          drawOnChartArea: false, // only want the grid lines for one axis to show up
+        },
+      },
     }
   },
 };
-new Chart(ctx, config)
+const chart = new Chart(ctx, config)
+document.addEventListener("DOMContentLoaded", function(){
+  document.getElementById('toogleTheme').addEventListener('click', applyThemeToGrid)
+});
+function applyThemeToGrid(){
+  const lightGridLineColor = 'rgba(0,0,0,0.1)';
+  const darkGridLineColor = 'rgba(255,255,255,0.1)'
+  if (document.body.classList.contains("dark-mode")) {
+    chart.options.scales.x.grid.color = darkGridLineColor;
+    chart.options.scales.y.grid.color = darkGridLineColor
+  } else {
+    chart.options.scales.x.grid.color = lightGridLineColor;
+    chart.options.scales.y.grid.color = lightGridLineColor
+  }
+
+  chart.update();
+}
+window.addEventListener("load", applyThemeToGrid);
   </script>
+  <hr/>
+  <br/>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Line Item</th>

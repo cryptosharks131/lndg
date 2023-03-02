@@ -919,7 +919,73 @@ def income(request):
         profits_30day = int(total_revenue_30day-total_fees_30day-onchain_costs_30day)
         profits_7day = int(total_revenue_7day-total_fees_7day-onchain_costs_7day)
         profits_1day = int(total_revenue_1day-total_fees_1day-onchain_costs_1day)
+
+        #chart piece | TODO: Add asyncronous calls to filter by period (these calls can become heavy)
+        now = datetime.now()
+        last_close = closures.last()
+        first_close = closures.first()
+        closures_timeline = []
+        if first_close != None and last_close != None: #TODO: find a way to filter by data
+            diff = last_close.close_height - first_close.close_height
+            first_close_dt = now - timedelta(minutes=diff/10)
+
+        timeline = sorted([
+            *[i.settle_date for i in invoices.all()], 
+            *[p.creation_date for p in payments.all()],
+            *[f.forward_date for f in forwards],
+            *[on.time_stamp for on in onchain_txs],
+            *closures_timeline])
+
+        costs = [0]
+        on_chain = [0]
+        off_chain = [0]
+        balance_over_time = [0]
+        ten_min = timedelta(minutes=10)
+        channels = stub.ListChannels(ln.ListChannelsRequest()).channels
+        for i in range(1, len(timeline)+1):
+            date = timeline[i-1]
+
+            costs.append(costs[-1])
+            on_chain.append(on_chain[-1])
+            off_chain.append(off_chain[-1])
+            balance_over_time.append(balance_over_time[-1])
+            for tx in onchain_txs.filter(time_stamp__range=[date, date+ten_min]).all():
+                costs[i] += tx.fee
+                on_chain[i] += tx.amount
+                for ch in channels:
+                    if ch.channel_point.split(':')[0] == tx.tx_hash:
+                        off_chain[i] = -tx.amount + tx.fee
+
+            for invoice in invoices.filter(settle_date__range=[date, date+ten_min]).all():
+                off_chain[i] += invoice.amt_paid
+                
+            for forward in forwards.filter(forward_date__range=[date, date+ten_min]).all():
+                off_chain[i] += forward.fee
+                    
+            for payment in payments.filter(creation_date__range=[date, date+ten_min]).all():
+                costs[i] += payment.fee
+                off_chain[i] -= (payment.fee + payment.value)
+
+            min_height = node_info.block_height - ((now - date).total_seconds()/600)
+            max_height = node_info.block_height - ((now - (date+ten_min)).total_seconds()/600)
+            for closure in closures.filter(close_height__range=[min_height, max_height]).all():
+                costs[i] = closure.closing_costs
+                on_chain[i] = closure.settled_balance
+                off_chain[i] = -closure.settled_balance 
+
+            balance_over_time[i] = on_chain[i] + off_chain[i] - costs[i]
+        
+        timeline.append(now)
+        timeline = [t.isoformat() for t in timeline]
+        timeline.insert(0, 0)
+
+        costs.append(costs[-1])
+        on_chain.append(on_chain[-1])
+        off_chain.append(off_chain[-1])
+        balance_over_time.append(balance_over_time[-1])
+
         context = {
+            'chart': {'balance_over_time': balance_over_time, 'on_chain':on_chain, 'dates': timeline, 'off_chain': off_chain, 'costs': costs},
             'node_info': node_info,
             'forward_count': forward_count,
             'forward_count_90day': forward_count_90day,
