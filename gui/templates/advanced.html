@@ -78,7 +78,7 @@
         <th onclick="sortTable(event.target, 0, 'String', 1, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 1, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (', 1)">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 1, 'text')">Capacity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 1, 'label')">Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (', 1)">Inbound Liquidity</th>
         <th>Channel State</th>
         <th>oRate</th>
@@ -101,8 +101,8 @@
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
         <td>
-          <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
-            <text style="display:none">{{channel.capacity|intcomma}}</text>
+          <label>{{channel.capacity|intcomma}}</label>
+          <div class="progress w3-round w3-grey">
             <span class="value w3-round w3-blue" style="width:{{channel.out_percent|default:"0"}}%"></span>
           </div>
         </td>
@@ -216,44 +216,6 @@
 </div>
 {% endif %}
 {% if local_settings %}
-<div class="w3-container w3-padding-small">
-  <h2>Update Local Settings</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Key</th>
-      <th>Value</th>
-    </tr>
-    {% for settings in local_settings %}
-    <tr>
-      <td>{{ settings.key }}</td>
-      <td>
-        <form action="/update_setting/" method="post">
-          {% csrf_token %}
-          {% if settings.key == 'AR-Target%' %}
-            <input style="text-align:center" id="value" type="number" step="0.1" min="0.1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod' or settings.key == 'AR-APDays' or settings.key == 'AF-UpdateHours' %}
-          <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-Time' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="60" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-Workers' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="12" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-MaxFeeRate' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="2500" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AF-MaxRate' or settings.key == 'AF-MinRate' %}
-            <input style="text-align:center" id="value" type="number" min="0" max="5000" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'LND-CleanPayments' or settings.key|slice:":3" == 'AR-' or settings.key|slice:":3" == 'AF-'%}
-            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'LND-RetentionDays' %}
-            <input style="text-align:center" id="value" type="number" min="0" max="1000" name="value" value="{{ settings.value }}">
-          {% else %}
-            <input style="text-align:center" id="value" type="text" name="value" value="{{ settings.value }}">
-          {% endif %}
-          <input type="hidden" name="key" value="{{ settings.key }}">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
+{% include 'local_settings.html' with settings=local_settings title='Update local' %}
 {% endif %}
 {% endblock %}

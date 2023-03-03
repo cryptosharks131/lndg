@@ -249,6 +249,5 @@ a:link {text-decoration: none}
 .dark-mode .w3-hoverable tbody tr:hover,.dark-mode .w3-ul.w3-hoverable li:hover {background-color: #30363d !important}
 .dark-mode .w3-green{background-color: #238636!important}.dark-mode .w3-border-green{border-color: #238636!important}
 .dark-mode .w3-red{background-color: #f85149!important}.dark-mode .w3-border-red{border-color: #f85149!important}
-.progress {min-width: 200px;height: 25px;width: 100%;position: relative;}
-.progress:before {content: attr(data-label);position: absolute;text-align: center;left: 0;right: 0;}
+.progress {min-width: 200px;height: 8px;width: 100%;position: relative;}
 .progress .value {display: flex;height: 100%;}
