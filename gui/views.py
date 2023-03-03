@@ -2448,6 +2448,18 @@ def get_fees(request):
                     return redirect(request.META.get('HTTP_REFERER'))
     return redirect(request.META.get('HTTP_REFERER'))
 
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def sign_message(request):
+    if request.method == 'POST':
+        msg = request.POST.get("msg")
+        stub = lnrpc.LightningStub(lnd_connect())
+        req = ln.SignMessageRequest(msg=msg.encode('utf-8'), single_hash=False)
+        response = stub.SignMessage(req)
+        messages.success(request, "Signed message: " + str(response.signature))
+    else:
+        messages.error(request, 'Invalid Request. Please try again.')
+    return redirect(request.META.get('HTTP_REFERER'))
+
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Payments.objects.all()
