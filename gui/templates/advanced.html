@@ -78,7 +78,7 @@
         <th onclick="sortTable(event.target, 0, 'String', 1, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 1, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (', 1)">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 1, 'text')">Capacity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 1, 'label')">Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (', 1)">Inbound Liquidity</th>
         <th>Channel State</th>
         <th>oRate</th>
@@ -101,8 +101,8 @@
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
         <td>
-          <div class="progress w3-round w3-orange" data-label="{{channel.capacity|intcomma}}">
-            <text style="display:none">{{channel.capacity|intcomma}}</text>
+          <label>{{channel.capacity|intcomma}}</label>
+          <div class="progress w3-round w3-grey">
             <span class="value w3-round w3-blue" style="width:{{channel.out_percent|default:"0"}}%"></span>
           </div>
         </td>

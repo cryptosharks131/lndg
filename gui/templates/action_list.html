@@ -9,9 +9,8 @@
     <tr>
       <th>Channel ID</th>
       <th>Peer Alias</th>
-      <th>Capacity</th>
       <th>Outbound Liquidity</th>
-      <th width=10%></th>
+      <th width=10%>Capacity</th>
       <th>Inbound Liquidity</th>
       <th>Unsettled</th>
       <th>oRate</th>
@@ -27,9 +26,13 @@
     <tr>
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-      <td><div class="w3-orange w3-round">{% if channel.inbound_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.outbound_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.outbound_percent }}%"></div>{% endif %}</div></td>
+      <td>
+        <label>{{channel.capacity|intcomma}}</label>
+        <div class="progress w3-round w3-grey">
+          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
+        </div>
+      </td>
       <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td>{{ channel.local_fee_rate|intcomma }}</td>
