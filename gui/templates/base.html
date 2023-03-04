@@ -38,4 +38,13 @@
       </div>
     </div>
   </footer>
+  <script>
+    document.onkeypress = function (e) {
+      if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
+      document.cookie = `encrypt=${document.body.classList.contains("encrypted")}`
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.cookie.includes("encrypt=true")) document.body.classList.toggle("encrypted")
+    })
+  </script>
 </html>
