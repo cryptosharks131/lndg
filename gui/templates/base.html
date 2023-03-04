@@ -3,8 +3,10 @@
 <html>
   <style>
   </style>
+  <script src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
   <script src="{% static 'dark_mode.js' %}"></script>
+  <script>const token = "{{ csrf_token }}"</script>
   <head>
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
