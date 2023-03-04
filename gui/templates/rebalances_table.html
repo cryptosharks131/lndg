@@ -1,7 +1,7 @@
 {% load humanize %}
-<div class="w3-container w3-padding-small">
-    <h2>{{title}}</h2>
-    <table class="w3-table-all w3-centered w3-hoverable">
+<div id="rebalances_div_{{count}}" class="w3-container w3-padding-small">
+    <h2>Last {{count}} {{title}}</h2>
+    <table id="rebalances_{{count}}" class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th>Requested</th>
         <th>Start</th>
@@ -17,36 +17,83 @@
         <th>Hash</th>
         <th>Action</th>
       </tr>
-      {% for rebalance in rebalances %}
-      <tr>
-        <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
-        <td {% if rebalance.status == 0 %}>---{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
-        <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>---{% endif %}</td>
-        <td>{{ rebalance.duration }} minutes</td>
-        <td>{% if rebalance.status == 2 %}{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}---{% endif %}</td>
-        <td>{{ rebalance.value|intcomma }}</td>
-        <td>{{ rebalance.fee_limit|intcomma }}</td>
-        <td>{{ rebalance.ppm|intcomma }}</td>
-        <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
-        <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
-        <td title="{{ rebalance.status }}">
-          {% with arr='Pending In-Flight Successful Timeout No-Route Error Incorrect-Payment-Details Insufficient-Balance Rebalancer-Request-Failed Rebalancer-Request-Timeout Cancelled'  %}
-            {% if rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>
-            {% else %}
-              {% for status in arr.split %}
-                {% if forloop.counter0 == rebalance.status %}{{status}}{% endif %}
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-        <td>{% if rebalance.payment_hash|default:'' == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash|slice:"7" }}</a>{% endif %}</td>
-        <td>
-          <div class="w3-cell-row">
-            <form class="w3-cell w3-padding-small" method="POST" action="/{% if rebalance.status != 0 %}repeat{% else %}cancel{%endif%}_rebalance/">
-              {% csrf_token %}<input hidden name="requested" value="{{rebalance.requested}}"/><input type="submit" {% if rebalance.status != 0 %}title="Repeat this request" value="🔂" {% else %}title="Cancel this request" value="❌"{% endif %}></input>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
     </table>
   </div>
+  <script>
+    statuses = [{code: 0, value: 'Pending'}, {code: 1, value: 'In-Flight'}, {code: 2, value: 'Successful'}, {code: 3, value: 'Timeout'}, {code: 4, value: 'No-Route'}, {code: 5, value: 'Error'}, {code: 6, value: 'Incorrect-Payment-Details'}, {code: 7, value: 'Insufficient-Balance'}, {code: 8, value: 'Rebalancer-Request-Failed'}, {code: 9, value: 'Rebalancer-Request-Timeout'}, {code: 499, value: 'Cancelled'}]
+    transformations = {
+      'requested': rebalance => ({title: rebalance.requested, innerHTML: rebalance.requested}),
+      'start': rebalance => ({title: rebalance?.start || '---', innerHTML: rebalance.start}),
+      'stop': rebalance => ({title: rebalance?.stop || '---', innerHTML: rebalance?.stop || '---'}),
+      'duration': rebalance => ({innerHTML: rebalance.duration + ' minutes'}),
+      'elapsed': rebalance => ({innerHTML: rebalance.elapsed > 0 ? Math.floor(rebalance.elapsed) + ' minutes' : '---'}),
+      'value': rebalance => ({innerHTML: rebalance.value}),
+      'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
+      'ppm': rebalance => ({innerHTML: Number(rebalance.ppm).toLocaleString()}),
+      'fees_paid': rebalance => ({innerHTML: rebalance.status == 2 ? Number(rebalance.fees_paid).toLocaleString() : '---'}),
+      'target_alias': rebalance => ({innerHTML: rebalance.target_alias !== '' ? rebalance.target_alias : '---'}),
+      'status': rebalance => ({title: rebalance.status, innerHTML: statuses.find(status => status.code == rebalance.status ).value}),
+      'payment_hash': rebalance => ({innerHTML: (rebalance.payment_hash || '').length == 0 ? '---' :
+           `<a href="/route?=${rebalance.payment_hash}" target="_blank">${rebalance.payment_hash.substring(0,7)}</a>`}),
+      'id': rebalance => {
+        const form = document.createElement("form")
+        form.method = "GET"
+        input = document.createElement("input")
+        input.style.display = "none"
+        input.value = rebalance.id
+        input.name = "id"
+
+        form.append(input)
+        input = document.createElement("input")
+        input.type = "submit"
+        if (rebalance.status != 0 ){
+          form.action = `/rebalance/repeat`
+          input.title="Repeat this request" 
+          input.value = "🔂"
+        }
+        else {
+          form.action = `/rebalance/cancel`
+          input.title="Cancel this request" 
+          input.value = "❌"
+        }
+        form.append(input)
+        return {innerHTML: form}
+      } 
+    };
+    document.addEventListener('DOMContentLoaded', async () => {
+      const response = await fetch('/api/rebalances?count={{count}}&status={{status}}&payment_hash={{payment_hash}}')
+      const result = await response.json()
+      if(!result.success) {
+        document.getElementById("rebalances_div_{{count}}").innerHTML = `<h1 class="w3-orange w3-padding-small" style="word-wrap: break-word">${result.error}</h1>`
+      }
+      if (result['rebalances'].length == 0){
+        type = statuses.find(sts => sts.code == '{{status}}')?.value
+        document.getElementById("rebalances_div_{{count}}").innerHTML = `<center><h1>You dont have any ${type} rebalances yet.</h1></center>`
+        return;
+      }
+
+      const table = document.getElementById("rebalances_{{count}}")
+      let ids = Object.keys(result['rebalances'][0])
+      ids.push(ids.shift())
+      result['rebalances'].forEach(rebalance => {
+        const tr = document.createElement("tr")
+        ids.forEach(id => {
+          const td = document.createElement("td")
+
+          const transformation = transformations[id]
+          const transformed = transformation(rebalance)
+          for(key in transformed){
+            const value = transformed[key]
+            if(value instanceof HTMLElement){
+              td.append(value)
+            }
+            else{
+              td[key] = transformed[key]
+            }
+            tr.append(td)
+          }
+        });
+        table.append(tr)
+      });
+    });
+  </script>

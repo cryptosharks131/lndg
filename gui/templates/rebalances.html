@@ -1,15 +1,6 @@
 {% extends "base.html" %}
 {% block title %} {{ block.super }} - Rebalances{% endblock %}
 {% block content %}
-{% load humanize %}
-{% if rebalances_success %}
-  {% include 'rebalances_table.html' with rebalances=rebalances_success title='Last Successful Rebalances' %}
-{% endif %}
-{% if rebalances %}
-  {% include 'rebalances_table.html' with rebalances=rebalances title='Last 150 Rebalances' %}
-{% else %}
-<div class="w3-container w3-padding-small">
-  <center><h1>You dont have any rebalances yet.</h1></center>
-</div>
-{% endif %}
+{% include 'rebalances_table.html' with count=69 status=2 title='Rebalances' %}
+{% include 'rebalances_table.html' with count=150 title='Rebalances' %}
 {% endblock %}

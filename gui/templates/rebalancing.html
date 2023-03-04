@@ -94,13 +94,7 @@
   <center><h1>You dont have any channels to rebalance yet.</h1></center>
 </div>
 {% endif %}
-{% if rebalancer %}
-{% include 'rebalances_table.html' with rebalances=rebalancer title='Last 20 <a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% else %}
-<div class="w3-container w3-padding-small">
-  <center><h1>You dont have any rebalancer requests yet.</h1></center>
-</div>
-{% endif %}
+{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 {% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 {% if channels %}
 <div class="w3-container w3-padding-small">

@@ -4,7 +4,7 @@ from django.db.models import Sum, IntegerField, Count, F, Q
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
-from dateutil import parser as dt_parser
+from django.contrib.humanize.templatetags.humanize import naturaltime
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -258,7 +258,6 @@ def home(request):
             total_costs_7day = total_7day_fees + onchain_costs_7day
             total_costs_1day = total_1day_fees + onchain_costs_1day
             #Get list of recent rebalance requests
-            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             active_count = node_info.num_active_channels - active_private
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
             local_settings = get_local_settings('AR-')
@@ -316,7 +315,6 @@ def home(request):
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
-                'rebalances': rebalances[:12],
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
@@ -576,7 +574,6 @@ def route(request):
                 'total_cost': total_cost,
                 'total_ppm': total_ppm,
                 'route': route,
-                'rebalances': Rebalancer.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())),
                 'invoices': Invoices.objects.filter(r_hash=payment_hash),
                 'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
                 'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
@@ -1538,13 +1535,7 @@ def invoices(request):
 def rebalances(request):
     if request.method == 'GET':
         try:
-            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
-            rebalances_success = rebalances.filter(status=2)
-            context = {
-                'rebalances': rebalances[:150],
-                'rebalances_success' : rebalances_success[:69]
-            }
-            return render(request, 'rebalances.html', context)
+            return render(request, 'rebalances.html')
         except Exception as e:
             try:
                 error = str(e.code())
@@ -1553,6 +1544,43 @@ def rebalances(request):
             return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
+    
+@api_view(['GET'])
+def api_rebalances(request):
+    try:
+        data = []
+        count = int(request.GET.get("count"))
+        payment_hash = request.GET.get("payment_hash")
+        status = int(request.GET.get("status")) if len(request.GET.get("status")) > 0 else -1
+        query = Rebalancer.objects.annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
+        if len(payment_hash) > 0:
+            query = query.filter(payment_hash=payment_hash)
+        if status > 0:
+            query = query.filter(status=status)
+        
+        rebalances = query[:count]
+        for rebal in rebalances:
+            data.append({'id': rebal.id,
+                         'requested': naturaltime(rebal.requested),
+                         'start': naturaltime(rebal.start) if rebal.start else '---', 
+                         'stop': naturaltime(rebal.stop) if rebal.stop else '---', 
+                         'duration': rebal.duration, 
+                         'elapsed': naturaltime(rebal.stop - rebal.start) if rebal.stop is not None and rebal.start is not None else '---', 
+                         'value': rebal.value, 
+                         'fee_limit': rebal.fee_limit, 
+                         'ppm': rebal.ppm, 
+                         'fees_paid': rebal.fees_paid, 
+                         'target_alias': rebal.target_alias, 
+                         'status': rebal.status, 
+                         'payment_hash': rebal.payment_hash })
+            
+        return Response({'success': True, 'rebalances': data})
+    except Exception as e:
+        try:
+            error = str(e.code())
+        except:
+            error = str(e)
+        return {'success': False, 'error': error}
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def batch(request):
@@ -1763,7 +1791,6 @@ def rebalancing(request):
             'enabled_count': enabled_count,
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
-            'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': get_local_settings('AR-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
@@ -1999,14 +2026,10 @@ def add_invoice_form(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
 
-def get_rebalance(requested_at:str) -> Rebalancer:
-    date = dt_parser.parse(requested_at)
-    return Rebalancer.objects.filter(requested__gte=date).first()
-
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def repeat_rebalance(request):
-    if request.method == 'POST':
-        rebalance = get_rebalance(request.POST.get("requested"))
+    if request.method == 'GET':
+        rebalance = Rebalancer.objects.get(id=int(request.GET.get("id")))
         if rebalance.status > 0: 
             Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=rebalance.outgoing_chan_ids, last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=rebalance.duration, manual=rebalance.manual).save()
             messages.success(request, "Rebalancer request created!")
@@ -2018,10 +2041,10 @@ def repeat_rebalance(request):
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def cancel_rebalance(request):
-    if request.method == 'POST':
-        rebalance = get_rebalance(request.POST.get("requested"))
+    if request.method == 'GET':
+        rebalance = Rebalancer.objects.get(id=int(request.GET.get("id")))
         if rebalance.status == 0:
-            rebalance.status = 10
+            rebalance.status = 499
             rebalance.save()
             messages.success(request, "Cancelled rebalancer request!")
         else:

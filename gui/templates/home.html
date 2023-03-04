@@ -560,15 +560,13 @@
   </table>
 </div>
 {% endif %}
-{% if rebalances %}
-  {% with elegible_str=eligible_count|intcomma enabled_str=enabled_count|intcomma available_str=available_count|intcomma %}
-    {% with title='Last 10 <a href="/rebalances" target="_blank">Rebalance Requests</a> (currently scheduling '|add:elegible_str|add:" of "|add:enabled_str|add:" enabled channels for rebalancing via "|add:available_str|add:" outbound channels)" %}
-      {% autoescape off %}
-        {% include 'rebalances_table.html' with rebalances=rebalances title=title %}
-      {% endautoescape %}
-    {% endwith %}
+{% with elegible_str=eligible_count|intcomma enabled_str=enabled_count|intcomma available_str=available_count|intcomma %}
+  {% with title='<a href="/rebalances" target="_blank">Rebalance Requests</a> (currently scheduling '|add:elegible_str|add:" of "|add:enabled_str|add:" enabled channels for rebalancing via "|add:available_str|add:" outbound channels)" %}
+    {% autoescape off %}
+      {% include 'rebalances_table.html' with count=10 title=title %}
+    {% endautoescape %}
   {% endwith %}
-{% endif %}
+{% endwith %}
 {% if payments %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
