@@ -615,6 +615,9 @@ def auto_fees(stub):
                         channel.save()
                         Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
 
+def agg_failed_htlcs():
+    pass
+
 def main():
     #print (f"{datetime.now().strftime('%c')} : Entering Jobs")
     try:
@@ -630,6 +633,7 @@ def main():
         reconnect_peers(stub)
         clean_payments(stub)
         auto_fees(stub)
+        agg_failed_htlcs()
     except Exception as e:
         print (f"{datetime.now().strftime('%c')} : Error processing background data: {str(e)=}")
     #print (f"{datetime.now().strftime('%c')} : Exit Jobs")
