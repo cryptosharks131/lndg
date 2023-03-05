@@ -1,20 +1,22 @@
 <div class="w3-container w3-padding-small">
     <form action="/update_settings/" method="post">
       {% csrf_token %}
-    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} settings</h2>
+    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} setts</h2>
     <div class="w3-container">
       <div class="w3-row-padding w3-container">
-        {% for setting in settings|slice:"1:" %}
+        {% for sett in settings|slice:"1:" %}
         <div class="w3-quarter w3-container w3-row">
-          <label class="w3-col" title="{{ setting.title }}">{{ setting.label }}</label>
-          {% if setting.min == 0 and setting.max == 1 %}
-          <select style="height:27px" class="w3-col" name="{{setting.form_id}}" id="{{setting.form_id}}">
-            <option value="0" {% if setting.value == "0" %}selected="selected"{% endif %}>Off</option>
-            <option value="1" {% if setting.value == "1" %}selected="selected"{% endif %}>On</option>
+          <label for="{{sett.form_id}}" class="w3-col" title="{{ sett.title }}">{{ sett.label }}</label>
+          {% if sett.min == 0 and sett.max == 1 %}
+          <select style="height:27px" class="w3-col" name="{{sett.form_id}}" id="{{sett.form_id}}">
+            <option value="0" {% if sett.value == "0" %}selected="selected"{% endif %}>Off</option>
+            <option value="1" {% if sett.value == "1" %}selected="selected"{% endif %}>On</option>
           </select>
           {% else %}
-          <input class="w3-col" id="{{setting.form_id}}" name="{{setting.form_id}}" {% if setting.min %}min="{{setting.min}}" step="{{setting.min}}"{% endif %} {% if setting.max %}max="{{setting.max}}" type="number"{% endif %} value="{{setting.value}}"/>
-          {% endif %}
+          <div class="w3-col input" data-unit="{{sett.unit}}">
+            <input class="w3-col" id="{{sett.form_id}}" name="{{sett.form_id}}" {% if sett.min %}min="{{sett.min}}" step="{{sett.min}}"{% endif %} {% if sett.max %}max="{{sett.max}}" type="number"{% endif %} value="{{sett.value}}"/>
+          </div>
+          {% endif %}        
         </div>
         {% endfor %}
         <div style="height:37px" class="w3-quarter w3-container w3-row w3-margin-top">
