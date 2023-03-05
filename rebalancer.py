@@ -117,7 +117,7 @@ async def run_rebalancer(rebalance, worker):
                 #Previous Rapidfire with increased value failed, try with lower value up to 69420.
                 if rebalance.duration > 1:
                     next_value = await estimate_liquidity ( payment_response )
-                    if next_value < 69420:
+                    if next_value < 1000:
                         next_rebalance = None
                         return next_rebalance
                 else:
@@ -145,12 +145,13 @@ def estimate_liquidity( payment ):
             for attempt in payment.htlcs:
                 total_hops=len(attempt.route.hops)
                 #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
-                if (attempt.failure.code in (1,2) and attempt.failure.failure_source_index == total_hops) or attempt.failure.code == 12:
-                    #Failure 1,2 from last hop indicating liquidity available, failure 12 shows fees in sufficient but liquidity available
-                    estimated_liquidity += attempt.route.total_amt
+                #print (f"{datetime.now().strftime('%c')} : DEBUG Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {attempt.failure.failure_source_index=} {total_hops=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+                if attempt.failure.failure_source_index == total_hops:
+                    #Failure from last hop indicating liquidity available
+                    estimated_liquidity = attempt.route.total_amt if attempt.route.total_amt > estimated_liquidity else estimated_liquidity
                     chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
-                    print (f"{datetime.now().strftime('%c')} : Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
-        print (f"{datetime.now().strftime('%c')} : Final Estimated Liquidity {estimated_liquidity=} {payment.payment_hash=} {payment.status=}")
+                    #print (f"{datetime.now().strftime('%c')} : DEBUG Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
+        print (f"{datetime.now().strftime('%c')} : Estimated Liquidity {estimated_liquidity=} {payment.payment_hash=} {payment.status=} {payment.failure_reason=}")
     except Exception as e:
         print (f"{datetime.now().strftime('%c')} : Error estimating liquidity: {str(e)=}")
         estimated_liquidity = 0
