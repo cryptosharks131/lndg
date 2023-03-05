@@ -2193,7 +2193,7 @@ def update_channel(request):
             chan_id = form.cleaned_data['chan_id']
             target = form.cleaned_data['target']
             update_target = int(form.cleaned_data['update_target'])
-            db_channel = Channels.objects.first(chan_id=chan_id)
+            db_channel = Channels.objects.get(chan_id=chan_id)
             if update_target == 0:
                 stub = lnrpc.LightningStub(lnd_connect())
                 channel_point = point(db_channel)
@@ -2517,6 +2517,7 @@ class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Payments.objects.all()
     serializer_class = PaymentSerializer
+    filterset_fields = ['status']
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2527,6 +2528,7 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Invoices.objects.all()
     serializer_class = InvoiceSerializer
+    filterset_fields = ['state']
 
     def update(self, request, pk=None):
         setting = get_object_or_404(Invoices.objects.all(), pk=pk)

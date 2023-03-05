@@ -1,5 +1,6 @@
 Django
 djangorestframework
+django-filter
 django-qr-code
 grpcio
 protobuf
