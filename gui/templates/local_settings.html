@@ -5,19 +5,24 @@
     <div class="w3-container">
       <div class="w3-row-padding w3-container">
         {% for setting in settings|slice:"1:" %}
-        <div class="w3-quarter w3-container">
-          <label class="w3-label" title="{{ setting.title }}">{{ setting.label }}</label>
-          <input class="w3-input" id="{{setting.form_id}}" name="{{setting.form_id}}" {% if setting.min != -9999 %}min="{{setting.min}}" step="{{setting.min}}"{% endif %} {% if setting.max %}max="{{setting.max}}" type="number"{% endif %} value="{{setting.value}}"/>
+        <div class="w3-quarter w3-container w3-row">
+          <label class="w3-col" title="{{ setting.title }}">{{ setting.label }}</label>
+          {% if setting.min == 0 and setting.max == 1 %}
+          <select style="height:27px" class="w3-col" name="{{setting.form_id}}" id="{{setting.form_id}}">
+            <option value="0" {% if setting.value == "0" %}selected="selected"{% endif %}>Off</option>
+            <option value="1" {% if setting.value == "1" %}selected="selected"{% endif %}>On</option>
+          </select>
+          {% else %}
+          <input class="w3-col" id="{{setting.form_id}}" name="{{setting.form_id}}" {% if setting.min %}min="{{setting.min}}" step="{{setting.min}}"{% endif %} {% if setting.max %}max="{{setting.max}}" type="number"{% endif %} value="{{setting.value}}"/>
+          {% endif %}
         </div>
         {% endfor %}
-        <div class="w3-quarter w3-container">
+        <div style="height:37px" class="w3-quarter w3-container w3-row w3-margin-top">
           {% if 'update_channels' in settings.0.form_id %}
-          <input class="w3-check w3-margin-top" id="update_channels" type="checkbox" name="update_channels"/>
           <label class="w3-validate" title="Also updates current (AR-Target%, AR-Outbound% , AR-Inbound%, AR-MaxCost%) channel values.">Update Channels</label>
-          <input class="w3-button w3-margin-left" type="submit" value="OK">
-          {% else %}
-          <input class="w3-button w3-margin-top" type="submit" value="OK">
+          <input class="w3-check" id="update_channels" type="checkbox" name="update_channels"/>
           {% endif %}
+          <input style="margin-top:7px" type="submit" value="OK">
         </div>
       </div>
     </div>
