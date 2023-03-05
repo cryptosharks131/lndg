@@ -2140,7 +2140,7 @@ def update_channel(request):
             chan_id = form.cleaned_data['chan_id']
             target = form.cleaned_data['target']
             update_target = int(form.cleaned_data['update_target'])
-            db_channel = Channels.objects.first(chan_id=chan_id)
+            db_channel = Channels.objects.get(chan_id=chan_id)
             if update_target == 0:
                 stub = lnrpc.LightningStub(lnd_connect())
                 channel_point = point(db_channel)
