@@ -258,5 +258,5 @@ input:not([type=submit]):not([type=checkbox]):focus, select:focus {outline: none
     from {opacity: 1;}
     to {opacity: 0; height:0; margin: 0; padding: 0;}
 }
-.message {animation: fadeOut 1s linear forwards;animation-delay: 3s;}
+.message {animation: fadeOut 1s linear forwards;animation-delay: 1s;}
 

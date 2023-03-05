@@ -6,7 +6,9 @@
   <script src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
   <script src="{% static 'dark_mode.js' %}"></script>
-  <script>const token = "{{ csrf_token }}"</script>
+  <script>
+    const token = "{{ csrf_token }}"
+  </script>
   <head>
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
@@ -52,11 +54,16 @@
     document.addEventListener('DOMContentLoaded', async () => {
       if (document.cookie.includes("encrypt=true")) document.body.classList.toggle("encrypted")
       let divMsgs = document.getElementById("messages")
-      if (divMsgs ^ divMsgs.children[1]?.src?.length > 0) return 
+      if (!divMsgs) return
+      if (divMsgs.children[1]?.src?.length > 0) return 
 
-      [...divMsgs.children].forEach(el => el.classList.toggle('message'))
-      await new Promise(r => setTimeout(r, 4000))
-      divMsgs?.remove()
+      let total = 0
+      for (let el of [...divMsgs.children]){
+        el.classList.toggle('message')
+        total += await new Promise(r => setTimeout(() => r(1000), 1000))
+      }
+      await new Promise(r => setTimeout(r, 500))
+      divMsgs.remove()
     })
   </script>
 </html>
