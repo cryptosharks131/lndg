@@ -237,8 +237,8 @@ table th{background-color: #f0f0f5;}
 .dark-mode {color-scheme: dark;background-color: #0d1117;color: #c9d1d9}
 .dark-mode table tr {background-color: #161b22!important;border: 1px solid #30363d;}
 .dark-mode table tr:nth-child(even) {background-color: #0d1117!important}
-input:not([type=submit]) {margin: 2px;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
-.dark-mode input:not([type=submit]){border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
+input:not([type=submit]), select {margin: 2px;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
+.dark-mode input:not([type=submit]), .dark-mode select{border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
 input[type=submit] {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}
 .dark-mode input[type=submit]{background-color: #30363d;color: #c9d1d9;border-color: rgba(240,246,252,0.1);}
 .dark-mode table th {background-color: #0d1119;}
@@ -251,3 +251,6 @@ a:link {text-decoration: none}
 .dark-mode .w3-red{background-color: #f85149!important}.dark-mode .w3-border-red{border-color: #f85149!important}
 .progress {min-width: 200px;height: 8px;width: 100%;position: relative;}
 .progress .value {display: flex;height: 100%;}
+input:not([type=submit]):not([type=checkbox]):focus, select:focus {outline: none !important;border: 2px solid #0969da;box-shadow: inset 0 0 0 1px #0969da;}
+.dark-mode input:not([type=submit]):not([type=checkbox]):focus, .dark-mode select:focus {outline: none !important;border:2px solid #58a6ff;box-shadow: inset 0 0 0 1px #58a6ff;}
+.encrypted table td, .encrypted table thead{-webkit-text-security: disc;}

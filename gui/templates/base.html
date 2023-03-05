@@ -19,7 +19,7 @@
         {% if messages %}
         <div class="w3-container w3-padding-small">
           {% for message in messages %}
-            <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word">{{ message.message }}</h1>
+            <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word;margin-top:15px">{{ message.message }}</h1>
             {% if message.message|slice:":17" == "Deposit Address: " or message.message|slice:":17" == "Invoice created! " %}{% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}{% endif %}
           {% endfor %}
         </div>
@@ -40,4 +40,13 @@
       </div>
     </div>
   </footer>
+  <script>
+    document.onkeypress = function (e) {
+      if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
+      document.cookie = `encrypt=${document.body.classList.contains("encrypted")}`
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.cookie.includes("encrypt=true")) document.body.classList.toggle("encrypted")
+    })
+  </script>
 </html>
