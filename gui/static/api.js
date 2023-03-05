@@ -13,16 +13,8 @@ function putData(resourceName, data={}, params={}, callback=null){
 function call(method, urlExt, sendData={}, params={}, callback=null){
     urlExt = urlExt.toLowerCase();
     if(urlExt.charAt(urlExt.length-1) != '/') urlExt += '/';
-    param_counter = 0;
-    for (param in params){
-        var parameter = params[param];
-        if (param_counter > 0) urlExt += '&';
-        urlExt += '?' + param + '=' + parameter;
-        param_counter += 1;
-    };
-    const response = fetch('api' + urlExt, {
-        method: method,
-        headers: {'Content-Type':'application/json','X-CSRFToken': token},
-        body: JSON.stringify(sendData),
-    });
+    urlExt += '?' + new URLSearchParams(params).toString();
+    var request_data = {method: method, headers: {'Content-Type':'application/json','X-CSRFToken': token}};
+    if(method != 'GET') request_data['body'] = JSON.stringify(sendData);
+    fetch('api' + urlExt, request_data).then(response => response.json()).then(result => {if(callback != null) callback(result)});
 }
