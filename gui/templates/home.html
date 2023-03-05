@@ -93,13 +93,13 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
-        <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
-        <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
-        <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
-        <th class="w3-border">
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
             <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
