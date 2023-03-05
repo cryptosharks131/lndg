@@ -91,20 +91,22 @@
     </tr>
   </table>
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
-    <tr>
-      <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
-      <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
-      <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
-      <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
-      <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
-      <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
-      <th class="w3-border">
-        <form method="post" action="/newaddress/">
-          {% csrf_token %}
-          <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
-        </form>
-      </th>
-    </tr>
+    <thead>
+      <tr>
+        <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+        <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
+        <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+        <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
+        <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
+        <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+        <th class="w3-border">
+          <form method="post" action="/newaddress/">
+            {% csrf_token %}
+            <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
+          </form>
+        </th>
+      </tr>
+    </thead>
     <tr>
       <th>Period</th>
       <th>Routed</th>
