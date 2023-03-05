@@ -201,7 +201,7 @@
           {% if channel.auto_rebalance == True %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}" onChange="putData('/channels/{{ channel.chan_id }}', {'ar_in_target':this.value})">
+              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}" onChange="putData('/channels/{{ channel.chan_id }}', {'ar_in_target':this.value}); flash(this);">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="3">
             </form>
