@@ -1544,43 +1544,6 @@ def rebalances(request):
             return render(request, 'error.html', {'error': error})
     else:
         return redirect('home')
-    
-@api_view(['GET'])
-def api_rebalances(request):
-    try:
-        data = []
-        count = int(request.GET.get("count"))
-        payment_hash = request.GET.get("payment_hash")
-        status = int(request.GET.get("status")) if len(request.GET.get("status")) > 0 else -1
-        query = Rebalancer.objects.annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
-        if len(payment_hash) > 0:
-            query = query.filter(payment_hash=payment_hash)
-        if status > 0:
-            query = query.filter(status=status)
-        
-        rebalances = query[:count]
-        for rebal in rebalances:
-            data.append({'id': rebal.id,
-                         'requested': naturaltime(rebal.requested),
-                         'start': naturaltime(rebal.start) if rebal.start else '---', 
-                         'stop': naturaltime(rebal.stop) if rebal.stop else '---', 
-                         'duration': rebal.duration, 
-                         'elapsed': naturaltime(rebal.stop - rebal.start) if rebal.stop is not None and rebal.start is not None else '---', 
-                         'value': rebal.value, 
-                         'fee_limit': rebal.fee_limit, 
-                         'ppm': rebal.ppm, 
-                         'fees_paid': rebal.fees_paid, 
-                         'target_alias': rebal.target_alias, 
-                         'status': rebal.status, 
-                         'payment_hash': rebal.payment_hash })
-            
-        return Response({'success': True, 'rebalances': data})
-    except Exception as e:
-        try:
-            error = str(e.code())
-        except:
-            error = str(e)
-        return {'success': False, 'error': error}
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def batch(request):
@@ -2025,33 +1988,6 @@ def add_invoice_form(request):
         else:
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect('home')
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def repeat_rebalance(request):
-    if request.method == 'GET':
-        rebalance = Rebalancer.objects.get(id=int(request.GET.get("id")))
-        if rebalance.status > 0: 
-            Rebalancer(value=rebalance.value, fee_limit=rebalance.fee_limit, outgoing_chan_ids=rebalance.outgoing_chan_ids, last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=rebalance.duration, manual=rebalance.manual).save()
-            messages.success(request, "Rebalancer request created!")
-        else:
-            messages.error(request, "Only In-Flight or completed requests can be duplicated")
-    else:
-        messages.error(request, 'Invalid Request. Please try again.')
-    return redirect(request.META.get('HTTP_REFERER'))
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def cancel_rebalance(request):
-    if request.method == 'GET':
-        rebalance = Rebalancer.objects.get(id=int(request.GET.get("id")))
-        if rebalance.status == 0:
-            rebalance.status = 499
-            rebalance.save()
-            messages.success(request, "Cancelled rebalancer request!")
-        else:
-            messages.error(request, "Only pending requests can be cancelled!")
-    else:
-        messages.error(request, 'Invalid Request. Please try again.')
-    return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalance(request):
@@ -2592,6 +2528,7 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Channels.objects.all()
     serializer_class = ChannelSerializer
+    filterset_fields = ['status', 'payment_hash']
 
     def update(self, request, pk=None):
         channel = get_object_or_404(Channels.objects.all(), pk=pk)
@@ -2599,21 +2536,28 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
+        return Response(serializer.errors)
 
 class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Rebalancer.objects.all()
     serializer_class = RebalancerSerializer
-
+        
     def create(self, request):
-        serializer = RebalancerSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
+        return Response(serializer.errors)
+        
+    def update(self, request, pk):
+        rebalance = get_object_or_404(Rebalancer.objects.all(), pk=pk)
+        serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            print(serializer.data)
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
