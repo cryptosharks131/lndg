@@ -2032,14 +2032,14 @@ def get_local_settings(*prefixes):
     if 'AR-' in prefixes:
         form.append({'unit': '', 'form_id': 'update_channels', 'id': 'update_channels'})
         form.append({'unit': '', 'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
-        form.append({'unit': '%', 'form_id': 'target_percent', 'value': 0, 'label': 'AR Target Amount', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
-        form.append({'unit': 'min', 'form_id': 'target_time', 'value': 0, 'label': 'AR Target Time', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
-        form.append({'unit': 'ppm', 'form_id': 'fee_rate', 'value': 0, 'label': 'AR Global Max Rate', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500})
-        form.append({'unit': '%', 'form_id': 'outbound_percent', 'value': 0, 'label': 'AR Target Out Above', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'inbound_percent', 'value': 0, 'label': 'AR Target In Above', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'max_cost', 'value': 0, 'label': 'AR Max Cost', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'variance', 'value': 0, 'label': 'AR Variance', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
-        form.append({'unit': 'min', 'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'target_percent', 'value': 0, 'label': 'AR Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
+        form.append({'unit': 'min', 'form_id': 'target_time', 'value': 0, 'label': 'AR Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
+        form.append({'unit': 'ppm', 'form_id': 'fee_rate', 'value': 0, 'label': 'AR Global Max Fee Rate (ppm)', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':1, 'max':2500})
+        form.append({'unit': '%', 'form_id': 'outbound_percent', 'value': 0, 'label': 'AR Target Outbound Above (%)', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'inbound_percent', 'value': 0, 'label': 'AR Target Inbound Above (%)', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'max_cost', 'value': 0, 'label': 'AR Max Cost (%)', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'variance', 'value': 0, 'label': 'AR Variance (%)', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
+        form.append({'unit': 'min', 'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
         form.append({'unit': '', 'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
         form.append({'unit': 'days', 'form_id': 'autopilotdays', 'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
         form.append({'unit': '', 'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
@@ -2112,7 +2112,7 @@ def update_settings(request):
                     except:
                         LocalSettings(key=field['id'], value=field['value']).save()
                         db_value = LocalSettings.objects.get(key=field['id'])
-                    if db_value.value == str(value):
+                    if db_value.value == str(value) or len(value) == 0:
                         continue
                     db_value.value = value
                     db_value.save()
