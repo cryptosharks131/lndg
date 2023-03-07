@@ -729,13 +729,13 @@
     </form>
   </div>
 </div>
-<div id="sign" class="w3-container w3-padding-small">
+<div class="w3-container w3-padding-small">
   <h2>Sign Message</h2>
   <div class="w3-container w3-padding-32">
     <form action="/sign_message/" method="post">
       {% csrf_token %}
       <label for="msg">Message: </label>
-      <input style="min-width:800px" id="value" type="text" name="msg">
+      <input id="sign" style="min-width:800px" id="value" type="text" name="msg">
       <input type="submit" value="OK">
     </form>
   </div>
