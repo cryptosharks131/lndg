@@ -6,13 +6,13 @@
         <th>Requested</th>
         <th>Start</th>
         <th>Stop</th>
-        <th>Scheduled Duration</th>
-        <th>Actual Duration</th>
+        <th>Scheduled for</th>
+        <th>Elapsed</th>
         <th>Value</th>
         <th>Fee Limit</th>
         <th>Target PPM</th>
         <th>Fees Paid</th>
-        <th>Last Hop Alias</th>
+        <th>Last Hop</th>
         <th>Status</th>
         <th>Hash</th>
         <th>Action</th>
@@ -24,12 +24,12 @@
   <script>
     statuses = [{code: 0, value: 'Pending'}, {code: 1, value: 'In-Flight'}, {code: 2, value: 'Successful'}, {code: 3, value: 'Timeout'}, {code: 4, value: 'No-Route'}, {code: 5, value: 'Error'}, {code: 6, value: 'Incorrect-Payment-Details'}, {code: 7, value: 'Insufficient-Balance'}, {code: 8, value: 'Rebalancer-Request-Failed'}, {code: 9, value: 'Rebalancer-Request-Timeout'}, {code: 499, value: 'Cancelled'}]
     transformations = {
-      'requested': rebalance => ({innerHTML: rebalance.requested, title: rebalance.requested}),
-      'start': rebalance => ({innerHTML: rebalance.start, title: rebalance?.start || '---'}),
-      'stop': rebalance => ({innerHTML: rebalance?.stop || '---', title: rebalance?.stop || '---'}),
+      'requested': rebalance => ({innerHTML: formatDate(rebalance.requested), title: rebalance.requested}),
+      'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance?.start || '---'}),
+      'stop': rebalance => ({innerHTML: formatDate(rebalance?.stop) || '---', title: rebalance?.stop || '---'}),
       'duration': rebalance => ({innerHTML: rebalance.duration + ' minutes'}),
-      'elapsed': rebalance => ({innerHTML: rebalance.elapsed > 0 ? Math.floor(rebalance.elapsed) + ' minutes' : '---'}),
-      'value': rebalance => ({innerHTML: rebalance.value}),
+      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, new Date(rebalance.stop)) }),
+      'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),
       'fees_paid': rebalance => ({innerHTML: rebalance.status == 2 ? Number(rebalance.fees_paid).toLocaleString() : '---'}),
@@ -44,8 +44,8 @@
           input.innerHTML = "🔂"
           input.title="Repeat this request" 
           input.onclick = async function(){
-            const {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration} = rebalance
-            const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration}
+            const {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias} = rebalance
+            const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
             table.prepend(fillRow(response))
