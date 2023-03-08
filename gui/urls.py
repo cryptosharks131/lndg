@@ -47,8 +47,6 @@ urlpatterns = [
     path('newaddress/', views.new_address_form, name='new-address-form'),
     path('createinvoice/', views.add_invoice_form, name='add-invoice-form'),
     path('rebalancer/', views.rebalance, name='rebalancer'),
-    path('rebalance/repeat', views.repeat_rebalance, name='repeat-rebalance'),
-    path('rebalance/cancel', views.cancel_rebalance, name='cancel-rebalance'),
     path('update_settings/', views.update_settings, name='update-settings'),
     path('update_channel/', views.update_channel, name='update-channel'),
     path('update_pending/', views.update_pending, name='update-pending'),
@@ -80,6 +78,5 @@ urlpatterns = [
     path('api/balances/', views.api_balances, name='api-balances'),
     path('api/income/', views.api_income, name='api-income'),
     path('api/pendingchannels/', views.pending_channels, name='pending-channels'),
-    path('api/rebalances', views.api_rebalances, name='api-rebalances'),
     path('lndg-admin/', admin.site.urls),
 ]
