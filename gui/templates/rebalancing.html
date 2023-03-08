@@ -10,22 +10,22 @@
       <tr>
         <th title="Select outgoing channels for a manual rebalance request"><input onclick="[...document.getElementsByClassName('chan_id')].forEach(el => el.checked = this.checked)" class="w3-check" type="checkbox"/></th>
         <th title="Public Key">PK</th>
-        <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
-        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-        <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 2, 'String')">Channel ID</th>
+        <th onclick="sortTable(event.target, 3, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 4, ' (')">Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 5, 'int', 0, 'label')">Capacity</th>
+        <th onclick="sortTable(event.target, 6, ' (')">Inbound Liquidity</th>
         <th><a href="/rebalancing?=2">Rebal Out?</a></th>
         <th><a href="/rebalancing?=1">Enabled?</a></th>
-        <th onclick="sortTable(event.target, 7, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-        <th onclick="sortTable(event.target, 8, 'String')">Rebal In?</th>
+        <th onclick="sortTable(event.target, 9, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+        <th onclick="sortTable(event.target, 10, 'String')">Rebal In?</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th>AR</th>
         <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-        <th onclick="sortTable(event.target, 15, 'String')">Active</th>
+        <th onclick="sortTable(event.target, 17, 'String')">Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -108,7 +108,7 @@
     <form id="rebal_form" action="/rebalancer/" method="post">
       {% csrf_token %}
       <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
+      <input id="duration" type="number" min="1" max="60" name="duration">
       <label for="value">Rebalance Amount (sats): </label>
       <input id="value" type="number" min="10" max="5000000" name="value">
       <label for="fee_limit">Fee Limit (ppm): </label>
