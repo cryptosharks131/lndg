@@ -63,3 +63,22 @@ function flash(element, response){
         if(b == bOrigin) element.style.removeProperty("background-color");
     }, 50);
 }
+
+function formatDate(start, end = new Date()){
+    if (end == null) return '---'
+    if (start == null) return '---'
+    difference = (end - new Date(start))/1000
+    if (difference < 0) difference = (new Date() - new Date(start))/1000
+    if (difference < 60) {
+        return `${Math.floor(difference)} second(s) ago`;
+    } else if (difference < 3600) {
+        return `${Math.floor(difference / 60)} minute(s) ago`;
+    } else if (difference < 86400) {
+        return `${Math.floor(difference / 3600)} hour(s) ago`;
+    } else if (difference < 2620800) {
+        return `${Math.floor(difference / 86400)} day(s) ago`;
+    } else if (difference < 31449600) {
+        return `${Math.floor(difference / 2620800)} month(s) ago`;
+    }
+    return `${Math.floor(difference / 31449600)} year(s) ago`;
+}
