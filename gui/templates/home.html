@@ -8,9 +8,6 @@
   <script language="Javascript">
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
-    function sleep(ms){
-      return new Promise(res => setTimeout(res, ms));
-    }
     async function toogle(button){
       try{
         button.children[0].style.visibility = 'collapse';

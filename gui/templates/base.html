@@ -41,6 +41,9 @@
     </div>
   </footer>
   <script>
+    function sleep(ms){
+      return new Promise(res => setTimeout(res, ms));
+    }
     HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
     HTMLElement.prototype.cloneNode = function(attrs){
       const el = this.defaultCloneNode(this)
