@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from rest_framework import viewsets
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -2529,7 +2530,6 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Channels.objects.all()
     serializer_class = ChannelSerializer
-    filterset_fields = ['status', 'payment_hash']
 
     def update(self, request, pk=None):
         channel = get_object_or_404(Channels.objects.all(), pk=pk)
@@ -2543,6 +2543,8 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status', 'payment_hash']
         
     def create(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
