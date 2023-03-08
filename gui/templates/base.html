@@ -41,6 +41,12 @@
     </div>
   </footer>
   <script>
+    HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
+    HTMLElement.prototype.cloneNode = function(attrs){
+      const el = this.defaultCloneNode(this)
+      Object.keys(attrs).forEach(k => el[k] = attrs[k])
+      return el
+    }
     document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
       document.cookie = `encrypt=${document.body.classList.contains("encrypted")}`

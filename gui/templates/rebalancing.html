@@ -8,6 +8,7 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table id="rebalancingTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
+        <th title="Select outgoing channels for a manual rebalance request">Out<input onclick="[...document.getElementsByClassName('chan_id')].forEach(el => el.checked = this.checked)" class="w3-check" type="checkbox"/></th>
         <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
         <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
@@ -27,6 +28,7 @@
       </tr>
       {% for channel in channels %}
       <tr>
+        <td><input onchange="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_{{forloop.counter0}}'})) : document.getElementById('chan_id_{{forloop.counter0}}').remove()" value="{{channel.chan_id}}" class="w3-check chan_id" type="checkbox"/></td>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.percent_outbound }}%)</td>
@@ -87,20 +89,8 @@
       </tr>
       {% endfor %}
     </table>
-  </div>
-</div>
-{% else %}
-<div class="w3-container w3-padding-small">
-  <center><h1>You dont have any channels to rebalance yet.</h1></center>
-</div>
-{% endif %}
-{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
-{% if channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Manual Rebalancer Request</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
+    <br/>
+    <form id="rebal_form" action="/rebalancer/" method="post">
       {% csrf_token %}
       <label for="duration">Run Time (min): </label>
       <input id="duration" type="number" name="duration">
@@ -111,14 +101,14 @@
       <label for="last_hop_pubkey">Last Hop Pubkey: </label>
       <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
       <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
     </form>
   </div>
 </div>
+{% else %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any channels to rebalance yet.</h1></center>
+</div>
 {% endif %}
+{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 {% endblock %}
