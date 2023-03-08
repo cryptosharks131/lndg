@@ -85,15 +85,9 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     requested = serializers.ReadOnlyField()
     start = serializers.ReadOnlyField()
     stop = serializers.ReadOnlyField()
-    status = serializers.ReadOnlyField()
-    ppm = serializers.ReadOnlyField()
-    fee_limit = serializers.ReadOnlyField()
-    outgoing_chan_ids = serializers.ReadOnlyField()
-    last_hop_pubkey = serializers.ReadOnlyField()
-    target_alias = serializers.ReadOnlyField()
-    duration = serializers.ReadOnlyField()
-    payment_hash = serializers.ReadOnlyField()
     fees_paid = serializers.ReadOnlyField()
+    target_alias = serializers.ReadOnlyField()
+    payment_hash = serializers.ReadOnlyField()
 
     class Meta:
         model = Rebalancer

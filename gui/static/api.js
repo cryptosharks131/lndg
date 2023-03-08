@@ -1,24 +1,20 @@
-function GET(url, {method = 'GET', data = "", headers = {'Content-Type':'application/json'}}){
+async function GET(url, {method = 'GET', data = "", headers = {'Content-Type':'application/json'}}){
     return call({url, method, data, headers})
 }
 
-function POST(url, {method = 'POST', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
+async function POST(url, {method = 'POST', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
     return call({url: url + '/', method, body, headers})
 }
 
-function PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
+async function PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
     return call({url: url + '/', method, body, headers})
 }
 
-function PATCH(url, {method = 'PATCH', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
+async function PATCH(url, {method = 'PATCH', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
     return call({url: url + '/', method, body, headers})
 }
 
-function PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}, callback){
-    call({url: url + '/', method, body, headers}).then(res => callback(res))
-}
-
-function DELETE(url, {method = 'DELETE', headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
+async function DELETE(url, {method = 'DELETE', headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
     return call({url: url + '/', method, headers})
 }
 
@@ -27,7 +23,17 @@ async function call({url, method, data, body, headers}){
     return result.json()
 }
 
-function flash(element){
+class Sync{
+    static PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}, callback){
+        call({url: url + '/', method, body, headers}).then(res => callback(res))
+    }
+}
+
+function flash(element, response){
+    if (response != element.value) {
+        element.value = response
+        return
+    }
     var rgb = window.getComputedStyle(element).backgroundColor;
     rgb = rgb.substring(4, rgb.length-1).replace(/ /g, '').split(',');
     var r = rgb[0], g = rgb[1], bOrigin = rgb[2], b = bOrigin;

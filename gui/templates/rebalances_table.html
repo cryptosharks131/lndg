@@ -31,7 +31,7 @@
       'elapsed': rebalance => ({innerHTML: rebalance.elapsed > 0 ? Math.floor(rebalance.elapsed) + ' minutes' : '---'}),
       'value': rebalance => ({innerHTML: rebalance.value}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
-      'ppm': rebalance => ({innerHTML: Number(rebalance.ppm).toLocaleString()}),
+      'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),
       'fees_paid': rebalance => ({innerHTML: rebalance.status == 2 ? Number(rebalance.fees_paid).toLocaleString() : '---'}),
       'target_alias': rebalance => ({innerHTML: rebalance.target_alias !== '' ? rebalance.target_alias : '---'}),
       'status': rebalance => ({innerHTML: statuses.find(status => status.code == rebalance.status ).value, title: rebalance.status}),

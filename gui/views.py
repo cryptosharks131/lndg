@@ -2540,7 +2540,7 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Rebalancer.objects.all()
+    queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
         
     def create(self, request):
@@ -2555,7 +2555,6 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             serializer.save()
-            print(serializer.data)
             return Response(serializer.data)
         return Response(serializer.errors)
 
