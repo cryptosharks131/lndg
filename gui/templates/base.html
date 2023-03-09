@@ -41,12 +41,17 @@
     </div>
   </footer>
   <script>
+    const modes = [{key: 'soft', value: 'soft-encrypted'},{key: 'hard', value: 'encrypted'}]
     document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
-      document.cookie = `encrypt=${document.body.classList.contains("encrypted")}`
+      else if(e.shiftKey && e.charCode == 69) document.body.classList.toggle("soft-encrypted")
+
+      let mode = modes.find(mode => document.body.classList.contains(mode.value))?.key || ''
+      document.cookie = `privacy=${mode}`
     };
     document.addEventListener('DOMContentLoaded', () => {
-      if (document.cookie.includes("encrypt=true")) document.body.classList.toggle("encrypted")
+      if (document.cookie.includes("privacy=soft")) document.body.classList.toggle("soft-encrypted")
+      else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
     })
   </script>
 </html>
