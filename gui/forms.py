@@ -85,7 +85,15 @@ class AutoFeesForm(AutoRebalanceForm):
     af_increment = forms.IntegerField(label='af_increment', required=False)	
     af_multiplier = forms.IntegerField(label='af_multiplier', required=False)	
     af_failedHTLCs = forms.IntegerField(label='af_failedHTLCs', required=False)	
-    af_updateHours = forms.IntegerField(label='af_updateHours', required=False)	
+    af_updateHours = forms.IntegerField(label='af_updateHours', required=False)
+
+class GUIForm(AutoFeesForm):	
+    gui_graphLinks = forms.CharField(label='gui_graphLinks', required=False)	
+    gui_netLinks = forms.CharField(label='gui_netLinks', required=False)	
+
+class LocalSettingsForm(GUIForm):	
+    lnd_cleanPayments = forms.IntegerField(label='lnd_cleanPayments', required=False)	
+    lnd_retentionDays = forms.IntegerField(label='lnd_retentionDays', required=False)	
 
 updates_channel_codes = [
     (0, 'base_fee'),
