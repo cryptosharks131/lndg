@@ -257,7 +257,6 @@ def home(request):
             total_costs_7day = total_7day_fees + onchain_costs_7day
             total_costs_1day = total_1day_fees + onchain_costs_1day
             #Get list of recent rebalance requests
-            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             active_count = node_info.num_active_channels - active_private
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
             local_settings = get_local_settings('AR-')
@@ -315,7 +314,6 @@ def home(request):
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
-                'rebalances': rebalances[:12],
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
@@ -575,7 +573,6 @@ def route(request):
                 'total_cost': total_cost,
                 'total_ppm': total_ppm,
                 'route': route,
-                'rebalances': Rebalancer.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())),
                 'invoices': Invoices.objects.filter(r_hash=payment_hash),
                 'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
                 'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
@@ -1537,13 +1534,7 @@ def invoices(request):
 def rebalances(request):
     if request.method == 'GET':
         try:
-            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
-            rebalances_success = rebalances.filter(status=2)
-            context = {
-                'rebalances': rebalances[:150],
-                'rebalances_success' : rebalances_success[:69]
-            }
-            return render(request, 'rebalances.html', context)
+            return render(request, 'rebalances.html')
         except Exception as e:
             try:
                 error = str(e.code())
@@ -1762,7 +1753,6 @@ def rebalancing(request):
             'enabled_count': enabled_count,
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
-            'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': get_local_settings('AR-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
@@ -2005,11 +1995,10 @@ def rebalance(request):
         if form.is_valid():
             try:
                 if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() or form.cleaned_data['last_hop_pubkey'] == '':
-                    chan_ids = []
-                    for channel in form.cleaned_data['outgoing_chan_ids']:
-                        chan_ids.append(channel.chan_id)
+                    chan_ids = [ch.chan_id for ch in form.cleaned_data['outgoing_chan_ids']]
                     if len(chan_ids) > 0:
-                        target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
+                        target_channel = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).first()
+                        target_alias = target_channel.alias if target_channel.alias != '' else target_channel.remote_pubkey[:12]
                         fee_limit = round(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001, 3)
                         Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=str(chan_ids).replace('\'', ''), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration'], manual=True).save()
                         messages.success(request, 'Rebalancer request created!')
@@ -2546,21 +2535,29 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
+        return Response(serializer.errors)
 
 class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Rebalancer.objects.all()
+    queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
-
+    filterset_fields = ['status', 'payment_hash']
+        
     def create(self, request):
-        serializer = RebalancerSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
+        return Response(serializer.errors)
+        
+    def update(self, request, pk):
+        rebalance = get_object_or_404(Rebalancer.objects.all(), pk=pk)
+        serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            rebalance.stop = datetime.now()
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
