@@ -2112,7 +2112,7 @@ def update_settings(request):
                     except:
                         LocalSettings(key=field['id'], value=field['value']).save()
                         db_value = LocalSettings.objects.get(key=field['id'])
-                    if db_value.value == str(value) or len(value) == 0:
+                    if db_value.value == str(value) or len(str(value)) == 0:
                         continue
                     db_value.value = value
                     db_value.save()
