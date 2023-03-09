@@ -4,9 +4,7 @@ from django.db.models import Sum, IntegerField, Count, F, Q
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
-from django.contrib.humanize.templatetags.humanize import naturaltime
 from rest_framework import viewsets
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -2543,7 +2541,6 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
-    filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'payment_hash']
         
     def create(self, request):
