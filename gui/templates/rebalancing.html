@@ -106,14 +106,16 @@
     <br/>
     <form id="rebal_form" action="/rebalancer/" method="post">
       {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" min="1" max="60" name="duration">
-      <label for="value">Rebalance Amount (sats): </label>
-      <input id="value" type="number" min="10" max="5000000" name="value">
-      <label for="fee_limit">Fee Limit (ppm): </label>
-      <input id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input style="min-width:35%" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+      <span style="width:200px" class="input" data-unit="min" title="Run Time">
+        <input placeholder="0" style="width:100%" id="duration" type="number" min="1" max="60" name="duration">
+      </span>
+      <span style="width:200px" class="input" data-unit="sats" title="Rebalance Amount">
+        <input style="width:100%" placeholder="0" id="value" type="number" min="10" max="5000000" name="value">
+      </span>
+      <span style="width:200px" class="input" data-unit="ppm" title="Fee Limit">
+        <input style="width:100%" placeholder="0" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+      </span>
+      <input placeholder="Last Hop Pubkey" style="width:40%" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
       <input type="submit" value="OK">
     </form>
   </div>
