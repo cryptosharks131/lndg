@@ -47,7 +47,7 @@
   Addresses: 
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
-    <text readonly contenteditable="true" style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
+    <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
     <a href="#." data-addr="{{addr}}" onclick="toogle(this)">
       <svg style="height:30px;width:30px;transform:matrix(1, 0, 0, 1, 4, 3)" version="1.1" >
         <path style="" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
@@ -90,13 +90,13 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
-        <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
-        <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
-        <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
-        <th class="w3-border">
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
             <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
@@ -675,64 +675,67 @@
 {% endif %}
 {% include 'local_settings.html' with settings=local_settings title="Auto-Rebalancer" url='rebalancing' %}
 <div class="w3-container w3-padding-small">
-  <h2>Connect To A Peer</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Connect to a Peer</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/connectpeer/" method="post">
       {% csrf_token %}
-      <label for="peer_id">PubKey or Connection String: </label>
-      <input id="peer_id" type="text" name="peer_id">
+      <input style="min-width:70%" placeholder="PK or PK@host:port" id="peer_id" type="text" name="peer_id">
       <input type="submit" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Open A Channel</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Open a Channel</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/openchannel/" method="post">
       {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <label for="local_amt">Local Amount: </label>
-      <input id="local_amt" type="number" name="local_amt">
-      <label for="sat_per_byte">Target Fee (sats/byte): </label>
-      <input id="sat_per_byte" type="number" name="sat_per_byte">
+      <span class="input" style="width:55%">
+        <input style="width:100%" placeholder="Public Key" id="peer_pubkey" type="text" name="peer_pubkey">
+      </span>
+      <span class="input" data-unit="sats">
+        <input id="local_amt" placeholder="0" type="number" name="local_amt">
+      </span>
+      <span class="input" data-unit="sats/vbyte" title="Opening tx fee">
+        <input id="sat_per_byte" placeholder="0" type="number" min="1" name="sat_per_byte">
+      </span>
       <input type="submit" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Close A Channel</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Close a Channel</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/closechannel/" method="post">
       {% csrf_token %}
-      <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="text" name="chan_id">
-      <label for="target_fee">Target Fee: </label>
-      <input id="target_fee" type="number" min="1" max="100" name="target_fee">
-      <label for="force">Force Close? </label>
-      <input id="force" type="checkbox" name="force">
-      <input type="submit" value="OK">
+      <span class="input">
+        <input placeholder="Channel ID" id="chan_id" type="text" name="chan_id">
+      </span>
+      <div class="input" data-unit="sats/vbyte" title="Closing tx fee">
+        <input id="target_fee" placeholder="0" type="number" min="1" name="target_fee">
+      </div>
+      <input class="w3-check" id="force" style="top:2px" title="Force Close?" type="checkbox" name="force">
+      <input type="submit" style="position:relative;top:-4px" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Create Invoice</h2>
-  <div class="w3-container w3-padding-32">
+  <div class="w3-container w3-padding-small">
     <form action="/createinvoice/" method="post">
       {% csrf_token %}
-      <label for="value">Invoice Amount: </label>
-      <input id="value" type="number" name="value">
+      <span class="input" data-unit="sats">
+        <input placeholder="0" id="value" type="number" name="value">
+      </span>
       <input type="submit" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Sign Message</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Sign a Message</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/sign_message/" method="post">
       {% csrf_token %}
-      <label for="msg">Message: </label>
-      <input id="sign" style="min-width:800px" id="value" type="text" name="msg">
+      <input placeholder="Message" id="sign" style="min-width:800px" id="value" type="text" name="msg">
       <input type="submit" value="OK">
     </form>
   </div>
