@@ -321,3 +321,4 @@ class HistFailedHTLC(models.Model):
     other_count = models.IntegerField()
     class Meta:
         app_label = 'gui'
+        unique_together = (('date', 'chan_id_in', 'chan_id_out'),)
