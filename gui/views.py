@@ -257,7 +257,6 @@ def home(request):
             total_costs_7day = total_7day_fees + onchain_costs_7day
             total_costs_1day = total_1day_fees + onchain_costs_1day
             #Get list of recent rebalance requests
-            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
             active_count = node_info.num_active_channels - active_private
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
             local_settings = get_local_settings('AR-')
@@ -315,7 +314,6 @@ def home(request):
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
-                'rebalances': rebalances[:12],
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
@@ -575,7 +573,6 @@ def route(request):
                 'total_cost': total_cost,
                 'total_ppm': total_ppm,
                 'route': route,
-                'rebalances': Rebalancer.objects.filter(payment_hash=payment_hash).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())),
                 'invoices': Invoices.objects.filter(r_hash=payment_hash),
                 'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
                 'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
@@ -1537,13 +1534,7 @@ def invoices(request):
 def rebalances(request):
     if request.method == 'GET':
         try:
-            rebalances = Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')
-            rebalances_success = rebalances.filter(status=2)
-            context = {
-                'rebalances': rebalances[:150],
-                'rebalances_success' : rebalances_success[:69]
-            }
-            return render(request, 'rebalances.html', context)
+            return render(request, 'rebalances.html')
         except Exception as e:
             try:
                 error = str(e.code())
@@ -1762,7 +1753,6 @@ def rebalancing(request):
             'enabled_count': enabled_count,
             'available_count': available_count,
             'channels': channels_df.to_dict(orient='records'),
-            'rebalancer': Rebalancer.objects.all().annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id')[:20],
             'rebalancer_form': RebalancerForm,
             'local_settings': get_local_settings('AR-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
@@ -2005,11 +1995,10 @@ def rebalance(request):
         if form.is_valid():
             try:
                 if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() or form.cleaned_data['last_hop_pubkey'] == '':
-                    chan_ids = []
-                    for channel in form.cleaned_data['outgoing_chan_ids']:
-                        chan_ids.append(channel.chan_id)
+                    chan_ids = [ch.chan_id for ch in form.cleaned_data['outgoing_chan_ids']]
                     if len(chan_ids) > 0:
-                        target_alias = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey'])[0].alias if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() else ''
+                        target_channel = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).first()
+                        target_alias = target_channel.alias if target_channel.alias != '' else target_channel.remote_pubkey[:12]
                         fee_limit = round(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001, 3)
                         Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=str(chan_ids).replace('\'', ''), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration'], manual=True).save()
                         messages.success(request, 'Rebalancer request created!')
@@ -2030,33 +2019,33 @@ def rebalance(request):
 def get_local_settings(*prefixes):
     form = []
     if 'AR-' in prefixes:
-        form.append({'form_id': 'update_channels', 'id': 'update_channels'})
-        form.append({'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
-        form.append({'form_id': 'target_percent', 'value': 0, 'label': 'AR Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
-        form.append({'form_id': 'target_time', 'value': 0, 'label': 'AR Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
-        form.append({'form_id': 'fee_rate', 'value': 0, 'label': 'AR Global Max Fee Rate (ppm)', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':0.1, 'max':2500})
-        form.append({'form_id': 'outbound_percent', 'value': 0, 'label': 'AR Target Outbound Above (%)', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':0.1, 'max':100})
-        form.append({'form_id': 'inbound_percent', 'value': 0, 'label': 'AR Target Inbound Above (%)', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':0.1, 'max':100})
-        form.append({'form_id': 'max_cost', 'value': 0, 'label': 'AR Max Cost (%)', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
-        form.append({'form_id': 'variance', 'value': 0, 'label': 'AR Variance (%)', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
-        form.append({'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
-        form.append({'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
-        form.append({'form_id': 'autopilotdays', 'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
-        form.append({'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
+        form.append({'unit': '', 'form_id': 'update_channels', 'id': 'update_channels'})
+        form.append({'unit': '', 'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
+        form.append({'unit': '%', 'form_id': 'target_percent', 'value': 0, 'label': 'AR Target Amount (%)', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
+        form.append({'unit': 'min', 'form_id': 'target_time', 'value': 0, 'label': 'AR Target Time (min)', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
+        form.append({'unit': 'ppm', 'form_id': 'fee_rate', 'value': 0, 'label': 'AR Global Max Fee Rate (ppm)', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':1, 'max':2500})
+        form.append({'unit': '%', 'form_id': 'outbound_percent', 'value': 0, 'label': 'AR Target Outbound Above (%)', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'inbound_percent', 'value': 0, 'label': 'AR Target Inbound Above (%)', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'max_cost', 'value': 0, 'label': 'AR Max Cost (%)', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
+        form.append({'unit': '%', 'form_id': 'variance', 'value': 0, 'label': 'AR Variance (%)', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
+        form.append({'unit': 'min', 'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period (min)', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
+        form.append({'unit': '', 'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
+        form.append({'unit': 'days', 'form_id': 'autopilotdays', 'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
+        form.append({'unit': '', 'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
     if 'AF-' in prefixes:
-        form.append({'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'form_id': 'af_maxRate', 'value': 0, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
-        form.append({'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
-        form.append({'form_id': 'af_increment', 'value': 0, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':0, 'max':100})
-        form.append({'form_id': 'af_multiplier', 'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
-        form.append({'form_id': 'af_failedHTLCs', 'value': 0, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':0, 'max':100})
-        form.append({'form_id': 'af_updateHours', 'value': 0, 'label': 'AF Update Hours', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
+        form.append({'unit': '', 'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
+        form.append({'unit': 'ppm', 'form_id': 'af_maxRate', 'value': 0, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        form.append({'unit': 'ppm', 'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        form.append({'unit': '', 'form_id': 'af_increment', 'value': 0, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':0, 'max':100})
+        form.append({'unit': '%', 'form_id': 'af_multiplier', 'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
+        form.append({'unit': '', 'form_id': 'af_failedHTLCs', 'value': 0, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':0, 'max':100})
+        form.append({'unit': 'hours', 'form_id': 'af_updateHours', 'value': 0, 'label': 'AF Update Hours', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
     if 'GUI-' in prefixes:
-        form.append({'form_id': 'gui_graphLinks', 'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
-        form.append({'form_id': 'gui_netLinks', 'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
+        form.append({'unit': '', 'form_id': 'gui_graphLinks', 'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
+        form.append({'unit': '', 'form_id': 'gui_netLinks', 'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
     if 'LND-' in prefixes:
-        form.append({'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (1 - Enabled)', 'min':0, 'max':1})
-        form.append({'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days'})
+        form.append({'unit': '', 'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments', 'min':0, 'max':1})
+        form.append({'unit': 'days', 'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention days', 'id': 'LND-RetentionDays', 'title': 'LND Retention days'})
 
     for prefix in prefixes:
         ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
@@ -2112,7 +2101,7 @@ def update_settings(request):
                     except:
                         LocalSettings(key=field['id'], value=field['value']).save()
                         db_value = LocalSettings.objects.get(key=field['id'])
-                    if db_value.value == str(value):
+                    if db_value.value == str(value) or len(str(value)) == 0:
                         continue
                     db_value.value = value
                     db_value.save()
@@ -2546,21 +2535,29 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
+        return Response(serializer.errors)
 
 class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Rebalancer.objects.all()
+    queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
-
+    filterset_fields = ['status', 'payment_hash']
+        
     def create(self, request):
-        serializer = RebalancerSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
+        return Response(serializer.errors)
+        
+    def update(self, request, pk):
+        rebalance = get_object_or_404(Rebalancer.objects.all(), pk=pk)
+        serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            rebalance.stop = datetime.now()
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)

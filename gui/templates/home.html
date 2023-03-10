@@ -50,7 +50,7 @@
   Addresses: 
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
-    <text readonly contenteditable="true" style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
+    <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
     <a href="#." data-addr="{{addr}}" onclick="toogle(this)">
       <svg style="height:30px;width:30px;transform:matrix(1, 0, 0, 1, 4, 3)" version="1.1" >
         <path style="" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
@@ -93,13 +93,13 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
-        <th class="w3-border">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th class="w3-border">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
-        <th class="w3-border">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
-        <th class="w3-border">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
-        <th class="w3-border">
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
             <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
@@ -201,7 +201,7 @@
           {% if channel.auto_rebalance == True %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}" onChange="putData('/channels/{{ channel.chan_id }}', {'ar_in_target':this.value}); flash(this);">
+              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}" onChange="Sync.PUT('channels/{{ channel.chan_id }}', {body: {ar_in_target: this.value}}, r => flash(this, r.ar_in_target));">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="3">
             </form>
@@ -572,43 +572,13 @@
   </table>
 </div>
 {% endif %}
-{% if rebalances %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 <a href="/rebalances" target="_blank">Rebalance Requests</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Requested</th>
-      <th>Start</th>
-      <th>Stop</th>
-      <th>Scheduled Duration</th>
-      <th>Actual Duration</th>
-      <th>Value</th>
-      <th>Fee Limit</th>
-      <th>Target PPM</th>
-      <th>Fees Paid</th>
-      <th>Last Hop Alias</th>
-      <th>Status</th>
-      <th>Hash</th>
-    </tr>
-    {% for rebalance in rebalances %}
-    <tr>
-      <td title="{{ rebalance.requested }}">{{ rebalance.requested|naturaltime }}</td>
-      <td {% if rebalance.status == 0 %}>---{% else %}title="{{ rebalance.start }}">{{ rebalance.start|naturaltime }}{% endif %}</td>
-      <td {% if rebalance.status > 1 %}title="{{ rebalance.stop }}">{{ rebalance.stop|naturaltime }}{% else %}>---{% endif %}</td>
-      <td>{{ rebalance.duration }} minutes</td>
-      <td>{% if rebalance.status == 2 %}{{ rebalance.stop|timeuntil:rebalance.start }}{% else %}---{% endif %}</td>
-      <td>{{ rebalance.value|intcomma }}</td>
-      <td>{{ rebalance.fee_limit|intcomma }}</td>
-      <td>{{ rebalance.ppm|intcomma }}</td>
-      <td>{% if rebalance.status == 2 %}{{ rebalance.fees_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if rebalance.target_alias == '' %}---{% else %}{{ rebalance.target_alias }}{% endif %}</td>
-      <td title="{{ rebalance.status }}">{% if rebalance.status == 0 %}Pending{% elif rebalance.status == 1 %}In-Flight{% elif rebalance.status == 2 %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">Successful</a>{% elif rebalance.status == 3 %}Timeout{% elif rebalance.status == 4 %}No Route{% elif rebalance.status == 5 %}Error{% elif rebalance.status == 6 %}Incorrect Payment Details{% elif rebalance.status == 7 %}Insufficient Balance{% elif rebalance.status == 400 %}Rebalancer Request Failed{% elif rebalance.status == 408 %}Rebalancer Request Timeout{% else %}{{ rebalance.status }}{% endif %}</td>
-      <td>{% if rebalance.payment_hash == '' %}---{% else %}<a href="/route?={{ rebalance.payment_hash }}" target="_blank">{{ rebalance.payment_hash }}</a>{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
+{% with elegible_str=eligible_count|intcomma enabled_str=enabled_count|intcomma available_str=available_count|intcomma %}
+  {% with title='<a href="/rebalances" target="_blank">Rebalance Requests</a> (currently scheduling '|add:elegible_str|add:" of "|add:enabled_str|add:" enabled channels for rebalancing via "|add:available_str|add:" outbound channels)" %}
+    {% autoescape off %}
+      {% include 'rebalances_table.html' with count=10 title=title %}
+    {% endautoescape %}
+  {% endwith %}
+{% endwith %}
 {% if payments %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
@@ -759,13 +729,13 @@
     </form>
   </div>
 </div>
-<div id="sign" class="w3-container w3-padding-small">
+<div class="w3-container w3-padding-small">
   <h2>Sign Message</h2>
   <div class="w3-container w3-padding-32">
     <form action="/sign_message/" method="post">
       {% csrf_token %}
       <label for="msg">Message: </label>
-      <input style="min-width:800px" id="value" type="text" name="msg">
+      <input id="sign" style="min-width:800px" id="value" type="text" name="msg">
       <input type="submit" value="OK">
     </form>
   </div>
