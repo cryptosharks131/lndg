@@ -678,64 +678,67 @@
 {% endif %}
 {% include 'local_settings.html' with settings=local_settings title="Auto-Rebalancer" url='rebalancing' %}
 <div class="w3-container w3-padding-small">
-  <h2>Connect To A Peer</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Connect to a Peer</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/connectpeer/" method="post">
       {% csrf_token %}
-      <label for="peer_id">PubKey or Connection String: </label>
-      <input id="peer_id" type="text" name="peer_id">
+      <input style="min-width:70%" placeholder="PK or PK@host:port" id="peer_id" type="text" name="peer_id">
       <input type="submit" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Open A Channel</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Open a Channel</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/openchannel/" method="post">
       {% csrf_token %}
-      <label for="peer_pubkey">Peer Pubkey: </label>
-      <input id="peer_pubkey" type="text" name="peer_pubkey">
-      <label for="local_amt">Local Amount: </label>
-      <input id="local_amt" type="number" name="local_amt">
-      <label for="sat_per_byte">Target Fee (sats/byte): </label>
-      <input id="sat_per_byte" type="number" name="sat_per_byte">
+      <span class="input" style="width:55%">
+        <input style="width:100%" placeholder="Public Key" id="peer_pubkey" type="text" name="peer_pubkey">
+      </span>
+      <span class="input" data-unit="sats">
+        <input id="local_amt" placeholder="0" type="number" name="local_amt">
+      </span>
+      <span class="input" data-unit="sats/vbyte" title="Opening tx fee">
+        <input id="sat_per_byte" placeholder="0" type="number" min="1" name="sat_per_byte">
+      </span>
       <input type="submit" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Close A Channel</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Close a Channel</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/closechannel/" method="post">
       {% csrf_token %}
-      <label for="chan_id">Channel ID: </label>
-      <input id="chan_id" type="text" name="chan_id">
-      <label for="target_fee">Target Fee: </label>
-      <input id="target_fee" type="number" min="1" max="100" name="target_fee">
-      <label for="force">Force Close? </label>
-      <input id="force" type="checkbox" name="force">
-      <input type="submit" value="OK">
+      <span class="input">
+        <input placeholder="Channel ID" id="chan_id" type="text" name="chan_id">
+      </span>
+      <div class="input" data-unit="sats/vbyte" title="Closing tx fee">
+        <input id="target_fee" placeholder="0" type="number" min="1" name="target_fee">
+      </div>
+      <input class="w3-check" id="force" style="top:2px" title="Force Close?" type="checkbox" name="force">
+      <input type="submit" style="position:relative;top:-4px" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Create Invoice</h2>
-  <div class="w3-container w3-padding-32">
+  <div class="w3-container w3-padding-small">
     <form action="/createinvoice/" method="post">
       {% csrf_token %}
-      <label for="value">Invoice Amount: </label>
-      <input id="value" type="number" name="value">
+      <span class="input" data-unit="sats">
+        <input placeholder="0" id="value" type="number" name="value">
+      </span>
       <input type="submit" value="OK">
     </form>
   </div>
 </div>
 <div class="w3-container w3-padding-small">
-  <h2>Sign Message</h2>
-  <div class="w3-container w3-padding-32">
+  <h2>Sign a Message</h2>
+  <div class="w3-container w3-padding-small">
     <form action="/sign_message/" method="post">
       {% csrf_token %}
-      <label for="msg">Message: </label>
-      <input id="sign" style="min-width:800px" id="value" type="text" name="msg">
+      <input placeholder="Message" id="sign" style="min-width:800px" id="value" type="text" name="msg">
       <input type="submit" value="OK">
     </form>
   </div>
