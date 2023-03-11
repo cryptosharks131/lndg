@@ -1,4 +1,4 @@
-async function GET(url, {method = 'GET', data = "", headers = {'Content-Type':'application/json'}}){
+async function GET(url, {method = 'GET', data = "", headers = {'Content-Type':'application/json'}} = {}){
     return call({url, method, data, headers})
 }
 

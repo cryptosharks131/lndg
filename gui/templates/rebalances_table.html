@@ -48,7 +48,7 @@
             const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
-            table.prepend(fillRow(response))
+            table.prepend(fillRow(response, null, transformations))
           } 
         }
         else {
@@ -60,30 +60,12 @@
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1
             table.deleteRow(index)
-            fillRow(response, table.insertRow(index))
+            fillRow(response, table.insertRow(index, null, transformations))
           }
         } 
         return {innerHTML: input}
       } 
     };
-    function fillRow(rebalance, row = null){
-      const tr = row ?? document.createElement("tr")
-      for (id in transformations){
-        const td = document.createElement("td")
-        const transforms = transformations[id](rebalance)
-        for(key in transforms){
-          const value = transforms[key]
-          if(value instanceof HTMLElement){
-            td.append(value)
-          }
-          else{
-            td[key] = value
-          }
-          tr.append(td)
-        }
-      };
-      return tr
-    }
     document.addEventListener('DOMContentLoaded', async () => {
       const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}'}})
       if(res.errors) return
@@ -93,6 +75,6 @@
       }
 
       const table = document.getElementById("rebalances_{{count}}")
-      res.results.forEach(rebalance => table.append(fillRow(rebalance)));
+      res.results.forEach(rebalance => table.append(fillRow(rebalance, null, transformations)));
     });
   </script>
