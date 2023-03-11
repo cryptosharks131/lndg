@@ -3,7 +3,6 @@
 {% block content %}
 {% load humanize %}
 <div id="rebalances_container" class="w3-container w3-padding-small">
-  <h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling {{ eligible_count }} of {{ enabled_count }} enabled channels for rebalancing via {{ available_count }} outbound channels)</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll;overflow-y:scroll;max-height:500px">
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
@@ -36,11 +35,13 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     const resp = await GET('channels')
+    const container = document.getElementById("rebalances_container")
     if (resp.channels.length == 0){
-      const container = document.getElementById("rebalances_container")
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
       return
     }
+    container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${resp.eligible_count} of ${resp.enabled_count} enabled channels for rebalancing via ${resp.available_count} outbound channels)</h2>`)
+
     const net = resp.network
     const grapgh = resp.graph_links
     const red = 'rgba(248,81,73,0.15)'
@@ -89,7 +90,7 @@
         <input type="hidden" name="target" value="0">
       </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
       "rate_7day": ch => ({innerHTML: ch.attempts == 0 ? '---' : `${ch.success_rate}% (${ch.success}/${ch.attempts})`}),
-      "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + ch.last_update, style: {backgroundColor: ch.is_active ? green : red} })
+      "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
     }
     const rebal_table = document.getElementById("rebalancingTable")
     resp.channels.forEach(ch => rebal_table.append(fillRow(ch, null, transformations)))
