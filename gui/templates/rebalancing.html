@@ -93,7 +93,7 @@
       "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
     }
     const rebal_table = document.getElementById("rebalancingTable")
-    resp.channels.forEach(ch => rebal_table.append(fillRow(ch, null, transformations)))
+    resp.channels.forEach(ch => rebal_table.append(use(transformations).fillWith(ch)))
   })
 </script>
 {% endblock %}

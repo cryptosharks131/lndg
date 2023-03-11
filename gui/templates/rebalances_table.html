@@ -48,7 +48,7 @@
             const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
-            table.prepend(fillRow(response, null, transformations))
+            table.prepend(use(transformations).fillWith(response))
           } 
         }
         else {
@@ -60,7 +60,7 @@
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1
             table.deleteRow(index)
-            fillRow(response, table.insertRow(index, null, transformations))
+            use(transformations).fillWith(response, table.insertRow(index))
           }
         } 
         return {innerHTML: input}
@@ -75,6 +75,6 @@
       }
 
       const table = document.getElementById("rebalances_{{count}}")
-      res.results.forEach(rebalance => table.append(fillRow(rebalance, null, transformations)));
+      res.results.forEach(rebalance => table.append(use(transformations).fillWith(rebalance)));
     });
   </script>
