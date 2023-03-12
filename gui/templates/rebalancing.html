@@ -12,14 +12,14 @@
           <th onclick="sortTable(this, 2, ' (')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 3, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(this, 4, ' (')">Inbound Liquidity</th>
-          <th><a href="/rebalancing?is_active=true&auto_rebalance=false">Rebal Out?</a></th>
+          <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
           <th onclick="sortTable(this, 5, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
           <th onclick="sortTable(this, 6, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
           <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
           <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
-          <th><a href="/rebalancing?is_active=true&auto_rebalance=true">AR</a></th>
+          <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
           <th onclick="sortTable(this, 13, 'String')">Active</th>
         </tr>
@@ -31,24 +31,45 @@
 </div>
 {% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 {% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
-
+<div class="w3-container w3-padding-small">
+  <h2>Manual Rebalancer Request</h2>
+  <div class="w3-container w3-padding-32">
+    <form action="/rebalancer/" method="post">
+      {% csrf_token %}
+      <label for="duration">Run Time (min): </label>
+      <input id="duration" type="number" name="duration">
+      <label for="value">Rebalance Amount (sats): </label>
+      <input id="value" type="number" min="10" max="5000000" name="value">
+      <label for="fee_limit">Fee Limit (ppm): </label>
+      <input id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
+      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+      <input type="submit" value="OK">
+      <ul class="w3-ul w3-border" style="width:56.15%">
+        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
+        {% for channel in rebalancer_form.outgoing_chan_ids %}
+          <li>{{ channel }}</li>
+        {% endfor %}
+      </ul>
+    </form>
+  </div>
+</div>
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const resp = await GET('channels', {data: {auto_rebalance: '{{request.GET.auto_rebalance}}', is_active: '{{request.GET.is_active}}'} })
+    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,10)
+    const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400 } })
+    const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'} })
     const container = document.getElementById("rebalances_container")
-    if (resp.channels.length == 0){
+    if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
       return
     }
-    container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${resp.eligible_count} of ${resp.enabled_count} enabled channels for rebalancing via ${resp.available_count} outbound channels)</h2>`)
 
-    const net = resp.network
-    const graph = resp.graph_links
     const red = 'rgba(248,81,73,0.15)'
     const green = 'rgba(46,160,67,0.15)'
     const transformations = {
       "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="${graph}/${net}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
       "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
       "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
       <div class="progress w3-round w3-grey">
@@ -92,8 +113,43 @@
       "rate_7day": ch => ({innerHTML: ch.attempts == 0 ? '---' : `${ch.success_rate}% (${ch.success}/${ch.attempts})`}),
       "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
     }
+    const rebalancer = await rebalancer_task
+    let enabled = 0, elegible = 0, available = 0
     const rebal_table = document.getElementById("rebalancingTable")
-    resp.channels.forEach(ch => rebal_table.append(use(transformations).fillWith(ch)))
+    resp.results.forEach(ch => {
+      //derived properties
+      ch.local_balance += ch.pending_outbound
+      ch.remote_balance += ch.pending_inbound
+      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
+      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
+      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
+      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
+      ch.steps = ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999)
+      //global counters
+      enabled += ch.auto_rebalance ? 1 : 0
+      elegible += ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0
+      available += ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1 ? 1: 0
+      ch.attempts = 0, ch.success = 0, ch.success_rate = 0
+      //rebalances status
+      if(rebalancer.results.length == 0) return 
+      for(r of rebalancer.results){
+        if(r.last_hop_pubkey == ch.remote_pubkey){
+          ch.attempts += 1
+          if(r.status == 2) ch.success_rate = ch.success += 1
+        }
+      }
+      ch.success_rate /= 100
+    })
+    container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
+
+    resp.results
+      .sort((ch1, ch2) => { //sort by active, out%
+        if(ch1.is_active == ch2.is_active) return ch1.percent_outbound - ch2.percent_outbound
+        if(!ch2.is_active) return ch1
+        if(!ch1.is_active) return ch2
+      })
+      .forEach(ch => rebal_table.append(use(transformations).fillWith(ch)))
   })
 </script>
 {% endblock %}

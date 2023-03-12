@@ -2480,52 +2480,9 @@ class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values()
+    queryset = Channels.objects.all()
     serializer_class = ChannelSerializer
-    filterset_fields = ['is_active', 'auto_rebalance']
-
-    def list(self, request):
-        is_active = request.query_params.get('is_active', None)
-        auto_rebalance = request.query_params.get('auto_rebalance', None)
-        if is_active:
-            channels_df = self.get_queryset().filter(is_active=is_active=="true")
-        if auto_rebalance: 
-            channels_df = self.get_queryset().filter(auto_rebalance=auto_rebalance=="true")
-        else:
-            channels_df = self.get_queryset()
-            
-        channels_df = DataFrame.from_records(channels_df)
-        filter_7day = datetime.now() - timedelta(days=7)
-        rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
-        if channels_df.shape[0] > 0:
-            channels_df['inbound_can'] = channels_df['percent_inbound'] / channels_df['ar_in_target']
-            channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
-            channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
-            channels_df['fee_ratio'] = channels_df.apply(lambda row: 100 if row['local_fee_rate'] == 0 else int(round(((row['remote_fee_rate']/row['local_fee_rate'])*1000)/10, 0)), axis=1)
-            channels_df['fee_check'] = channels_df.apply(lambda row: 1 if row['ar_max_cost'] == 0 else int(round(((row['fee_ratio']/row['ar_max_cost'])*1000)/10, 0)), axis=1)
-            channels_df['steps'] = channels_df.apply(lambda row: 0 if row['inbound_can'] < 1 else int(((row['percent_inbound']-row['ar_in_target'])/((row['ar_amt_target']/row['capacity'])*100))+0.999), axis=1)
-            rebalancer_count_7d_df = DataFrame() if rebalancer_7d_df.empty else rebalancer_7d_df[rebalancer_7d_df['status']>=2][rebalancer_7d_df['status']<400]
-            channels_df['attempts'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey].shape[0], axis=1)
-            channels_df['success'] = channels_df.apply(lambda row: 0 if rebalancer_count_7d_df.empty else rebalancer_count_7d_df[rebalancer_count_7d_df['last_hop_pubkey']==row.remote_pubkey][rebalancer_count_7d_df['status']==2].shape[0], axis=1)
-            channels_df['success_rate'] = channels_df.apply(lambda row: 0 if row['attempts'] == 0 else int((row['success']/row['attempts'])*100), axis=1)
-            enabled_df = channels_df[channels_df['auto_rebalance']==True]
-            eligible_df = enabled_df[enabled_df['is_active']==True][enabled_df['inbound_can']>=1][enabled_df['fee_check']<100]
-            eligible_count = eligible_df.shape[0]
-            enabled_count = enabled_df.shape[0]
-            available_df = channels_df[channels_df['auto_rebalance']==False][channels_df['is_active']==True][channels_df['percent_outbound'] / channels_df['ar_out_target']>=1]
-            available_count = available_df.shape[0]
-        else:
-            eligible_count = 0
-            enabled_count = 0
-            available_count = 0
-        return Response({
-            'eligible_count': eligible_count,
-            'enabled_count': enabled_count,
-            'available_count': available_count,
-            'channels': channels_df.to_dict(orient='records'),
-            'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
-            'graph_links': graph_links()
-        })
+    filterset_fields = ['is_open', 'private', 'is_active', 'auto_rebalance']
 
     def update(self, request, pk=None):
         channel = get_object_or_404(Channels.objects.all(), pk=pk)
@@ -2539,8 +2496,17 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
-    filterset_fields = ['status', 'payment_hash']
-        
+    filterset_fields = ['status', 'payment_hash', 'stop']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        sts_gt = self.request.query_params.get('status__gt', 0)
+        sts_lt = self.request.query_params.get('status__lt', 1000)
+        stop = self.request.query_params.get('stop__gt', None)
+        if stop:
+            qs = qs.filter(stop__gt=stop)
+        return qs.filter(status__gt=sts_gt).filter(status__lt=sts_lt)
+    
     def create(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
