@@ -30,7 +30,7 @@
       <tr>
         <td><input onchange="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_{{forloop.counter0}}'})) : document.getElementById('chan_id_{{forloop.counter0}}').remove()" value="{{channel.chan_id}}" class="w3-check chan_id" type="checkbox"/></td>
         <td style="height:25px;width:25px;padding:15px 0px 0px 0px;line-height: 0px">
-          <a href="#." data-pk="{{channel.remote_pubkey}}" onclick="toogle(this)">
+          <a href="#." data-value="{{channel.remote_pubkey}}" onclick="toogle(this)">
             <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
               <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
               <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
@@ -127,21 +127,4 @@
 {% endif %}
 {% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 {% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
-<script language="Javascript">
-  async function toogle(button){
-    try{
-      button.children[0].style.visibility = 'collapse';
-      button.children[1].style.visibility = 'visible';
-      navigator.clipboard.writeText(button.getAttribute('data-pk'))
-      await sleep(1000)
-    }
-    catch(e){
-      alert(button.getAttribute('data-pk'))
-    }
-    finally{
-      button.children[0].style.visibility = 'visible';
-      button.children[1].style.visibility = 'collapse'
-    }
-  }
-</script>
 {% endblock %}

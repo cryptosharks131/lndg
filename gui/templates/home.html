@@ -8,21 +8,6 @@
   <script language="Javascript">
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
-    async function toogle(button){
-      try{
-        button.children[0].style.visibility = 'collapse';
-        button.children[1].style.visibility = 'visible';
-        navigator.clipboard.writeText(button.getAttribute('data-addr'))
-        await sleep(1000)
-      }
-      catch(e){
-        alert(button.getAttribute('data-addr'))
-      }
-      finally{
-        button.children[0].style.visibility = 'visible';
-        button.children[1].style.visibility = 'collapse'
-      }
-    }
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
   <h6>
@@ -48,7 +33,7 @@
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
     <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
-    <a href="#." data-addr="{{addr}}" onclick="toogle(this)">
+    <a href="#." data-value="{{addr}}" onclick="toogle(this)">
       <svg style="height:30px;width:30px;transform:matrix(1, 0, 0, 1, 4, 3)" version="1.1" >
         <path style="" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
         <path style="" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
