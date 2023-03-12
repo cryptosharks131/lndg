@@ -8,7 +8,7 @@
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table id="advancedTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
-        <th colspan="7"></th>
+        <th colspan="6"></th>
         <td title="Update all channel outgoing fee rates">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -73,39 +73,41 @@
             <input type="hidden" name="key" value="ALL-AR">
           </form>
         </td>
-        <th></th>
       </tr>
       <tr>
-        <th onclick="sortTable(0, 'String', 'advancedTable', 1)">Channel ID</th>
-        <th onclick="sortTable(1, 'String', 'advancedTable', 1, true)">Peer Alias</th>
-        <th onclick="sortTable(2, 'int', 'advancedTable', 1)">Capacity</th>
-        <th onclick="sortTable(3, ' (', 'advancedTable', 1)">Outbound Liquidity</th>
-        <th width=10%></th>
-        <th onclick="sortTable(5, ' (', 'advancedTable', 1)">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 0, 'String', 1, 'a')">Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 1, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' (', 1)">Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 1, 'label')">Capacity</th>
+        <th onclick="sortTable(event.target, 4, ' (', 1)">Inbound Liquidity</th>
         <th>Channel State</th>
         <th>oRate</th>
         <th>oBase</th>
         <th>oCLTV</th>
         <th>minHTLC</th>
         <th>maxHTLC</th>
-        <th onclick="sortTable(12, 'int', 'advancedTable', 1)">iRate</th>
-        <th onclick="sortTable(13, 'int', 'advancedTable', 1)">iBase</th>
+        <th onclick="sortTable(event.target, 11, 'int', 1)">iRate</th>
+        <th onclick="sortTable(event.target, 12, 'int', 1)">iBase</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
-        <th onclick="sortTable(19, 'String', 'advancedTable', 1)">Active</th>
+        <th onclick="sortTable(event.target, 18, 'String', 1)">Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
-        <td>{{ channel.capacity|intcomma }}</td>
         <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
-        <td><div class="w3-orange w3-round">{% if channel.in_percent == 0 %}<div class="w3-container w3-round w3-blue" style="height:16px;width:100%"></div>{% elif channel.out_percent == 0 %}<div class="w3-container w3-round w3-orange" style="height:16px;width:100%"></div>{% else %}<div class="w3-container w3-round w3-blue" style="height:16px;width:{{ channel.out_percent }}%"></div>{% endif %}</div></td>
+        <td>
+          <label>{{channel.capacity|intcomma}}</label>
+          <div class="progress w3-round w3-grey">
+            <span class="value w3-round w3-blue" style="width:{{channel.out_percent|default:"0"}}%"></span>
+          </div>
+        </td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           {% if channel.is_active == True and channel.private == False %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
@@ -118,7 +120,7 @@
             ---
           {% endif %}
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
@@ -126,7 +128,7 @@
             <input type="hidden" name="update_target" value="1">
           </form>
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
@@ -134,7 +136,7 @@
             <input type="hidden" name="update_target" value="0">
           </form>
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
@@ -142,7 +144,7 @@
             <input type="hidden" name="update_target" value="9">
           </form>
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center;width:100px" id="target" type="number" step="0.001" min="1" name="target" value="{{ channel.local_min_htlc }}">
@@ -150,7 +152,7 @@
             <input type="hidden" name="update_target" value="10">
           </form>
         </td>
-        <td {% if channel.local_disabled == True %}style="background-color: #fadbd5"{% elif channel.private == True %}style="background-color: #dbd5fa"{% endif %}>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
             <input style="text-align:center;width:150px" id="target" type="number" step="0.001" min="1" name="target" value="{{ channel.local_max_htlc }}">
@@ -158,8 +160,8 @@
             <input type="hidden" name="update_target" value="11">
           </form>
         </td>
-        <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td {% if channel.remote_disabled == True %}style="background-color: #fadbd5"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
+        <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
+        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
@@ -176,7 +178,7 @@
             <input type="hidden" name="update_target" value="6">
           </form>
         </td>
-        <td {% if channel.auto_rebalance == False %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
+        <td {% if channel.auto_rebalance == False %}style="background-color: rgba(46,160,67,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
@@ -184,7 +186,7 @@
               <input type="hidden" name="update_target" value="4">
             </form>
         </td>
-        <td {% if channel.auto_rebalance == True %}style="background-color: #80ced6"{% else %}style="background-color: #f18973"{% endif %}>
+        <td {% if channel.auto_rebalance == True %}style="background-color: rgba(46,160,67,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
             <form action="/update_channel/" method="post">
               {% csrf_token %}
               <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
@@ -214,44 +216,6 @@
 </div>
 {% endif %}
 {% if local_settings %}
-<div class="w3-container w3-padding-small">
-  <h2>Update Local Settings</h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Key</th>
-      <th>Value</th>
-    </tr>
-    {% for settings in local_settings %}
-    <tr>
-      <td>{{ settings.key }}</td>
-      <td>
-        <form action="/update_setting/" method="post">
-          {% csrf_token %}
-          {% if settings.key == 'AR-Target%' %}
-            <input style="text-align:center" id="value" type="number" step="0.1" min="0.1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key|slice:"-1:" == '%' or settings.key == 'AR-Variance' or settings.key == 'AF-Increment' or settings.key == 'AF-Multiplier' or settings.key == 'AF-FailedHTLCs' or settings.key == 'AR-WaitPeriod' or settings.key == 'AR-APDays' or settings.key == 'AF-UpdateHours' %}
-          <input style="text-align:center" id="value" type="number" min="1" max="100" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-Time' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="60" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-Workers' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="12" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AR-MaxFeeRate' %}
-            <input style="text-align:center" id="value" type="number" min="1" max="2500" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'AF-MaxRate' or settings.key == 'AF-MinRate' %}
-            <input style="text-align:center" id="value" type="number" min="0" max="5000" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'LND-CleanPayments' or settings.key|slice:":3" == 'AR-' or settings.key|slice:":3" == 'AF-'%}
-            <input style="text-align:center" id="value" type="number" min="0" max="1" name="value" value="{{ settings.value }}">
-          {% elif settings.key == 'LND-RetentionDays' %}
-            <input style="text-align:center" id="value" type="number" min="0" max="1000" name="value" value="{{ settings.value }}">
-          {% else %}
-            <input style="text-align:center" id="value" type="text" name="value" value="{{ settings.value }}">
-          {% endif %}
-          <input type="hidden" name="key" value="{{ settings.key }}">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
+{% include 'local_settings.html' with settings=local_settings title='Update Local' %}
 {% endif %}
 {% endblock %}

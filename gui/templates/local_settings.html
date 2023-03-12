@@ -1,0 +1,32 @@
+<div class="w3-container w3-padding-small">
+    <form action="/update_settings/" method="post">
+      {% csrf_token %}
+    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} Settings</h2>
+    <div class="w3-container">
+      <div class="w3-row-padding w3-container">
+        {% for sett in settings|slice:"1:" %}
+        <div class="w3-quarter w3-container w3-row">
+          <label for="{{sett.form_id}}" class="w3-col" title="{{ sett.title }}">{{ sett.label }}</label>
+          {% if sett.min == 0 and sett.max == 1 %}
+          <select style="height:27px" class="w3-col" name="{{sett.form_id}}" id="{{sett.form_id}}">
+            <option value="0" {% if sett.value == "0" %}selected="selected"{% endif %}>Off</option>
+            <option value="1" {% if sett.value == "1" %}selected="selected"{% endif %}>On</option>
+          </select>
+          {% else %}
+          <div class="w3-col input" data-unit="{{sett.unit}}">
+            <input class="w3-col" id="{{sett.form_id}}" name="{{sett.form_id}}" {% if sett.min %}min="{{sett.min}}" step="{{sett.min}}"{% endif %} {% if sett.max %}max="{{sett.max}}" type="number"{% endif %} value="{{sett.value}}"/>
+          </div>
+          {% endif %}        
+        </div>
+        {% endfor %}
+        <div style="height:37px" class="w3-quarter w3-container w3-row w3-margin-top">
+          {% if 'update_channels' in settings.0.form_id %}
+          <label class="w3-validate" title="Also updates current (AR-Target%, AR-Outbound% , AR-Inbound%, AR-MaxCost%) channel values.">Update Channels</label>
+          <input class="w3-check" id="update_channels" type="checkbox" name="update_channels"/>
+          {% endif %}
+          <input style="margin-top:7px" type="submit" value="OK">
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
