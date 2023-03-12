@@ -1,31 +1,32 @@
-async function GET(url, {method = 'GET', data = "", headers = {'Content-Type':'application/json'}} = {}){
-    return call({url, method, data, headers})
+async function GET(url, {method = 'GET', data = null}){
+    return call({url, method, data})
 }
 
-async function POST(url, {method = 'POST', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, body, headers})
+async function POST(url, {method = 'POST', body}){
+    return call({url: url + '/', method, body})
 }
 
-async function PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, body, headers})
+async function PUT(url, {method = 'PUT', body}){
+    return call({url: url + '/', method, body})
 }
 
-async function PATCH(url, {method = 'PATCH', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, body, headers})
+async function PATCH(url, {method = 'PATCH', body}){
+    return call({url: url + '/', method, body})
 }
 
-async function DELETE(url, {method = 'DELETE', headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, headers})
+async function DELETE(url, {method = 'DELETE'}){
+    return call({url: url + '/', method})
 }
 
-async function call({url, method, data, body, headers}){
+async function call({url, method, data, body, headers = {'Content-Type':'application/json'}}){
+    if(method != 'GET') headers['X-CSRFToken'] = token
     const result = await fetch(`api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
     return result.json()
 }
 
 class Sync{
-    static PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}, callback){
-        call({url: url + '/', method, body, headers}).then(res => callback(res))
+    static PUT(url, {method = 'PUT', body}, callback){
+        call({url: url + '/', method, body}).then(res => callback(res))
     }
 }
 
