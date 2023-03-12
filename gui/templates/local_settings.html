@@ -1,7 +1,7 @@
 <div class="w3-container w3-padding-small">
     <form action="/update_settings/" method="post">
       {% csrf_token %}
-    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} setts</h2>
+    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} Settings</h2>
     <div class="w3-container">
       <div class="w3-row-padding w3-container">
         {% for sett in settings|slice:"1:" %}
