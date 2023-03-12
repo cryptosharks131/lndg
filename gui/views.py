@@ -2480,11 +2480,21 @@ class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Channels.objects.all()
+    queryset = Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values()
     serializer_class = ChannelSerializer
+    filterset_fields = ['is_active', 'auto_rebalance']
 
     def list(self, request):
-        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
+        is_active = request.query_params.get('is_active', None)
+        auto_rebalance = request.query_params.get('auto_rebalance', None)
+        if is_active:
+            channels_df = self.get_queryset().filter(is_active=is_active=="true")
+        if auto_rebalance: 
+            channels_df = self.get_queryset().filter(auto_rebalance=auto_rebalance=="true")
+        else:
+            channels_df = self.get_queryset()
+            
+        channels_df = DataFrame.from_records(channels_df)
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
         if channels_df.shape[0] > 0:

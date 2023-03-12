@@ -7,21 +7,21 @@
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
         <tr>
-          <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
-          <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-          <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
-          <th><a href="/rebalancing?=2">Rebal Out?</a></th>
-          <th onclick="sortTable(event.target, 7, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-          <th onclick="sortTable(event.target, 8, 'String')">Rebal In?</th>
+          <th onclick="sortTable(this, 0, 'String')">Channel ID</th>
+          <th onclick="sortTable(this, 1, 'String', 0, 'a')">Peer Alias</th>
+          <th onclick="sortTable(this, 2, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(this, 3, 'int', 0, 'label')">Capacity</th>
+          <th onclick="sortTable(this, 4, ' (')">Inbound Liquidity</th>
+          <th><a href="/rebalancing?is_active=true&auto_rebalance=false">Rebal Out?</a></th>
+          <th onclick="sortTable(this, 5, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+          <th onclick="sortTable(this, 6, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
           <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
           <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
-          <th>AR</th>
+          <th><a href="/rebalancing?is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-          <th onclick="sortTable(event.target, 15, 'String')">Active</th>
+          <th onclick="sortTable(this, 13, 'String')">Active</th>
         </tr>
       </thead>
       <tbody id="rebalancingTable">
@@ -34,7 +34,7 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const resp = await GET('channels')
+    const resp = await GET('channels', {data: {auto_rebalance: '{{request.GET.auto_rebalance}}', is_active: '{{request.GET.is_active}}'} })
     const container = document.getElementById("rebalances_container")
     if (resp.channels.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
@@ -43,12 +43,12 @@
     container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${resp.eligible_count} of ${resp.enabled_count} enabled channels for rebalancing via ${resp.available_count} outbound channels)</h2>`)
 
     const net = resp.network
-    const grapgh = resp.graph_links
+    const graph = resp.graph_links
     const red = 'rgba(248,81,73,0.15)'
     const green = 'rgba(46,160,67,0.15)'
     const transformations = {
       "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="${grapgh}/${net}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+      "chan_id": ch => ({innerHTML: `<a href="${graph}/${net}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
       "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
       "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
       <div class="progress w3-round w3-grey">
