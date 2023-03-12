@@ -3,22 +3,23 @@ async function GET(url, {method = 'GET', data = null}){
 }
 
 async function POST(url, {method = 'POST', body}){
-    return call({url: url + '/', method, body})
+    return call({url, method, body})
 }
 
 async function PUT(url, {method = 'PUT', body}){
-    return call({url: url + '/', method, body})
+    return call({url, method, body})
 }
 
 async function PATCH(url, {method = 'PATCH', body}){
-    return call({url: url + '/', method, body})
+    return call({url, method, body})
 }
 
 async function DELETE(url, {method = 'DELETE'}){
-    return call({url: url + '/', method})
+    return call({url, method})
 }
 
 async function call({url, method, data, body, headers = {'Content-Type':'application/json'}}){
+    if(url.charAt(url.length-1) != '/') url += '/'
     if(method != 'GET') headers['X-CSRFToken'] = token
     const result = await fetch(`api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
     return result.json()
@@ -26,7 +27,7 @@ async function call({url, method, data, body, headers = {'Content-Type':'applica
 
 class Sync{
     static PUT(url, {method = 'PUT', body}, callback){
-        call({url: url + '/', method, body}).then(res => callback(res))
+        call({url, method, body}).then(res => callback(res))
     }
 }
 
