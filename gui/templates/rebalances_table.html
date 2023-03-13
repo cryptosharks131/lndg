@@ -22,19 +22,19 @@
     </table>
   </div>
   <script>
-    statuses = [{code: 0, value: 'Pending'}, {code: 1, value: 'In-Flight'}, {code: 2, value: 'Successful'}, {code: 3, value: 'Timeout'}, {code: 4, value: 'No-Route'}, {code: 5, value: 'Error'}, {code: 6, value: 'Incorrect-Payment-Details'}, {code: 7, value: 'Insufficient-Balance'}, {code: 8, value: 'Rebalancer-Request-Failed'}, {code: 9, value: 'Rebalancer-Request-Timeout'}, {code: 499, value: 'Cancelled'}]
+    statuses = {0: 'Pending', 1: 'In-Flight', 2: 'Successful', 3: 'Timeout', 4: 'No-Route', 5: 'Error', 6: 'Incorrect-Payment-Details', 7: 'Insufficient-Balance', 400: 'Rebalancer-Request-Failed', 406: 'No-Sources', 408: 'Rebalancer-Request-Timeout', 499: 'Cancelled'}
     transformations = {
       'requested': rebalance => ({innerHTML: formatDate(rebalance.requested), title: rebalance.requested}),
       'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance?.start || '---'}),
       'stop': rebalance => ({innerHTML: formatDate(rebalance?.stop) || '---', title: rebalance?.stop || '---'}),
-      'duration': rebalance => ({innerHTML: rebalance.duration + ' minutes'}),
+      'duration': rebalance => ({innerHTML: rebalance.duration + ' minute(s)'}),
       'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, new Date(rebalance.stop)).replace(" ago", "") }),
       'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),
       'fees_paid': rebalance => ({innerHTML: rebalance.status == 2 ? Number(rebalance.fees_paid).toLocaleString() : '---'}),
       'target_alias': rebalance => ({innerHTML: rebalance.target_alias !== '' ? rebalance.target_alias : '---'}),
-      'status': rebalance => ({innerHTML: statuses.find(status => status.code == rebalance.status ).value, title: rebalance.status}),
+      'status': rebalance => ({innerHTML: statuses[rebalance.status], title: rebalance.status}),
       'payment_hash': rebalance => ({innerHTML: (rebalance.payment_hash || '').length == 0 ? '---' :
            `<a href="/route?=${rebalance.payment_hash}" target="_blank">${rebalance.payment_hash.substring(0,7)}</a>`}),
       'id': rebalance => {
@@ -88,8 +88,8 @@
       const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}'}})
       if(res.errors) return
       if(res.results.length == 0){
-        const status = statuses.find(sts => sts.code == '{{status}}')?.value
-        document.getElementById("rebalances_div_{{count}}").innerHTML = `<center><h1>You dont have any ${status } rebalances yet.</h1></center>`
+        document.getElementById("rebalances_div_{{count}}").innerHTML = `<center><h1>You dont have any ${statuses['{{status}}']} rebalances yet.</h1></center>`
+        return
       }
 
       const table = document.getElementById("rebalances_{{count}}")
