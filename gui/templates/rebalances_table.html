@@ -26,9 +26,9 @@
     transformations = {
       'requested': rebalance => ({innerHTML: formatDate(rebalance.requested), title: rebalance.requested}),
       'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance?.start || '---'}),
-      'stop': rebalance => ({innerHTML: formatDate(rebalance?.stop) || '---', title: rebalance?.stop || '---'}),
+      'stop': rebalance => ({innerHTML: formatDate(rebalance.stop), title: rebalance?.stop || '---'}),
       'duration': rebalance => ({innerHTML: rebalance.duration + ' minute(s)'}),
-      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, new Date(rebalance.stop)).replace(" ago", "") }),
+      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance?.stop || null).replace(" ago", "")}),
       'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),

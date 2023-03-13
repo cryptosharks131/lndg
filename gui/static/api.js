@@ -65,11 +65,12 @@ function flash(element, response){
     }, 50);
 }
 
-function formatDate(start, end = new Date()){
+function formatDate(start, end = new Date().getTime() + new Date().getTimezoneOffset()*60000){
     if (end == null) return '---'
+    end = new Date(end)
     if (start == null) return '---'
     difference = (end - new Date(start))/1000
-    if (difference < 0) difference = (new Date() - new Date(start))/1000
+    if (difference < 0) return 'Just now'
     if (difference < 60) {
         return `${Math.floor(difference)} second(s) ago`;
     } else if (difference < 3600) {
