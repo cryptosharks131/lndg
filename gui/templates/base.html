@@ -3,8 +3,10 @@
 <html>
   <style>
   </style>
+  <script src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
   <script src="{% static 'dark_mode.js' %}"></script>
+  <script>const token = "{{ csrf_token }}"</script>
   <head>
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
@@ -17,7 +19,7 @@
         {% if messages %}
         <div class="w3-container w3-padding-small">
           {% for message in messages %}
-            <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word">{{ message.message }}</h1>
+            <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word;margin-top:15px">{{ message.message }}</h1>
             {% if message.message|slice:":17" == "Deposit Address: " or message.message|slice:":17" == "Invoice created! " %}{% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}{% endif %}
           {% endfor %}
         </div>
@@ -38,4 +40,22 @@
       </div>
     </div>
   </footer>
+  <script>
+    const modes = {'soft-encrypted': 'soft', encrypted: 'hard'}
+      document.onkeypress = function (e) {
+      if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
+      else if(e.shiftKey && e.charCode == 69) document.body.classList.toggle("soft-encrypted")
+
+      for (mode in Object.keys(modes)){
+        if(document.body.classList.contains(mode)){
+          document.cookie = `privacy=${modes[mode]}`
+          break
+        }
+      }
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.cookie.includes("privacy=soft")) document.body.classList.toggle("soft-encrypted")
+      else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
+    })
+  </script>
 </html>

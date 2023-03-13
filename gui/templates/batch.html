@@ -5,8 +5,8 @@
 <script>
   function update_total(input){
     let total = [...document.querySelectorAll('[id^="amt"]')].map(i => parseInt(i.value) || 0).reduce((prev, curr) => prev + curr)
-    document.getElementById("remaining").innerHTML = "Remaining Onchain Balance: " + ({{balances.total_balance}} - total).toLocalString("en-US")
-    document.getElementById("total").innerHTML = "Total: " + total.toLocalString("en-US")
+    document.getElementById("remaining").innerHTML = "Remaining Onchain Balance: " + ({{balances.total_balance}} - total).toLocaleString()
+    document.getElementById("total").innerHTML = "Total: " + total.toLocaleString()
   }
 </script>
 <div class="w3-container w3-padding-small">
@@ -23,10 +23,10 @@
       <tr>
         <td>{{ num }}</td>
         <td><input style="text-align:center;min-width:800px" id="pubkey{{ num }}" name="pubkey{{ num }}" value=""></td>
-        <td><input style="text-align:center" oninput="update_total(event.target)" id="amt{{ num }}" type="number" min="0" step="1000" name="amt{{ num }}" value=""></td>
+        <td><input style="text-align:center" oninput="update_total(this)" id="amt{{ num }}" type="number" min="0" step="1000" name="amt{{ num }}" value=""></td>
       </tr>
       {% endfor %}
-      <tr><td>#</td><td id="remaining" style="min-width:800px">Remaining Onchain Balance: {{balances.total_balance}}</td><td id="total">Total: 0</td></tr>
+      <tr><td>#</td><td id="remaining" style="min-width:800px">Remaining Onchain Balance: {{balances.total_balance|intcomma}}</td><td id="total">Total: 0</td></tr>
     </table>
     <ul>
       Opening Fee Rate (sats/vbyte): <input style="text-align:center" id="fee_rate" type="number" min="1" name="fee_rate" value="">
