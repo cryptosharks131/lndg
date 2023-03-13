@@ -10,7 +10,7 @@
   <script>
     const ctx = document.getElementById('myChart');
 function toString(date){
-  return `${date.getDate()}/${date.getMonth()}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes()}`
+  return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()} ${date.getHours()}:${date.getMinutes()}`
 }
 const data = {
   labels: [{% for date in chart.dates %}toString(new Date("{{date}}")){% if not forloop.last %},{% endif %}{% endfor %}],

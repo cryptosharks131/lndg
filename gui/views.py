@@ -826,11 +826,12 @@ def income(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_1day = datetime.now() - timedelta(days=1)
         node_info = stub.GetInfo(ln.GetInfoRequest())
-        invoices = Invoices.objects.filter(state=1, is_revenue=True)
-        invoices_90day = invoices.filter(settle_date__gte=filter_90day)
-        invoices_30day = invoices.filter(settle_date__gte=filter_30day)
-        invoices_7day = invoices.filter(settle_date__gte=filter_7day)
-        invoices_1day = invoices.filter(settle_date__gte=filter_1day)
+        invoices = Invoices.objects.filter(state=1)
+        revenues = invoices.filter(is_revenue=True)
+        revenues_90day = invoices.filter(settle_date__gte=filter_90day)
+        revenues_30day = invoices.filter(settle_date__gte=filter_30day)
+        revenues_7day = invoices.filter(settle_date__gte=filter_7day)
+        revenues_1day = invoices.filter(settle_date__gte=filter_1day)
         payments = Payments.objects.filter(status=2)
         payments_90day = payments.filter(creation_date__gte=filter_90day)
         payments_30day = payments.filter(creation_date__gte=filter_30day)
@@ -866,11 +867,11 @@ def income(request):
         total_revenue_30day = 0 if forward_count_30day == 0 else int(forwards_30day.aggregate(Sum('fee'))['fee__sum'])
         total_revenue_7day = 0 if forward_count_7day == 0 else int(forwards_7day.aggregate(Sum('fee'))['fee__sum'])
         total_revenue_1day = 0 if forward_count_1day == 0 else int(forwards_1day.aggregate(Sum('fee'))['fee__sum'])
-        total_received = 0 if invoices.count() == 0 else int(invoices.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_90day = 0 if invoices_90day.count() == 0 else int(invoices_90day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_30day = 0 if invoices_30day.count() == 0 else int(invoices_30day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_7day = 0 if invoices_7day.count() == 0 else int(invoices_7day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_1day = 0 if invoices_1day.count() == 0 else int(invoices_1day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received = 0 if revenues.count() == 0 else int(revenues.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_90day = 0 if revenues_90day.count() == 0 else int(revenues_90day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_30day = 0 if revenues_30day.count() == 0 else int(revenues_30day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_7day = 0 if revenues_7day.count() == 0 else int(revenues_7day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_1day = 0 if revenues_1day.count() == 0 else int(revenues_1day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
         total_revenue += total_received
         total_revenue_90day += total_received_90day
         total_revenue_30day += total_received_30day
@@ -919,58 +920,54 @@ def income(request):
 
         #chart piece | TODO: Add asyncronous calls to filter by period (these calls can become heavy)
         now = datetime.now()
-        last_close = closures.last()
-        first_close = closures.first()
-        closures_timeline = []
-        if first_close != None and last_close != None: #TODO: find a way to filter by data
-            diff = last_close.close_height - first_close.close_height
-            first_close_dt = now - timedelta(minutes=diff/10)
-
-        timeline = sorted([
+        timeline = [
             *[i.settle_date for i in invoices.all()], 
             *[p.creation_date for p in payments.all()],
             *[f.forward_date for f in forwards],
-            *[on.time_stamp for on in onchain_txs],
-            *closures_timeline])
+            *[on.time_stamp for on in onchain_txs]]
+        min_dt = min(timeline)
 
-        costs = [0]
-        on_chain = [0]
-        off_chain = [0]
-        balance_over_time = [0]
-        ten_min = timedelta(minutes=10)
-        channels = stub.ListChannels(ln.ListChannelsRequest()).channels
-        for i in range(1, len(timeline)+1):
-            date = timeline[i-1]
+        timeline = []
+        one_hour = timedelta(hours=1)
+        costs, on_chain, off_chain, balance_over_time = [0, 0], [0, 0], [0, 0], [0, 0]
+        channels = Channels.objects.all()
+        i = 1
+        while min_dt < now:
+            append_date = False
+            next_dt = min_dt + one_hour
 
-            costs.append(costs[-1])
-            on_chain.append(on_chain[-1])
-            off_chain.append(off_chain[-1])
-            balance_over_time.append(balance_over_time[-1])
-            for tx in onchain_txs.filter(time_stamp__range=[date, date+ten_min]).all():
+            for tx in onchain_txs.filter(time_stamp__range=[min_dt, next_dt]).all():
+                append_date = True
                 costs[i] += tx.fee
                 on_chain[i] += tx.amount
-                for ch in channels:
-                    if ch.channel_point.split(':')[0] == tx.tx_hash:
-                        off_chain[i] = -tx.amount + tx.fee
+                for closure in closures.filter(closing_tx=tx.tx_hash).all():
+                    off_chain[i] -= (closure.settled_balance + closure.closing_costs)
+                    costs[i] += closure.closing_costs
+                if channels.filter(funding_txid=tx.tx_hash).first(): #open channel
+                    off_chain[i] -= tx.amount
 
-            for invoice in invoices.filter(settle_date__range=[date, date+ten_min]).all():
+            for invoice in invoices.filter(settle_date__range=[min_dt, next_dt]).all():
                 off_chain[i] += invoice.amt_paid
+                append_date = True
                 
-            for forward in forwards.filter(forward_date__range=[date, date+ten_min]).all():
+            for forward in forwards.filter(forward_date__range=[min_dt, next_dt]).all():
                 off_chain[i] += forward.fee
+                append_date = True
                     
-            for payment in payments.filter(creation_date__range=[date, date+ten_min]).all():
+            for payment in payments.filter(creation_date__range=[min_dt, next_dt]).all():
                 costs[i] += payment.fee
                 off_chain[i] -= (payment.fee + payment.value)
-
-            min_height = node_info.block_height - ((now - date).total_seconds()/600)
-            max_height = node_info.block_height - ((now - (date+ten_min)).total_seconds()/600)
-            for closure in closures.filter(close_height__range=[min_height, max_height]).all():
-                costs[i] = closure.closing_costs
-                on_chain[i] = closure.settled_balance
-                off_chain[i] = -closure.settled_balance 
+                append_date = True
 
             balance_over_time[i] = on_chain[i] + off_chain[i] - costs[i]
+            if append_date:
+                i += 1
+                timeline.append(min_dt)
+                costs.append(costs[-1])
+                on_chain.append(on_chain[-1])
+                off_chain.append(off_chain[-1])
+                balance_over_time.append(balance_over_time[-1])
+            min_dt += one_hour
         
         timeline.append(now)
         timeline = [t.isoformat() for t in timeline]
