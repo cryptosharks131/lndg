@@ -165,14 +165,6 @@ def home(request):
             filter_1day = datetime.now() - timedelta(days=1)
             forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
             forwards_df_1d = DataFrame() if forwards_df_7d.empty else forwards_df_7d[forwards_df_7d['forward_date']>=filter_1day]
-            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
-            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
-            forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
-            forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
-            forwards_df_in_1d_sum = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_in', as_index=True).sum()
-            forwards_df_out_1d_sum = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_out', as_index=True).sum()
-            forwards_df_in_1d_count = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_in', as_index=True).count()
-            forwards_df_out_1d_count = DataFrame() if forwards_df_1d.empty else forwards_df_1d.groupby('chan_id_out', as_index=True).count()
             routed_1day = forwards_df_1d.shape[0]
             routed_7day = forwards_df_7d.shape[0]
             routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
@@ -189,50 +181,6 @@ def home(request):
             pending_outbound = channels.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if channels.filter(is_open=True).exists() else 0
             pending_inbound = channels.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if channels.filter(is_open=True).exists() else 0
             num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
-            eligible_count = 0
-            available_count = 0
-            detailed_active_channels = []
-            for channel in active_channels:
-                detailed_channel = {}
-                detailed_channel['remote_pubkey'] = channel.remote_pubkey
-                detailed_channel['chan_id'] = channel.chan_id
-                detailed_channel['short_chan_id'] = channel.short_chan_id
-                detailed_channel['capacity'] = channel.capacity
-                detailed_channel['local_balance'] = channel.local_balance + channel.pending_outbound
-                detailed_channel['remote_balance'] = channel.remote_balance + channel.pending_inbound
-                detailed_channel['unsettled_balance'] = channel.unsettled_balance
-                detailed_channel['initiator'] = channel.initiator
-                detailed_channel['alias'] = channel.alias
-                detailed_channel['local_base_fee'] = channel.local_base_fee
-                detailed_channel['local_fee_rate'] = channel.local_fee_rate
-                detailed_channel['local_disabled'] = channel.local_disabled
-                detailed_channel['remote_base_fee'] = channel.remote_base_fee
-                detailed_channel['remote_fee_rate'] = channel.remote_fee_rate
-                detailed_channel['remote_disabled'] = channel.remote_disabled
-                detailed_channel['last_update'] = channel.last_update
-                detailed_channel['funding_txid'] = channel.funding_txid
-                detailed_channel['output_index'] = channel.output_index
-                detailed_channel['outbound_percent'] = int(round(channel.outbound_percent/10, 0))
-                detailed_channel['inbound_percent'] = int(round(channel.inbound_percent/10, 0))
-                detailed_channel['routed_in_7day'] = forwards_df_in_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_7d_count.index == channel.chan_id).any() else 0
-                detailed_channel['routed_out_7day'] = forwards_df_out_7d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_7d_count.index == channel.chan_id).any() else 0
-                detailed_channel['amt_routed_in_7day'] = int(forwards_df_in_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_7d_sum.index == channel.chan_id).any() else 0
-                detailed_channel['amt_routed_out_7day'] = int(forwards_df_out_7d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_7d_sum.index == channel.chan_id).any() else 0
-                detailed_channel['routed_in_1day'] = forwards_df_in_1d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_in_1d_count.index == channel.chan_id).any() else 0
-                detailed_channel['routed_out_1day'] = forwards_df_out_1d_count.loc[channel.chan_id].amt_out_msat if (forwards_df_out_1d_count.index == channel.chan_id).any() else 0
-                detailed_channel['amt_routed_in_1day'] = int(forwards_df_in_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_in_1d_sum.index == channel.chan_id).any() else 0
-                detailed_channel['amt_routed_out_1day'] = int(forwards_df_out_1d_sum.loc[channel.chan_id].amt_out_msat//10000000)/100 if (forwards_df_out_1d_sum.index == channel.chan_id).any() else 0
-                detailed_channel['htlc_count'] = channel.htlc_count
-                detailed_channel['auto_rebalance'] = channel.auto_rebalance
-                detailed_channel['ar_in_target'] = channel.ar_in_target
-                detailed_channel['inbound_can'] = (detailed_channel['remote_balance']/channel.capacity)*100
-                detailed_channel['outbound_can'] = (detailed_channel['local_balance']/channel.capacity)*100
-                detailed_channel['fee_ratio'] = 100 if channel.local_fee_rate == 0 else (channel.remote_fee_rate/channel.local_fee_rate)*100
-                if channel.auto_rebalance == True and detailed_channel['inbound_can'] >= channel.ar_in_target and detailed_channel['fee_ratio'] <= channel.ar_max_cost:
-                    eligible_count += 1
-                if channel.auto_rebalance == False and detailed_channel['outbound_can'] >= channel.ar_out_target:
-                    available_count += 1
-                detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
             inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
             inactive_capacity = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('capacity'))['capacity__sum']
@@ -292,7 +240,6 @@ def home(request):
                 'onchain_costs_7day': onchain_costs_7day,
                 'total_1day_fees': int(total_1day_fees),
                 'total_7day_fees': int(total_7day_fees),
-                'active_channels': detailed_active_channels,
                 'total_capacity': active_capacity + inactive_capacity,
                 'active_private': active_private,
                 'total_private': private_count,
@@ -322,9 +269,7 @@ def home(request):
                 '1day_payments_ppm': 0 if payments_1day_amt == 0 else int((total_1day_fees/payments_1day_amt)*1000000),
                 '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
                 'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
-                'eligible_count': eligible_count,
                 'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
-                'available_count': available_count,
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
@@ -2433,6 +2378,12 @@ class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all()
     serializer_class = ForwardSerializer
+    filterset_fields = ['forward_date']
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        forward_date__gt = self.request.query_params.get('forward_date__gt', datetime.min)
+        return qs.filter(forward_date__gt=forward_date__gt)
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

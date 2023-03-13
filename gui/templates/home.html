@@ -153,77 +153,113 @@
   <a class="w3-bar-item w3-hover-blue" href="/batch" target="_blank">Batching</a>
   <a class="w3-bar-item w3-hover-blue" href="/advanced" target="_blank">Advanced Settings</a>
 </div>
-{% if active_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Active Channels</h2>
+<div id="active_channels_container" class="w3-container w3-padding-small">
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table id="activeChannels" class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
-        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-        <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
-        <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
-        <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
-        <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
-        <th onclick="sortTable(event.target, 8, ' m (')">o1D</th>
-        <th onclick="sortTable(event.target, 9, ' m (')">i1D</th>
-        <th onclick="sortTable(event.target, 10, ' m (')">o7D</th>
-        <th onclick="sortTable(event.target, 11, ' m (')">i7D</th>
-        <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
-        <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
-        <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
-      </tr>
-      {% for channel in active_channels %}
-      <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td>
-          <label>{{channel.capacity|intcomma}}</label>
-          <div class="progress w3-round w3-grey">
-            <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
-          </div>
-        </td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
-        <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
-        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
-        <td>{{ channel.amt_routed_out_1day|intcomma }} M ({{ channel.routed_out_1day }})</td>
-        <td>{{ channel.amt_routed_in_1day|intcomma }} M ({{ channel.routed_in_1day }})</td>
-        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
-        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
-        <td>
-          {% if channel.auto_rebalance == True %}
-            <form action="/update_channel/" method="post">
-              {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}" onChange="Sync.PUT('channels/{{ channel.chan_id }}', {body: {ar_in_target: this.value}}, r => flash(this, r.ar_in_target));">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="3">
-            </form>
-          {% else %}
-            ---
-          {% endif %}
-        </td>
-        <td>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="5">
-            <input type="hidden" name="target" value="0">
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
+          <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+          <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
+          <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
+          <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
+          <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
+          <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
+          <th onclick="sortTable(event.target, 8, ' m (')">o1D</th>
+          <th onclick="sortTable(event.target, 9, ' m (')">i1D</th>
+          <th onclick="sortTable(event.target, 10, ' m (')">o7D</th>
+          <th onclick="sortTable(event.target, 11, ' m (')">i7D</th>
+          <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
+          <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
+          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
+          <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
+        </tr>
+      </thead>
+      <tbody id="activeChannels"></tbody>
     </table>
   </div>
 </div>
-{% endif %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () =>{
+    const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1))
+    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,10)
+    const forwards7d_task = GET('forwards', {data: {forward_date__gt: _7days_ago} })
+    const resp = await GET('channels', {data: {is_open:true, private:false, is_active:true} })
+    const container = document.getElementById("active_channels_container")
+    if (resp.results.length == 0) {
+      container.remove()
+      return
+    }
+
+    const transformations = {
+      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+      "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
+      "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
+      <div class="progress w3-round w3-grey">
+        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+      </div>`}),
+      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
+      "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
+      "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
+      "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
+      "o1D": ch => ({innerHTML: `${ch.amt_routed_out_1day.toLocaleString()} M (${ch.routed_out_1day})`}),
+      "i1D": ch => ({innerHTML: `${ch.amt_routed_in_1day.toLocaleString()} M (${ch.routed_in_1day})`}),
+      "o7D": ch => ({innerHTML: `${ch.amt_routed_out_7day.toLocaleString()} M (${ch.routed_out_7day})`}),
+      "i7D": ch => ({innerHTML: `${ch.amt_routed_in_7day.toLocaleString()} M (${ch.routed_in_7day})`}),
+      "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
+      "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
+      "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
+        {% csrf_token %}
+        <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => flash(this, r.ar_in_target));">
+        <input type="hidden" name="chan_id" value="${ch.chan_id}">
+        <input type="hidden" name="update_target" value="3">
+      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+      "auto_rebalance": ch => ({innerHTML: `<form action="/update_channel/" method="post">
+        {% csrf_token %}
+        <input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able">
+        <input type="hidden" name="chan_id" value="${ch.chan_id}">
+        <input type="hidden" name="update_target" value="5">
+        <input type="hidden" name="target" value="0">
+      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    }
+    const forwards7d = await forwards7d_task
+    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date) >= _1day_ago)
+    const activeChannels = document.getElementById("activeChannels")
+    resp.results.forEach(ch => {
+      //derived properties
+      ch.local_balance += ch.pending_outbound
+      ch.remote_balance += ch.pending_inbound
+      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
+      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
+      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
+      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
+      
+      sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+    })
+
+    function sumRoutedValues(forwards, ch, fields){
+      for(field of fields) ch[field] = 0
+      for(f of forwards){
+        if(f.chan_id_in == ch.chan_id){
+          ch[fields[0]] += 1
+          ch[fields[2]] += f.amt_in_msat
+        }
+        if(f.chan_id_out == ch.chan_id){
+          ch[fields[1]] += 1
+          ch[fields[3]] += f.amt_out_msat
+        }
+      }
+    }
+    container.insertAdjacentHTML('afterbegin', `<h2>Active Channels</h2>`)
+
+    resp.results.sort(ch => -ch.percent_outbound)
+      .forEach(ch => activeChannels.append(use(transformations).fillWith(ch)))
+  })
+</script>
 {% if inactive_channels %}
 <div class="w3-container w3-padding-small">
   <h2>Inactive Channels</h2>
@@ -572,13 +608,7 @@
   </table>
 </div>
 {% endif %}
-{% with elegible_str=eligible_count|intcomma enabled_str=enabled_count|intcomma available_str=available_count|intcomma %}
-  {% with title='<a href="/rebalances" target="_blank">Rebalance Requests</a> (currently scheduling '|add:elegible_str|add:" of "|add:enabled_str|add:" enabled channels for rebalancing via "|add:available_str|add:" outbound channels)" %}
-    {% autoescape off %}
-      {% include 'rebalances_table.html' with count=10 title=title %}
-    {% endautoescape %}
-  {% endwith %}
-{% endwith %}
+{% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 {% if payments %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>

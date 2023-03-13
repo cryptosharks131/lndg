@@ -41,6 +41,8 @@
     </div>
   </footer>
   <script>
+    const red = 'rgba(248,81,73,0.15)'
+    const green = 'rgba(46,160,67,0.15)'
     const modes = {'soft-encrypted': 'soft', encrypted: 'hard'}
       document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
