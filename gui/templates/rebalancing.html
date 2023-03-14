@@ -24,6 +24,7 @@
         <th>AR</th>
         <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
         <th onclick="sortTable(event.target, 15, 'String')">Active</th>
+        <th>Label</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -84,6 +85,9 @@
         </td>
         <td>{% if channel.attempts == 0 %}---{% else %}{{ channel.success_rate }}% ({{ channel.success }}/{{ channel.attempts }}){% endif %}</td>
         <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: rgba(46,160,67,0.15);">True{% else %}style="background-color: rgba(248,81,73,0.15)">False{% endif %}</td>
+        <td>
+          <input type="text" data-chan-id="{{channel.chan_id}}" value="{% if channel.label %}{{channel.label}}{% endif %}" onkeypress="event.key != 'Enter' ? '' : Sync.PUT('channels/{{channel.chan_id}}', {body: {label: event.target.value}}, ch => flash(event.target, ch.label))">
+        </td>
       </tr>
       {% endfor %}
     </table>

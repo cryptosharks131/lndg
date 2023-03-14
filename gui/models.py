@@ -106,6 +106,7 @@ class Channels(models.Model):
     ar_max_cost = models.IntegerField()
     fees_updated = models.DateTimeField(default=timezone.now)
     auto_fees = models.BooleanField()
+    label = models.CharField(max_length=32, default=None, null=True)
 
     def save(self, *args, **kwargs):
         if self.auto_fees is None:
