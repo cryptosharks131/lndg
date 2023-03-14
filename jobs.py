@@ -616,8 +616,8 @@ def auto_fees(stub):
 def agg_htlcs(target_htlcs, category):
     try:
         target_ids = target_htlcs.values_list('id')
-        target_htlcs = target_htlcs.annotate(day=TruncDay('timestamp')).values('day', 'chan_id_in', 'chan_id_out').annotate(amount=Sum('amount'), fee=Sum('missed_fee'), liq=Avg('chan_out_liq'), pending=Avg('chan_out_pending'), count=Count('id'), chan_in_alias=Max('chan_in_alias'), chan_out_alias=Max('chan_out_alias'))
-        for htlc in target_htlcs:
+        agg_htlcs = FailedHTLCs.objects.filter(id__in=target_ids).annotate(day=TruncDay('timestamp')).values('day', 'chan_id_in', 'chan_id_out').annotate(amount=Sum('amount'), fee=Sum('missed_fee'), liq=Avg('chan_out_liq'), pending=Avg('chan_out_pending'), count=Count('id'), chan_in_alias=Max('chan_in_alias'), chan_out_alias=Max('chan_out_alias'))
+        for htlc in agg_htlcs:
             if HistFailedHTLC.objects.filter(date=htlc['day'],chan_id_in=htlc['chan_id_in'],chan_id_out=htlc['chan_id_out']).exists():
                 htlc_itm = HistFailedHTLC.objects.filter(date=htlc['day'],chan_id_in=htlc['chan_id_in'],chan_id_out=htlc['chan_id_out']).get()
             else:
@@ -630,8 +630,8 @@ def agg_htlcs(target_htlcs, category):
             htlc_itm.htlc_count += htlc['count']
             htlc_itm.amount_sum += htlc['amount']
             htlc_itm.fee_sum += htlc['fee']
-            htlc_itm.liq_avg += (htlc['count']/htlc_itm.htlc_count)*(htlc['liq']-htlc_itm.liq_avg)
-            htlc_itm.pending_avg += (htlc['count']/htlc_itm.htlc_count)*(htlc['pending']-htlc_itm.pending_avg)
+            htlc_itm.liq_avg += (htlc['count']/htlc_itm.htlc_count)*((0 if htlc['liq'] is None else htlc['liq'])-htlc_itm.liq_avg)
+            htlc_itm.pending_avg += (htlc['count']/htlc_itm.htlc_count)*((0 if htlc['pending'] is None else htlc['pending'])-htlc_itm.pending_avg)
             if category == 'balance':
                 htlc_itm.balance_count += htlc['count']
             elif category == 'downstream':
