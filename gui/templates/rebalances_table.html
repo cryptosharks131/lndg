@@ -22,13 +22,24 @@
     </table>
   </div>
   <script>
-    statuses = {0: 'Pending', 1: 'In-Flight', 2: 'Successful', 3: 'Timeout', 4: 'No-Route', 5: 'Error', 6: 'Incorrect-Payment-Details', 7: 'Insufficient-Balance', 400: 'Rebalancer-Request-Failed', 408: 'Rebalancer-Request-Timeout', 499: 'Cancelled'}
+    function formatDuration(duration){
+      if (duration == 1){
+        return duration + ' minute'
+      }else{
+        return duration + ' minutes'
+      }
+    }
+    function adjustTZ(datetime){
+      datetime = new Date(datetime).getTime() - new Date(datetime).getTimezoneOffset()*60000
+      return new Date(datetime)
+    }
+    statuses = {0: 'Pending', 1: 'In-Flight', 2: 'Successful', 3: 'Timeout', 4: 'No-Route', 5: 'Error', 6: 'Incorrect-Payment-Details', 7: 'Insufficient-Balance', 400: 'Rebalancer-Request-Failed', 406: 'No-Sources', 408: 'Rebalancer-Request-Timeout', 499: 'Cancelled'}
     transformations = {
-      'requested': rebalance => ({innerHTML: formatDate(rebalance.requested), title: rebalance.requested}),
-      'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance?.start || '---'}),
-      'stop': rebalance => ({innerHTML: formatDate(rebalance?.stop) || '---', title: rebalance?.stop || '---'}),
-      'duration': rebalance => ({innerHTML: rebalance.duration + ' minute(s)'}),
-      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, new Date(rebalance.stop)).replace(" ago", "") }),
+      'requested': rebalance => ({innerHTML: formatDate(rebalance.requested), title: adjustTZ(rebalance.requested)}),
+      'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance.start ? adjustTZ(rebalance.start) : '---'}),
+      'stop': rebalance => ({innerHTML: formatDate(rebalance.stop), title: rebalance.stop ? adjustTZ(rebalance.stop) : '---'}),
+      'duration': rebalance => ({innerHTML: formatDuration(rebalance.duration)}),
+      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance?.stop || null).replace(" ago", "")}),
       'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),
