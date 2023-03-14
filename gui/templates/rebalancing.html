@@ -82,7 +82,7 @@
       "ar_amt_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
         {% csrf_token %}
         <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}}">
+        <input type="hidden" name="chan_id" value="${ch.chan_id}">
         <input type="hidden" name="update_target" value="2">
       </form>`}),
       "ar_max_cost": ch => ({innerHTML: `<form action="/update_channel/" method="post">
@@ -139,7 +139,7 @@
           if(r.status == 2) ch.success_rate = ch.success += 1
         }
       }
-      ch.success_rate /= 100
+      ch.success_rate = parseInt(ch.success_rate/100)
     })
     container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
