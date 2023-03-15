@@ -1,31 +1,32 @@
-async function GET(url, {method = 'GET', data = "", headers = {'Content-Type':'application/json'}}){
-    return call({url, method, data, headers})
+async function GET(url, {method = 'GET', data = null}){
+    return call({url, method, data})
 }
 
-async function POST(url, {method = 'POST', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, body, headers})
+async function POST(url, {method = 'POST', body}){
+    return call({url: url + '/', method, body})
 }
 
-async function PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, body, headers})
+async function PUT(url, {method = 'PUT', body}){
+    return call({url: url + '/', method, body})
 }
 
-async function PATCH(url, {method = 'PATCH', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, body, headers})
+async function PATCH(url, {method = 'PATCH', body}){
+    return call({url: url + '/', method, body})
 }
 
-async function DELETE(url, {method = 'DELETE', headers = {'Content-Type':'application/json','X-CSRFToken': token}}){
-    return call({url: url + '/', method, headers})
+async function DELETE(url, {method = 'DELETE'}){
+    return call({url: url + '/', method})
 }
 
-async function call({url, method, data, body, headers}){
+async function call({url, method, data, body, headers = {'Content-Type':'application/json'}}){
+    if(method != 'GET') headers['X-CSRFToken'] = token
     const result = await fetch(`api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
     return result.json()
 }
 
 class Sync{
-    static PUT(url, {method = 'PUT', body, headers = {'Content-Type':'application/json','X-CSRFToken': token}}, callback){
-        call({url: url + '/', method, body, headers}).then(res => callback(res))
+    static PUT(url, {method = 'PUT', body}, callback){
+        call({url: url + '/', method, body}).then(res => callback(res))
     }
 }
 
@@ -64,21 +65,47 @@ function flash(element, response){
     }, 50);
 }
 
-function formatDate(start, end = new Date()){
+function formatDate(start, end = new Date().getTime() + new Date().getTimezoneOffset()*60000){
     if (end == null) return '---'
+    end = new Date(end)
     if (start == null) return '---'
     difference = (end - new Date(start))/1000
-    if (difference < 0) difference = (new Date() - new Date(start))/1000
+    if (difference < 0) return 'Just now'
     if (difference < 60) {
-        return `${Math.floor(difference)} second(s) ago`;
+        if (Math.floor(difference) == 1){
+            return `a second ago`;
+        }else{
+            return `${Math.floor(difference)} seconds ago`;
+        }
     } else if (difference < 3600) {
-        return `${Math.floor(difference / 60)} minute(s) ago`;
+        if (Math.floor(difference / 60) == 1){
+            return `a minute ago`;
+        }else{
+            return `${Math.floor(difference / 60)} minutes ago`;
+        }
     } else if (difference < 86400) {
-        return `${Math.floor(difference / 3600)} hour(s) ago`;
+        if (Math.floor(difference / 3600) == 1){
+            return `an hour ago`;
+        }else{
+            return `${Math.floor(difference / 3600)} hours ago`;
+        }
     } else if (difference < 2620800) {
-        return `${Math.floor(difference / 86400)} day(s) ago`;
+        if (Math.floor(difference / 86400) == 1){
+            return `a day ago`;
+        }else{
+            return `${Math.floor(difference / 86400)} days ago`;
+        }
     } else if (difference < 31449600) {
-        return `${Math.floor(difference / 2620800)} month(s) ago`;
+        if (Math.floor(difference / 2620800) == 1){
+            return `a month ago`;
+        }else{
+            return `${Math.floor(difference / 2620800)} months ago`;
+        }
+    } else {
+        if (Math.floor(difference / 31449600) == 1){
+            return `a year ago`;
+        }else{
+            return `${Math.floor(difference / 31449600)} years ago`;
+        }
     }
-    return `${Math.floor(difference / 31449600)} year(s) ago`;
 }
