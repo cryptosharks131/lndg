@@ -18,7 +18,7 @@
       {% if messages %}
       <div id="messages" class="w3-container w3-padding-small">
         {% for message in messages %}
-        <div class="w3-panel w3-orange w3-display-container">
+        <div class="w3-panel w3-orange w3-display-container w3-padding">
           <span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span>
           <h1 style="word-wrap:break-word">{{ message.message }}</h1>
           {% with sliced_msg=message.message|slice:":17" %}
@@ -69,10 +69,10 @@
 
       let total = 0
       for (let el of divMsgs.children){
-        el.classList.toggle('message')
         total += await new Promise(r => setTimeout(() => r(1000), 1000))
+        el.classList.toggle('message')
       }
-      await new Promise(r => setTimeout(r, 500))
+      await new Promise(r => setTimeout(r, 1000))
       divMsgs.remove()
     })
   </script>
