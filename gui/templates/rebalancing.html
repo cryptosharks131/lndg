@@ -13,15 +13,15 @@
           <th onclick="sortTable(this, 3, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(this, 4, ' (')">Inbound Liquidity</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
-          <th onclick="sortTable(this, 5, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-          <th onclick="sortTable(this, 6, 'String')">Rebal In?</th>
+          <th onclick="sortTable(this, 6, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+          <th onclick="sortTable(this, 7, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
           <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
           <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-          <th onclick="sortTable(this, 13, 'String')">Active</th>
+          <th onclick="sortTable(this, 14, 'String')">Active</th>
         </tr>
       </thead>
       <tbody id="rebalancingTable">
