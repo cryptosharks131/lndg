@@ -23,7 +23,7 @@
         {% for message in messages %}
         <div class="w3-panel w3-orange w3-display-container">
           <span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span>
-          <h1 style="word-wrap: break-word;margin-top:15px">{{ message.message }}</h1>
+          <h1 style="word-wrap:break-word">{{ message.message }}</h1>
           {% with sliced_msg=message.message|slice:":17" %}
             {% if sliced_msg == "Deposit Address: " or sliced_msg == "Invoice created! " %}
               {% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}
