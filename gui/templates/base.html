@@ -64,13 +64,11 @@
       else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
 
       let divMsgs = document.getElementById("messages")
-      if (!divMsgs) return
-      if (divMsgs.getElementsByTagName("img").length > 0) return 
+      if (!divMsgs || divMsgs.getElementsByTagName("img").length > 0) return 
 
-      let total = 0
       for (let el of divMsgs.children){
-        total += await new Promise(r => setTimeout(() => r(1000), 1000))
         el.classList.toggle('message')
+        await new Promise(r => setTimeout(r, 2000))
       }
       await new Promise(r => setTimeout(r, 1000))
       divMsgs.remove()
