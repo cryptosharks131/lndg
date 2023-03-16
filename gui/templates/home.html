@@ -11,6 +11,17 @@
     function sleep(ms){
       return new Promise(res => setTimeout(res, ms));
     }
+    function toogleAR(elem){
+      Sync.PUT(`channels/${elem.dataset.chanId}`, {body:{auto_rebalance: elem.value == 'Enable' }}, function (ch) { 
+        elem.value = (ch.auto_rebalance ? 'Disable' : 'Enable'); 
+        elem.parentElement.previousElementSibling.innerHTML = !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => flash(this, r.ar_in_target));">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="3">
+        </form>` 
+      })
+    }
     async function toogle(button){
       try{
         button.children[0].style.visibility = 'collapse';
@@ -210,13 +221,7 @@
           {% endif %}
         </td>
         <td>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="5">
-            <input type="hidden" name="target" value="0">
-          </form>
+          <input type="submit" data-chan-id="{{channel.chan_id}}" value="{% if channel.auto_rebalance == True %}Dis{% else %}En{% endif %}able" onclick="toogleAR(this)">
         </td>
       </tr>
       {% endfor %}
