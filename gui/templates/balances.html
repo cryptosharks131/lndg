@@ -11,6 +11,7 @@
       <th>Amount</th>
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
+      <th>Action</th>
     </tr>
     {% for utxo in utxos %}
     <tr>
@@ -18,6 +19,19 @@
       <td>{{ utxo.amount_sat|intcomma }}</td>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ utxo.outpoint.txid_str }}" target="_blank">{{ utxo.outpoint.txid_str }}</a></td>
       <td>{{ utxo.confirmations|intcomma }}</td>
+      <td>
+        {% if utxo.confirmations == 0 %}
+          <form action="/api/bumpfee/" method="POST">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="1" max="100" name="target_fee">
+            <input type="submit" value="OK">
+            <input type="hidden" name="txid" value="{{ utxo.outpoint.txid_str }}">
+            <input type="hidden" name="index" value="{{ utxo.outpoint.output_index }}">
+          </form>
+        {% else %}
+          ---
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>
