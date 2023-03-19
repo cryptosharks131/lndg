@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count, F, Q
+from django.db.models import Sum, IntegerField, Count, Max, F, Q
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
@@ -10,13 +10,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps import wtclient_pb2 as wtrpc
 from gui.lnd_deps import wtclient_pb2_grpc as wtstub
+from gui.lnd_deps import walletkit_pb2 as walletrpc
+from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
@@ -154,9 +156,9 @@ def home(request):
             #Get recorded invoice details
             invoices = Invoices.objects.exclude(state=2)
             #Get recorded forwarding events
-            forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
+            forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
             #Get current active channels
-            active_channels = channels.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
+            active_channels = channels.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
             active_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
             active_inbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
             active_outbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
@@ -234,9 +236,9 @@ def home(request):
                     available_count += 1
                 detailed_active_channels.append(detailed_channel)
             #Get current inactive channels
-            inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
+            inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
             inactive_capacity = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('capacity'))['capacity__sum']
-            private_channels = channels.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
+            private_channels = channels.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
             inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
             inactive_inbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
             private_count = private_channels.count()
@@ -537,7 +539,7 @@ def fees(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def advanced(request):
     if request.method == 'GET':
-        channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
+        channels = Channels.objects.filter(is_open=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('-is_active', 'outbound_percent')
         channels_df = DataFrame.from_records(channels.values())
         if channels_df.shape[0] > 0:
             channels_df['out_percent'] = channels_df.apply(lambda row: int(round(row['outbound_percent']/10, 0)), axis=1)
@@ -574,8 +576,8 @@ def route(request):
                 'total_ppm': total_ppm,
                 'route': route,
                 'invoices': Invoices.objects.filter(r_hash=payment_hash),
-                'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
-                'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
+                'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height, hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
+                'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False, hash_lock=payment_hash).annotate(blocks_til_expiration=Sum('expiration_height')-block_height, hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
             }
             return render(request, 'route.html', context)
         except Exception as e:
@@ -617,9 +619,9 @@ def peers(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def balances(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect())
+        stub = walletstub.WalletKitStub(lnd_connect())
         context = {
-            'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
+            'utxos': stub.ListUnspent(walletrpc.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'network_links': network_links()
@@ -1395,9 +1397,7 @@ def opens(request):
         exlcude_list = AvoidNodes.objects.values_list('pubkey')
         filter_60day = datetime.now() - timedelta(days=60)
         payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
-        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).exclude(node_pubkey__in=exlcude_list).values('node_pubkey').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000).annotate(score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField())).annotate(count=Count('id')).annotate(amount=Sum('amt')).annotate(fees=Sum('fee')).annotate(sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000)).exclude(score=0).order_by('-score', 'ppm')[:21]
-        for open in open_list:
-            open['alias'] = PaymentHops.objects.filter(node_pubkey=open['node_pubkey']).order_by('-id')[0].alias
+        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).exclude(node_pubkey__in=exlcude_list).values('node_pubkey').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000, score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField()), count=Count('id'), amount=Sum('amt'), fees=Sum('fee'), sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000), alias=Max('alias')).exclude(score=0).order_by('-score', 'ppm')[:21]
         context = {
             'open_list': open_list,
             'avoid_list': AvoidNodes.objects.all(),
@@ -1411,7 +1411,7 @@ def opens(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def actions(request):
     if request.method == 'GET':
-        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
+        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
         filter_7day = datetime.now() - timedelta(days=7)
         forwards = Forwards.objects.filter(forward_date__gte=filter_7day)
         action_list = []
@@ -1476,8 +1476,8 @@ def pending_htlcs(request):
         stub = lnrpc.LightningStub(lnd_connect())
         block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
         context = {
-            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
-            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False).annotate(blocks_til_expiration=Sum('expiration_height')-block_height).annotate(hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
+            'incoming_htlcs': PendingHTLCs.objects.filter(incoming=True).annotate(blocks_til_expiration=Sum('expiration_height')-block_height, hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock'),
+            'outgoing_htlcs': PendingHTLCs.objects.filter(incoming=False).annotate(blocks_til_expiration=Sum('expiration_height')-block_height, hours_til_expiration=((Sum('expiration_height')-block_height)*10)/60).order_by('hash_lock')
         }
         return render(request, 'pending_htlcs.html', context)
     else:
@@ -1492,10 +1492,7 @@ def failed_htlcs(request):
             direction = None if query is None or len(query) < 2 else query[1]
             failed_htlcs = FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_in=chan_id).order_by('-id')[:150])
             filter_7day = datetime.now() - timedelta(days=7)
-            agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp__gte=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id')).annotate(volume=Sum('amount')).order_by('-count')[:21]
-            for failed_htlc in agg_failed_htlcs:
-                failed_htlc['chan_in_alias'] = Channels.objects.get(chan_id=failed_htlc['chan_id_in']).alias
-                failed_htlc['chan_out_alias'] = Channels.objects.get(chan_id=failed_htlc['chan_id_out']).alias
+            agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp__gte=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id'), volume=Sum('amount'), chan_in_alias=Max('chan_in_alias'), chan_out_alias=Max('chan_out_alias')).order_by('-count')[:21]
             context = {
                 'failed_htlcs': failed_htlcs,
                 'agg_failed_htlcs': agg_failed_htlcs
@@ -1697,7 +1694,7 @@ def batch_open(request):
 def forwards(request):
     if request.method == 'GET':
         context = {
-            'forwards': Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000).annotate(amt_out=Sum('amt_out_msat')/1000).annotate(ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')[:150],
+            'forwards': Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')[:150],
         }
         return render(request, 'forwards.html', context)
     else:
@@ -1706,7 +1703,7 @@ def forwards(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def rebalancing(request):
     if request.method == 'GET':
-        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
+        channels_df = DataFrame.from_records(Channels.objects.filter(is_open=True, private=False).annotate(percent_inbound=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'), percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).order_by('-is_active', 'percent_outbound').values())
         filter_7day = datetime.now() - timedelta(days=7)
         rebalancer_7d_df = DataFrame.from_records(Rebalancer.objects.filter(stop__gte=filter_7day).order_by('-id').values())
         if channels_df.shape[0] > 0:
@@ -2873,3 +2870,28 @@ def pending_channels(request):
         debug_error_index = error.find('debug_error_string =') - 3
         error_msg = error[details_index:debug_error_index]
         return Response({'error': 'Failed to get pending channels! Error: ' + error_msg})
+
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def bump_fee(request):
+    serializer = BumpFeeSerializer(data=request.data)
+    if serializer.is_valid():
+        txid = serializer.validated_data['txid']
+        index = serializer.validated_data['index']
+        target_fee = serializer.validated_data['target_fee']
+        force = serializer.validated_data['force']
+        try:
+            target_outpoint = ln.OutPoint()
+            target_outpoint.txid_str = txid
+            target_outpoint.output_index = index
+            stub = walletstub.WalletKitStub(lnd_connect())
+            stub.BumpFee(walletrpc.BumpFeeRequest(outpoint=target_outpoint, sat_per_vbyte=target_fee, force=force))
+            return Response({'message': f'Fee bumped to {target_fee} sats/vbyte for outpoint: {txid}:{index}'})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': f'Fee bump failed! Error: {error_msg}'})
+    else:
+        return Response({'error': 'Invalid request!'})
