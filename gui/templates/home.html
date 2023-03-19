@@ -8,6 +8,17 @@
   <script language="Javascript">
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
+    function toogleAR(elem){
+      Sync.PUT(`channels/${elem.dataset.chanId}`, {body:{auto_rebalance: elem.value == 'Enable' }}, function (ch) { 
+        elem.value = (ch.auto_rebalance ? 'Dis' : 'En') + 'able' 
+        elem.parentElement.previousElementSibling.innerHTML = !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
+          {% csrf_token %}
+          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
+          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+          <input type="hidden" name="update_target" value="3">
+        </form>` 
+      })
+    }
     function qr_gen(addr){
       var qrcode = new QRCode(document.getElementById('qrcode'), {text:addr, width:256, height:256})
       document.getElementById('qrcode').style.display = 'block'
@@ -192,7 +203,7 @@
           {% if channel.auto_rebalance == True %}
             <form action="/update_channel/" method="post">
               {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}" onChange="Sync.PUT('channels/{{ channel.chan_id }}', {body: {ar_in_target: this.value}}, r => flash(this, r.ar_in_target));">
+              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{channel.ar_in_target}}" onChange="Sync.PUT('channels/{{channel.chan_id}}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)})">
               <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
               <input type="hidden" name="update_target" value="3">
             </form>
@@ -201,13 +212,7 @@
           {% endif %}
         </td>
         <td>
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="5">
-            <input type="hidden" name="target" value="0">
-          </form>
+          <input type="submit" data-chan-id="{{channel.chan_id}}" value="{% if channel.auto_rebalance == True %}Dis{% else %}En{% endif %}able" onclick="toogleAR(this)">
         </td>
       </tr>
       {% endfor %}
