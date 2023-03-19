@@ -13,15 +13,15 @@
           <th onclick="sortTable(this, 3, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(this, 4, ' (')">Inbound Liquidity</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
-          <th onclick="sortTable(this, 5, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-          <th onclick="sortTable(this, 6, 'String')">Rebal In?</th>
+          <th onclick="sortTable(this, 6, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+          <th onclick="sortTable(this, 7, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
           <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
           <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-          <th onclick="sortTable(this, 13, 'String')">Active</th>
+          <th onclick="sortTable(this, 14, 'String')">Active</th>
         </tr>
       </thead>
       <tbody id="rebalancingTable">
@@ -76,11 +76,11 @@
       "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
       "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
       "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-      "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
+      "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
       "ar_amt_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
         {% csrf_token %}
         <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}}">
+        <input type="hidden" name="chan_id" value="${ch.chan_id}">
         <input type="hidden" name="update_target" value="2">
       </form>`}),
       "ar_max_cost": ch => ({innerHTML: `<form action="/update_channel/" method="post">
@@ -123,7 +123,7 @@
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
       ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
-      ch.steps = ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999)
+      ch.steps = parseInt(ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
       //global counters
       enabled += ch.auto_rebalance ? 1 : 0
       elegible += ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0
@@ -137,7 +137,7 @@
           if(r.status == 2) ch.success_rate = ch.success += 1
         }
       }
-      ch.success_rate /= 100
+      ch.success_rate = parseInt(ch.success_rate/100)
     })
     container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
