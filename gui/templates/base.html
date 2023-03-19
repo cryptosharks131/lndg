@@ -3,10 +3,10 @@
 <html>
   <style>
   </style>
-  <script src="{% static 'api.js' %}"></script>
+  <script id="api" data-token="{{csrf_token}}" src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
   <script src="{% static 'dark_mode.js' %}"></script>
-  <script>const token = "{{ csrf_token }}"</script>
+  <script src="{% static 'qrcode.js' %}"></script>
   <head>
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
@@ -16,18 +16,25 @@
   </head>
   <body onload="applyTheme()">
     <div id="content">
-        {% if messages %}
-        <div class="w3-container w3-padding-small">
-          {% for message in messages %}
-            <h1 class="w3-orange w3-padding-small" style="word-wrap: break-word;margin-top:15px">{{ message.message }}</h1>
-            {% if message.message|slice:":17" == "Deposit Address: " or message.message|slice:":17" == "Invoice created! " %}{% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}{% endif %}
-          {% endfor %}
+      {% if messages %}
+      <div id="messages" class="w3-container w3-padding-small">
+        {% for message in messages %}
+        <div class="w3-panel w3-orange w3-display-container w3-padding">
+          <span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span>
+          <h1 style="word-wrap:break-word">{{ message.message }}</h1>
+          {% with sliced_msg=message.message|slice:":17" %}
+            {% if sliced_msg == "Deposit Address: " or sliced_msg == "Invoice created! " %}
+              {% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}
+            {% endif %}
+          {% endwith %}
         </div>
-        {% endif %}
-        <div class="w3-container">
-          <h1><a href="/">My Lnd Overview</a></h1>
-        </div>
-        {% block content %}{% endblock %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="w3-container">
+        <h1><a href="/">My Lnd Overview</a></h1>
+      </div>
+      {% block content %}{% endblock %}
     </div>
   </body>
   <footer>
@@ -55,34 +62,47 @@
         }
       }
     };
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       if (document.cookie.includes("privacy=soft")) document.body.classList.toggle("soft-encrypted")
       else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
+
+      let divMsgs = document.getElementById("messages")
+      if (!divMsgs || divMsgs.getElementsByTagName("img").length > 0) return 
+
+      for (let el of divMsgs.children){
+        el.classList.toggle('message')
+        await new Promise(r => setTimeout(r, 2000))
+      }
+      await new Promise(r => setTimeout(r, 1000))
+      divMsgs.remove()
     })
 
 
+    HTMLElement.prototype.apply = function(transforms){
+      for(key in transforms){
+        const value = transforms[key]
+        if(value instanceof HTMLElement){
+          this.append(value)
+        }
+        else if (key == 'style'){
+          for(prop of Object.keys(value)){
+            this[key][prop] = value[prop]
+          }
+        }
+        else{
+          this[key] = value
+        }
+      }
+    }
     function use(transformations){
       return { 
-        fillWith(object, row = null){
+        fillWith: function(object, row = null){
           const tr = row ?? document.createElement("tr")
           for (id in transformations){
-            const td = document.createElement("td")
             const transforms = transformations[id](object)
+            const td = document.createElement("td")
+            td.apply(transforms)
             tr.append(td)
-            for(key in transforms){
-              const value = transforms[key]
-              if(value instanceof HTMLElement){
-                td.append(value)
-              }
-              else if (key == 'style'){
-                for(prop of Object.keys(value)){
-                  td[key][prop] = value[prop]
-                }
-              }
-              else{
-                td[key] = value
-              }
-            }
           }
           return tr
         }

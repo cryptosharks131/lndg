@@ -8,23 +8,13 @@
   <script language="Javascript">
     var dt = new Date();
     document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
-    function sleep(ms){
-      return new Promise(res => setTimeout(res, ms));
+    function qr_gen(addr){
+      var qrcode = new QRCode(document.getElementById('qrcode'), {text:addr, width:256, height:256})
+      document.getElementById('qrcode').style.display = 'block'
     }
-    async function toogle(button){
-      try{
-        button.children[0].style.visibility = 'collapse';
-        button.children[1].style.visibility = 'visible';
-        navigator.clipboard.writeText(button.getAttribute('data-addr'))
-        await sleep(1000)
-      }
-      catch(e){
-        alert(button.getAttribute('data-addr'))
-      }
-      finally{
-        button.children[0].style.visibility = 'visible';
-        button.children[1].style.visibility = 'collapse'
-      }
+    function qr_clear(){
+      document.getElementById('qrcode').replaceChildren()
+      document.getElementById('qrcode').style.display = 'none'
     }
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
@@ -51,7 +41,7 @@
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
     <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
-    <a href="#." data-addr="{{addr}}" onclick="toogle(this)">
+    <a href="#." data-addr="{{addr}}" onclick="toogle(this)" onmouseleave="qr_clear()" onmouseenter="qr_gen('{{ addr }}');">
       <svg style="height:30px;width:30px;transform:matrix(1, 0, 0, 1, 4, 3)" version="1.1" >
         <path style="" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
         <path style="" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
@@ -60,6 +50,7 @@
         <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
       </svg>
     </a>
+    <div style="display: none; position: absolute; top: 30px; right: 30px; padding: 30px; background: white" id="qrcode"></div>
   </div>
   {% endfor %}
 </div>
@@ -181,6 +172,38 @@
   </div>
 </div>
 <script>
+  const detailed_ch_template = {
+    "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+    "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
+    "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
+    <div class="progress w3-round w3-grey">
+      <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+    </div>`}),
+    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
+    "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
+    "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "o1D": ch => ({innerHTML: `${ch.amt_routed_out_1day.toLocaleString()} M (${ch.routed_out_1day})`}),
+    "i1D": ch => ({innerHTML: `${ch.amt_routed_in_1day.toLocaleString()} M (${ch.routed_in_1day})`}),
+    "o7D": ch => ({innerHTML: `${ch.amt_routed_out_7day.toLocaleString()} M (${ch.routed_out_7day})`}),
+    "i7D": ch => ({innerHTML: `${ch.amt_routed_in_7day.toLocaleString()} M (${ch.routed_in_7day})`}),
+    "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
+    "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
+    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="3">
+    </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toogleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+  }
+  function toogleAR(button){
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
+      button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
+      button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
+    })
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
     const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1))
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,10)
@@ -191,56 +214,7 @@
       container.remove()
       return
     }
-
-    const transformations = {
-      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
-      "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
-      "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
-      <div class="progress w3-round w3-grey">
-        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
-      </div>`}),
-      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
-      "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
-      "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
-      "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
-      "o1D": ch => ({innerHTML: `${ch.amt_routed_out_1day.toLocaleString()} M (${ch.routed_out_1day})`}),
-      "i1D": ch => ({innerHTML: `${ch.amt_routed_in_1day.toLocaleString()} M (${ch.routed_in_1day})`}),
-      "o7D": ch => ({innerHTML: `${ch.amt_routed_out_7day.toLocaleString()} M (${ch.routed_out_7day})`}),
-      "i7D": ch => ({innerHTML: `${ch.amt_routed_in_7day.toLocaleString()} M (${ch.routed_in_7day})`}),
-      "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
-      "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
-      "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => flash(this, r.ar_in_target));">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="3">
-      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-      "auto_rebalance": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="5">
-        <input type="hidden" name="target" value="0">
-      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-    }
-    const forwards7d = await forwards7d_task
-    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date) >= _1day_ago)
-    const activeChannels = document.getElementById("activeChannels")
-    resp.results.forEach(ch => {
-      //derived properties
-      ch.local_balance += ch.pending_outbound
-      ch.remote_balance += ch.pending_inbound
-      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
-      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
-      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
-      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
-      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
-      
-      sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
-      sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
-    })
-
+    container.insertAdjacentHTML('afterbegin', `<h2>Active Channels</h2>`)    
     function sumRoutedValues(forwards, ch, fields){
       for(field of fields) ch[field] = 0
       for(f of forwards){
@@ -254,10 +228,24 @@
         }
       }
     }
-    container.insertAdjacentHTML('afterbegin', `<h2>Active Channels</h2>`)
 
-    resp.results.sort(ch => -ch.percent_outbound)
-      .forEach(ch => activeChannels.append(use(transformations).fillWith(ch)))
+    const forwards7d = await forwards7d_task
+    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date) >= _1day_ago)
+    const activeChannels = document.getElementById("activeChannels")
+    resp.results.map(ch => { //derived properties
+      ch.local_balance += ch.pending_outbound
+      ch.remote_balance += ch.pending_inbound
+      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
+      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
+      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
+      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
+      
+      sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      return ch
+    }).sort(ch => -ch.percent_outbound)
+      .forEach(ch => activeChannels.append(use(detailed_ch_template).fillWith(ch)))
   })
 </script>
 {% if inactive_channels %}
@@ -746,6 +734,7 @@
       <div class="input" data-unit="sats/vbyte" title="Closing tx fee">
         <input id="target_fee" placeholder="0" type="number" min="1" name="target_fee">
       </div>
+      <label style="top:-4px;position:relative" title="Force Close" for="force">FC</label>
       <input class="w3-check" id="force" style="top:2px" title="Force Close?" type="checkbox" name="force">
       <input type="submit" style="position:relative;top:-4px" value="OK">
     </form>
