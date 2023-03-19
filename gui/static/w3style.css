@@ -253,6 +253,7 @@ a:link {text-decoration: none}
 .progress .value {display: flex;height: 100%;animation: fill 1s ease forwards}
 input:not([type=submit]):not([type=checkbox]):focus, select:focus {outline: none !important;border: 2px solid #0969da;box-shadow: inset 0 0 0 1px #0969da;}
 .dark-mode input:not([type=submit]):not([type=checkbox]):focus, .dark-mode select:focus {outline: none !important;border:2px solid #58a6ff;box-shadow: inset 0 0 0 1px #58a6ff;}
+@keyframes fadeOut {from {opacity: 1;}to {opacity: 0; height:0; margin: 0; padding: 0;}}.message {animation: fadeOut 2s linear forwards;animation-delay: 2s;}
 .input {position:relative;float:left;padding:0px 4px}.input::after{position:absolute;right: 25px;top:2px;opacity:.8;content:attr(data-unit);color:#555599}
 .encrypted td:not(th){-webkit-text-security:circle;}.encrypted thead th:not(a){-webkit-text-security:circle;}
 .soft-encrypted table td, .soft-encrypted table thead{color: transparent;text-shadow: 0 0 5px rgba(0,0,0,0.1);}
