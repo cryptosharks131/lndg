@@ -11,7 +11,7 @@
       <th>Amount</th>
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
-      <th>Action</th>
+      <th>Fee Bumps</th>
     </tr>
     {% for utxo in utxos %}
     <tr>
@@ -23,8 +23,9 @@
         {% if utxo.confirmations == 0 %}
           <form action="/api/bumpfee/" method="POST">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="1" max="100" name="target_fee">
-            <input type="submit" value="OK">
+            <span style="float:none" class="input" data-unit="sats/vbyte" title="Fee bump a tx">
+              <input style="width:225px" id="target_fee" type="number" min="1" max="100" placeholder="New Fee Rate" name="target_fee">
+            </span>
             <input type="hidden" name="txid" value="{{ utxo.outpoint.txid_str }}">
             <input type="hidden" name="index" value="{{ utxo.outpoint.output_index }}">
           </form>

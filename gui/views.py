@@ -619,9 +619,9 @@ def peers(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def balances(request):
     if request.method == 'GET':
-        stub = lnrpc.LightningStub(lnd_connect())
+        stub = walletstub.WalletKitStub(lnd_connect())
         context = {
-            'utxos': stub.ListUnspent(ln.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
+            'utxos': stub.ListUnspent(walletrpc.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'network_links': network_links()
