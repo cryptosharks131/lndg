@@ -107,7 +107,7 @@ class CloseChannelSerializer(serializers.Serializer):
 
 class BumpFeeSerializer(serializers.Serializer):
     txid = serializers.CharField(label='txid')
-    index = serializers.BooleanField(label='index')
+    index = serializers.IntegerField(label='index')
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 

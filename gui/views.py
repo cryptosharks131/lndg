@@ -2886,7 +2886,7 @@ def bump_fee(request):
             target_outpoint.output_index = index
             stub = walletstub.WalletKitStub(lnd_connect())
             stub.BumpFee(walletrpc.BumpFeeRequest(outpoint=target_outpoint, sat_per_vbyte=target_fee, force=force))
-            return Response({'message': 'Fee bumped!'})
+            return Response({'message': f'Fee bumped to {target_fee} sats/vbyte for outpoint: {txid}:{index}'})
         except Exception as e:
             error = str(e)
             details_index = error.find('details =') + 11

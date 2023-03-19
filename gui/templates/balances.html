@@ -21,7 +21,7 @@
       <td>{{ utxo.confirmations|intcomma }}</td>
       <td>
         {% if utxo.confirmations == 0 %}
-          <form action="/api/bumpfee/" method="POST">
+          <form action="/api/bumpfee/" method="POST" target="_blank">
             {% csrf_token %}
             <span style="float:none" class="input" data-unit="sats/vbyte" title="Fee bump a tx">
               <input style="width:225px" id="target_fee" type="number" min="1" max="100" placeholder="New Fee Rate" name="target_fee">
