@@ -103,8 +103,10 @@
       </tr>
       {% endfor %}
     </table>
-    <br/>
-    <form id="rebal_form" action="/rebalancer/" method="post">
+  </div>
+  <div class="w3-container w3-padding-small">
+    <h5 style="float:left" title="Select outgoing channels above">Manual Rebalance Request:</h5>
+    <form style="padding-top:13px;padding-left:15em;" id="rebal_form" action="/rebalancer/" method="post">
       {% csrf_token %}
       <span style="width:200px" class="input" data-unit="min" title="Run Time">
         <input placeholder="0" style="width:100%" id="duration" type="number" min="1" max="60" name="duration">
