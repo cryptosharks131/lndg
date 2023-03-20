@@ -2374,12 +2374,7 @@ class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all()
     serializer_class = ForwardSerializer
-    filterset_fields = ['forward_date']
-    
-    def get_queryset(self):
-        qs = super().get_queryset()
-        forward_date__gt = self.request.query_params.get('forward_date__gt', datetime.min)
-        return qs.filter(forward_date__gt=forward_date__gt)
+    filterset_fields = {'forward_date': ['lt','gt']}
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
