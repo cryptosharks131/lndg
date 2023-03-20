@@ -66,7 +66,7 @@
           input.innerHTML = "❌"
           input.title="Cancel this request" 
           input.onclick = async function(){
-            const response = await PUT(`rebalancer/${rebalance.id}`, {body: {'status': 499}})
+            const response = await PUT(`rebalancer/${rebalance.id}`, {body: {status: 499}})
             
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1

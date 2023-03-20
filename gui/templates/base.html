@@ -48,8 +48,17 @@
     </div>
   </footer>
   <script>
+    function sleep(ms){
+      return new Promise(res => setTimeout(res, ms));
+    }
+    HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
+    HTMLElement.prototype.cloneNode = function(attrs){
+      const el = this.defaultCloneNode(this)
+      Object.keys(attrs).forEach(k => el[k] = attrs[k])
+      return el
+    }
     const modes = {'soft-encrypted': 'soft', encrypted: 'hard'}
-      document.onkeypress = function (e) {
+    document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
       else if(e.shiftKey && e.charCode == 69) document.body.classList.toggle("soft-encrypted")
 
@@ -69,13 +78,27 @@
 
       for (let el of divMsgs.children){
         el.classList.toggle('message')
-        await new Promise(r => setTimeout(r, 2000))
+        await sleep(2000)
       }
-      await new Promise(r => setTimeout(r, 1000))
+      await sleep(1000)
       divMsgs.remove()
     })
 
-
+    async function toogle(button){
+      try{
+        button.children[0].style.visibility = 'collapse';
+        button.children[1].style.visibility = 'visible';
+        navigator.clipboard.writeText(button.getAttribute('data-value'))
+        await sleep(1000)
+      }
+      catch(e){
+        alert(button.getAttribute('data-value'))
+      }
+      finally{
+        button.children[0].style.visibility = 'visible';
+        button.children[1].style.visibility = 'collapse'
+      }
+    }
     function use(transformations){
       return { 
         fillWith(object, row = null){
