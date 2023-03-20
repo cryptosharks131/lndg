@@ -74,5 +74,34 @@
       await new Promise(r => setTimeout(r, 1000))
       divMsgs.remove()
     })
+
+
+    function use(transformations){
+      return { 
+        fillWith(object, row = null){
+          const tr = row ?? document.createElement("tr")
+          for (id in transformations){
+            const td = document.createElement("td")
+            const transforms = transformations[id](object)
+            tr.append(td)
+            for(key in transforms){
+              const value = transforms[key]
+              if(value instanceof HTMLElement){
+                td.append(value)
+              }
+              else if (key == 'style'){
+                for(prop of Object.keys(value)){
+                  td[key][prop] = value[prop]
+                }
+              }
+              else{
+                td[key] = value
+              }
+            }
+          }
+          return tr
+        }
+      }
+    }
   </script>
 </html>
