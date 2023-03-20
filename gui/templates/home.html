@@ -206,7 +206,7 @@
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1))
-    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,10)
+    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const forwards7d_task = GET('forwards', {data: {forward_date__gt: _7days_ago} })
     const resp = await GET('channels', {data: {is_open:true, private:false, is_active:true} })
     const container = document.getElementById("active_channels_container")
