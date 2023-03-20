@@ -56,7 +56,7 @@
 </div>
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,10)
+    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400 } })
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'} })
     const container = document.getElementById("rebalances_container")
@@ -65,6 +65,8 @@
       return
     }
 
+    const red = 'rgba(248,81,73,0.15)'
+    const green = 'rgba(46,160,67,0.15)'
     const transformations = {
       "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
       "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),

@@ -81,17 +81,9 @@
     HTMLElement.prototype.apply = function(transforms){
       for(key in transforms){
         const value = transforms[key]
-        if(value instanceof HTMLElement){
-          this.append(value)
-        }
-        else if (key == 'style'){
-          for(prop of Object.keys(value)){
-            this[key][prop] = value[prop]
-          }
-        }
-        else{
-          this[key] = value
-        }
+        if(value instanceof HTMLElement) this.append(value)
+        else if (key == 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
+        else this[key] = value
       }
     }
     function use(transformations){
