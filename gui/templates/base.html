@@ -78,9 +78,9 @@
 
       for (let el of divMsgs.children){
         el.classList.toggle('message')
-        await new Promise(r => setTimeout(r, 2000))
+        await sleep(2000)
       }
-      await new Promise(r => setTimeout(r, 1000))
+      await sleep(1000)
       divMsgs.remove()
     })
 
@@ -97,6 +97,33 @@
       finally{
         button.children[0].style.visibility = 'visible';
         button.children[1].style.visibility = 'collapse'
+      }
+    }
+    function use(transformations){
+      return { 
+        fillWith(object, row = null){
+          const tr = row ?? document.createElement("tr")
+          for (id in transformations){
+            const td = document.createElement("td")
+            const transforms = transformations[id](object)
+            tr.append(td)
+            for(key in transforms){
+              const value = transforms[key]
+              if(value instanceof HTMLElement){
+                td.append(value)
+              }
+              else if (key == 'style'){
+                for(prop of Object.keys(value)){
+                  td[key][prop] = value[prop]
+                }
+              }
+              else{
+                td[key] = value
+              }
+            }
+          }
+          return tr
+        }
       }
     }
   </script>
