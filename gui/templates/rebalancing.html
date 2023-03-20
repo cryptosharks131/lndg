@@ -7,53 +7,49 @@
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
         <tr>
-          <th onclick="sortTable(this, 0, 'String')">Channel ID</th>
-          <th onclick="sortTable(this, 1, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(this, 2, ' (')">Outbound Liquidity</th>
-          <th onclick="sortTable(this, 3, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(this, 4, ' (')">Inbound Liquidity</th>
+          <th title="Select outgoing channels for a manual rebalance request"><input onclick="[...document.getElementsByClassName('chan_id')].forEach(el => {el.checked = this.checked; el.onclick()} )" class="w3-check" type="checkbox"/></th>
+          <th title="Public Key">PK</th>
+          <th onclick="sortTable(this, 2, 'String')">Channel ID</th>
+          <th onclick="sortTable(this, 3, 'String', 0, 'a')">Peer Alias</th>
+          <th onclick="sortTable(this, 4, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
+          <th onclick="sortTable(this, 6, ' (')">Inbound Liquidity</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
-          <th onclick="sortTable(this, 6, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-          <th onclick="sortTable(this, 7, 'String')">Rebal In?</th>
+          <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+          <th onclick="sortTable(this, 9, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
           <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
           <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-          <th onclick="sortTable(this, 14, 'String')">Active</th>
+          <th onclick="sortTable(this, 16, 'String')">Active</th>
         </tr>
       </thead>
       <tbody id="rebalancingTable">
       </tbody>
     </table>
   </div>
-</div>
-{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
-<div class="w3-container w3-padding-small">
-  <h2>Manual Rebalancer Request</h2>
-  <div class="w3-container w3-padding-32">
-    <form action="/rebalancer/" method="post">
+  <div class="w3-container w3-padding-small">
+    <h5 style="float:left" title="Select outgoing channels above">Manual Rebalance Request:</h5>
+    <form style="padding-top:13px;padding-left:15em;" id="rebal_form" action="/rebalancer/" method="post">
       {% csrf_token %}
-      <label for="duration">Run Time (min): </label>
-      <input id="duration" type="number" name="duration">
-      <label for="value">Rebalance Amount (sats): </label>
-      <input id="value" type="number" min="10" max="5000000" name="value">
-      <label for="fee_limit">Fee Limit (ppm): </label>
-      <input id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
-      <label for="last_hop_pubkey">Last Hop Pubkey: </label>
-      <input id="last_hop_pubkey" type="text" name="last_hop_pubkey">
+      <span style="width:200px" class="input" data-unit="min" title="Run Time">
+        <input placeholder="0" style="width:100%" id="duration" type="number" min="1" max="60" name="duration">
+      </span>
+      <span style="width:200px" class="input" data-unit="sats" title="Rebalance Amount">
+        <input style="width:100%" placeholder="0" id="value" type="number" min="10" max="5000000" name="value">
+      </span>
+      <span style="width:200px" class="input" data-unit="ppm" title="Fee Limit">
+        <input style="width:100%" placeholder="0" id="fee_limit" type="number" min="1" max="2500" name="fee_limit">
+      </span>
+      <input placeholder="Last Hop Pubkey" style="width:40%" id="last_hop_pubkey" type="text" name="last_hop_pubkey">
       <input type="submit" value="OK">
-      <ul class="w3-ul w3-border" style="width:56.15%">
-        <li><h3><label for="outgoing_chan_ids">Select Outgoing Channel IDs: </label></h3></li>
-        {% for channel in rebalancer_form.outgoing_chan_ids %}
-          <li>{{ channel }}</li>
-        {% endfor %}
-      </ul>
     </form>
   </div>
 </div>
+{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
@@ -65,9 +61,17 @@
       return
     }
 
-    const red = 'rgba(248,81,73,0.15)'
-    const green = 'rgba(46,160,67,0.15)'
     const transformations = {
+      "select": ch => ({innerHTML: `<input onclick="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : document.getElementById('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
+      "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toogle(this)">
+        <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
+          <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+          <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+        </svg>
+        <svg style="visibility:collapse;transform:translateY(-25px)" version="1.1" viewBox="0 0 16 16" width="25" height="25">
+          <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
+        </svg>
+      </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
       "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
       "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
       "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
