@@ -2493,16 +2493,7 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
-    filterset_fields = ['status', 'payment_hash', 'stop']
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        sts_gt = self.request.query_params.get('status__gt', 0)
-        sts_lt = self.request.query_params.get('status__lt', 1000)
-        stop = self.request.query_params.get('stop__gt', None)
-        if stop:
-            qs = qs.filter(stop__gt=stop)
-        return qs.filter(status__gt=sts_gt).filter(status__lt=sts_lt)
+    filterset_fields = {'status':['lt','gt'], 'payment_hash':['exact'], 'stop':['gt']}
     
     def create(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})

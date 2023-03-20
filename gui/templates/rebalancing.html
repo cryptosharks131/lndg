@@ -56,7 +56,7 @@
 </div>
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,10)
+    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400 } })
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'} })
     const container = document.getElementById("rebalances_container")
