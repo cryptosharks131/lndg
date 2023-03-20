@@ -151,9 +151,9 @@
 
     resp.results
       .sort((ch1, ch2) => { //sort by active, out%
-        if(ch1.is_active == ch2.is_active) return ch1.percent_outbound - ch2.percent_outbound
-        if(!ch2.is_active) return ch1
-        if(!ch1.is_active) return ch2
+        if(ch1.is_active && !ch2.is_active) return -1
+        if(!ch1.is_active && ch2.is_active) return 1
+        return ch1.percent_outbound - ch2.percent_outbound
       })
       .forEach(ch => rebal_table.append(use(transformations).fillWith(ch)))
   })
