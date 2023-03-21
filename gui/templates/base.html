@@ -48,6 +48,12 @@
     </div>
   </footer>
   <script>
+    document.querySelectorAll(".table").forEach(table =>
+      table.addEventListener("scroll", function (evt) {
+        const el = evt.currentTarget, sT = el.scrollTop;
+        el.querySelectorAll("thead th").forEach(th => th.style.transform = sT != 0 ? 'scale(1.05, 1.2)' : 'scale(1, 1)')
+      })
+    )
     function sleep(ms){
       return new Promise(res => setTimeout(res, ms));
     }
