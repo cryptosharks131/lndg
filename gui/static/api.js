@@ -1,4 +1,4 @@
-async function GET(url, {method = 'GET', data = null}){
+async function GET(url, {method = 'GET', data} = {}){
     return call({url, method, data})
 }
 
@@ -14,7 +14,7 @@ async function PATCH(url, {method = 'PATCH', body}){
     return call({url, method, body})
 }
 
-async function DELETE(url, {method = 'DELETE'}){
+async function DELETE(url, {method = 'DELETE'} = {}){
     return call({url, method})
 }
 

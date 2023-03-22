@@ -23,7 +23,7 @@
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
   </h6>
   <h6>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="total_capacity">0</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
@@ -64,21 +64,21 @@
     </tr>
     <tr>
       <th>Active</th>
-      <td>{{ inbound|intcomma }}</td>
-      <td>{{ outbound|intcomma }}</td>
-      <td>{{ unsettled|intcomma }}</td>
+      <td id="active_inbound">0</td>
+      <td id="active_outbound">0</td>
+      <td id="active_unsettled">0</td>
     </tr>
     <tr>
       <th>Inactive</th>
-      <td>{{ inactive_inbound|intcomma }}</td>
-      <td>{{ inactive_outbound|intcomma }}</td>
-      <td>{{ inactive_unsettled|intcomma }}</td>
+      <td id="inactive_inbound">0</td>
+      <td id="inactive_outbound">0</td>
+      <td id="inactive_unsettled">0</td>
     </tr>
     <tr>
       <th>Total</th>
-      <td>{{ sum_inbound|intcomma }}</td>
-      <td>{{ sum_outbound|intcomma }}</td>
-      <td>{{ total_unsettled|intcomma }}</td>
+      <td id="total_inbound">0</td>
+      <td id="total_outbound">0</td>
+      <td id="total_unsettled">0</td>
     </tr>
   </table>
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
@@ -171,152 +171,32 @@
     </table>
   </div>
 </div>
-<script>
-  const detailed_ch_template = {
-    "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
-    "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
-    "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
-    <div class="progress w3-round w3-grey">
-      <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
-    </div>`}),
-    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
-    "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
-    "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
-    "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
-    "o1D": ch => ({innerHTML: `${ch.amt_routed_out_1day.toLocaleString()} M (${ch.routed_out_1day})`}),
-    "i1D": ch => ({innerHTML: `${ch.amt_routed_in_1day.toLocaleString()} M (${ch.routed_in_1day})`}),
-    "o7D": ch => ({innerHTML: `${ch.amt_routed_out_7day.toLocaleString()} M (${ch.routed_out_7day})`}),
-    "i7D": ch => ({innerHTML: `${ch.amt_routed_in_7day.toLocaleString()} M (${ch.routed_in_7day})`}),
-    "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
-    "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
-    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
-      {% csrf_token %}
-      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
-      <input type="hidden" name="chan_id" value="${ch.chan_id}">
-      <input type="hidden" name="update_target" value="3">
-    </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toogleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-  }
-  function toogleAR(button){
-    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
-      button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
-      button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
-    })
-  }
-  document.addEventListener('DOMContentLoaded', async () =>{
-    const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1))
-    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
-    const forwards7d_task = GET('forwards', {data: {forward_date__gt: _7days_ago} })
-    const resp = await GET('channels', {data: {is_open:true, private:false, is_active:true} })
-    const container = document.getElementById("active_channels_container")
-    if (resp.results.length == 0) {
-      container.remove()
-      return
-    }
-    container.insertAdjacentHTML('afterbegin', `<h2>Active Channels</h2>`)    
-    function sumRoutedValues(forwards, ch, fields){
-      for(field of fields) ch[field] = 0
-      for(f of forwards){
-        if(f.chan_id_in == ch.chan_id){
-          ch[fields[0]] += 1
-          ch[fields[2]] += f.amt_in_msat
-        }
-        if(f.chan_id_out == ch.chan_id){
-          ch[fields[1]] += 1
-          ch[fields[3]] += f.amt_out_msat
-        }
-      }
-    }
-
-    const forwards7d = await forwards7d_task
-    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date) >= _1day_ago)
-    const activeChannels = document.getElementById("activeChannels")
-    resp.results.map(ch => { //derived properties
-      ch.local_balance += ch.pending_outbound
-      ch.remote_balance += ch.pending_inbound
-      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
-      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
-      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
-      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
-      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
-      
-      sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
-      sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
-      return ch
-    }).sort(ch => -ch.percent_outbound)
-      .forEach(ch => activeChannels.append(use(detailed_ch_template).fillWith(ch)))
-  })
-</script>
-{% if inactive_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Inactive Channels</h2>
-  <table id="inactiveChannels" class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
-      <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-      <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
-      <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-      <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
-      <th onclick="sortTable(event.target, 5, ' (')" width=6%>Unsettled</th>
-      <th onclick="sortTable(event.target, 6, 'int')" width=4%>oRate</th>
-      <th onclick="sortTable(event.target, 7, 'int')" width=4%>oBase</th>
-      <th onclick="sortTable(event.target, 8, 'int')" width=4%>iRate</th>
-      <th onclick="sortTable(event.target, 9, 'int')" width=4%>iBase</th>
-      <th width=5%>Local Commit</th>
-      <th width=5%>Local Reserve</th>
-      <th width=5%>Downtime</th>
-      <th width=5%>Opener</th>
-      <th width=4%>iTarget%</th>
-      <th width=4%>AR</th>
-    </tr>
-    {% for channel in inactive_channels %}
-    <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>
-        <label>{{channel.capacity|intcomma}}</label>
-        <div class="progress w3-round w3-grey">
-          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
-        </div>
-      </td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
-      <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
-      <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
-      <td>{{ channel.local_commit|intcomma }}</td>
-      <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
-      <td>{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
-      <td>
-        {% if channel.auto_rebalance == True %}
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="3">
-          </form>
-        {% else %}
-          ---
-        {% endif %}
-      </td>
-      <td>
-        <form action="/update_channel/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          <input type="hidden" name="update_target" value="5">
-          <input type="hidden" name="target" value="0">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
+<div id="inactive_channels_container" class="w3-container w3-padding-small">
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
+        <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 5, ' (')" width=6%>Unsettled</th>
+        <th onclick="sortTable(event.target, 6, 'int')" width=4%>oRate</th>
+        <th onclick="sortTable(event.target, 7, 'int')" width=4%>oBase</th>
+        <th onclick="sortTable(event.target, 8, 'int')" width=4%>iRate</th>
+        <th onclick="sortTable(event.target, 9, 'int')" width=4%>iBase</th>
+        <th width=5%>Local Commit</th>
+        <th width=5%>Local Reserve</th>
+        <th width=5%>Downtime</th>
+        <th width=5%>Opener</th>
+        <th width=4%>iTarget%</th>
+        <th width=4%>AR</th>
+      </tr>
+    </thead>
+    <tbody id="inactiveChannels">
+    </tbody>
   </table>
 </div>
-{% endif %}
 {% if private_channels %}
 <div class="w3-container w3-padding-small">
   <h2>Private Channels</h2>
@@ -762,4 +642,141 @@
     </form>
   </div>
 </div>
+<script>
+  const base_ch_template = {
+    "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+    "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
+    "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
+    <div class="progress w3-round w3-grey">
+      <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+    </div>`}),
+    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
+    "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
+    "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
+  }
+  const detailed_ch_template = Object.assign({}, base_ch_template, {
+    "o1D": ch => ({innerHTML: `${ch.amt_routed_out_1day.toLocaleString()} M (${ch.routed_out_1day})`}),
+    "i1D": ch => ({innerHTML: `${ch.amt_routed_in_1day.toLocaleString()} M (${ch.routed_in_1day})`}),
+    "o7D": ch => ({innerHTML: `${ch.amt_routed_out_7day.toLocaleString()} M (${ch.routed_out_7day})`}),
+    "i7D": ch => ({innerHTML: `${ch.amt_routed_in_7day.toLocaleString()} M (${ch.routed_in_7day})`}),
+    "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
+    "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
+    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="3">
+    </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toogleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+  })
+  let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
+  const inactive_ch_template = Object.assign({}, base_ch_template, {iRate, iBase}, {
+    "local_commit": ch => ({innerHTML: ch.local_commit.toLocaleString()}),
+    "local_chan_reserve": ch => ({innerHTML: ch.local_chan_reserve.toLocaleString()}),
+    "last_update": ch =>  ({innerHTML: formatDate(ch.last_update).replace(" ago", ""), title: adjustTZ(ch.last_update)}),
+    "initiator": ch => ({innerHTML: ch.initiator ? 'Local': 'Remote'}),
+  }, {ar_in_target, auto_rebalance})
+
+  function toogleAR(button){
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
+      button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
+      button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
+    })
+  }
+  function addTitle(title, results){
+    const container = document.getElementById(title.toLowerCase().replace(" ", "_") + '_container')
+    if (results.length == 0) {
+      container.remove()
+      return false
+    }
+    container.insertAdjacentHTML('afterbegin', `<h2>${title}</h2>`)
+    return true
+  }
+  async function build_active_channels(channels, forwards7d_task){
+    if(!addTitle("Active Channels", channels)) return
+    
+    const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1))
+    function sumRoutedValues(forwards, ch, fields){
+      for(field of fields) ch[field] = 0
+      for(f of forwards){
+        if(f.chan_id_in == ch.chan_id){
+          ch[fields[0]] += 1
+          ch[fields[2]] += f.amt_in_msat
+        }
+        if(f.chan_id_out == ch.chan_id){
+          ch[fields[1]] += 1
+          ch[fields[3]] += f.amt_out_msat
+        }
+      }
+    }
+
+    const forwards7d = await forwards7d_task
+    const activeChannels = document.getElementById("activeChannels")
+    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date) >= _1day_ago)
+    let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0}
+    channels.map(ch => { //derived properties
+      sum.capacity += ch.capacity
+      sum.active_inbound += ch.remote_balance
+      sum.active_outbound += ch.local_balance
+      sum.active_unsettled += ch.unsettled_balance
+
+      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
+      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
+      
+      sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      return ch
+    }).sort(ch => -ch.percent_outbound)
+      .forEach(ch => activeChannels.append(use(detailed_ch_template).fillWith(ch)))
+
+    update_sum('active_', sum)
+  }
+  function build_inactive_channels(channels){
+    if(!addTitle("Inactive Channels", channels)) return
+
+    const table = document.getElementById('inactiveChannels')
+    let sum = {capacity: 0, inactive_inbound: 0, inactive_outbound: 0, inactive_unsettled: 0}
+    channels.forEach(ch => {
+      sum.capacity += ch.capacity
+      sum.inactive_inbound += ch.remote_balance
+      sum.inactive_outbound += ch.local_balance
+      sum.inactive_unsettled += ch.unsettled_balance
+      table.append(use(inactive_ch_template).fillWith(ch))
+    })
+    update_sum('inactive_', sum)
+  }
+
+  function update_sum(prefix, sum){
+    const capacity = document.getElementById('total_capacity')
+    capacity.innerHTML = (parseInt(capacity.innerHTML.replace(/,/g,'')) + sum.capacity).toLocaleString()
+    for (id of ['inbound', 'outbound', 'unsettled']){
+      const value = sum[prefix+id], total = document.getElementById('total_'+id)
+      document.getElementById(prefix+id).innerHTML = value.toLocaleString()
+      total.innerHTML = (parseInt(total.innerHTML.replace(/,/g,'')) + value).toLocaleString()
+    }
+  }
+  document.addEventListener('DOMContentLoaded', async () =>{
+    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
+    const forwards7d_task = GET('forwards', {data: {forward_date__gt: _7days_ago} })
+    const channels = await GET('channels', {data: {is_open:true} })
+    
+    const active_channels = [], inactive_channels = []
+    for (ch of channels.results){
+      ch.local_balance += ch.pending_outbound
+      ch.remote_balance += ch.pending_inbound
+      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
+      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
+
+      if(ch.is_open && !ch.private){
+        (ch.is_active ? active_channels : inactive_channels).push(ch)
+      }
+    }
+
+    build_active_channels(active_channels, forwards7d_task)
+    build_inactive_channels(inactive_channels)
+  })
+</script>
 {% endblock %}
