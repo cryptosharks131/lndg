@@ -157,55 +157,14 @@ def home(request):
             invoices = Invoices.objects.exclude(state=2)
             #Get recorded forwarding events
             forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
-            #Get current active channels
-            active_channels = channels.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by('outbound_percent')
-            active_capacity = 0 if active_channels.count() == 0 else active_channels.aggregate(Sum('capacity'))['capacity__sum']
-            active_inbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
-            active_outbound = 0 if active_capacity == 0 else active_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-            active_unsettled = 0 if active_capacity == 0 else active_channels.aggregate(Sum('unsettled_balance'))['unsettled_balance__sum']
-            filter_7day = datetime.now() - timedelta(days=7)
-            filter_1day = datetime.now() - timedelta(days=1)
-            forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
-            forwards_df_1d = DataFrame() if forwards_df_7d.empty else forwards_df_7d[forwards_df_7d['forward_date']>=filter_1day]
-            routed_1day = forwards_df_1d.shape[0]
-            routed_7day = forwards_df_7d.shape[0]
-            routed_7day_amt = 0 if routed_7day == 0 else int(forwards_df_7d['amt_out_msat'].sum()/1000)
-            routed_1day_amt = 0 if routed_1day == 0 else int(forwards_df_1d['amt_out_msat'].sum()/1000)
-            total_earned_7day = 0 if routed_7day == 0 else forwards_df_7d['fee'].sum()
-            total_earned_1day = 0 if routed_1day == 0 else forwards_df_1d['fee'].sum()
-            payments_7day = payments.filter(status=2).filter(creation_date__gte=filter_7day)
-            payments_7day_amt = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('value'))['value__sum']
-            payments_1day = payments.filter(status=2).filter(creation_date__gte=filter_1day)
-            payments_1day_amt = 0 if payments_1day.count() == 0 else payments_1day.aggregate(Sum('value'))['value__sum']
-            total_7day_fees = 0 if payments_7day.count() == 0 else payments_7day.aggregate(Sum('fee'))['fee__sum']
-            total_1day_fees = 0 if payments_1day.count() == 0 else payments_1day.aggregate(Sum('fee'))['fee__sum']
             pending_htlc_count = channels.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if channels.filter(is_open=True).exists() else 0
-            pending_outbound = channels.filter(is_open=True).aggregate(Sum('pending_outbound'))['pending_outbound__sum'] if channels.filter(is_open=True).exists() else 0
-            pending_inbound = channels.filter(is_open=True).aggregate(Sum('pending_inbound'))['pending_inbound__sum'] if channels.filter(is_open=True).exists() else 0
             num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
-            #Get current inactive channels
-            inactive_channels = channels.filter(is_active=False, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
-            inactive_capacity = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('capacity'))['capacity__sum']
+            #Get current private channels
             private_channels = channels.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
-            inactive_outbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-            inactive_inbound = 0 if inactive_channels.count() == 0 else inactive_channels.aggregate(Sum('remote_balance'))['remote_balance__sum']
             private_count = private_channels.count()
             active_private = private_channels.filter(is_active=True).count()
             private_capacity = private_channels.aggregate(Sum('capacity'))['capacity__sum']
             private_outbound = 0 if private_count == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-            sum_outbound = active_outbound + pending_outbound + inactive_outbound
-            sum_inbound = active_inbound + pending_inbound + inactive_inbound
-            onchain_txs = Onchain.objects.all()
-            onchain_costs_7day = 0 if onchain_txs.filter(time_stamp__gte=filter_7day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_7day).aggregate(Sum('fee'))['fee__sum']
-            onchain_costs_1day = 0 if onchain_txs.filter(time_stamp__gte=filter_1day).count() == 0 else onchain_txs.filter(time_stamp__gte=filter_1day).aggregate(Sum('fee'))['fee__sum']
-            closures_7day = Closures.objects.filter(close_height__gte=(node_info.block_height - 1008))
-            closures_1day = Closures.objects.filter(close_height__gte=(node_info.block_height - 144))
-            close_fees_7day = closures_7day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_7day.exists() else 0
-            close_fees_1day = closures_1day.aggregate(Sum('closing_costs'))['closing_costs__sum'] if closures_1day.exists() else 0
-            onchain_costs_7day += close_fees_7day
-            onchain_costs_1day += close_fees_1day
-            total_costs_7day = total_7day_fees + onchain_costs_7day
-            total_costs_1day = total_1day_fees + onchain_costs_1day
             #Get list of recent rebalance requests
             active_count = node_info.num_active_channels - active_private
             total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
@@ -220,44 +179,15 @@ def home(request):
                 'active_count': active_count,
                 'total_channels': total_channels,
                 'balances': balances,
-                'total_balance': balances.total_balance + sum_outbound + pending_open_balance + limbo_balance + private_outbound,
+                'total_balance': balances.total_balance + pending_open_balance + limbo_balance + private_outbound,
                 'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
                 'invoices': invoices.order_by('-creation_date')[:6],
                 'forwards': forwards[:15],
-                'routed_1day': routed_1day,
-                'routed_7day': routed_7day,
-                'routed_1day_amt': routed_1day_amt,
-                'routed_7day_amt': routed_7day_amt,
-                'earned_1day': int(total_earned_1day),
-                'earned_7day': int(total_earned_7day),
-                'routed_1day_percent': 0 if sum_outbound == 0 else int((routed_1day_amt/sum_outbound)*100),
-                'routed_7day_percent': 0 if sum_outbound == 0 else int((routed_7day_amt/sum_outbound)*100),
-                'profit_per_outbound_1d': 0 if sum_outbound == 0 else int((total_earned_1day - total_1day_fees)/(sum_outbound/1000000)),
-                'profit_per_outbound_real_1d': 0 if sum_outbound == 0 else int((total_earned_1day - total_costs_1day)/(sum_outbound/1000000)),
-                'profit_per_outbound_7d': 0 if sum_outbound == 0 else int((total_earned_7day - total_7day_fees)/(sum_outbound/1000000)),
-                'profit_per_outbound_real_7d': 0 if sum_outbound == 0 else int((total_earned_7day - total_costs_7day)/(sum_outbound/1000000)),
-                'percent_cost_1day': 0 if total_earned_1day == 0 else int((total_costs_1day/total_earned_1day)*100),
-                'percent_cost_7day': 0 if total_earned_7day == 0 else int((total_costs_7day/total_earned_7day)*100),
-                'onchain_costs_1day': onchain_costs_1day,
-                'onchain_costs_7day': onchain_costs_7day,
-                'total_1day_fees': int(total_1day_fees),
-                'total_7day_fees': int(total_7day_fees),
-                'total_capacity': active_capacity + inactive_capacity,
                 'active_private': active_private,
                 'total_private': private_count,
                 'private_outbound': private_outbound,
                 'private_capacity': private_capacity,
-                'inbound': active_inbound,
-                'sum_inbound': sum_inbound,
-                'inactive_inbound': inactive_inbound,
-                'outbound': active_outbound,
-                'sum_outbound': sum_outbound,
-                'inactive_outbound': inactive_outbound,
-                'unsettled': active_unsettled,
-                'inactive_unsettled': pending_outbound + pending_inbound - active_unsettled,
-                'total_unsettled': pending_outbound + pending_inbound,
                 'limbo_balance': limbo_balance,
-                'inactive_channels': inactive_channels,
                 'private_channels': private_channels,
                 'pending_open': pending_open,
                 'pending_closed': pending_closed,
@@ -266,11 +196,6 @@ def home(request):
                 'local_settings': local_settings,
                 'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
-                '1day_routed_ppm': 0 if routed_1day_amt == 0 else int((total_earned_1day/routed_1day_amt)*1000000),
-                '7day_routed_ppm': 0 if routed_7day_amt == 0 else int((total_earned_7day/routed_7day_amt)*1000000),
-                '1day_payments_ppm': 0 if payments_1day_amt == 0 else int((total_1day_fees/payments_1day_amt)*1000000),
-                '7day_payments_ppm': 0 if payments_7day_amt == 0 else int((total_7day_fees/payments_7day_amt)*1000000),
-                'liq_ratio': 0 if sum_outbound == 0 else int((sum_inbound/sum_outbound)*100),
                 'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
@@ -2348,7 +2273,7 @@ class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Payments.objects.all()
     serializer_class = PaymentSerializer
-    filterset_fields = ['status']
+    filterset_fields = {'status':['exact'], 'creation_date':['lte','gte']}
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2374,7 +2299,7 @@ class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all()
     serializer_class = ForwardSerializer
-    filterset_fields = {'forward_date': ['lt','gt']}
+    filterset_fields = {'forward_date': ['lte','gte']}
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2385,11 +2310,13 @@ class OnchainViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Onchain.objects.all()
     serializer_class = OnchainSerializer
+    filterset_fields = {'time_stamp': ['lte','gte']}
 
 class ClosuresViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Closures.objects.all()
     serializer_class = ClosuresSerializer
+    filterset_fields = {'close_height': ['lte','gte']}
 
 class ResolutionsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

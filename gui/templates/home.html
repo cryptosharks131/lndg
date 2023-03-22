@@ -7,14 +7,14 @@
 <div class="w3-container w3-padding-small">
   <script language="Javascript">
     var dt = new Date();
-    document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
+    byId("datetime").innerHTML = dt.toLocaleTimeString();
     function qr_gen(addr){
-      var qrcode = new QRCode(document.getElementById('qrcode'), {text:addr, width:256, height:256})
-      document.getElementById('qrcode').style.display = 'block'
+      var qrcode = new QRCode(byId('qrcode'), {text:addr, width:256, height:256})
+      byId('qrcode').style.display = 'block'
     }
     function qr_clear(){
-      document.getElementById('qrcode').replaceChildren()
-      document.getElementById('qrcode').style.display = 'none'
+      byId('qrcode').replaceChildren()
+      byId('qrcode').style.display = 'none'
     }
   </script>
   <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
@@ -57,7 +57,7 @@
 <div class="w3-row w3-container w3-padding-small" >
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:300px;width:25%">
     <tr>
-      <th title="Total Inbound/Total Outbound">Ratio: {{ liq_ratio }}%</h>
+      <th title="Total Inbound/Total Outbound">Ratio: <span id="liq_ratio">0</span></h>
       <th>Inbound</th>
       <th>Outbound</th>
       <th>Unsettled</th>
@@ -84,9 +84,9 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: <span id="total_balance">{{total_balance}}</span></th>
         <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+        <th colspan="2" class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
         <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
         <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
         <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
@@ -101,29 +101,32 @@
     <tr>
       <th>Period</th>
       <th>Routed</th>
-      <th>Fees earned | paid</th>
+      <th>Earned</th>
+      <th>Paid</th>
       <th>Offchain fees</th>
-      <th>Cost (%)</th>
+      <th>Cost</th>
       <th title="Profit made per outbound [profit per outbound including onchain fees]">Profit/Outbound</th>
       <th>Outbound Utilization</th>
     </tr>
     <tr>
       <td>1-Day</td>
-      <td>{{ routed_1day|intcomma }} ({{ routed_1day_amt|intcomma }} sats)</td>
-      <td>{{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}] | {{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}]</td>
-      <td>{{ onchain_costs_1day|intcomma }}</td>
-      <td>{{ percent_cost_1day }}%</td>
-      <td>{{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}]</td>
-      <td>{{ routed_1day_percent }}%</td>
+      <td id="routed_1day">0</td>
+      <td id="earned_1day">0</td>
+      <td id="fees_1day">0</td>
+      <td id="onchain_costs_1day">0</td>
+      <td id="percent_cost_1day">0</td>
+      <td id="profit_per_outbound_1d">0</td>
+      <td id="routed_1day_percent">0</td>
     </tr>
     <tr>
       <td>7-Day</td>
-      <td>{{ routed_7day|intcomma }} ({{ routed_7day_amt|intcomma }} sats)</td>
-      <td>{{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}]</td>
-      <td>{{ onchain_costs_7day|intcomma }}</td>
-      <td>{{ percent_cost_7day }}%</td>
-      <td>{{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}]</td>
-      <td>{{ routed_7day_percent }}%</td>
+      <td id="routed_7day">0</td>
+      <td id="earned_7day">0</td>
+      <td id="fees_7day">0</td>
+      <td id="onchain_costs_7day">0</td>
+      <td id="percent_cost_7day">0</td>
+      <td id="profit_per_outbound_7d">0</td>
+      <td id="routed_7day_percent">0</td>
     </tr>
   </table>
 </div>
@@ -643,6 +646,7 @@
   </div>
 </div>
 <script>
+  const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1)).getTime()
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
     "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
@@ -686,7 +690,7 @@
     })
   }
   function addTitle(title, results){
-    const container = document.getElementById(title.toLowerCase().replace(" ", "_") + '_container')
+    const container = byId(title.toLowerCase().replace(" ", "_") + '_container')
     if (results.length == 0) {
       container.remove()
       return false
@@ -695,50 +699,70 @@
     return true
   }
   async function build_active_channels(channels, forwards7d_task){
-    if(!addTitle("Active Channels", channels)) return
+    let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
+    if(!addTitle("Active Channels", channels)) return sum
     
-    const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1))
     function sumRoutedValues(forwards, ch, fields){
+      let earned = 0
       for(field of fields) ch[field] = 0
       for(f of forwards){
         if(f.chan_id_in == ch.chan_id){
           ch[fields[0]] += 1
-          ch[fields[2]] += f.amt_in_msat
+          ch[fields[2]] += f.amt_in_msat/1000
         }
         if(f.chan_id_out == ch.chan_id){
+          earned += f.fee
           ch[fields[1]] += 1
-          ch[fields[3]] += f.amt_out_msat
+          ch[fields[3]] += f.amt_out_msat/1000
         }
       }
+      return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
     }
 
     const forwards7d = await forwards7d_task
-    const activeChannels = document.getElementById("activeChannels")
-    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date) >= _1day_ago)
-    let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0}
+    const activeChannels = byId("activeChannels")
+    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
     channels.map(ch => { //derived properties
-      sum.capacity += ch.capacity
-      sum.active_inbound += ch.remote_balance
-      sum.active_outbound += ch.local_balance
-      sum.active_unsettled += ch.unsettled_balance
-
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
       ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
       
-      sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
-      sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      sum.capacity += ch.capacity
+      sum.active_inbound += ch.remote_balance
+      sum.active_outbound += ch.local_balance
+      sum.active_unsettled += ch.unsettled_balance
+      
+      var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sum.earned.d1 += earned
+      sum.rOUTed.d1.amt += rOUTed.amt
+      sum.rOUTed.d1.count += rOUTed.count
+
+      var {rOUTed, earned} = sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      sum.earned.d7 += earned
+      sum.rOUTed.d7.amt += rOUTed.amt
+      sum.rOUTed.d7.count += rOUTed.count
+
       return ch
     }).sort(ch => -ch.percent_outbound)
       .forEach(ch => activeChannels.append(use(detailed_ch_template).fillWith(ch)))
 
+    byId("routed_1day").innerHTML = `${sum.rOUTed.d1.count.toLocaleString()} (${(sum.rOUTed.d1.amt).toLocaleString()} sats)`
+    byId("routed_7day").innerHTML = `${sum.rOUTed.d7.count.toLocaleString()} (${(sum.rOUTed.d7.amt).toLocaleString()} sats)`
+    byId("earned_1day").innerHTML = `${sum.earned.d1.toLocaleString()} [${parseInt(sum.earned.d1*1000000/(sum.rOUTed.d1.amt || 1)).toLocaleString()}]`
+    byId("earned_7day").innerHTML = `${sum.earned.d7.toLocaleString()} [${parseInt(sum.earned.d7*1000000/(sum.rOUTed.d7.amt || 1)).toLocaleString()}]`
+
     update_sum('active_', sum)
+    const total_inbound = byId('total_inbound').innerHTML.toInt(), total_outbound = byId('total_outbound').innerHTML.toInt() || 1
+    byId("routed_1day_percent").innerHTML = parseInt(sum.rOUTed.d1.amt*100/total_outbound).toLocaleString()+'%'
+    byId("routed_7day_percent").innerHTML = parseInt(sum.rOUTed.d7.amt*100/total_outbound).toLocaleString()+'%'
+    byId("liq_ratio").innerHTML = parseInt(total_inbound*100/total_outbound).toLocaleString()+'%'
+    return sum
   }
   function build_inactive_channels(channels){
-    if(!addTitle("Inactive Channels", channels)) return
-
-    const table = document.getElementById('inactiveChannels')
     let sum = {capacity: 0, inactive_inbound: 0, inactive_outbound: 0, inactive_unsettled: 0}
+    if(!addTitle("Inactive Channels", channels)) return sum
+
+    const table = byId('inactiveChannels')
     channels.forEach(ch => {
       sum.capacity += ch.capacity
       sum.inactive_inbound += ch.remote_balance
@@ -747,24 +771,67 @@
       table.append(use(inactive_ch_template).fillWith(ch))
     })
     update_sum('inactive_', sum)
+    return sum
   }
-
   function update_sum(prefix, sum){
-    const capacity = document.getElementById('total_capacity')
-    capacity.innerHTML = (parseInt(capacity.innerHTML.replace(/,/g,'')) + sum.capacity).toLocaleString()
+    const capacity = byId('total_capacity')
+    capacity.innerHTML = (capacity.innerHTML.toInt() + sum.capacity).toLocaleString()
     for (id of ['inbound', 'outbound', 'unsettled']){
-      const value = sum[prefix+id], total = document.getElementById('total_'+id)
-      document.getElementById(prefix+id).innerHTML = value.toLocaleString()
-      total.innerHTML = (parseInt(total.innerHTML.replace(/,/g,'')) + value).toLocaleString()
+      const value = sum[prefix+id], total = byId('total_'+id)
+      byId(prefix+id).innerHTML = value.toLocaleString()
+      total.innerHTML = (total.innerHTML.toInt() + value).toLocaleString()
     }
+    const total_bal = byId("total_balance")
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + byId('total_outbound').innerHTML.toInt()).toLocaleString()
+  }
+  async function update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive){
+    let [fee1d,fee7d,amt1d,amt7d] = [0,0,0,0]
+    for(p of (await payments_task).results){
+      if(new Date(f.creation_date).getTime() >= _1day_ago){
+        fee1d += p.fee
+        amt1d += p.value
+      } 
+      fee7d += p.fee
+      amt7d += p.value
+    }
+    let [costs1d, costs7d] = [0,0]
+    for(tx of (await onchain_task).results){
+      if(new Date(tx.time_stamp).getTime() >= _1day_ago){
+        costs1d += tx.fee
+      }
+      costs7d += tx.fee
+    }
+    for(close of (await closures_task).results){
+      if(close.close_height >= ({{node_info.block_height}} - 144)){
+        costs1d += close.closing_costs
+      }
+      costs7d += close.closing_costs
+    }
+    const earned1d = byId("earned_1day").innerHTML.toInt(), earned7d = byId("earned_7day").innerHTML.toInt(), total_outbound = (byId("total_outbound").innerHTML.toInt() ||1)
+    byId("fees_1day").innerHTML = `${parseInt(fee1d).toLocaleString()} [${parseInt(fee1d*1000000/(amt1d || 1)).toLocaleString()}]`
+    byId("fees_7day").innerHTML = `${parseInt(fee7d).toLocaleString()} [${parseInt(fee7d*1000000/(amt7d || 1)).toLocaleString()}]`
+    byId("onchain_costs_1day").innerHTML = costs1d.toLocaleString()
+    byId("onchain_costs_7day").innerHTML = costs7d.toLocaleString()
+    byId("percent_cost_1day").innerHTML = parseInt(costs1d*100/(earned1d || 1)).toLocaleString()+'%'
+    byId("percent_cost_7day").innerHTML = parseInt(costs7d*100/(earned7d || 1)).toLocaleString()+'%'
+    byId("profit_per_outbound_1d").innerHTML = 
+      `${parseInt((earned1d - byId("fees_1day").innerHTML.toInt())*1000000/total_outbound)} [${parseInt((earned1d - costs1d)*1000000/total_outbound)}]`
+    byId("profit_per_outbound_7d").innerHTML = 
+      `${parseInt((earned7d - byId("fees_7day").innerHTML.toInt())*1000000/total_outbound)} [${parseInt((earned7d - costs7d)*1000000/total_outbound)}]`
+
+    const [routed_1day_percent, routed_7day_percent] = ['routed_1day_percent', 'routed_7day_percent'].map(id => byId(id))
+    routed_1day_percent.innerHTML = parseInt(routed_1day_percent.innerHTML.toInt()*100/((sum_active.active_outbound+sum_inactive.inactive_outbound || 1)))+'%'
+    routed_7day_percent.innerHTML = parseInt(routed_7day_percent.innerHTML.toInt()*100/((sum_active.active_outbound+sum_inactive.inactive_outbound || 1)))+'%'
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
-    const forwards7d_task = GET('forwards', {data: {forward_date__gt: _7days_ago} })
-    const channels = await GET('channels', {data: {is_open:true} })
+    const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
+    const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
+    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status:2} })
+    const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     
     const active_channels = [], inactive_channels = []
-    for (ch of channels.results){
+    for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       ch.local_balance += ch.pending_outbound
       ch.remote_balance += ch.pending_inbound
       ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
@@ -775,8 +842,9 @@
       }
     }
 
-    build_active_channels(active_channels, forwards7d_task)
-    build_inactive_channels(inactive_channels)
+    let sum_active = await build_active_channels(active_channels, forwards7d_task)
+    let sum_inactive = build_inactive_channels(inactive_channels)
+    update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive)
   })
 </script>
 {% endblock %}
