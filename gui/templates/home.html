@@ -30,13 +30,7 @@
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
     <span style="padding:1.5px 8px;margin-left:4px" class="w3-round w3-border w3-border-grey"><a href="#sign">Sign a message</a></span>
   </h6>
-  {% if total_private > 0 %}
-  <h6>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: {{ private_capacity|intcomma }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: {{ private_outbound|intcomma }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
-  </h6>
-  {% endif %}
+  <h6 id="private_stats"></h6>
   Addresses: 
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
@@ -200,52 +194,29 @@
     </tbody>
   </table>
 </div>
-{% if private_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Private Channels</h2>
+<div id="private_channels_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th width=9%>Outbound Liquidity</th>
-      <th>Capacity</th>
-      <th width=9%>Inbound Liquidity</th>
-      <th width=6%>Unsettled</th>
-      <th width=4%>oRate</th>
-      <th width=4%>oBase</th>
-      <th width=4%>oLife</th>
-      <th width=4%>iLife</th>
-      <th width=5%>Local Commit</th>
-      <th width=5%>Local Reserve</th>
-      <th width=5%>Opener</th>
-      <th width=5%>Up/Down</th>
-    </tr>
-    {% for channel in private_channels %}
-    <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>
-        <label>{{channel.capacity|intcomma}}</label>
-        <div class="progress w3-round w3-grey">
-          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
-        </div>
-      </td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
-      <td>{{ channel.total_sent|intcomma }}</td>
-      <td>{{ channel.total_received|intcomma }}</td>
-      <td>{{ channel.local_commit|intcomma }}</td>
-      <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td>{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
-      <td {% if channel.is_active == True %}style="background-color: rgba(56,139,253,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %} title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th width=9%>Outbound Liquidity</th>
+        <th>Capacity</th>
+        <th width=9%>Inbound Liquidity</th>
+        <th width=6%>Unsettled</th>
+        <th width=4%>oRate</th>
+        <th width=4%>oBase</th>
+        <th width=4%>oLife</th>
+        <th width=4%>iLife</th>
+        <th width=5%>Local Commit</th>
+        <th width=5%>Local Reserve</th>
+        <th width=5%>Opener</th>
+        <th width=5%>Up/Down</th>
+      </tr>
+    </thead>
+    <tbody id="privateChannels"></tbody>
   </table>
 </div>
-{% endif %}
 {% if pending_open %}
 <div class="w3-container w3-padding-small">
   <h2>Pending Open Channels</h2>
@@ -683,6 +654,14 @@
     "initiator": ch => ({innerHTML: ch.initiator ? 'Local': 'Remote'}),
   }, {ar_in_target, auto_rebalance})
 
+  let {local_commit, local_chan_reserve, initiator} = inactive_ch_template
+  const private_ch_template = Object.assign({}, base_ch_template, {
+    "total_sent": ch => ({innerHTML: ch.total_sent.toLocaleString()}),
+    "total_received": ch => ({innerHTML: ch.total_received.toLocaleString()})
+  }, {local_commit, local_chan_reserve, initiator}, {
+    "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+  })
+
   function toogleAR(button){
     Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
       button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
@@ -698,7 +677,7 @@
     container.insertAdjacentHTML('afterbegin', `<h2>${title}</h2>`)
     return true
   }
-  async function build_active_channels(channels, forwards7d_task){
+  async function build_active(channels, forwards7d_task){
     let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
     
@@ -758,7 +737,7 @@
     byId("liq_ratio").innerHTML = parseInt(total_inbound*100/total_outbound).toLocaleString()+'%'
     return sum
   }
-  function build_inactive_channels(channels){
+  function build_inactive(channels){
     let sum = {capacity: 0, inactive_inbound: 0, inactive_outbound: 0, inactive_unsettled: 0}
     if(!addTitle("Inactive Channels", channels)) return sum
 
@@ -787,7 +766,7 @@
   async function update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive){
     let [fee1d,fee7d,amt1d,amt7d] = [0,0,0,0]
     for(p of (await payments_task).results){
-      if(new Date(f.creation_date).getTime() >= _1day_ago){
+      if(new Date(p.creation_date).getTime() >= _1day_ago){
         fee1d += p.fee
         amt1d += p.value
       } 
@@ -823,6 +802,23 @@
     routed_1day_percent.innerHTML = parseInt(routed_1day_percent.innerHTML.toInt()*100/((sum_active.active_outbound+sum_inactive.inactive_outbound || 1)))+'%'
     routed_7day_percent.innerHTML = parseInt(routed_7day_percent.innerHTML.toInt()*100/((sum_active.active_outbound+sum_inactive.inactive_outbound || 1)))+'%'
   }
+  function build_private(channels){
+    if(!addTitle("Private Channels", channels)) return
+
+    const table = byId('privateChannels')
+    let [capacity, outbound, active_count ] = [0,0,0]
+    channels.forEach(ch => {
+      capacity += ch.capacity
+      outbound += ch.local_balance
+      if(ch.is_active) active_count += 1
+      table.append(use(private_ch_template).fillWith(ch))
+    })
+
+    byId("private_stats").insertAdjacentHTML('beforeend', `
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.toLocaleString()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${outbound.toLocaleString()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
@@ -830,7 +826,7 @@
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status:2} })
     const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     
-    const active_channels = [], inactive_channels = []
+    const active = [], inactive = [], private = []
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       ch.local_balance += ch.pending_outbound
       ch.remote_balance += ch.pending_inbound
@@ -838,13 +834,16 @@
       ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
 
       if(ch.is_open && !ch.private){
-        (ch.is_active ? active_channels : inactive_channels).push(ch)
+        (ch.is_active ? active : inactive).push(ch)
       }
+      else if(ch.is_open && ch.private) private.push(ch)
     }
 
-    let sum_active = await build_active_channels(active_channels, forwards7d_task)
-    let sum_inactive = build_inactive_channels(inactive_channels)
+    let sum_active = await build_active(active, forwards7d_task)
+    let sum_inactive = build_inactive(inactive)
     update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive)
+    build_private(private)
+
   })
 </script>
 {% endblock %}
