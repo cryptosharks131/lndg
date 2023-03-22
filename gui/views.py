@@ -157,7 +157,6 @@ def home(request):
             invoices = Invoices.objects.exclude(state=2)
             #Get recorded forwarding events
             forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
-            pending_htlc_count = channels.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if channels.filter(is_open=True).exists() else 0
             local_settings = get_local_settings('AR-')
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
@@ -177,7 +176,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'local_settings': local_settings,
-                'pending_htlc_count': pending_htlc_count,
                 'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
                 'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',

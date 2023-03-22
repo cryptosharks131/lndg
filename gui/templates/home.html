@@ -83,7 +83,7 @@
         <th colspan="2" class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
         <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
         <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span>{{ pending_htlc_count }}</th>
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
@@ -829,10 +829,11 @@
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status:2} })
     const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     
-    let updates = 0
+    let [updates, pending_htlcs] = [0,0] 
     const active = [], inactive = [], private = []
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       updates += ch.num_updates
+      pending_htlcs += ch.htlc_count
       ch.local_balance += ch.pending_outbound
       ch.remote_balance += ch.pending_inbound
       ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
@@ -845,6 +846,7 @@
     }
 
     byId("updates").innerHTML = updates.toLocaleString()
+    byId("pending_htlcs").innerHTML = pending_htlcs.toLocaleString()
 
     let sum_active = await build_active(active, forwards7d_task)
     let sum_inactive = build_inactive(inactive)
