@@ -159,15 +159,6 @@ def home(request):
             forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
             pending_htlc_count = channels.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if channels.filter(is_open=True).exists() else 0
             num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
-            #Get current private channels
-            private_channels = channels.filter(is_open=True, private=True).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity')).order_by('outbound_percent')
-            private_count = private_channels.count()
-            active_private = private_channels.filter(is_active=True).count()
-            private_capacity = private_channels.aggregate(Sum('capacity'))['capacity__sum']
-            private_outbound = 0 if private_count == 0 else private_channels.aggregate(Sum('local_balance'))['local_balance__sum']
-            #Get list of recent rebalance requests
-            active_count = node_info.num_active_channels - active_private
-            total_channels = node_info.num_active_channels + node_info.num_inactive_channels - private_count
             local_settings = get_local_settings('AR-')
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
@@ -176,19 +167,12 @@ def home(request):
             #Build context for front-end and render page
             context = {
                 'node_info': node_info,
-                'active_count': active_count,
-                'total_channels': total_channels,
                 'balances': balances,
-                'total_balance': balances.total_balance + pending_open_balance + limbo_balance + private_outbound,
+                'total_balance': balances.total_balance + pending_open_balance + limbo_balance ,
                 'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
                 'invoices': invoices.order_by('-creation_date')[:6],
                 'forwards': forwards[:15],
-                'active_private': active_private,
-                'total_private': private_count,
-                'private_outbound': private_outbound,
-                'private_capacity': private_capacity,
                 'limbo_balance': limbo_balance,
-                'private_channels': private_channels,
                 'pending_open': pending_open,
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,

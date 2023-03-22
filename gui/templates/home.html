@@ -24,7 +24,7 @@
   </h6>
   <h6>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="total_capacity">0</span></span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="active_channels">{{node_info.num_active_channels}}</span> / <span id="total_channels">{{node_info.num_active_channels|add:node_info.num_inactive_channels}}</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
@@ -680,6 +680,8 @@
   async function build_active(channels, forwards7d_task){
     let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
+
+    byId("total_channels").innerHTML = channels.length
     
     function sumRoutedValues(forwards, ch, fields){
       let earned = 0
@@ -814,6 +816,7 @@
       table.append(use(private_ch_template).fillWith(ch))
     })
 
+    for(el of [byId("total_channels"), byId("active_channels")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
     byId("private_stats").insertAdjacentHTML('beforeend', `
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.toLocaleString()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${outbound.toLocaleString()}</span>
