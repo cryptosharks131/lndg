@@ -50,6 +50,12 @@
   </footer>
   <script>
     //BASE CONFIG
+    document.querySelectorAll(".table").forEach(table =>
+      table.addEventListener("scroll", function (evt) {
+        const el = evt.currentTarget, sT = el.scrollTop;
+        el.querySelectorAll("thead th").forEach(th => th.style.transform = sT != 0 ? 'scale(1.05, 1.2)' : 'scale(1, 1)')
+      })
+    )
     const modes = {'soft-encrypted': 'soft', encrypted: 'hard'}
     document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
