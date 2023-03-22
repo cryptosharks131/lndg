@@ -158,7 +158,6 @@ def home(request):
             #Get recorded forwarding events
             forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
             pending_htlc_count = channels.filter(is_open=True).aggregate(Sum('htlc_count'))['htlc_count__sum'] if channels.filter(is_open=True).exists() else 0
-            num_updates = channels.filter(is_open=True).aggregate(Sum('num_updates'))['num_updates__sum'] if channels.filter(is_open=True).exists() else 0
             local_settings = get_local_settings('AR-')
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
@@ -185,7 +184,6 @@ def home(request):
                 'graph_links': graph_links(),
                 'network_links': network_links(),
                 'db_size': db_size,
-                'num_updates': num_updates
             }
             return render(request, 'home.html', context)
         except Exception as e:
