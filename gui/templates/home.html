@@ -681,8 +681,6 @@
     let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
 
-    byId("total_channels").innerHTML = channels.length
-    
     function sumRoutedValues(forwards, ch, fields){
       let earned = 0
       for(field of fields) ch[field] = 0
@@ -852,7 +850,6 @@
     let sum_inactive = build_inactive(inactive)
     update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive)
     build_private(private)
-
   })
 </script>
 {% endblock %}
