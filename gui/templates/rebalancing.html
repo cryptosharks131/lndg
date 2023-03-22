@@ -3,7 +3,7 @@
 {% block content %}
 {% load humanize %}
 <div id="rebalances_container" class="w3-container w3-padding-small">
-  <div class="w3-container w3-padding-small" style="overflow-x: scroll;overflow-y:scroll;max-height:500px">
+  <div class="w3-container w3-padding-small table" style="overflow:auto;max-height:1000px">
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
         <tr>
@@ -151,9 +151,9 @@
 
     resp.results
       .sort((ch1, ch2) => { //sort by active, out%
-        if(ch1.is_active == ch2.is_active) return ch1.percent_outbound - ch2.percent_outbound
-        if(!ch2.is_active) return ch1
-        if(!ch1.is_active) return ch2
+        if(ch1.is_active && !ch2.is_active) return -1
+        if(!ch1.is_active && ch2.is_active) return 1
+        return ch1.percent_outbound - ch2.percent_outbound
       })
       .forEach(ch => rebal_table.append(use(transformations).fillWith(ch)))
   })
