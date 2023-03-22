@@ -75,7 +75,6 @@ def home(request):
             node_info = stub.GetInfo(ln.GetInfoRequest())
             balances = stub.WalletBalance(ln.WalletBalanceRequest())
             pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
-            channels = Channels.objects.all()
             limbo_balance = pending_channels.total_limbo_balance
             pending_open = None
             pending_closed = None
@@ -150,14 +149,8 @@ def home(request):
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance,'closing_txid':target_resp[i].closing_txid}
                     pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
                     waiting_for_close.append(pending_item)
-            limbo_balance -= pending_closing_balance 
-            #Get recorded payment events
-            payments = Payments.objects.exclude(status=3)
-            #Get recorded invoice details
-            invoices = Invoices.objects.exclude(state=2)
-            #Get recorded forwarding events
+            limbo_balance -= pending_closing_balance
             forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
-            local_settings = get_local_settings('AR-')
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
             except:
@@ -166,18 +159,17 @@ def home(request):
             context = {
                 'node_info': node_info,
                 'balances': balances,
-                'total_balance': balances.total_balance + pending_open_balance + limbo_balance ,
-                'payments': payments.annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
-                'invoices': invoices.order_by('-creation_date')[:6],
+                'total_balance': balances.total_balance + pending_open_balance + limbo_balance,
+                'payments': Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
+                'invoices': Invoices.objects.exclude(state=2).order_by('-creation_date')[:6],
                 'forwards': forwards[:15],
                 'limbo_balance': limbo_balance,
                 'pending_open': pending_open,
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
-                'local_settings': local_settings,
+                'local_settings': get_local_settings('AR-'),
                 'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
-                'enabled_count': channels.filter(is_open=True, auto_rebalance=True).count(),
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
