@@ -53,8 +53,8 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
-    const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400, limit: 9999}})
-    const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}', limit: 9999}})
+    const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400}})
+    const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'}})
     const container = document.getElementById("rebalances_container")
     if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
@@ -116,10 +116,27 @@
         <input type="hidden" name="update_target" value="5">
         <input type="hidden" name="target" value="0">
       </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-      "rate_7day": ch => ({innerHTML: ch.attempts == 0 ? '---' : `${ch.success_rate}% (${ch.success}/${ch.attempts})`}),
+      "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
+        <defs>
+            <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%">
+                <stop stop-color="#fff" stop-opacity="0" offset="0%"/>
+                <stop stop-color="#fff" stop-opacity=".631" offset="63.146%"/>
+                <stop stop-color="#fff" offset="100%"/>
+            </linearGradient>
+        </defs>
+        <g fill="none" fill-rule="evenodd">
+            <g transform="translate(1 1)">
+                <path d="M36 18c0-9.94-8.06-18-18-18" stroke="#aaa" stroke-width="2">
+                    <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
+                </path>
+                <circle fill="#aaa" cx="36" cy="18" r="1">
+                    <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
+                </circle>
+            </g>
+        </g>
+    </svg>`, dataTag: ch.remote_pubkey}),
       "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
     }
-    const rebalancer = await rebalancer_task
     let enabled = 0, elegible = 0, available = 0
     const rebal_table = document.getElementById("rebalancingTable")
     resp.results.forEach(ch => {
@@ -136,26 +153,35 @@
       enabled += ch.auto_rebalance ? 1 : 0
       elegible += ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0
       available += ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1 ? 1: 0
-      ch.attempts = 0, ch.success = 0, ch.success_rate = 0
-      //rebalances status
-      if(rebalancer.results.length == 0) return 
-      for(r of rebalancer.results){
-        if(r.last_hop_pubkey == ch.remote_pubkey){
-          ch.attempts += 1
-          if(r.status == 2) ch.success_rate = ch.success += 1
-        }
-      }
-      ch.success_rate = parseInt(ch.success_rate/ch.attempts*100)
     })
     container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
+    const template = use(transformations)
     resp.results
       .sort((ch1, ch2) => { //sort by active, out%
         if(ch1.is_active && !ch2.is_active) return -1
         if(!ch1.is_active && ch2.is_active) return 1
         return ch1.percent_outbound - ch2.percent_outbound
       })
-      .forEach(ch => rebal_table.append(use(transformations).fillWith(ch)))
+      .forEach(ch => rebal_table.append(template.fillWith(ch)))
+    
+    update_stats((await rebalancer_task).results, rebal_table)
   })
+  function update_stats(rebalances, rebal_table){
+    if(rebalances.length == 0) return
+    [...rebal_table.rows].forEach(row => {
+
+      const rate_7day = [...row.cells].at(-2)
+      let [attempts, success, success_rate] = [0,0,0]
+      for(i in rebalances){
+        if(rebalances[i].last_hop_pubkey == rate_7day.dataTag){
+          [r] = rebalances.splice(i, 1)
+          attempts += 1
+          if(r.status == 2) success_rate = success += 1
+        }
+      }
+      rate_7day.innerHTML = attempts == 0? '---' : `${parseInt(success_rate*100/attempts)}% (${success}/${attempts})`
+    })
+  }
 </script>
 {% endblock %}
