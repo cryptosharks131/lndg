@@ -53,8 +53,8 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
-    const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400 } })
-    const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'} })
+    const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400, limit: 9999}})
+    const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}', limit: 9999}})
     const container = document.getElementById("rebalances_container")
     if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
@@ -145,7 +145,7 @@
           if(r.status == 2) ch.success_rate = ch.success += 1
         }
       }
-      ch.success_rate = parseInt(ch.success_rate/100)
+      ch.success_rate = parseInt(ch.success_rate/ch.attempts*100)
     })
     container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
