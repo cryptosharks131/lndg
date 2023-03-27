@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, RebalancingStatsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -2536,6 +2536,27 @@ def connect_peer(request):
             debug_error_index = error.find('debug_error_string =') - 3
             error_msg = error[details_index:debug_error_index]
             return Response({'error': 'Connection request failed! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'})
+
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def rebalance_stats(request):
+    serializer = RebalancingStatsSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            filter_7day = datetime.now() - timedelta(days=7)
+            pubkey = serializer.validated_data['pubkey']
+            rebalances = Rebalancer.objects.filter(stop__gt=filter_7day, last_hop_pubkey=pubkey)
+            successes = rebalances.filter(status=2).count()
+            attempts = rebalances.count()
+            data = serializer.data
+            data['successes'] = successes
+            data['attempts'] = attempts
+            return Response(data)
+        except Exception as e:
+            error = str(e)
+            return Response({'error': 'Unable to fetch stats! Error: ' + error})
     else:
         return Response({'error': 'Invalid request!'})
 

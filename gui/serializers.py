@@ -87,10 +87,12 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     stop = serializers.ReadOnlyField()
     fees_paid = serializers.ReadOnlyField()
     payment_hash = serializers.ReadOnlyField()
-
     class Meta:
         model = Rebalancer
         exclude = []
+
+class RebalancingStatsSerializer(serializers.Serializer):
+    pubkey = serializers.CharField(label='pubkey', max_length=66)
 
 class ConnectPeerSerializer(serializers.Serializer):
     peer_id = serializers.CharField(label='peer_pubkey', max_length=200)
