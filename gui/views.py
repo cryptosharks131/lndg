@@ -2539,6 +2539,17 @@ def connect_peer(request):
     else:
         return Response({'error': 'Invalid request!'})
 
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def rebalances_status(request):
+    try:
+        stoppedAt = request.GET.get('stop__gte')
+        rebalances = Rebalancer.objects.filter(stop__gte=stoppedAt).values('last_hop_pubkey', 'status')
+        return Response(rebalances)
+    except Exception as e:
+        error = str(e)
+        return Response({'error': 'Unable to fetch stats! Error: ' + error})
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def open_channel(request):
