@@ -53,7 +53,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
-    const rebalancer_task = GET('rebalancer', {data: {stop__gt: _7days_ago, status__gt: 1, status__lt: 400}})
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'}})
     const container = document.getElementById("rebalances_container")
     if (resp.results.length == 0){
@@ -165,22 +164,13 @@
       })
       .forEach(ch => rebal_table.append(template.fillWith(ch)))
     
-    update_stats((await rebalancer_task).results, rebal_table)
+    update_stats(rebal_table)
   })
-  function update_stats(rebalances, rebal_table){
-    if(rebalances.length == 0) return
+  function update_stats(rebal_table){
     [...rebal_table.rows].forEach(row => {
-
       const rate_7day = [...row.cells].at(-2)
-      let [attempts, success, success_rate] = [0,0,0]
-      for(i in rebalances){
-        if(rebalances[i].last_hop_pubkey == rate_7day.dataTag){
-          [r] = rebalances.splice(i, 1)
-          attempts += 1
-          if(r.status == 2) success_rate = success += 1
-        }
-      }
-      rate_7day.innerHTML = attempts == 0? '---' : `${parseInt(success_rate*100/attempts)}% (${success}/${attempts})`
+      rebal_stats = POST('rebalance_stats', {body: {"pubkey":rate_7day.dataTag}})
+      rebal_stats.then(stats => rate_7day.innerHTML = stats['attempts'] == 0? '---' : `${parseInt(stats['successes']*100/stats['attempts'])}% (${stats['successes']}/${stats['attempts']})`)
     })
   }
 </script>

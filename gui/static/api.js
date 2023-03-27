@@ -1,5 +1,6 @@
 async function GET(url, {method = 'GET', data = null}){
     if(!data.limit) data.limit = 100000
+    if(!data.format) data.format = 'json'
     return call({url, method, data})
 }
 
@@ -21,7 +22,6 @@ async function DELETE(url, {method = 'DELETE'}){
 
 async function call({url, method, data, body, headers = {'Content-Type':'application/json'}}){
     if(url.charAt(url.length-1) != '/') url += '/'
-    if(!data.format) data.format = 'json'
     if(method != 'GET') headers['X-CSRFToken'] = document.getElementById('api').dataset.token
     const result = await fetch(`api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
     return result.json()
