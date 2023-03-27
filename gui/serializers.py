@@ -91,9 +91,6 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
         model = Rebalancer
         exclude = []
 
-class RebalancingStatsSerializer(serializers.Serializer):
-    pubkey = serializers.CharField(label='pubkey', max_length=66)
-
 class ConnectPeerSerializer(serializers.Serializer):
     peer_id = serializers.CharField(label='peer_pubkey', max_length=200)
 

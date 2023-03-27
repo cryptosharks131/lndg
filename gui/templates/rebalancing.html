@@ -167,11 +167,16 @@
     update_stats(rebal_table)
   })
   function update_stats(rebal_table){
-    [...rebal_table.rows].forEach(row => {
-      const rate_7day = [...row.cells].at(-2)
-      rebal_stats = POST('rebalance_stats', {body: {"pubkey":rate_7day.dataTag}})
-      rebal_stats.then(stats => rate_7day.innerHTML = stats['attempts'] == 0? '---' : `${parseInt(stats['successes']*100/stats['attempts'])}% (${stats['successes']}/${stats['attempts']})`)
-    })
+    GET('rebalance_stats', {method : 'GET', data : {}}).then(stats => fill_stuff(stats))
+    function fill_stuff(stats){
+      [...rebal_table.rows].forEach(row => {
+        const rate_7day = [...row.cells].at(-2)
+        function findPubkey(pubkey){
+          return pubkey.last_hop_pubkey === rate_7day.dataTag
+        }
+        let stat = stats.find(pubkey => findPubkey(pubkey))
+        rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${stat['successes']}/${stat['attempts']})`
+    })}
   }
 </script>
 {% endblock %}

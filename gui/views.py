@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count, Max, F, Q
+from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, RebalancingStatsSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -2539,26 +2539,16 @@ def connect_peer(request):
     else:
         return Response({'error': 'Invalid request!'})
 
-@api_view(['POST'])
+@api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def rebalance_stats(request):
-    serializer = RebalancingStatsSerializer(data=request.data)
-    if serializer.is_valid():
-        try:
-            filter_7day = datetime.now() - timedelta(days=7)
-            pubkey = serializer.validated_data['pubkey']
-            rebalances = Rebalancer.objects.filter(stop__gt=filter_7day, last_hop_pubkey=pubkey)
-            successes = rebalances.filter(status=2).count()
-            attempts = rebalances.count()
-            data = serializer.data
-            data['successes'] = successes
-            data['attempts'] = attempts
-            return Response(data)
-        except Exception as e:
-            error = str(e)
-            return Response({'error': 'Unable to fetch stats! Error: ' + error})
-    else:
-        return Response({'error': 'Invalid request!'})
+    try:
+        filter_7day = datetime.now() - timedelta(days=200)
+        rebalances = Rebalancer.objects.filter(stop__gt=filter_7day).values('last_hop_pubkey').annotate(attempts=Count('last_hop_pubkey'), successes=Sum(Case(When(status=2, then=1), output_field=IntegerField())))
+        return Response(rebalances)
+    except Exception as e:
+        error = str(e)
+        return Response({'error': 'Unable to fetch stats! Error: ' + error})
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
