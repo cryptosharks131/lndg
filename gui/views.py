@@ -2543,7 +2543,7 @@ def connect_peer(request):
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def rebalance_stats(request):
     try:
-        filter_7day = datetime.now() - timedelta(days=200)
+        filter_7day = datetime.now() - timedelta(days=7)
         rebalances = Rebalancer.objects.filter(stop__gt=filter_7day).values('last_hop_pubkey').annotate(attempts=Count('last_hop_pubkey'), successes=Sum(Case(When(status=2, then=1), output_field=IntegerField())))
         return Response(rebalances)
     except Exception as e:
