@@ -54,6 +54,7 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'}})
+    const rebal_stats = GET('rebalance_stats', {method : 'GET', data : {}})
     const container = document.getElementById("rebalances_container")
     if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
@@ -164,11 +165,9 @@
       })
       .forEach(ch => rebal_table.append(template.fillWith(ch)))
     
-    update_stats(rebal_table)
+    update_stats(await rebal_stats, rebal_table)
   })
-  function update_stats(rebal_table){
-    GET('rebalance_stats', {method : 'GET', data : {}}).then(stats => fill_stuff(stats))
-    function fill_stuff(stats){
+  function update_stats(stats, rebal_table){
       [...rebal_table.rows].forEach(row => {
         const rate_7day = [...row.cells].at(-2)
         function findPubkey(pubkey){
@@ -176,7 +175,7 @@
         }
         let stat = stats.find(pubkey => findPubkey(pubkey))
         rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${stat['successes']}/${stat['attempts']})`
-    })}
+    })
   }
 </script>
 {% endblock %}
