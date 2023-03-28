@@ -78,16 +78,6 @@
     document.addEventListener('DOMContentLoaded', async () => {
       if (document.cookie.includes("privacy=soft")) document.body.classList.toggle("soft-encrypted")
       else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
-
-      let divMsgs = document.getElementById("messages")
-      if (!divMsgs || divMsgs.getElementsByTagName("img").length > 0) return 
-
-      for (let el of divMsgs.children){
-        el.classList.toggle('message')
-        await sleep(2000)
-      }
-      await sleep(1000)
-      divMsgs.remove()
     })
 
     async function toogle(button){

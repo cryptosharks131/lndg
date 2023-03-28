@@ -1,4 +1,6 @@
 async function GET(url, {method = 'GET', data = null}){
+    if(!data.limit) data.limit = 100000
+    if(!data.format) data.format = 'json'
     return call({url, method, data})
 }
 
@@ -32,7 +34,7 @@ class Sync{
 }
 
 function showBannerMsg(h1Msg, result){
-    document.getElementById('content').insertAdjacentHTML("beforebegin", `<div style="top:5px" class="message w3-panel w3-orange w3-display-container"><span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span><h1 style="word-wrap: break-word">${h1Msg} updated to: ${result}</h1></div>`);
+    document.getElementById('content').insertAdjacentHTML("beforebegin", `<div style="top:5px" class="w3-panel w3-orange w3-display-container"><span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span><h1 style="word-wrap: break-word">${h1Msg} updated to: ${result}</h1></div>`);
     window.scrollTo(0, 0);
 }
 
