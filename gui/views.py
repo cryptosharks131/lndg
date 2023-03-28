@@ -920,68 +920,7 @@ def income(request):
         profits_7day = int(total_revenue_7day-total_fees_7day-onchain_costs_7day)
         profits_1day = int(total_revenue_1day-total_fees_1day-onchain_costs_1day)
 
-        #chart piece | TODO: Add asyncronous calls to filter by period (these calls can become heavy)
-        now = datetime.now()
-        timeline = [
-            *[i.settle_date for i in invoices.all()], 
-            *[p.creation_date for p in payments.all()],
-            *[f.forward_date for f in forwards],
-            *[on.time_stamp for on in onchain_txs]]
-        min_dt = min(timeline)
-
-        timeline = []
-        one_hour = timedelta(hours=1)
-        costs, on_chain, off_chain, balance_over_time = [0, 0], [0, 0], [0, 0], [0, 0]
-        channels = Channels.objects.all()
-        i = 1
-        while min_dt < now:
-            append_date = False
-            next_dt = min_dt + one_hour
-
-            for tx in onchain_txs.filter(time_stamp__range=[min_dt, next_dt]).all():
-                append_date = True
-                costs[i] += tx.fee
-                on_chain[i] += tx.amount
-                for closure in closures.filter(closing_tx=tx.tx_hash).all():
-                    off_chain[i] -= (closure.settled_balance + closure.closing_costs)
-                    costs[i] += closure.closing_costs
-                if channels.filter(funding_txid=tx.tx_hash).first(): #open channel
-                    off_chain[i] -= tx.amount
-
-            for invoice in invoices.filter(settle_date__range=[min_dt, next_dt]).all():
-                off_chain[i] += invoice.amt_paid
-                append_date = True
-                
-            for forward in forwards.filter(forward_date__range=[min_dt, next_dt]).all():
-                off_chain[i] += forward.fee
-                append_date = True
-                    
-            for payment in payments.filter(creation_date__range=[min_dt, next_dt]).all():
-                costs[i] += payment.fee
-                off_chain[i] -= (payment.fee + payment.value)
-                append_date = True
-
-            balance_over_time[i] = on_chain[i] + off_chain[i] - costs[i]
-            if append_date:
-                i += 1
-                timeline.append(min_dt)
-                costs.append(costs[-1])
-                on_chain.append(on_chain[-1])
-                off_chain.append(off_chain[-1])
-                balance_over_time.append(balance_over_time[-1])
-            min_dt += one_hour
-        
-        timeline.append(now)
-        timeline = [t.isoformat() for t in timeline]
-        timeline.insert(0, 0)
-
-        costs.append(costs[-1])
-        on_chain.append(on_chain[-1])
-        off_chain.append(off_chain[-1])
-        balance_over_time.append(balance_over_time[-1])
-
         context = {
-            'chart': {'balance_over_time': balance_over_time, 'on_chain':on_chain, 'dates': timeline, 'off_chain': off_chain, 'costs': costs},
             'node_info': node_info,
             'forward_count': forward_count,
             'forward_count_90day': forward_count_90day,
@@ -1043,6 +982,75 @@ def income(request):
         return render(request, 'income.html', context)
     else:
         return redirect('home')
+
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def chart(request):
+    invoices = Invoices.objects.filter(state=1).all()
+    payments = Payments.objects.filter(status=2).all()
+    onchain = Onchain.objects.all()
+    closures = Closures.objects.all()
+    forwards = Forwards.objects.all()
+    channels = Channels.objects.all()
+
+    now = datetime.now()
+    events_time = [
+        *[on.time_stamp for on in onchain],
+        *[i.settle_date for i in invoices], 
+        *[f.forward_date for f in forwards],
+        *[p.creation_date for p in payments]]
+    min_dt = min(events_time)
+
+    timeline = []
+    one_hour = timedelta(hours=1)
+    costs, on_chain, off_chain, balance_over_time = [0, 0], [0, 0], [0, 0], [0, 0]
+    i = 1
+    while min_dt < now:
+        append_date = False
+        next_dt = min_dt + one_hour
+
+        for tx in onchain.filter(time_stamp__range=[min_dt, next_dt]):
+            append_date = True
+            costs[i] += tx.fee
+            on_chain[i] += tx.amount
+            for closure in closures.filter(closing_tx=tx.tx_hash).all():
+                off_chain[i] -= (closure.settled_balance + closure.closing_costs)
+                costs[i] += closure.closing_costs
+            if channels.filter(funding_txid=tx.tx_hash).first(): #open channel
+                off_chain[i] -= tx.amount
+
+        for invoice in invoices.filter(settle_date__range=[min_dt, next_dt]):
+            off_chain[i] += invoice.amt_paid
+            append_date = True
+            
+        for forward in forwards.filter(forward_date__range=[min_dt, next_dt]):
+            off_chain[i] += forward.fee
+            append_date = True
+                
+        for payment in payments.filter(creation_date__range=[min_dt, next_dt]):
+            costs[i] += payment.fee
+            off_chain[i] -= (payment.fee + payment.value)
+            append_date = True
+
+        balance_over_time[i] = on_chain[i] + off_chain[i] - costs[i]
+        if append_date:
+            i += 1
+            timeline.append(min_dt)
+            costs.append(costs[-1])
+            on_chain.append(on_chain[-1])
+            off_chain.append(off_chain[-1])
+            balance_over_time.append(balance_over_time[-1])
+        min_dt += one_hour
+    
+    timeline.append(now)
+    timeline = [t.isoformat() for t in timeline]
+    timeline.insert(0, '0')
+
+    costs.append(costs[-1])
+    on_chain.append(on_chain[-1])
+    off_chain.append(off_chain[-1])
+    balance_over_time.append(balance_over_time[-1])
+    return Response({'balance_over_time': balance_over_time, 'on_chain':on_chain, 'dates': timeline, 'off_chain': off_chain, 'costs': costs})
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
