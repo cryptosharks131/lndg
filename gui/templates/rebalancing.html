@@ -174,7 +174,7 @@
           return pubkey.last_hop_pubkey === rate_7day.dataTag
         }
         let stat = stats.find(pubkey => findPubkey(pubkey))
-        rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${stat['successes']}/${stat['attempts']})`
+        rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${(stat['successes'] || 0)}/${stat['attempts']})`
     })
   }
 </script>
