@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count, Max, F, Q
+from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When
 from django.db.models.functions import Round
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
@@ -2538,6 +2538,17 @@ def connect_peer(request):
             return Response({'error': 'Connection request failed! Error: ' + error_msg})
     else:
         return Response({'error': 'Invalid request!'})
+
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def rebalance_stats(request):
+    try:
+        filter_7day = datetime.now() - timedelta(days=7)
+        rebalances = Rebalancer.objects.filter(stop__gt=filter_7day).values('last_hop_pubkey').annotate(attempts=Count('last_hop_pubkey'), successes=Sum(Case(When(status=2, then=1), output_field=IntegerField())))
+        return Response(rebalances)
+    except Exception as e:
+        error = str(e)
+        return Response({'error': 'Unable to fetch stats! Error: ' + error})
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)

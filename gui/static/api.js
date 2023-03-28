@@ -1,5 +1,6 @@
 async function GET(url, {method = 'GET', data = null}){
     if(!data.limit) data.limit = 100000
+    if(!data.format) data.format = 'json'
     return call({url, method, data})
 }
 

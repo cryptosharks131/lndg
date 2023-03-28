@@ -87,7 +87,6 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     stop = serializers.ReadOnlyField()
     fees_paid = serializers.ReadOnlyField()
     payment_hash = serializers.ReadOnlyField()
-
     class Meta:
         model = Rebalancer
         exclude = []
