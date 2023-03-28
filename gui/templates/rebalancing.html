@@ -170,10 +170,7 @@
   function update_stats(stats, rebal_table){
       [...rebal_table.rows].forEach(row => {
         const rate_7day = [...row.cells].at(-2)
-        function findPubkey(pubkey){
-          return pubkey.last_hop_pubkey === rate_7day.dataTag
-        }
-        let stat = stats.find(pubkey => findPubkey(pubkey))
+        let stat = stats.find(obj => obj.last_hop_pubkey === rate_7day.dataTag)
         rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${(stat['successes'] || 0)}/${stat['attempts']})`
     })
   }
