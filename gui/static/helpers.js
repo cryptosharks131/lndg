@@ -44,7 +44,7 @@ async function toogle(button){
 }
 function use(transformations){
   return { 
-    fillWith: function(object, row = null){
+    render: function(object, row = null){
       const tr = row ?? document.createElement("tr")
       for (id in transformations){
         const transforms = transformations[id](object)

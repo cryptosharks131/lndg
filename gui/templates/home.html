@@ -699,7 +699,7 @@
     }
 
     const forwards7d = await forwards7d_task
-    const activeChannels = byId("activeChannels")
+    const activeChannels = byId("activeChannels"), template = use(detailed_ch_template)
     forwards1d = forwards7d.results.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
     channels.map(ch => { //derived properties
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
@@ -723,7 +723,7 @@
 
       return ch
     }).sort(ch => -ch.percent_outbound)
-      .forEach(ch => activeChannels.append(use(detailed_ch_template).fillWith(ch)))
+      .forEach(ch => activeChannels.append(template.render(ch)))
 
     byId("routed_1day").innerHTML = `${sum.rOUTed.d1.count.toLocaleString()} (${(sum.rOUTed.d1.amt).toLocaleString()} sats)`
     byId("routed_7day").innerHTML = `${sum.rOUTed.d7.count.toLocaleString()} (${(sum.rOUTed.d7.amt).toLocaleString()} sats)`
@@ -741,13 +741,13 @@
     let sum = {capacity: 0, inactive_inbound: 0, inactive_outbound: 0, inactive_unsettled: 0}
     if(!addTitle("Inactive Channels", channels)) return sum
 
-    const table = byId('inactiveChannels')
+    const table = byId('inactiveChannels'), template = use(inactive_ch_template)
     channels.forEach(ch => {
       sum.capacity += ch.capacity
       sum.inactive_inbound += ch.remote_balance
       sum.inactive_outbound += ch.local_balance
       sum.inactive_unsettled += ch.unsettled_balance
-      table.append(use(inactive_ch_template).fillWith(ch))
+      table.append(template.render(ch))
     })
     update_sum('inactive_', sum)
     return sum
@@ -805,13 +805,13 @@
   function build_private(channels){
     if(!addTitle("Private Channels", channels)) return
 
-    const table = byId('privateChannels')
+    const table = byId('privateChannels'), template = use(private_ch_template)
     let [capacity, outbound, active_count ] = [0,0,0]
     channels.forEach(ch => {
       capacity += ch.capacity
       outbound += ch.local_balance
       if(ch.is_active) active_count += 1
-      table.append(use(private_ch_template).fillWith(ch))
+      table.append(template.render(ch))
     })
 
     for(el of [byId("total_channels"), byId("active_channels")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)

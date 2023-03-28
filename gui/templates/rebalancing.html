@@ -161,7 +161,7 @@
         if(!ch1.is_active && ch2.is_active) return 1
         return ch1.percent_outbound - ch2.percent_outbound
       })
-      .forEach(ch => rebal_table.append(template.fillWith(ch)))
+      .forEach(ch => rebal_table.append(template.render(ch)))
     
     update_stats(await rebal_stats, rebal_table)
   })

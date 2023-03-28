@@ -55,7 +55,7 @@
             const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
-            table.prepend(use(transformations).fillWith(response))
+            table.prepend(use(transformations).render(response))
           } 
         }
         else {
@@ -67,7 +67,7 @@
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1
             table.deleteRow(index)
-            use(transformations).fillWith(response, table.insertRow(index))
+            use(transformations).render(response, table.insertRow(index))
           }
         } 
         return {innerHTML: input}
@@ -81,7 +81,7 @@
         return
       }
 
-      const table = document.getElementById("rebalances_{{count}}")
-      res.results.forEach(rebalance => table.append(use(transformations).fillWith(rebalance)));
+      const table = document.getElementById("rebalances_{{count}}"), template = use(transformations)
+      res.results.forEach(rebalance => table.append(template.render(rebalance)));
     });
   </script>
