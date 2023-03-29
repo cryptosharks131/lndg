@@ -85,7 +85,8 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     requested = serializers.ReadOnlyField()
     start = serializers.ReadOnlyField()
     stop = serializers.ReadOnlyField()
-    status = serializers.ReadOnlyField()
+    fees_paid = serializers.ReadOnlyField()
+    payment_hash = serializers.ReadOnlyField()
     class Meta:
         model = Rebalancer
         exclude = []
@@ -100,6 +101,12 @@ class OpenChannelSerializer(serializers.Serializer):
 
 class CloseChannelSerializer(serializers.Serializer):
     chan_id = serializers.CharField(label='chan_id')
+    target_fee = serializers.IntegerField(label='target_fee')
+    force = serializers.BooleanField(default=False)
+
+class BumpFeeSerializer(serializers.Serializer):
+    txid = serializers.CharField(label='txid')
+    index = serializers.IntegerField(label='index')
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 

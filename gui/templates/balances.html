@@ -11,6 +11,7 @@
       <th>Amount</th>
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
+      <th>Fee Bumps</th>
     </tr>
     {% for utxo in utxos %}
     <tr>
@@ -18,6 +19,17 @@
       <td>{{ utxo.amount_sat|intcomma }}</td>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ utxo.outpoint.txid_str }}" target="_blank">{{ utxo.outpoint.txid_str }}</a></td>
       <td>{{ utxo.confirmations|intcomma }}</td>
+      <td>
+        {% if utxo.confirmations == 0 %}
+          <form onsubmit="bumpFee(this,'{{ utxo.outpoint.txid_str }}','{{ utxo.outpoint.output_index }}'); return false">
+            <span style="float:none" class="input" data-unit="sats/vbyte" title="Fee bump an unconfirmed tx">
+              <input style="width:225px" id="target_fee" type="number" min="1" max="100" placeholder="New Fee Rate" name="target_fee">
+            </span>
+          </form>
+        {% else %}
+          ---
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>
@@ -51,4 +63,12 @@
   <center><h1>No wallet transactions found!</h1></center>
 </div>
 {% endif %}
+<script>
+  async function bumpFee(form, txid, index){
+    var target_fee = form.target_fee.value
+    await POST('bumpfee', {body: {"target_fee":target_fee,"txid":txid,"index":index}})
+    showBannerMsg('Fee rate for tx '+txid, target_fee)
+    form.innerHTML = 'Updating...'
+  }
+</script>
 {% endblock %}

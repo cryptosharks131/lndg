@@ -21,7 +21,7 @@
       <td><a href="/autofees?={{ log.chan_id }}">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
       <td>{{ log.setting }}</td>
       <td>{{ log.old_value }}</td>
-      <td {% if log.new_value > log.old_value %}style="background-color: #d5fadb"{% else %}style="background-color: #fadbd5"{% endif %}>{{ log.new_value }}</td>
+      <td {% if log.new_value > log.old_value %}style="background-color: rgba(46,160,67,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>{{ log.new_value }}</td>
     </tr>
     {% endfor %}
   </table>

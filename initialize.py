@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'gui',
     'rest_framework',
+    'django_filters',
     'qr_code',
 ]
 
@@ -148,6 +149,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 
 # Internationalization

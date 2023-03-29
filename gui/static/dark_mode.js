@@ -11,31 +11,15 @@ function getCookie(cname) {
       }
     }
     return "";
+}
+function applyTheme(){
+  if(getCookie("darkmode") == "true"){
+    toggleTheme();
   }
-
-function darkMode() {
-    let darkmode = getCookie("darkmode");
-    if (darkmode != "") {
-        if (darkmode == "true") {
-          document.cookie = "darkmode=false";
-        } else {
-          document.cookie = "darkmode=true";
-        }
-    } else {
-        document.cookie = "darkmode=true"; 
-    }
-    var element = document.body;
-    element.classList.toggle("dark-mode");
-    element.classList.toggle("dark-mode-table1");
-    element.classList.toggle("dark-mode-table2");
 }
 
-function checkDarkMode() {
-    let darkmode = getCookie("darkmode");
-    if (darkmode == "true") {
-        var element = document.body;
-        element.classList.toggle("dark-mode");
-        element.classList.toggle("dark-mode-table1");
-        element.classList.toggle("dark-mode-table2");
-    }
+function toggleTheme() {
+  var element = document.body;
+  element.classList.toggle("dark-mode")
+  document.cookie = `darkmode=${element.classList.contains("dark-mode")}`
 }
