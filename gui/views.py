@@ -986,51 +986,53 @@ def income(request):
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def chart(request):
-    invoices = Invoices.objects.filter(state=1).all()
-    payments = Payments.objects.filter(status=2).all()
-    onchain = Onchain.objects.all()
-    closures = Closures.objects.all()
-    forwards = Forwards.objects.all()
-    channels = Channels.objects.all()
+    payments = Payments.objects.values('creation_date', 'fee', 'value').filter(status=2).order_by('creation_date').all()
+    invoices = Invoices.objects.values('settle_date', 'amt_paid').filter(state=1).order_by('settle_date').all()
+    onchain = Onchain.objects.values('time_stamp', 'tx_hash', 'fee', 'amount').order_by('time_stamp').all()
+    forwards = Forwards.objects.values('forward_date', 'fee').order_by('forward_date').all()
+    closures = Closures.objects.values('closing_costs', 'settled_balance').all()
+    channels = Channels.objects.values('funding_txid').all()
 
     now = datetime.now()
-    events_time = [
-        *[on.time_stamp for on in onchain],
-        *[i.settle_date for i in invoices], 
-        *[f.forward_date for f in forwards],
-        *[p.creation_date for p in payments]]
-    min_dt = min(events_time)
+    events_time = sorted([
+        *[on['time_stamp'] for on in onchain],
+        *[i['settle_date'] for i in invoices], 
+        *[f['forward_date'] for f in forwards],
+        *[p['creation_date'] for p in payments], now, now])
+    min_dt = events_time[0]
 
     timeline = []
     one_hour = timedelta(hours=1)
-    costs, on_chain, off_chain, balance_over_time = [0, 0], [0, 0], [0, 0], [0, 0]
-    i = 1
-    while min_dt < now:
-        append_date = False
-        next_dt = min_dt + one_hour
+    costs, on_chain, off_chain, balance_over_time = [0], [0], [0], [0]
+    i,j = 0,0
+    while min_dt <= now:
+        append_date = min_dt == now
+        next_dt = events_time[j+1]
+        if next_dt < min_dt + one_hour: # min step between events: 1h
+            next_dt = min_dt + one_hour
 
-        for tx in onchain.filter(time_stamp__range=[min_dt, next_dt]):
+        for tx in onchain.filter(time_stamp__gte=min_dt, time_stamp__lt=next_dt):
             append_date = True
-            costs[i] += tx.fee
-            on_chain[i] += tx.amount
-            for closure in closures.filter(closing_tx=tx.tx_hash).all():
-                off_chain[i] -= (closure.settled_balance + closure.closing_costs)
-                costs[i] += closure.closing_costs
-            if channels.filter(funding_txid=tx.tx_hash).first(): #open channel
-                off_chain[i] -= tx.amount
+            costs[i] += tx['fee']
+            on_chain[i] += tx['amount']
+            for closure in closures.filter(closing_tx=tx['tx_hash']):
+                off_chain[i] -= (closure['settled_balance'] + closure['closing_costs'])
+                costs[i] += closure['closing_costs']
+            if channels.filter(funding_txid=tx['tx_hash']).first(): #open channel
+                off_chain[i] -= tx['amount']
 
-        for invoice in invoices.filter(settle_date__range=[min_dt, next_dt]):
-            off_chain[i] += invoice.amt_paid
+        for invoice in invoices.filter(settle_date__gte=min_dt, settle_date__lt=next_dt):
             append_date = True
+            off_chain[i] += invoice['amt_paid']
             
-        for forward in forwards.filter(forward_date__range=[min_dt, next_dt]):
-            off_chain[i] += forward.fee
+        for forward in forwards.filter(forward_date__gte=min_dt, forward_date__lt=next_dt):
             append_date = True
+            off_chain[i] += forward['fee']
                 
-        for payment in payments.filter(creation_date__range=[min_dt, next_dt]):
-            costs[i] += payment.fee
-            off_chain[i] -= (payment.fee + payment.value)
+        for payment in payments.filter(creation_date__gte=min_dt, creation_date__lt=next_dt):
             append_date = True
+            costs[i] += payment['fee']
+            off_chain[i] -= (payment['fee'] + payment['value'])
 
         balance_over_time[i] = on_chain[i] + off_chain[i] - costs[i]
         if append_date:
@@ -1040,17 +1042,13 @@ def chart(request):
             on_chain.append(on_chain[-1])
             off_chain.append(off_chain[-1])
             balance_over_time.append(balance_over_time[-1])
-        min_dt += one_hour
+        
+        if min_dt == next_dt:
+            break
+        j += 1
+        min_dt = next_dt
     
-    timeline.append(now)
-    timeline = [t.isoformat() for t in timeline]
-    timeline.insert(0, '0')
-
-    costs.append(costs[-1])
-    on_chain.append(on_chain[-1])
-    off_chain.append(off_chain[-1])
-    balance_over_time.append(balance_over_time[-1])
-    return Response({'balance_over_time': balance_over_time, 'on_chain':on_chain, 'dates': timeline, 'off_chain': off_chain, 'costs': costs})
+    return Response({'dates': [t.isoformat() for t in timeline], 'balance_over_time': balance_over_time, 'on_chain':on_chain, 'off_chain': off_chain, 'costs': costs})
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):

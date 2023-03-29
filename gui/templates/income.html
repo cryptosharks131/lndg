@@ -11,7 +11,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       const response = await GET('chart', {data: {}})
       const data = {
-        labels: response.dates.map(dt => dt.substring(0,10)),
+        labels: [0, ...response.dates.map(dt => dt.substring(0,10))],
         datasets: [
           {
             label: 'Balance',
@@ -21,7 +21,7 @@
             backgroundColor: 'rgba(251, 192, 147, 0.2)',
             borderColor: 'rgba(251, 192, 147, 0.5)',
             cubicInterpolationMode: 'monotone',
-            data: response.balance_over_time
+            data: [0, ...response.balance_over_time]
           },
           {
             label: 'On chain',
@@ -29,7 +29,7 @@
             pointHoverRadius: 10,
             borderColor: 'orange',
             cubicInterpolationMode: 'monotone',
-            data: response.on_chain
+            data: [0, ...response.on_chain]
           },
           {
             label: 'Off chain',
@@ -38,7 +38,7 @@
             borderColor: 'rgba(33,150,243)',
             backgroundColor: 'rgba(33,150,243,.2)',
             cubicInterpolationMode: 'monotone',
-            data: response.off_chain
+            data: [0, ...response.off_chain]
           },
           {
             label: 'Costs',
@@ -48,7 +48,7 @@
             borderColor: 'rgba(248,81,73)',
             backgroundColor: 'rgba(248,81,73,0.15)',
             cubicInterpolationMode: 'monotone',
-            data: response.costs
+            data: [0, ...response.costs]
           }
         ]
       };
