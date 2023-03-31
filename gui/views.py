@@ -991,7 +991,7 @@ def chart(request):
     onchain = Onchain.objects.values('time_stamp', 'tx_hash', 'fee', 'amount').order_by('time_stamp').all()
     forwards = Forwards.objects.values('forward_date', 'fee').order_by('forward_date').all()
     closures = Closures.objects.values('closing_costs', 'settled_balance').all()
-    channels = Channels.objects.values('funding_txid').all()
+    channels = Channels.objects.values('funding_txid', 'local_commit', 'capacity').all()
 
     now = datetime.now()
     events_time = sorted([
@@ -1018,8 +1018,8 @@ def chart(request):
             for closure in closures.filter(closing_tx=tx['tx_hash']):
                 off_chain[i] -= closure['settled_balance']
                 costs[i] += closure['closing_costs']
-            if channels.filter(funding_txid=tx['tx_hash']).first(): #open channel
-                off_chain[i] -= tx['amount']
+            for ch in channels.filter(funding_txid=tx['tx_hash']): #open channel
+                off_chain[i] += ch['capacity'] - ch['local_commit']
 
         for invoice in invoices.filter(settle_date__gte=min_dt, settle_date__lt=next_dt):
             append = True
