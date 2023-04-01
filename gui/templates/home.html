@@ -787,9 +787,9 @@
     byId("percent_cost_1day").innerHTML = parseInt(costs1d*100/(earned1d || 1)).toLocaleString()+'%'
     byId("percent_cost_7day").innerHTML = parseInt(costs7d*100/(earned7d || 1)).toLocaleString()+'%'
     byId("profit_per_outbound_1d").innerHTML = 
-      `${parseInt((earned1d - byId("fees_1day").innerHTML.toInt())*1000000/total_outbound||1).toLocaleString()} [${parseInt((earned1d - costs1d)*1000000/total_outbound||1).toLocaleString()}]`
+      `${parseInt((earned1d - byId("fees_1day").innerHTML.toInt())*1000000/(total_outbound||1)).toLocaleString()} [${parseInt((earned1d - costs1d)*1000000/(total_outbound||1)).toLocaleString()}]`
     byId("profit_per_outbound_7d").innerHTML = 
-      `${parseInt((earned7d - byId("fees_7day").innerHTML.toInt())*1000000/total_outbound||1).toLocaleString()} [${parseInt((earned7d - costs7d)*1000000/total_outbound||1).toLocaleString()}]`
+      `${parseInt((earned7d - byId("fees_7day").innerHTML.toInt())*1000000/(total_outbound||1)).toLocaleString()} [${parseInt((earned7d - costs7d)*1000000/(total_outbound||1)).toLocaleString()}]`
 
     const [liq_ratio, routed_1day_percent, routed_7day_percent, total_bal] = ['liq_ratio', 'routed_1day_percent', 'routed_7day_percent', 'total_balance'].map(id => byId(id))
     liq_ratio.innerHTML = parseInt((sum_active.active_inbound + sum_inactive.inactive_inbound)*100/total_outbound||1).toLocaleString()+'%'
