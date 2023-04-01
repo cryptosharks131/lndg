@@ -97,7 +97,7 @@
       <th>Routed</th>
       <th>Fees Earned</th>
       <th>Fees Paid</th>
-      <th>Offchain fees</th>
+      <th>Onchain fees</th>
       <th>Cost</th>
       <th title="Profit made per outbound [profit per outbound including onchain fees]">Profit/Outbound</th>
       <th>Outbound Utilization</th>
@@ -632,10 +632,10 @@
     "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
   }
   const detailed_ch_template = Object.assign({}, base_ch_template, {
-    "o1D": ch => ({innerHTML: `${ch.amt_routed_out_1day.toLocaleString()} M (${ch.routed_out_1day})`}),
-    "i1D": ch => ({innerHTML: `${ch.amt_routed_in_1day.toLocaleString()} M (${ch.routed_in_1day})`}),
-    "o7D": ch => ({innerHTML: `${ch.amt_routed_out_7day.toLocaleString()} M (${ch.routed_out_7day})`}),
-    "i7D": ch => ({innerHTML: `${ch.amt_routed_in_7day.toLocaleString()} M (${ch.routed_in_7day})`}),
+    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toLocaleString()}M (${ch.routed_out_1day})`}),
+    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toLocaleString()}M (${ch.routed_in_1day})`}),
+    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toLocaleString()}M (${ch.routed_out_7day})`}),
+    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toLocaleString()}M (${ch.routed_in_7day})`}),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
     "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
@@ -722,7 +722,7 @@
       sum.rOUTed.d7.count += rOUTed.count
 
       return ch
-    }).sort(ch => -ch.percent_outbound)
+    }).sort((ch1, ch2) => ch1.percent_outbound - ch2.percent_outbound)
       .forEach(ch => activeChannels.append(template.render(ch)))
 
     byId("routed_1day").innerHTML = `${sum.rOUTed.d1.count.toLocaleString()} (${(sum.rOUTed.d1.amt).toLocaleString()} sats)`
@@ -730,12 +730,7 @@
     byId("earned_1day").innerHTML = `${sum.earned.d1.toLocaleString()} [${parseInt(sum.earned.d1*1000000/(sum.rOUTed.d1.amt || 1)).toLocaleString()}]`
     byId("earned_7day").innerHTML = `${sum.earned.d7.toLocaleString()} [${parseInt(sum.earned.d7*1000000/(sum.rOUTed.d7.amt || 1)).toLocaleString()}]`
 
-    update_sum('active_', sum)
-    const total_inbound = byId('total_inbound').innerHTML.toInt(), total_outbound = byId('total_outbound').innerHTML.toInt() || 1
-    byId("routed_1day_percent").innerHTML = parseInt(sum.rOUTed.d1.amt*100/total_outbound).toLocaleString()+'%'
-    byId("routed_7day_percent").innerHTML = parseInt(sum.rOUTed.d7.amt*100/total_outbound).toLocaleString()+'%'
-    byId("liq_ratio").innerHTML = parseInt(total_inbound*100/total_outbound).toLocaleString()+'%'
-    return sum
+    return update_sum('active_', sum)
   }
   function build_inactive(channels){
     let sum = {capacity: 0, inactive_inbound: 0, inactive_outbound: 0, inactive_unsettled: 0}
@@ -749,8 +744,7 @@
       sum.inactive_unsettled += ch.unsettled_balance
       table.append(template.render(ch))
     })
-    update_sum('inactive_', sum)
-    return sum
+    return update_sum('inactive_', sum)
   }
   function update_sum(prefix, sum){
     const capacity = byId('total_capacity')
@@ -760,8 +754,7 @@
       byId(prefix+id).innerHTML = value.toLocaleString()
       total.innerHTML = (total.innerHTML.toInt() + value).toLocaleString()
     }
-    const total_bal = byId("total_balance")
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + byId('total_outbound').innerHTML.toInt()).toLocaleString()
+    return sum
   }
   async function update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive){
     let [fee1d,fee7d,amt1d,amt7d] = [0,0,0,0]
@@ -773,7 +766,7 @@
       fee7d += p.fee
       amt7d += p.value
     }
-    let [costs1d, costs7d] = [0,0]
+    let [costs1d, costs7d] = [fee1d,fee7d]
     for(tx of (await onchain_task).results){
       if(new Date(tx.time_stamp).getTime() >= _1day_ago){
         costs1d += tx.fee
@@ -786,7 +779,7 @@
       }
       costs7d += close.closing_costs
     }
-    const earned1d = byId("earned_1day").innerHTML.toInt(), earned7d = byId("earned_7day").innerHTML.toInt(), total_outbound = (byId("total_outbound").innerHTML.toInt() ||1)
+    const [earned1d, earned7d, total_outbound] = [sum_active.earned.d1, sum_active.earned.d7, sum_active.active_outbound+sum_inactive.inactive_outbound]
     byId("fees_1day").innerHTML = `${parseInt(fee1d).toLocaleString()} [${parseInt(fee1d*1000000/(amt1d || 1)).toLocaleString()}]`
     byId("fees_7day").innerHTML = `${parseInt(fee7d).toLocaleString()} [${parseInt(fee7d*1000000/(amt7d || 1)).toLocaleString()}]`
     byId("onchain_costs_1day").innerHTML = costs1d.toLocaleString()
@@ -794,19 +787,21 @@
     byId("percent_cost_1day").innerHTML = parseInt(costs1d*100/(earned1d || 1)).toLocaleString()+'%'
     byId("percent_cost_7day").innerHTML = parseInt(costs7d*100/(earned7d || 1)).toLocaleString()+'%'
     byId("profit_per_outbound_1d").innerHTML = 
-      `${parseInt((earned1d - byId("fees_1day").innerHTML.toInt())*1000000/total_outbound)} [${parseInt((earned1d - costs1d)*1000000/total_outbound)}]`
+      `${parseInt((earned1d - byId("fees_1day").innerHTML.toInt())*1000000/total_outbound||1).toLocaleString()} [${parseInt((earned1d - costs1d)*1000000/total_outbound||1).toLocaleString()}]`
     byId("profit_per_outbound_7d").innerHTML = 
-      `${parseInt((earned7d - byId("fees_7day").innerHTML.toInt())*1000000/total_outbound)} [${parseInt((earned7d - costs7d)*1000000/total_outbound)}]`
+      `${parseInt((earned7d - byId("fees_7day").innerHTML.toInt())*1000000/total_outbound||1).toLocaleString()} [${parseInt((earned7d - costs7d)*1000000/total_outbound||1).toLocaleString()}]`
 
-    const [routed_1day_percent, routed_7day_percent] = ['routed_1day_percent', 'routed_7day_percent'].map(id => byId(id))
-    routed_1day_percent.innerHTML = parseInt(routed_1day_percent.innerHTML.toInt()*100/((sum_active.active_outbound+sum_inactive.inactive_outbound || 1)))+'%'
-    routed_7day_percent.innerHTML = parseInt(routed_7day_percent.innerHTML.toInt()*100/((sum_active.active_outbound+sum_inactive.inactive_outbound || 1)))+'%'
+    const [liq_ratio, routed_1day_percent, routed_7day_percent, total_bal] = ['liq_ratio', 'routed_1day_percent', 'routed_7day_percent', 'total_balance'].map(id => byId(id))
+    liq_ratio.innerHTML = parseInt((sum_active.active_inbound + sum_inactive.inactive_inbound)*100/total_outbound||1).toLocaleString()+'%'
+    routed_1day_percent.innerHTML = (sum_active.rOUTed.d1.amt*100/((total_outbound || 1))).toFixed(2)+'%'
+    routed_7day_percent.innerHTML = (sum_active.rOUTed.d7.amt*100/((total_outbound || 1))).toFixed(2)+'%'
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).toLocaleString()
   }
   function build_private(channels){
     if(!addTitle("Private Channels", channels)) return
 
     const table = byId('privateChannels'), template = use(private_ch_template)
-    let [capacity, outbound, active_count ] = [0,0,0]
+    let [capacity, outbound, active_count] = [0,0,0]
     channels.forEach(ch => {
       capacity += ch.capacity
       outbound += ch.local_balance
@@ -846,10 +841,8 @@
     byId("updates").innerHTML = updates.toLocaleString()
     byId("pending_htlcs").innerHTML = pending_htlcs.toLocaleString()
 
-    let sum_active = await build_active(active, forwards7d_task)
-    let sum_inactive = build_inactive(inactive)
-    update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive)
-    build_private(private)
+    let [activeSum, inactiveSum, _] = [build_active(active, forwards7d_task), build_inactive(inactive), build_private(private)]
+    update_summary(payments_task, onchain_task, closures_task, await activeSum, inactiveSum)
   })
 </script>
 {% endblock %}
