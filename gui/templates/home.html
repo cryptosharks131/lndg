@@ -751,14 +751,14 @@
     return sum
   }
   async function update_summary(payments_task, onchain_task, closures_task, active, inactive){
-    let offchain = {fee: {d1:0, d7:0}, amt: {d1:0, d7:0} }
+    let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of (await payments_task).results){
       if(adjustTZ(p.creation_date).getTime() >= _1day_ago){
-        offchain.fee.d1 += p.fee
-        offchain.amt.d1 += p.value
+        offchain.d1.fee += p.fee
+        offchain.d1.amt += p.value
       } 
-      offchain.fee.d7 += p.fee
-      offchain.amt.d7 += p.value
+      offchain.d7.fee += p.fee
+      offchain.d7.amt += p.value
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
@@ -778,13 +778,14 @@
     total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
-      byId(`routed_${d}day`).innerHTML = `${active.rOUTed[`d${d}`].count.intcomma()} (${(active.rOUTed[`d${d}`].amt).intcomma()} sats)`
-      byId(`earned_${d}day`).innerHTML = `${active.earned[`d${d}`].intcomma()} [${(active.earned[`d${d}`]*1000000/(active.rOUTed[`d${d}`].amt || 1)).intcomma()}]`
-      byId(`fees_${d}day`).innerHTML = `${offchain.fee[`d${d}`].intcomma()} [${(offchain.fee[`d${d}`]*1000000/(offchain.amt[`d${d}`]||1)).intcomma()}]`
+      const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
+      byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} (${routed.amt.intcomma()} sats)`
+      byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} [${(earned*1000000/(routed.amt || 1)).intcomma()}]`
+      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} [${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}]`
       byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
-      byId(`percent_cost_${d}day`).innerHTML = ((offchain.fee[`d${d}`] + chainCosts[`d${d}`])*100/(active.earned[`d${d}`]||1)).intcomma()+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `${((active.earned[`d${d}`] - offchain.fee[`d${d}`])*1000000/total_outbound).intcomma()} [${((active.earned[`d${d}`] - chainCosts[`d${d}`])*1000000/total_outbound).intcomma()}]`
-      byId(`routed_${d}day_percent`).innerHTML = (active.rOUTed[`d${d}`].amt*100/(total_outbound)).toFixed(2)+'%'
+      byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/(earned||1)).intcomma())+'%'
+      byId(`profit_per_outbound_${d}d`).innerHTML = `${((earned - fees)*1000000/total_outbound).intcomma()} [${((earned - costs)*1000000/total_outbound).intcomma()}]`
+      byId(`routed_${d}day_percent`).innerHTML = (routed.amt*100/(total_outbound)).toFixed(2)+'%'
     }
   }
   function build_private(channels){
