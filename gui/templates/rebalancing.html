@@ -64,12 +64,7 @@
     "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
     "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
-    "ar_amt_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-      {% csrf_token %}
-      <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}">
-      <input type="hidden" name="chan_id" value="${ch.chan_id}">
-      <input type="hidden" name="update_target" value="2">
-    </form>`}),
+    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_amt_target: this.value}}, r => {flash(this, r.ar_amt_target);showBannerMsg('AR amount target%', r.ar_amt_target)});">`}),
     "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_max_cost: this.value}}, r => {flash(this, r.ar_max_cost);showBannerMsg('AR Max Cost%', r.ar_max_cost);this.parentElement.previousElementSibling.previousElementSibling.previousElementSibling.apply(rebalance_template.fee_ratio(extend(r)))});">`}),
     "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target);showBannerMsg('AR outTarget%', r.ar_out_target)});">`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
     "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
