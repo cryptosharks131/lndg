@@ -28,7 +28,7 @@ function adjustTZ(datetime){
   datetime = new Date(datetime).getTime() - new Date(datetime).getTimezoneOffset()*60000
   return new Date(datetime)
 }
-async function toogle(button){
+async function toggle(button){
   try{
     button.children[0].style.visibility = 'collapse';
     button.children[1].style.visibility = 'visible';
