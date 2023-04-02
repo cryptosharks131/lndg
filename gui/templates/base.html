@@ -7,6 +7,18 @@
   <script src="{% static 'sort_table.js' %}"></script>
   <script src="{% static 'dark_mode.js' %}"></script>
   <script src="{% static 'helpers.js' %}"></script>
+  <script>
+    const base_ch_template = {
+      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+      "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} (${ch.percent_outbound}%)`}),
+      "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
+      <div class="progress w3-round w3-grey">
+        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+      </div>`}),
+      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} (${ch.percent_inbound}%)`})
+    }
+  </script>
   <script src="{% static 'qrcode.js' %}"></script>
   <head>
     <meta charset="utf-8">

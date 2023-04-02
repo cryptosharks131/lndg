@@ -618,20 +618,12 @@
 </div>
 <script>
   const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1)).getTime()
-  const base_ch_template = {
-    "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
-    "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} (${ch.percent_outbound}%)`}),
-    "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
-    <div class="progress w3-round w3-grey">
-      <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
-    </div>`}),
-    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} (${ch.percent_inbound}%)`}),
+  const home_ch_base = Object.assign({}, base_ch_template, {
     "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
     "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
     "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
-  }
-  const detailed_ch_template = Object.assign({}, base_ch_template, {
+  })
+  const detailed_ch_template = Object.assign({}, home_ch_base, {
     "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).intcomma()}M (${ch.routed_out_1day})`}),
     "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).intcomma()}M (${ch.routed_in_1day})`}),
     "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).intcomma()}M (${ch.routed_out_7day})`}),
@@ -647,7 +639,7 @@
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
   })
   let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
-  const inactive_ch_template = Object.assign({}, base_ch_template, {iRate, iBase}, {
+  const inactive_ch_template = Object.assign({}, home_ch_base, {iRate, iBase}, {
     "local_commit": ch => ({innerHTML: ch.local_commit.intcomma()}),
     "local_chan_reserve": ch => ({innerHTML: ch.local_chan_reserve.intcomma()}),
     "last_update": ch =>  ({innerHTML: formatDate(ch.last_update).replace(" ago", ""), title: adjustTZ(ch.last_update)}),
@@ -655,7 +647,7 @@
   }, {ar_in_target, auto_rebalance})
 
   let {local_commit, local_chan_reserve, initiator} = inactive_ch_template
-  const private_ch_template = Object.assign({}, base_ch_template, {
+  const private_ch_template = Object.assign({}, home_ch_base, {
     "total_sent": ch => ({innerHTML: ch.total_sent.intcomma()}),
     "total_received": ch => ({innerHTML: ch.total_received.intcomma()})
   }, {local_commit, local_chan_reserve, initiator}, {

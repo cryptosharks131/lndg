@@ -48,95 +48,86 @@
     </form>
   </div>
 </div>
-{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 <script>
+  const rebalance_template = Object.assign({}, {
+    "select": ch => ({innerHTML: `<input onclick="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : document.getElementById('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
+    "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toggle(this)">
+      <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
+        <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+        <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+      </svg>
+      <svg style="visibility:collapse;transform:translateY(-25px)" version="1.1" viewBox="0 0 16 16" width="25" height="25">
+        <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
+      </svg>
+    </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
+    }, base_ch_template, {
+    "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
+    "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
+    "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
+    "ar_amt_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="2">
+    </form>`}),
+    "ar_max_cost": ch => ({innerHTML: `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="6">
+    </form>`}),
+    "ar_out_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_out_target}">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="4">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
+    "ar_in_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_in_target}">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="3">
+    </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
+      <defs>
+          <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%">
+              <stop stop-color="#fff" stop-opacity="0" offset="0%"/>
+              <stop stop-color="#fff" stop-opacity=".631" offset="63.146%"/>
+              <stop stop-color="#fff" offset="100%"/>
+          </linearGradient>
+      </defs>
+      <g fill="none" fill-rule="evenodd">
+          <g transform="translate(1 1)">
+              <path d="M36 18c0-9.94-8.06-18-18-18" stroke="#aaa" stroke-width="2">
+                  <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
+              </path>
+              <circle fill="#aaa" cx="36" cy="18" r="1">
+                  <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
+              </circle>
+          </g>
+      </g>
+    </svg>`, dataTag: ch.remote_pubkey}),
+    "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+  })
+  function toggleAR(button){
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
+      button.parentElement.previousElementSibling.previousElementSibling.apply(rebalance_template.ar_out_target(ch))
+      button.parentElement.previousElementSibling.apply(rebalance_template.ar_in_target(ch))
+      button.parentElement.apply(rebalance_template.auto_rebalance(ch))
+    })
+  }
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'}})
-    const rebal_stats = GET('rebalance_stats', {method : 'GET', data : {}})
+    const rebal_stats = GET('rebalance_stats', {method: 'GET', data: {}})
     const container = document.getElementById("rebalances_container")
     if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
       return
     }
 
-    const transformations = {
-      "select": ch => ({innerHTML: `<input onclick="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : document.getElementById('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
-      "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toggle(this)">
-        <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
-          <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
-          <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
-        </svg>
-        <svg style="visibility:collapse;transform:translateY(-25px)" version="1.1" viewBox="0 0 16 16" width="25" height="25">
-          <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
-        </svg>
-      </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
-      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
-      "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
-      "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
-      <div class="progress w3-round w3-grey">
-        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
-      </div>`}),
-      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
-      "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
-      "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-      "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
-      "ar_amt_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="2">
-      </form>`}),
-      "ar_max_cost": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="6">
-      </form>`}),
-      "ar_out_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_out_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="4">
-      </form>`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
-      "ar_in_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_in_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="3">
-      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-      "auto_rebalance": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="5">
-        <input type="hidden" name="target" value="0">
-      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-      "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
-        <defs>
-            <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%">
-                <stop stop-color="#fff" stop-opacity="0" offset="0%"/>
-                <stop stop-color="#fff" stop-opacity=".631" offset="63.146%"/>
-                <stop stop-color="#fff" offset="100%"/>
-            </linearGradient>
-        </defs>
-        <g fill="none" fill-rule="evenodd">
-            <g transform="translate(1 1)">
-                <path d="M36 18c0-9.94-8.06-18-18-18" stroke="#aaa" stroke-width="2">
-                    <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
-                </path>
-                <circle fill="#aaa" cx="36" cy="18" r="1">
-                    <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
-                </circle>
-            </g>
-        </g>
-    </svg>`, dataTag: ch.remote_pubkey}),
-      "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
-    }
-    let enabled = 0, elegible = 0, available = 0
-    const rebal_table = document.getElementById("rebalancingTable")
+    let [enabled, elegible, available, rebal_table] = [0,0,0,byId("rebalancingTable")]
     resp.results.forEach(ch => {
       //derived properties
       ch.local_balance += ch.pending_outbound
@@ -154,7 +145,7 @@
     })
     container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
-    const template = use(transformations)
+    const template = use(rebalance_template)
     resp.results
       .sort((ch1, ch2) => { //sort by active, out%
         if(ch1.is_active && !ch2.is_active) return -1
@@ -173,4 +164,6 @@
     })
   }
 </script>
+{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 {% endblock %}
