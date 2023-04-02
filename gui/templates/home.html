@@ -761,18 +761,18 @@
       fee7d += p.fee
       amt7d += p.value
     }
-    let [costs1d, costs7d] = [fee1d,fee7d]
+    let [chainCosts1d, chainCosts7d] = [0,0]
     for(tx of (await onchain_task).results){
       if(new Date(tx.time_stamp).getTime() >= _1day_ago){
-        costs1d += tx.fee
+        chainCosts1d += tx.fee
       }
-      costs7d += tx.fee
+      chainCosts7d += tx.fee
     }
     for(close of (await closures_task).results){
       if(close.close_height >= ({{node_info.block_height}} - 144)){
-        costs1d += close.closing_costs
+        chainCosts1d += close.closing_costs
       }
-      costs7d += close.closing_costs
+      chainCosts7d += close.closing_costs
     }
     const [earned1d, earned7d, total_outbound] = [sum_active.earned.d1, sum_active.earned.d7, sum_active.active_outbound+sum_inactive.inactive_outbound]
     byId("routed_1day").innerHTML = `${sum_active.rOUTed.d1.count.intcomma()} (${(sum_active.rOUTed.d1.amt).intcomma()} sats)`
@@ -781,14 +781,14 @@
     byId("earned_7day").innerHTML = `${sum_active.earned.d7.intcomma()} [${(sum_active.earned.d7*1000000/(sum_active.rOUTed.d7.amt || 1)).intcomma()}]`
     byId("fees_1day").innerHTML = `${fee1d.intcomma()} [${(fee1d*1000000/(amt1d||1)).intcomma()}]`
     byId("fees_7day").innerHTML = `${fee7d.intcomma()} [${(fee7d*1000000/(amt7d||1)).intcomma()}]`
-    byId("onchain_costs_1day").innerHTML = costs1d.intcomma()
-    byId("onchain_costs_7day").innerHTML = costs7d.intcomma()
-    byId("percent_cost_1day").innerHTML = (costs1d*100/(earned1d||1)).intcomma()+'%'
-    byId("percent_cost_7day").innerHTML = (costs7d*100/(earned7d||1)).intcomma()+'%'
+    byId("onchain_costs_1day").innerHTML = chainCosts1d.intcomma()
+    byId("onchain_costs_7day").innerHTML = chainCosts7d.intcomma()
+    byId("percent_cost_1day").innerHTML = ((fee1d + chainCosts1d)*100/(earned1d||1)).intcomma()+'%'
+    byId("percent_cost_7day").innerHTML = ((fee7d + chainCosts7d)*100/(earned7d||1)).intcomma()+'%'
     byId("profit_per_outbound_1d").innerHTML = 
-      `${((earned1d - fee1d)*1000000/(total_outbound||1)).intcomma()} [${((earned1d - costs1d)*1000000/(total_outbound||1)).intcomma()}]`
+      `${((earned1d - fee1d)*1000000/(total_outbound||1)).intcomma()} [${((earned1d - chainCosts1d)*1000000/(total_outbound||1)).intcomma()}]`
     byId("profit_per_outbound_7d").innerHTML = 
-      `${((earned7d - fee7d)*1000000/(total_outbound||1)).intcomma()} [${((earned7d - costs7d)*1000000/(total_outbound||1)).intcomma()}]`
+      `${((earned7d - fee7d)*1000000/(total_outbound||1)).intcomma()} [${((earned7d - chainCosts7d)*1000000/(total_outbound||1)).intcomma()}]`
 
     const [liq_ratio, routed_1day_percent, routed_7day_percent, total_bal] = ['liq_ratio', 'routed_1day_percent', 'routed_7day_percent', 'total_balance'].map(id => byId(id))
     liq_ratio.innerHTML = ((sum_active.active_inbound + sum_inactive.inactive_inbound)*100/(total_outbound||1)).intcomma()+'%'
