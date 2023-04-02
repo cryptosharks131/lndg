@@ -65,7 +65,7 @@
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
     "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
     "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_amt_target: this.value}}, r => {flash(this, r.ar_amt_target);showBannerMsg('AR amount target%', r.ar_amt_target)});">`}),
-    "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_max_cost: this.value}}, r => {flash(this, r.ar_max_cost);showBannerMsg('AR Max Cost%', r.ar_max_cost);this.parentElement.previousElementSibling.previousElementSibling.previousElementSibling.apply(rebalance_template.fee_ratio(extend(r)))});">`}),
+    "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_max_cost: this.value}}, r => {flash(this, r.ar_max_cost);showBannerMsg('AR Max Cost%', r.ar_max_cost);this.parentElement.parentElement.children[8].apply(rebalance_template.fee_ratio(extend(r)))});">`}),
     "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target);showBannerMsg('AR outTarget%', r.ar_out_target)});">`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
     "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
@@ -91,10 +91,12 @@
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   function toggleAR(button){
-    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
-      button.parentElement.previousElementSibling.previousElementSibling.apply(rebalance_template.ar_out_target(ch))
-      button.parentElement.previousElementSibling.apply(rebalance_template.ar_in_target(ch))
-      button.parentElement.apply(rebalance_template.auto_rebalance(ch))
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) {
+      extend(ch)
+      let props = {14: 'auto_rebalance', 13: 'ar_in_target', 12: 'ar_out_target', 9: 'rebalance_in', 7: 'rebal_out'}
+      for(index in props){
+        button.parentElement.parentElement.children[index].apply(rebalance_template[props[index]](ch))
+      }
     })
   }
   function extend(ch){
