@@ -698,9 +698,8 @@
       return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
     }
 
-    const forwards7d = await forwards7d_task
-    const activeChannels = byId("activeChannels"), template = use(detailed_ch_template)
-    forwards1d = forwards7d.results.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
+    const [forwards7d, activeChannels, template] = [await forwards7d_task, byId("activeChannels"), use(detailed_ch_template)]
+    forwards1d = forwards7d.results.filter(f => adjustTZ(f.forward_date).getTime() >= _1day_ago)
     channels.map(ch => { //derived properties
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
@@ -751,56 +750,47 @@
     }
     return sum
   }
-  async function update_summary(payments_task, onchain_task, closures_task, sum_active, sum_inactive){
-    let [fee1d,fee7d,amt1d,amt7d] = [0,0,0,0]
+  async function update_summary(payments_task, onchain_task, closures_task, active, inactive){
+    let offchain = {fee: {d1:0, d7:0}, amt: {d1:0, d7:0} }
     for(p of (await payments_task).results){
-      if(new Date(p.creation_date).getTime() >= _1day_ago){
-        fee1d += p.fee
-        amt1d += p.value
+      if(adjustTZ(p.creation_date).getTime() >= _1day_ago){
+        offchain.fee.d1 += p.fee
+        offchain.amt.d1 += p.value
       } 
-      fee7d += p.fee
-      amt7d += p.value
+      offchain.fee.d7 += p.fee
+      offchain.amt.d7 += p.value
     }
-    let [chainCosts1d, chainCosts7d] = [0,0]
+    let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
-      if(new Date(tx.time_stamp).getTime() >= _1day_ago){
-        chainCosts1d += tx.fee
+      if(adjustTZ(tx.time_stamp).getTime() >= _1day_ago){
+        chainCosts.d1 += tx.fee
       }
-      chainCosts7d += tx.fee
+      chainCosts.d7 += tx.fee
     }
     for(close of (await closures_task).results){
       if(close.close_height >= ({{node_info.block_height}} - 144)){
-        chainCosts1d += close.closing_costs
+        chainCosts.d1 += close.closing_costs
       }
-      chainCosts7d += close.closing_costs
+      chainCosts.d7 += close.closing_costs
     }
-    const [earned1d, earned7d, total_outbound] = [sum_active.earned.d1, sum_active.earned.d7, sum_active.active_outbound+sum_inactive.inactive_outbound]
-    byId("routed_1day").innerHTML = `${sum_active.rOUTed.d1.count.intcomma()} (${(sum_active.rOUTed.d1.amt).intcomma()} sats)`
-    byId("routed_7day").innerHTML = `${sum_active.rOUTed.d7.count.intcomma()} (${(sum_active.rOUTed.d7.amt).intcomma()} sats)`
-    byId("earned_1day").innerHTML = `${sum_active.earned.d1.intcomma()} [${(sum_active.earned.d1*1000000/(sum_active.rOUTed.d1.amt || 1)).intcomma()}]`
-    byId("earned_7day").innerHTML = `${sum_active.earned.d7.intcomma()} [${(sum_active.earned.d7*1000000/(sum_active.rOUTed.d7.amt || 1)).intcomma()}]`
-    byId("fees_1day").innerHTML = `${fee1d.intcomma()} [${(fee1d*1000000/(amt1d||1)).intcomma()}]`
-    byId("fees_7day").innerHTML = `${fee7d.intcomma()} [${(fee7d*1000000/(amt7d||1)).intcomma()}]`
-    byId("onchain_costs_1day").innerHTML = chainCosts1d.intcomma()
-    byId("onchain_costs_7day").innerHTML = chainCosts7d.intcomma()
-    byId("percent_cost_1day").innerHTML = ((fee1d + chainCosts1d)*100/(earned1d||1)).intcomma()+'%'
-    byId("percent_cost_7day").innerHTML = ((fee7d + chainCosts7d)*100/(earned7d||1)).intcomma()+'%'
-    byId("profit_per_outbound_1d").innerHTML = 
-      `${((earned1d - fee1d)*1000000/(total_outbound||1)).intcomma()} [${((earned1d - chainCosts1d)*1000000/(total_outbound||1)).intcomma()}]`
-    byId("profit_per_outbound_7d").innerHTML = 
-      `${((earned7d - fee7d)*1000000/(total_outbound||1)).intcomma()} [${((earned7d - chainCosts7d)*1000000/(total_outbound||1)).intcomma()}]`
-
-    const [liq_ratio, routed_1day_percent, routed_7day_percent, total_bal] = ['liq_ratio', 'routed_1day_percent', 'routed_7day_percent', 'total_balance'].map(id => byId(id))
-    liq_ratio.innerHTML = ((sum_active.active_inbound + sum_inactive.inactive_inbound)*100/(total_outbound||1)).intcomma()+'%'
-    routed_1day_percent.innerHTML = (sum_active.rOUTed.d1.amt*100/((total_outbound || 1))).toFixed(2)+'%'
-    routed_7day_percent.innerHTML = (sum_active.rOUTed.d7.amt*100/((total_outbound || 1))).toFixed(2)+'%'
+    const [total_outbound, total_bal] = [active.active_outbound+inactive.inactive_outbound || 1, byId('total_balance')]
+    byId('liq_ratio').innerHTML = ((active.active_inbound + inactive.inactive_inbound)*100/total_outbound).intcomma()+'%'
     total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).intcomma()
+
+    for(d of [1,7]){ //build 1 & 7 days table statistics
+      byId(`routed_${d}day`).innerHTML = `${active.rOUTed[`d${d}`].count.intcomma()} (${(active.rOUTed[`d${d}`].amt).intcomma()} sats)`
+      byId(`earned_${d}day`).innerHTML = `${active.earned[`d${d}`].intcomma()} [${(active.earned[`d${d}`]*1000000/(active.rOUTed[`d${d}`].amt || 1)).intcomma()}]`
+      byId(`fees_${d}day`).innerHTML = `${offchain.fee[`d${d}`].intcomma()} [${(offchain.fee[`d${d}`]*1000000/(offchain.amt[`d${d}`]||1)).intcomma()}]`
+      byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
+      byId(`percent_cost_${d}day`).innerHTML = ((offchain.fee[`d${d}`] + chainCosts[`d${d}`])*100/(active.earned[`d${d}`]||1)).intcomma()+'%'
+      byId(`profit_per_outbound_${d}d`).innerHTML = `${((active.earned[`d${d}`] - offchain.fee[`d${d}`])*1000000/total_outbound).intcomma()} [${((active.earned[`d${d}`] - chainCosts[`d${d}`])*1000000/total_outbound).intcomma()}]`
+      byId(`routed_${d}day_percent`).innerHTML = (active.rOUTed[`d${d}`].amt*100/(total_outbound)).toFixed(2)+'%'
+    }
   }
   function build_private(channels){
     if(!addTitle("Private Channels", channels)) return
 
-    const table = byId('privateChannels'), template = use(private_ch_template)
-    let [capacity, outbound, active_count] = [0,0,0]
+    let [capacity, outbound, active_count, table, template] = [0,0,0,byId('privateChannels'),use(private_ch_template)]
     channels.forEach(ch => {
       capacity += ch.capacity
       outbound += ch.local_balance
@@ -821,8 +811,7 @@
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status:2} })
     const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     
-    let [updates, pending_htlcs] = [0,0] 
-    const active = [], inactive = [], private = []
+    let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       updates += ch.num_updates
       pending_htlcs += ch.htlc_count
