@@ -35,7 +35,7 @@
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
     <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
-    <a href="#." data-value="{{addr}}" onclick="toogle(this)" onmouseleave="qr_clear()" onmouseenter="qr_gen('{{ addr }}');">
+    <a href="#." data-value="{{addr}}" onclick="toggle(this)" onmouseleave="qr_clear()" onmouseenter="qr_gen('{{ addr }}');">
       <svg style="height:30px;width:30px;transform:matrix(1, 0, 0, 1, 4, 3)" version="1.1" >
         <path style="" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
         <path style="" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
@@ -621,21 +621,21 @@
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
     "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
-    "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
-    "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
+    "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} (${ch.percent_outbound}%)`}),
+    "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
     <div class="progress w3-round w3-grey">
       <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
     </div>`}),
-    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
+    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} (${ch.percent_inbound}%)`}),
     "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`}),
     "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
     "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
   }
   const detailed_ch_template = Object.assign({}, base_ch_template, {
-    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toLocaleString()}M (${ch.routed_out_1day})`}),
-    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toLocaleString()}M (${ch.routed_in_1day})`}),
-    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toLocaleString()}M (${ch.routed_out_7day})`}),
-    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toLocaleString()}M (${ch.routed_in_7day})`}),
+    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).intcomma()}M (${ch.routed_out_1day})`}),
+    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).intcomma()}M (${ch.routed_in_1day})`}),
+    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).intcomma()}M (${ch.routed_out_7day})`}),
+    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).intcomma()}M (${ch.routed_in_7day})`}),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate, style: {backgroundColor: ch.local_disabled ? red : green} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee, style: {backgroundColor: ch.local_disabled ? red : green} }),
     "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
@@ -644,25 +644,25 @@
       <input type="hidden" name="chan_id" value="${ch.chan_id}">
       <input type="hidden" name="update_target" value="3">
     </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toogleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
   })
   let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
   const inactive_ch_template = Object.assign({}, base_ch_template, {iRate, iBase}, {
-    "local_commit": ch => ({innerHTML: ch.local_commit.toLocaleString()}),
-    "local_chan_reserve": ch => ({innerHTML: ch.local_chan_reserve.toLocaleString()}),
+    "local_commit": ch => ({innerHTML: ch.local_commit.intcomma()}),
+    "local_chan_reserve": ch => ({innerHTML: ch.local_chan_reserve.intcomma()}),
     "last_update": ch =>  ({innerHTML: formatDate(ch.last_update).replace(" ago", ""), title: adjustTZ(ch.last_update)}),
     "initiator": ch => ({innerHTML: ch.initiator ? 'Local': 'Remote'}),
   }, {ar_in_target, auto_rebalance})
 
   let {local_commit, local_chan_reserve, initiator} = inactive_ch_template
   const private_ch_template = Object.assign({}, base_ch_template, {
-    "total_sent": ch => ({innerHTML: ch.total_sent.toLocaleString()}),
-    "total_received": ch => ({innerHTML: ch.total_received.toLocaleString()})
+    "total_sent": ch => ({innerHTML: ch.total_sent.intcomma()}),
+    "total_received": ch => ({innerHTML: ch.total_received.intcomma()})
   }, {local_commit, local_chan_reserve, initiator}, {
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
 
-  function toogleAR(button){
+  function toggleAR(button){
     Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
       button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
       button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
@@ -725,11 +725,6 @@
     }).sort((ch1, ch2) => ch1.percent_outbound - ch2.percent_outbound)
       .forEach(ch => activeChannels.append(template.render(ch)))
 
-    byId("routed_1day").innerHTML = `${sum.rOUTed.d1.count.toLocaleString()} (${(sum.rOUTed.d1.amt).toLocaleString()} sats)`
-    byId("routed_7day").innerHTML = `${sum.rOUTed.d7.count.toLocaleString()} (${(sum.rOUTed.d7.amt).toLocaleString()} sats)`
-    byId("earned_1day").innerHTML = `${sum.earned.d1.toLocaleString()} [${parseInt(sum.earned.d1*1000000/(sum.rOUTed.d1.amt || 1)).toLocaleString()}]`
-    byId("earned_7day").innerHTML = `${sum.earned.d7.toLocaleString()} [${parseInt(sum.earned.d7*1000000/(sum.rOUTed.d7.amt || 1)).toLocaleString()}]`
-
     return update_sum('active_', sum)
   }
   function build_inactive(channels){
@@ -748,11 +743,11 @@
   }
   function update_sum(prefix, sum){
     const capacity = byId('total_capacity')
-    capacity.innerHTML = (capacity.innerHTML.toInt() + sum.capacity).toLocaleString()
+    capacity.innerHTML = (capacity.innerHTML.toInt() + sum.capacity).intcomma()
     for (id of ['inbound', 'outbound', 'unsettled']){
       const value = sum[prefix+id], total = byId('total_'+id)
-      byId(prefix+id).innerHTML = value.toLocaleString()
-      total.innerHTML = (total.innerHTML.toInt() + value).toLocaleString()
+      byId(prefix+id).innerHTML = value.intcomma()
+      total.innerHTML = (total.innerHTML.toInt() + value).intcomma()
     }
     return sum
   }
@@ -780,22 +775,26 @@
       costs7d += close.closing_costs
     }
     const [earned1d, earned7d, total_outbound] = [sum_active.earned.d1, sum_active.earned.d7, sum_active.active_outbound+sum_inactive.inactive_outbound]
-    byId("fees_1day").innerHTML = `${parseInt(fee1d).toLocaleString()} [${parseInt(fee1d*1000000/(amt1d || 1)).toLocaleString()}]`
-    byId("fees_7day").innerHTML = `${parseInt(fee7d).toLocaleString()} [${parseInt(fee7d*1000000/(amt7d || 1)).toLocaleString()}]`
-    byId("onchain_costs_1day").innerHTML = costs1d.toLocaleString()
-    byId("onchain_costs_7day").innerHTML = costs7d.toLocaleString()
-    byId("percent_cost_1day").innerHTML = parseInt(costs1d*100/(earned1d || 1)).toLocaleString()+'%'
-    byId("percent_cost_7day").innerHTML = parseInt(costs7d*100/(earned7d || 1)).toLocaleString()+'%'
+    byId("routed_1day").innerHTML = `${sum_active.rOUTed.d1.count.intcomma()} (${(sum_active.rOUTed.d1.amt).intcomma()} sats)`
+    byId("routed_7day").innerHTML = `${sum_active.rOUTed.d7.count.intcomma()} (${(sum_active.rOUTed.d7.amt).intcomma()} sats)`
+    byId("earned_1day").innerHTML = `${sum_active.earned.d1.intcomma()} [${(sum_active.earned.d1*1000000/(sum_active.rOUTed.d1.amt || 1)).intcomma()}]`
+    byId("earned_7day").innerHTML = `${sum_active.earned.d7.intcomma()} [${(sum_active.earned.d7*1000000/(sum_active.rOUTed.d7.amt || 1)).intcomma()}]`
+    byId("fees_1day").innerHTML = `${fee1d.intcomma()} [${(fee1d*1000000/(amt1d||1)).intcomma()}]`
+    byId("fees_7day").innerHTML = `${fee7d.intcomma()} [${(fee7d*1000000/(amt7d||1)).intcomma()}]`
+    byId("onchain_costs_1day").innerHTML = costs1d.intcomma()
+    byId("onchain_costs_7day").innerHTML = costs7d.intcomma()
+    byId("percent_cost_1day").innerHTML = (costs1d*100/(earned1d||1)).intcomma()+'%'
+    byId("percent_cost_7day").innerHTML = (costs7d*100/(earned7d||1)).intcomma()+'%'
     byId("profit_per_outbound_1d").innerHTML = 
-      `${parseInt((earned1d - byId("fees_1day").innerHTML.toInt())*1000000/(total_outbound||1)).toLocaleString()} [${parseInt((earned1d - costs1d)*1000000/(total_outbound||1)).toLocaleString()}]`
+      `${((earned1d - fee1d)*1000000/(total_outbound||1)).intcomma()} [${((earned1d - costs1d)*1000000/(total_outbound||1)).intcomma()}]`
     byId("profit_per_outbound_7d").innerHTML = 
-      `${parseInt((earned7d - byId("fees_7day").innerHTML.toInt())*1000000/(total_outbound||1)).toLocaleString()} [${parseInt((earned7d - costs7d)*1000000/(total_outbound||1)).toLocaleString()}]`
+      `${((earned7d - fee7d)*1000000/(total_outbound||1)).intcomma()} [${((earned7d - costs7d)*1000000/(total_outbound||1)).intcomma()}]`
 
     const [liq_ratio, routed_1day_percent, routed_7day_percent, total_bal] = ['liq_ratio', 'routed_1day_percent', 'routed_7day_percent', 'total_balance'].map(id => byId(id))
-    liq_ratio.innerHTML = parseInt((sum_active.active_inbound + sum_inactive.inactive_inbound)*100/total_outbound||1).toLocaleString()+'%'
+    liq_ratio.innerHTML = ((sum_active.active_inbound + sum_inactive.inactive_inbound)*100/(total_outbound||1)).intcomma()+'%'
     routed_1day_percent.innerHTML = (sum_active.rOUTed.d1.amt*100/((total_outbound || 1))).toFixed(2)+'%'
     routed_7day_percent.innerHTML = (sum_active.rOUTed.d7.amt*100/((total_outbound || 1))).toFixed(2)+'%'
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).toLocaleString()
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).intcomma()
   }
   function build_private(channels){
     if(!addTitle("Private Channels", channels)) return
@@ -811,8 +810,8 @@
 
     for(el of [byId("total_channels"), byId("active_channels")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
     byId("private_stats").insertAdjacentHTML('beforeend', `
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.toLocaleString()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${outbound.toLocaleString()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${outbound.intcomma()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
   }
   document.addEventListener('DOMContentLoaded', async () =>{
@@ -838,8 +837,8 @@
       else if(ch.is_open && ch.private) private.push(ch)
     }
 
-    byId("updates").innerHTML = updates.toLocaleString()
-    byId("pending_htlcs").innerHTML = pending_htlcs.toLocaleString()
+    byId("updates").innerHTML = updates.intcomma()
+    byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [activeSum, inactiveSum, _] = [build_active(active, forwards7d_task), build_inactive(inactive), build_private(private)]
     update_summary(payments_task, onchain_task, closures_task, await activeSum, inactiveSum)
