@@ -1,7 +1,7 @@
 //HELPER FUNCTIONS
 function byId(id){ return document.getElementById(id) }
 String.prototype.toInt = function(){ return parseInt(this.replace(/,/g,''))}
-String.prototype.toBool = function(if_false = 0){ return /^true$/i.test(this) ? 1 : if_false}
+String.prototype.toBool = function(if_false = 0){ return this && /^true$/i.test(this) ? 1 : if_false}
 Number.prototype.intcomma = function(){ return parseInt(this).toLocaleString() }
 HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
 HTMLElement.prototype.cloneNode = function(attrs){
@@ -46,8 +46,9 @@ async function toggle(button){
 }
 function use(transformations){
   return { 
-    render: function(object, row = null){
+    render: function(object, id='id', row = null){
       const tr = row ?? document.createElement("tr")
+      tr.objId = object[id]
       for (id in transformations){
         const transforms = transformations[id](object)
         const td = document.createElement("td")

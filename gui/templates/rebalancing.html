@@ -64,10 +64,10 @@
     "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
     "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
-    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_amt_target: this.value}}, r => {flash(this, r.ar_amt_target);showBannerMsg('AR amount target%', r.ar_amt_target)});">`}),
-    "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_max_cost: this.value}}, r => {flash(this, r.ar_max_cost);showBannerMsg('AR Max Cost%', r.ar_max_cost);this.parentElement.parentElement.children[8].apply(rebalance_template.fee_ratio(extend(r)))});">`}),
-    "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" data-available="${ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1}" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target);showBannerMsg('AR outTarget%', r.ar_out_target)});">`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
-    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" data-elegible="${ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance}" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
+    "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost', {8: 'fee_ratio'})"/>`}),
+    "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" name="AR out target %" data-available="${ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1}" id="target" type="number" min="1" max="100" value="${ch.ar_out_target}" onkeydown="update('ar_out_target', {7: 'rebal_out', 12: 'ar_out_target'})"/>`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
+    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" name="AR in target %" data-elegible="${ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance}" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target', {9: 'rebalance_in', 13: 'ar_in_target'})"/>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-enabled="${ch.auto_rebalance}" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
     "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
       <defs>
@@ -90,22 +90,34 @@
     </svg>`, dataTag: ch.remote_pubkey}),
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
+  async function update(selector, props){
+    if(event.key !== 'Enter') return
+    let element = event.target, body = {}; body[selector] = element.value;
+    const ch = await PUT(`channels/${element.closest('tr').objId}`, {body})
+    if(props) update_title(ch, element, props)
+    flash(ch, element, ch[selector])
+    showBannerMsg(element.name, ch[selector])
+  }
+  function update_title(ch, target, props){
+    extend(ch)
+    let row = target.closest('tr'), was = {}, is = {}
+    for(index in props){
+      let col = row.children[index]
+      Object.assign(was, col.children[0]?.dataset || {})
+      col.apply(rebalance_template[props[index]](ch))
+      Object.assign(is, col.children[0]?.dataset || {})
+    }
+    const container = byId("rebalances_container"), title = container.children[0], had = title.dataset
+    let [en, el, av] = [had.enabled.toInt(),had.elegible.toInt(),had.available.toInt()]
+    if (is.enabled) en += is.enabled?.toBool(-1)
+    if (is.elegible) el += (was.elegible.toBool() === is.elegible?.toBool()? 0 : is.elegible.toBool(-1))
+    if (is.available) av += (was.available.toBool() === is.available?.toBool()? 0 : is.available.toBool(-1))
+    title.remove()
+    container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${el}" data-enabled="${en}" data-available="${av}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${el} of ${en} enabled channels for rebalancing via ${av} outbound channels)</h2>`)
+  }
   function toggleAR(button){
     Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: !button.dataset.enabled.toBool() }}, function (ch) {
-      extend(ch)
-      let is = {}, was = {}, props = {14: 'auto_rebalance', 13: 'ar_in_target', 12: 'ar_out_target', 9: 'rebalance_in', 7: 'rebal_out'}
-      for(index in props){
-        let col = button.parentElement.parentElement.children[index]
-        Object.assign(was, col.children[0]?.dataset || {})
-        col.apply(rebalance_template[props[index]](ch))
-        Object.assign(is, col.children[0]?.dataset || {})
-      }
-      const container = byId("rebalances_container"), title = container.children[0], had = title.dataset
-      let en = had.enabled.toInt() + is.enabled.toBool(-1),
-          el = had.elegible.toInt() + (was.elegible.toBool() === is.elegible.toBool() ? 0 : is.elegible.toBool(-1)),
-          av = had.available.toInt() + (was.available.toBool() === is.available.toBool() ? 0 : is.available.toBool(-1))
-      title.remove()
-      container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${el}" data-enabled="${en}" data-available="${av}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${el} of ${en} enabled channels for rebalancing via ${av} outbound channels)</h2>`)
+      update_title(ch, button, {14: 'auto_rebalance', 13: 'ar_in_target', 12: 'ar_out_target', 9: 'rebalance_in', 7: 'rebal_out'})
     })
   }
   function extend(ch){
@@ -118,10 +130,6 @@
     ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
     ch.steps = parseInt(ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
     return ch
-  }
-  function getARstatus(ch, update = false){
-    update = update ? -1 : 0
-    return [ch.auto_rebalance ? 1 : update, ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0, ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1 ? 1: update]
   }
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
@@ -149,7 +157,7 @@
         if(!ch1.is_active && ch2.is_active) return 1
         return ch1.percent_outbound - ch2.percent_outbound
       })
-      .forEach(ch => rebal_table.append(template.render(ch)))
+      .forEach(ch => rebal_table.append(template.render(ch, 'chan_id')))
     
     update_stats(await rebal_stats, rebal_table)
   })
