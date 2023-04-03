@@ -50,7 +50,7 @@
 </div>
 <script>
   const rebalance_template = Object.assign({}, {
-    "select": ch => ({innerHTML: `<input onclick="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : document.getElementById('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
+    "select": ch => ({innerHTML: `<input onclick="this.checked ? byId('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : byId('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
     "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toggle(this)">
       <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
         <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
@@ -66,9 +66,9 @@
     "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
     "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_amt_target: this.value}}, r => {flash(this, r.ar_amt_target);showBannerMsg('AR amount target%', r.ar_amt_target)});">`}),
     "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_max_cost: this.value}}, r => {flash(this, r.ar_max_cost);showBannerMsg('AR Max Cost%', r.ar_max_cost);this.parentElement.parentElement.children[8].apply(rebalance_template.fee_ratio(extend(r)))});">`}),
-    "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target);showBannerMsg('AR outTarget%', r.ar_out_target)});">`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
-    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" data-available="${ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1}" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target);showBannerMsg('AR outTarget%', r.ar_out_target)});">`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
+    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" data-elegible="${ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance}" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onkeydown="event.key !== 'Enter'? undefined : Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-enabled="${ch.auto_rebalance}" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
     "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
       <defs>
           <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%">
@@ -91,12 +91,21 @@
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   function toggleAR(button){
-    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) {
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: !button.dataset.enabled.toBool() }}, function (ch) {
       extend(ch)
-      let props = {14: 'auto_rebalance', 13: 'ar_in_target', 12: 'ar_out_target', 9: 'rebalance_in', 7: 'rebal_out'}
+      let is = {}, was = {}, props = {14: 'auto_rebalance', 13: 'ar_in_target', 12: 'ar_out_target', 9: 'rebalance_in', 7: 'rebal_out'}
       for(index in props){
-        button.parentElement.parentElement.children[index].apply(rebalance_template[props[index]](ch))
+        let col = button.parentElement.parentElement.children[index]
+        Object.assign(was, col.children[0]?.dataset || {})
+        col.apply(rebalance_template[props[index]](ch))
+        Object.assign(is, col.children[0]?.dataset || {})
       }
+      const container = byId("rebalances_container"), title = container.children[0], had = title.dataset
+      let en = had.enabled.toInt() + is.enabled.toBool(-1),
+          el = had.elegible.toInt() + (was.elegible.toBool() === is.elegible.toBool() ? 0 : is.elegible.toBool(-1)),
+          av = had.available.toInt() + (was.available.toBool() === is.available.toBool() ? 0 : is.available.toBool(-1))
+      title.remove()
+      container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${el}" data-enabled="${en}" data-available="${av}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${el} of ${en} enabled channels for rebalancing via ${av} outbound channels)</h2>`)
     })
   }
   function extend(ch){
@@ -110,11 +119,15 @@
     ch.steps = parseInt(ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
     return ch
   }
+  function getARstatus(ch, update = false){
+    update = update ? -1 : 0
+    return [ch.auto_rebalance ? 1 : update, ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0, ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1 ? 1: update]
+  }
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'}})
     const rebal_stats = GET('rebalance_stats', {method: 'GET', data: {}})
-    const container = document.getElementById("rebalances_container")
+    const container = byId("rebalances_container")
     if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
       return
@@ -123,12 +136,11 @@
     let [enabled, elegible, available, rebal_table] = [0,0,0,byId("rebalancingTable")]
     resp.results.forEach(ch => {
       extend(ch)
-      //global counters
-      enabled += ch.auto_rebalance ? 1 : 0
-      elegible += ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0
-      available += ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1 ? 1: 0
+      enabled += ch.auto_rebalance;
+      elegible += ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100
+      available += ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1
     })
-    container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
+    container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${elegible}" data-enabled="${enabled}" data-available="${available}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
     const template = use(rebalance_template)
     resp.results
