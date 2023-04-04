@@ -611,7 +611,7 @@
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const routed_template = {
-    "forward_date": f => { let time = adjustTZ(f.forward_date);return {innerHTML: formatDate(time), title: time } },
+    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: f.forward_date }),
     "amt_in": f => ({innerHTML: f.amt_in.intcomma()}),
     "amt_out": f => ({innerHTML: f.amt_out.intcomma()}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
@@ -623,7 +623,7 @@
   }
   let {fee, ppm} = routed_template
   const payments_template = Object.assign({}, {
-    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
+    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: p.creation_date }),
     "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash}</a>`}),
     "value": p => ({innerHTML: p.value.intcomma()})
     }, {fee, ppm}, {
@@ -636,7 +636,7 @@
   )
   let {creation_date, value, keysend_preimage} = payments_template
   const invoices_template = Object.assign({}, {creation_date}, {
-    "settle_date": i => ({innerHTML: i.settle_date ? formatDate(i.settle_date) : '---', title: adjustTZ(i.settle_date)}),
+    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: i.settle_date}),
     "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash}</a>`})
     }, {value}, {
     "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
@@ -649,7 +649,7 @@
   const wire_failures = "0|1|2|3|4|5|6|7|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
   const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
   const failedHTLCs_template = {
-    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
+    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: htlc.timestamp }),
     "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${htlc.chan_id_in}</a>`}),
     "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${htlc.chan_id_out}</a>`}),
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
@@ -827,6 +827,7 @@
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
       f.ppm = f.fee*1000000/f.amt_out
+      f.forward_date = adjustTZ(f.forward_date)
       table.append(template.render(f))
     }
   }
@@ -841,18 +842,26 @@
       if(p.status === 3) continue
 
       p.ppm = p.fee*1000000/p.value
+      p.creation_date = adjustTZ(p.creation_date)
       table.append(template.render(p))
     }
   }
   function build_invoices(invoices){
     if(!addTitle('Invoices', invoices, `Last 10 <a href="/invoices" target="_blank">Invoices</a>`)) return
     const table = byId('invoices'), template = use(invoices_template)
-    for(inv of invoices) table.append(template.render(inv))
+    for(inv of invoices) {
+      inv.creation_date = adjustTZ(inv.creation_date)
+      inv.settle_date = adjustTZ(inv.settle_date)
+      table.append(template.render(inv))
+    }
   }
   function build_failedHTLC(fHTLCs){
     if(!addTitle('failed_htlcs', fHTLCs, `Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
     const table = byId('failed_htlcs'), template = use(failedHTLCs_template)
-    for(htlc of fHTLCs) table.append(template.render(htlc))
+    for(htlc of fHTLCs){
+      htlc.timestamp = adjustTZ(htlc.timestamp)
+      table.append(template.render(htlc))
+    } 
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
