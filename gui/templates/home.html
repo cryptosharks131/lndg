@@ -23,8 +23,8 @@
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
   </h6>
   <h6>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="total_capacity">0</span></span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="active_channels">{{node_info.num_active_channels}}</span> / <span id="total_channels">{{node_info.num_active_channels|add:node_info.num_inactive_channels}}</span></span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="public_capacity">0</span></span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="public_channels_count">{{node_info.num_active_channels}}</span> / <span id="total_channels">{{node_info.num_active_channels|add:node_info.num_inactive_channels}}</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: <span id="updates">---</span></span>
@@ -164,7 +164,7 @@
           <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
         </tr>
       </thead>
-      <tbody id="activeChannels"></tbody>
+      <tbody id="active_channels"></tbody>
     </table>
   </div>
 </div>
@@ -190,8 +190,7 @@
         <th width=4%>AR</th>
       </tr>
     </thead>
-    <tbody id="inactiveChannels">
-    </tbody>
+    <tbody id="inactive_channels"></tbody>
   </table>
 </div>
 <div id="private_channels_container" class="w3-container w3-padding-small">
@@ -214,7 +213,7 @@
         <th width=5%>Up/Down</th>
       </tr>
     </thead>
-    <tbody id="privateChannels"></tbody>
+    <tbody id="private_channels"></tbody>
   </table>
 </div>
 {% if pending_open %}
@@ -677,7 +676,7 @@
     return true
   }
   function build_active(channels, forwards7d){
-    let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
+    let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
 
     function sumRoutedValues(forwards, ch, fields){
@@ -697,7 +696,7 @@
       return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
     }
 
-    const [activeChannels, template] = [byId("activeChannels"), use(detailed_ch_template)]
+    const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
     forwards1d = forwards7d.filter(f => adjustTZ(f.forward_date).getTime() >= _1day_ago)
 
     channels.map(ch => { //derived properties
@@ -706,9 +705,9 @@
       ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
       
       sum.capacity += ch.capacity
-      sum.active_inbound += ch.remote_balance
-      sum.active_outbound += ch.local_balance
-      sum.active_unsettled += ch.unsettled_balance
+      sum.inbound += ch.remote_balance
+      sum.outbound += ch.local_balance
+      sum.unsettled += ch.unsettled_balance
       
       var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
       sum.earned.d1 += earned
@@ -724,33 +723,35 @@
     }).sort((ch1, ch2) => ch1.percent_outbound - ch2.percent_outbound)
       .forEach(ch => activeChannels.append(template.render(ch)))
 
+    byId('public_capacity').innerHTML = sum.capacity.intcomma()
     return update_sum('active_', sum)
   }
   function build_inactive(channels){
-    let sum = {capacity: 0, inactive_inbound: 0, inactive_outbound: 0, inactive_unsettled: 0}
+    let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0}
     if(!addTitle("Inactive Channels", channels)) return sum
 
-    const table = byId('inactiveChannels'), template = use(inactive_ch_template)
+    const table = byId('inactive_channels'), template = use(inactive_ch_template), public_capacity = byId('public_capacity')
     channels.forEach(ch => {
       sum.capacity += ch.capacity
-      sum.inactive_inbound += ch.remote_balance
-      sum.inactive_outbound += ch.local_balance
-      sum.inactive_unsettled += ch.unsettled_balance
+      sum.inbound += ch.remote_balance
+      sum.outbound += ch.local_balance
+      sum.unsettled += ch.unsettled_balance
       table.append(template.render(ch))
     })
+
+    public_capacity.innerHTML = (public_capacity.innerHTML.toInt() + sum.capacity).intcomma()
     return update_sum('inactive_', sum)
   }
-  function update_sum(prefix, sum){
-    const capacity = byId('total_capacity')
-    capacity.innerHTML = (capacity.innerHTML.toInt() + sum.capacity).intcomma()
+  function update_sum(status, sum){
     for (id of ['inbound', 'outbound', 'unsettled']){
-      const value = sum[prefix+id], total = byId('total_'+id)
-      byId(prefix+id).innerHTML = value.intcomma()
+      const [value, total] = [sum[id], byId('total_'+id)]
+
+      byId(status+id).innerHTML = value.intcomma()
       total.innerHTML = (total.innerHTML.toInt() + value).intcomma()
     }
     return sum
   }
-  async function update_summary(payments7d, onchain_task, closures_task, active, inactive){
+  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
     let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
       if(adjustTZ(p.creation_date).getTime() >= _1day_ago){
@@ -773,9 +774,9 @@
       }
       chainCosts.d7 += close.closing_costs
     }
-    const [total_outbound, total_bal] = [active.active_outbound+inactive.inactive_outbound || 1, byId('total_balance')]
-    byId('liq_ratio').innerHTML = ((active.active_inbound + inactive.inactive_inbound)*100/total_outbound).intcomma()+'%'
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).intcomma()
+    const [public_outbound, total_bal] = [active.outbound+inactive.outbound || 1, byId('total_balance')]
+    byId('liq_ratio').innerHTML = ((active.inbound + inactive.inbound)*100/public_outbound).intcomma()+'%'
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + public_outbound + private?.outbound||0).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
@@ -784,26 +785,35 @@
       byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} [${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}]`
       byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
       byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `${((earned - fees)*1000000/total_outbound).intcomma()} [${((earned - costs)*1000000/total_outbound).intcomma()}]`
-      byId(`routed_${d}day_percent`).innerHTML = (routed.amt*100/total_outbound).toFixed(2)+'%'
+      byId(`profit_per_outbound_${d}d`).innerHTML = `${((earned - fees)*1000000/public_outbound).intcomma()} [${((earned - costs)*1000000/public_outbound).intcomma()}]`
+      byId(`routed_${d}day_percent`).innerHTML = (routed.amt*100/public_outbound).toFixed(2)+'%'
     }
   }
   function build_private(channels){
+    let active = {inbound: 0, outbound: 0, unsettled: 0}
+    let inactive = {inbound: 0, outbound: 0, unsettled: 0}
     if(!addTitle("Private Channels", channels)) return
 
-    let [capacity, outbound, active_count, table, template] = [0,0,0,byId('privateChannels'),use(private_ch_template)]
+    let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
     channels.forEach(ch => {
       capacity += ch.capacity
-      outbound += ch.local_balance
-      if(ch.is_active) active_count += 1
+      if(ch.is_active) {
+        active_count += 1
+        active.outbound += ch.local_balance
+      }
+      else {
+        inactive.outbound += ch.local_balance
+      }
       table.append(template.render(ch))
     })
 
-    for(el of [byId("total_channels"), byId("active_channels")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
+    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
     byId("private_stats").insertAdjacentHTML('beforeend', `
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${outbound.intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(active.outbound + inactive.outbound).intcomma()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
+
+    return {outbound: active.outbound + inactive.outbound}
   }
   async function build_routed(forwards7d){
     let remaining = 10-forwards7d.length, template = use(routed_template), forwards = forwards7d
@@ -870,8 +880,9 @@
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
-    let [activeSum, inactiveSum, _, __] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private), build_routed(forwards7d)]
-    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum)
+    let [activeSum, inactiveSum, privateSum] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
+    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum)
+    build_routed(forwards7d)
     build_payments(payments7d)
     build_invoices((await invoices_task).results)
     build_failedHTLC((await failedHTLCs_task).results)
