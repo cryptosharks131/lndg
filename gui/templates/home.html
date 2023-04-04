@@ -451,7 +451,7 @@
         <th width=6%>Status</th>
         <th width=12%>Chan Out Alias</th>
         <th width=12%>Chan Out ID</th>
-        <th width=4%>Route</th>
+        <th width=4%>Rebalance</th>
         <th width=6%>Keysend</th>
       </tr>
     </thead>
@@ -658,7 +658,7 @@
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
     "chan_out_alias": p => ({innerHTML: p.chan_out_alias.default('---')}),
     "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${p.chan_out}` : p.chan_out.default('---')}),
-    "route": p => ({innerHTML: p.payment_hash.length > 0 ?`<a href="/route?=${p.payment_hash}" target="_blank">Open</a>` : '---'}),
+    "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
     "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
     }
   )
@@ -823,8 +823,7 @@
   }
   async function build_payments(payments7d){
     let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
-    if(remaining > 0)
-    payments = [...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results, ...payments]
+    if(remaining > 0) payments = [...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results, ...payments]
 
     if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments Sent</a>`)) return
     const table = byId('payments')
