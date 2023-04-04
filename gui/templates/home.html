@@ -419,37 +419,25 @@
   </table>
 </div>
 {% endif %}
-{% if forwards %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10  <a href="/forwards" target="_blank">Payments Routed</a></h2>
+<div id="payments_routed_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Amount In</th>
-      <th>Amount Out</th>
-      <th>Channel In Alias</th>
-      <th>Channel Out Alias</th>
-      <th>Channel In Id</th>
-      <th>Channel Out Id</th>
-      <th>Fees Earned</th>
-      <th>PPM Earned</th>
-    </tr>
-    {% for forward in forwards %}
-    <tr>
-      <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
-      <td>{{ forward.amt_in|intcomma }}</td>
-      <td>{{ forward.amt_out|intcomma }}</td>
-      <td>{% if forward.chan_in_alias == '' %}---{% else %}{{ forward.chan_in_alias }}{% endif %}</td>
-      <td>{% if forward.chan_out_alias == '' %}---{% else %}{{ forward.chan_out_alias }}{% endif %}</td>
-      <td><a href="/channel?={{ forward.chan_id_in }}" target="_blank">{{ forward.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ forward.chan_id_out }}" target="_blank">{{ forward.chan_id_out }}</a></td>
-      <td>{{ forward.fee|intcomma }}</td>
-      <td>{{ forward.ppm|intcomma }}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Amount In</th>
+        <th>Amount Out</th>
+        <th>Channel In Alias</th>
+        <th>Channel Out Alias</th>
+        <th>Channel In Id</th>
+        <th>Channel Out Id</th>
+        <th>Fees Earned</th>
+        <th>PPM Earned</th>
+      </tr>
+    </thead>
+    <tbody id="paymentsRouted">
+    </tbody>
   </table>
 </div>
-{% endif %}
 {% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 {% if payments %}
 <div class="w3-container w3-padding-small">
@@ -617,7 +605,10 @@
   </div>
 </div>
 <script>
-  const _1day_ago = new Date(new Date().setDate(new Date().getDate()-1)).getTime()
+  const now = new Date(),
+    _1day_ago = new Date(now.setDate(now.getDate()-1)).getTime(),
+    _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
+
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
     "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
@@ -661,6 +652,17 @@
   }, {local_commit, local_chan_reserve, initiator}, {
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
+  const routed_template = {
+    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
+    "amt_in": f => ({innerHTML: f.amt_in.intcomma()}),
+    "amt_out": f => ({innerHTML: f.amt_out.intcomma()}),
+    "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
+    "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
+    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_in}</a>`}),
+    "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_out}</a>`}),
+    "fee": f => ({innerHTML: f.fee }),
+    "ppm": f => ({innerHTML: f.ppm.intcomma()}),
+  }
 
   function toggleAR(button){
     Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
@@ -668,16 +670,16 @@
       button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
     })
   }
-  function addTitle(title, results){
-    const container = byId(title.toLowerCase().replace(" ", "_") + '_container')
+  function addTitle(id, results, title = null){
+    const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
     if (results.length == 0) {
       container.remove()
       return false
     }
-    container.insertAdjacentHTML('afterbegin', `<h2>${title}</h2>`)
+    container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
     return true
   }
-  async function build_active(channels, forwards7d_task){
+  function build_active(channels, forwards7d){
     let sum = {capacity: 0, active_inbound: 0, active_outbound: 0, active_unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
 
@@ -687,19 +689,20 @@
       for(f of forwards){
         if(f.chan_id_in == ch.chan_id){
           ch[fields[0]] += 1
-          ch[fields[2]] += f.amt_in_msat/1000
+          ch[fields[2]] += f.amt_in
         }
         if(f.chan_id_out == ch.chan_id){
           earned += f.fee
           ch[fields[1]] += 1
-          ch[fields[3]] += f.amt_out_msat/1000
+          ch[fields[3]] += f.amt_out
         }
       }
       return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
     }
 
-    const [forwards7d, activeChannels, template] = [await forwards7d_task, byId("activeChannels"), use(detailed_ch_template)]
-    forwards1d = forwards7d.results.filter(f => adjustTZ(f.forward_date).getTime() >= _1day_ago)
+    const [activeChannels, template] = [byId("activeChannels"), use(detailed_ch_template)]
+    forwards1d = forwards7d.filter(f => adjustTZ(f.forward_date).getTime() >= _1day_ago)
+
     channels.map(ch => { //derived properties
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
@@ -715,7 +718,7 @@
       sum.rOUTed.d1.amt += rOUTed.amt
       sum.rOUTed.d1.count += rOUTed.count
 
-      var {rOUTed, earned} = sumRoutedValues(forwards7d.results, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      var {rOUTed, earned} = sumRoutedValues(forwards7d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
       sum.earned.d7 += earned
       sum.rOUTed.d7.amt += rOUTed.amt
       sum.rOUTed.d7.count += rOUTed.count
@@ -805,8 +808,21 @@
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${outbound.intcomma()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
   }
+  async function build_routed(forwards7d){
+    let remaining = 10-forwards7d.length, template = use(routed_template), forwards = forwards7d
+    if(remaining > 0)
+      forwards = [...(await GET('forwards', {data: {forward_date__lt: _7days_ago, limit: remaining} })).results, ...forwards]
+
+    if(!addTitle('Payments Routed', forwards, `Last 10 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
+    const table = byId('paymentsRouted')
+    forwards.forEach(f => {
+      f.amt_in = f.amt_in_msat/1000
+      f.amt_out = f.amt_out_msat/1000
+      f.ppm = f.fee*1000000/f.amt_out
+      table.append(template.render(f))
+    })
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
-    const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status:2} })
@@ -830,8 +846,11 @@
     byId("updates").innerHTML = updates.intcomma()
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
-    let [activeSum, inactiveSum, _] = [build_active(active, forwards7d_task), build_inactive(inactive), build_private(private)]
-    update_summary(payments_task, onchain_task, closures_task, await activeSum, inactiveSum)
+    let forwards7d = (await forwards7d_task).results
+
+    build_routed(forwards7d)
+    let [activeSum, inactiveSum, _] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
+    update_summary(payments_task, onchain_task, closures_task, activeSum, inactiveSum)
   })
 </script>
 {% endblock %}

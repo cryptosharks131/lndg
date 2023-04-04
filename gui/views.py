@@ -150,7 +150,6 @@ def home(request):
                     pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
                     waiting_for_close.append(pending_item)
             limbo_balance -= pending_closing_balance
-            forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
             except:
@@ -162,7 +161,6 @@ def home(request):
                 'total_balance': balances.total_balance + pending_open_balance + limbo_balance,
                 'payments': Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
                 'invoices': Invoices.objects.exclude(state=2).order_by('-creation_date')[:6],
-                'forwards': forwards[:15],
                 'limbo_balance': limbo_balance,
                 'pending_open': pending_open,
                 'pending_closed': pending_closed,
@@ -2271,7 +2269,7 @@ class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all()
     serializer_class = ForwardSerializer
-    filterset_fields = {'forward_date': ['lte','gte']}
+    filterset_fields = {'forward_date': ['lte','gte', 'lt', 'gt']}
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
