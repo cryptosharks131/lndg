@@ -990,8 +990,9 @@ def chart(request):
     invoices = Invoices.objects.values('settle_date', 'amt_paid').filter(state=1).order_by('settle_date').all()
     onchain = Onchain.objects.values('time_stamp', 'tx_hash', 'fee', 'amount').order_by('time_stamp').all()
     forwards = Forwards.objects.values('forward_date', 'fee').order_by('forward_date').all()
-    closures = Closures.objects.values('closing_costs', 'settled_balance').all()
+    closures = Closures.objects.values('closing_costs', 'settled_balance', 'chan_id').all()
     channels = Channels.objects.values('funding_txid', 'local_commit', 'capacity').all()
+    resolutions = Resolutions.objects.values('sweep_txid', 'amount_sat', 'chan_id').all()
 
     now = datetime.now()
     events_time = sorted([
@@ -1005,6 +1006,7 @@ def chart(request):
     one_hour = timedelta(hours=1)
     costs, on_chain, off_chain, balance_over_time = [0], [0], [0], [0]
     i,j = 0,0
+    chan_id_list = []
     while min_dt <= now:
         append = min_dt == now
         next_dt = events_time[j+1]
@@ -1016,10 +1018,17 @@ def chart(request):
             costs[i] += tx['fee']
             on_chain[i] += tx['amount']
             for closure in closures.filter(closing_tx=tx['tx_hash']):
-                off_chain[i] -= closure['settled_balance']
                 costs[i] += closure['closing_costs']
+                if closure['chan_id'] not in chan_id_list:
+                    off_chain[i] -= closure['settled_balance']
+                    chan_id_list.append(closure['chan_id'])
             for ch in channels.filter(funding_txid=tx['tx_hash']): #open channel
                 off_chain[i] += ch['capacity'] - ch['local_commit']
+            for resolution in resolutions.filter(sweep_txid=tx['tx_hash']):
+                if resolution['chan_id'] not in chan_id_list:
+                    costs[i] += closures.filter(chan_id=resolution['chan_id']).first()['closing_costs']
+                    off_chain[i] -= resolution['amount_sat']
+                    chan_id_list.append(resolution['chan_id'])
 
         for invoice in invoices.filter(settle_date__gte=min_dt, settle_date__lt=next_dt):
             append = True
