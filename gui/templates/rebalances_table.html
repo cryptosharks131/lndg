@@ -23,11 +23,7 @@
   </div>
   <script>
     function formatDuration(duration){
-      if (duration == 1){
-        return duration + ' minute'
-      }else{
-        return duration + ' minutes'
-      }
+      return `${duration} minute${duration === 1 ? 's':''}`
     }
     statuses = {0: 'Pending', 1: 'In-Flight', 2: 'Successful', 3: 'Timeout', 4: 'No-Route', 5: 'Error', 6: 'Incorrect-Payment-Details', 7: 'Insufficient-Balance', 400: 'Rebalancer-Request-Failed', 406: 'No-Sources', 408: 'Rebalancer-Request-Timeout', 499: 'Cancelled'}
     transformations = {
@@ -44,8 +40,7 @@
       'status': rebalance => ({innerHTML: statuses[rebalance.status], title: rebalance.status}),
       'payment_hash': rebalance => ({innerHTML: (rebalance.payment_hash || '').length == 0 ? '---' :
            `<a href="/route?=${rebalance.payment_hash}" target="_blank">${rebalance.payment_hash.substring(0,7)}</a>`}),
-      'id': rebalance => {
-        
+      'action': rebalance => {
         const input = document.createElement("button")
         if (rebalance.status != 0){
           input.innerHTML = "🔂"

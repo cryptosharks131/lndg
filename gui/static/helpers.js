@@ -9,11 +9,11 @@ HTMLElement.prototype.cloneNode = function(attrs){
   Object.keys(attrs).forEach(k => el[k] = attrs[k])
   return el
 }
-HTMLElement.prototype.apply = function(transforms){
+HTMLElement.prototype.render = function(transforms){
   for(key in transforms){
     const value = transforms[key]
     if(value instanceof HTMLElement) this.append(value)
-    else if (key == 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
+    else if (key === 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
     else this[key] = value
   }
 }
@@ -52,7 +52,8 @@ function use(transformations){
       for (id in transformations){
         const transforms = transformations[id](object)
         const td = document.createElement("td")
-        td.apply(transforms)
+        td.setAttribute('name', id)
+        td.render(transforms)
         tr.append(td)
       }
       return tr
