@@ -611,7 +611,7 @@
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const routed_template = {
-    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
+    "forward_date": f => { let time = adjustTZ(f.forward_date);return {innerHTML: formatDate(time), title: time } },
     "amt_in": f => ({innerHTML: f.amt_in.intcomma()}),
     "amt_out": f => ({innerHTML: f.amt_out.intcomma()}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
@@ -822,12 +822,13 @@
 
     if(!addTitle('Routed', forwards, `Last 10 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
     const table = byId('routed')
-    forwards.forEach(f => {
+    for(i=0; i<10; i++){
+      f = forwards[i]
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
       f.ppm = f.fee*1000000/f.amt_out
       table.append(template.render(f))
-    })
+    }
   }
   async function build_payments(payments7d){
     let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
