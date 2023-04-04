@@ -776,7 +776,7 @@
     }
     const [public_outbound, total_bal] = [active.outbound+inactive.outbound || 1, byId('total_balance')]
     byId('liq_ratio').innerHTML = ((active.inbound + inactive.inbound)*100/public_outbound).intcomma()+'%'
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + public_outbound + private?.outbound||0).intcomma()
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + public_outbound + (private?.outbound||0)).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
