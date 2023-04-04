@@ -689,12 +689,12 @@
       for(f of forwards){
         if(f.chan_id_in == ch.chan_id){
           ch[fields[0]] += 1
-          ch[fields[2]] += f.amt_in
+          ch[fields[2]] += f.amt_in_msat/1000
         }
         if(f.chan_id_out == ch.chan_id){
           earned += f.fee
           ch[fields[1]] += 1
-          ch[fields[3]] += f.amt_out
+          ch[fields[3]] += f.amt_out_msat/1000
         }
       }
       return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
