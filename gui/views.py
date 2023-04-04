@@ -165,7 +165,6 @@ def home(request):
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'local_settings': get_local_settings('AR-'),
-                'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
@@ -2298,8 +2297,9 @@ class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
 
 class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = FailedHTLCs.objects.all()
+    queryset = FailedHTLCs.objects.all().order_by('-id')
     serializer_class = FailedHTLCSerializer
+    filterset_fields = {'wire_failure': ['lt','gt']}
 
 class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

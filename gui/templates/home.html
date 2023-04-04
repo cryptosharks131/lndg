@@ -476,39 +476,25 @@
     <tbody id="invoices"></tbody>
   </table>
 </div>
-{% if failed_htlcs %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
+<div id="failed_htlcs_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Chan In ID</th>
-      <th>Chan Out ID</th>
-      <th>Chan In Alias</th>
-      <th>Chan Out Alias</th>
-      <th>Forward Amount</th>
-      <th>Actual Outbound</th>
-      <th>Potential Fee</th>
-      <th>HTLC Failure</th>
-      <th>Failure Detail</th>
-    </tr>
-    {% for failed_htlc in failed_htlcs %}
-    <tr>
-      <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I" target="_blank">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O" target="_blank">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
-      <td>{{ failed_htlc.amount|intcomma }}</td>
-      <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
-      <td>{{ failed_htlc.missed_fee|intcomma }}</td>
-      <td>{% if failed_htlc.wire_failure == 11 %}Amount Below Minimum{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% elif failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 22 %}Expiry Too Far{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
-      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 13 %}Invoice Not Open{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Chan In ID</th>
+        <th>Chan Out ID</th>
+        <th>Chan In Alias</th>
+        <th>Chan Out Alias</th>
+        <th>Forward Amount</th>
+        <th>Actual Outbound</th>
+        <th>Potential Fee</th>
+        <th>HTLC Failure</th>
+        <th>Failure Detail</th>
+      </tr>
+    </thead>
+    <tbody id="failed_htlcs"></tbody>
   </table>
 </div>
-{% endif %}
 {% include 'local_settings.html' with settings=local_settings title="Auto-Rebalancer" url='rebalancing' %}
 <div class="w3-container w3-padding-small">
   <h2>Connect to a Peer</h2>
@@ -661,7 +647,20 @@
     "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
     }
   )
-
+  const wire_failures = "0|1|2|3|4|5|6|7|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
+  const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
+  const failedHTLCs_template = {
+    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
+    "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${htlc.chan_id_in}</a>`}),
+    "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${htlc.chan_id_out}</a>`}),
+    "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
+    "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
+    "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
+    "chan_out_liq": htlc => ({innerHTML: `${htlc.chan_out_liq.intcomma()} (${htlc.chan_out_pending})`}),
+    "missed_fee": htlc => ({innerHTML: htlc.missed_fee.toFixed(2)}),
+    "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
+    "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
+  }
   function toggleAR(button){
     Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
       button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
@@ -839,10 +838,16 @@
     const table = byId('invoices'), template = use(invoices_template)
     for(inv of invoices) table.append(template.render(inv))
   }
+  function build_failedHTLC(fHTLCs){
+    if(!addTitle('failed_htlcs', fHTLCs, `Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
+    const table = byId('failed_htlcs'), template = use(failedHTLCs_template)
+    for(htlc of fHTLCs) table.append(template.render(htlc))
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
+    const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
     const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     
@@ -865,12 +870,11 @@
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
-
-    build_routed(forwards7d)
+    let [activeSum, inactiveSum, _, __] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private), build_routed(forwards7d)]
+    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum)
     build_payments(payments7d)
     build_invoices((await invoices_task).results)
-    let [activeSum, inactiveSum, _] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
-    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum)
+    build_failedHTLC((await failedHTLCs_task).results)
   })
 </script>
 {% endblock %}
