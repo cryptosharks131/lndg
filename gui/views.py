@@ -159,7 +159,6 @@ def home(request):
                 'node_info': node_info,
                 'balances': balances,
                 'total_balance': balances.total_balance + pending_open_balance + limbo_balance,
-                'payments': Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
                 'invoices': Invoices.objects.exclude(state=2).order_by('-creation_date')[:6],
                 'limbo_balance': limbo_balance,
                 'pending_open': pending_open,
@@ -2241,9 +2240,9 @@ def sign_message(request):
 
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Payments.objects.all()
+    queryset = Payments.objects.all().order_by('-creation_date')
     serializer_class = PaymentSerializer
-    filterset_fields = {'status':['exact'], 'creation_date':['lte','gte']}
+    filterset_fields = {'status':['exact','lt','gt'], 'creation_date':['lte','gte']}
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

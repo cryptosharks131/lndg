@@ -419,7 +419,7 @@
   </table>
 </div>
 {% endif %}
-<div id="payments_routed_container" class="w3-container w3-padding-small">
+<div id="routed_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -434,44 +434,30 @@
         <th>PPM Earned</th>
       </tr>
     </thead>
-    <tbody id="paymentsRouted">
+    <tbody id="routed">
     </tbody>
   </table>
 </div>
 {% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% if payments %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
+<div id="payments_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th width=28%>Hash</th>
-      <th width=6%>Value</th>
-      <th width=6%>Fee Paid</th>
-      <th width=6%>PPM Paid</th>
-      <th width=6%>Status</th>
-      <th width=12%>Chan Out Alias</th>
-      <th width=12%>Chan Out ID</th>
-      <th width=4%>Route</th>
-      <th width=6%>Keysend</th>
-    </tr>
-    {% for payment in payments %}
-    <tr>
-      <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</a></td>
-      <td>{{ payment.value|add:"0"|intcomma }}</td>
-      <td>{{ payment.fee|intcomma }}</td>
-      <td>{{ payment.ppm|intcomma }}</td>
-      <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}{% if payment.chan_out != 'MPP' %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}{{ payment.chan_out }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}---{% endif %}</td>
-      <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th width=28%>Hash</th>
+        <th width=6%>Value</th>
+        <th width=6%>Fee Paid</th>
+        <th width=6%>PPM Paid</th>
+        <th width=6%>Status</th>
+        <th width=12%>Chan Out Alias</th>
+        <th width=12%>Chan Out ID</th>
+        <th width=4%>Route</th>
+        <th width=6%>Keysend</th>
+      </tr>
+    </thead>
+    <tbody id="payments"></tbody>
   </table>
 </div>
-{% endif %}
 {% if invoices %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/invoices" target="_blank">Payments Received</a></h2>
@@ -660,9 +646,22 @@
     "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
     "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_in}</a>`}),
     "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_out}</a>`}),
-    "fee": f => ({innerHTML: f.fee }),
-    "ppm": f => ({innerHTML: f.ppm.intcomma()}),
+    "fee": f => ({innerHTML: f.fee.toFixed(2) }),
+    "ppm": f => ({innerHTML: f.ppm.toFixed(2)}),
   }
+  let {fee, ppm} = routed_template
+  const payments_template = Object.assign({}, {
+    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
+    "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash}</a>`}),
+    "value": p => ({innerHTML: p.value.intcomma()})
+    }, {fee, ppm}, {
+    "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
+    "chan_out_alias": p => ({innerHTML: p.chan_out_alias.default('---')}),
+    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${p.chan_out}` : p.chan_out.default('---')}),
+    "route": p => ({innerHTML: p.payment_hash.length > 0 ?`<a href="/route?=${p.payment_hash}" target="_blank">Open</a>` : '---'}),
+    "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
+    }
+  )
 
   function toggleAR(button){
     Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
@@ -753,9 +752,9 @@
     }
     return sum
   }
-  async function update_summary(payments_task, onchain_task, closures_task, active, inactive){
+  async function update_summary(payments7d, onchain_task, closures_task, active, inactive){
     let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
-    for(p of (await payments_task).results){
+    for(p of payments7d){
       if(adjustTZ(p.creation_date).getTime() >= _1day_ago){
         offchain.d1.fee += p.fee
         offchain.d1.amt += p.value
@@ -813,8 +812,8 @@
     if(remaining > 0)
       forwards = [...(await GET('forwards', {data: {forward_date__lt: _7days_ago, limit: remaining} })).results, ...forwards]
 
-    if(!addTitle('Payments Routed', forwards, `Last 10 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
-    const table = byId('paymentsRouted')
+    if(!addTitle('Routed', forwards, `Last 10 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
+    const table = byId('routed')
     forwards.forEach(f => {
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
@@ -822,10 +821,25 @@
       table.append(template.render(f))
     })
   }
+  async function build_payments(payments7d){
+    let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
+    if(remaining > 0)
+    payments = [...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results, ...payments]
+
+    if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments Sent</a>`)) return
+    const table = byId('payments')
+    for(let i = 0; i<10; i++){
+      let p = payments[i]
+      if(p.status === 3) continue
+
+      p.ppm = p.fee*1000000/p.value
+      table.append(template.render(p))
+    }
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
-    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status:2} })
+    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
     const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
@@ -846,11 +860,13 @@
     byId("updates").innerHTML = updates.intcomma()
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
-    let forwards7d = (await forwards7d_task).results
+    let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
 
     build_routed(forwards7d)
+    console.log(payments7d)
+    build_payments(payments7d)
     let [activeSum, inactiveSum, _] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
-    update_summary(payments_task, onchain_task, closures_task, activeSum, inactiveSum)
+    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum)
   })
 </script>
 {% endblock %}
