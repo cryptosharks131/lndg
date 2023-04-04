@@ -159,7 +159,6 @@ def home(request):
                 'node_info': node_info,
                 'balances': balances,
                 'total_balance': balances.total_balance + pending_open_balance + limbo_balance,
-                'invoices': Invoices.objects.exclude(state=2).order_by('-creation_date')[:6],
                 'limbo_balance': limbo_balance,
                 'pending_open': pending_open,
                 'pending_closed': pending_closed,
@@ -2251,9 +2250,9 @@ class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
 
 class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Invoices.objects.all()
+    queryset = Invoices.objects.all().order_by('-creation_date')
     serializer_class = InvoiceSerializer
-    filterset_fields = ['state']
+    filterset_fields = {'state': ['lt', 'gt']}
 
     def update(self, request, pk=None):
         setting = get_object_or_404(Invoices.objects.all(), pk=pk)

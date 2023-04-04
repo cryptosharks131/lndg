@@ -458,37 +458,24 @@
     <tbody id="payments"></tbody>
   </table>
 </div>
-{% if invoices %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 5 <a href="/invoices" target="_blank">Payments Received</a></h2>
+<div id="invoices_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Created</th>
-      <th>Settled</th>
-      <th width=25%>Payment Hash</th>
-      <th>Value</th>
-      <th>Amount Paid</th>
-      <th>State</th>
-      <th>Channel In Alias</th>
-      <th width=10%>Channel In</th>
-      <th><a href="/keysends" target="_blank">Keysend</a></th>
-    </tr>
-    {% for invoice in invoices %}
-    <tr>
-      <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
-      <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
-      <td>{{ invoice.value|add:"0"|intcomma }}</td>
-      <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
-      <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
-      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Created</th>
+        <th>Settled</th>
+        <th width=25%>Payment Hash</th>
+        <th>Value</th>
+        <th>Amount Paid</th>
+        <th>State</th>
+        <th>Channel In Alias</th>
+        <th width=10%>Channel In</th>
+        <th><a href="/keysends" target="_blank">Keysend</a></th>
+      </tr>
+    </thead>
+    <tbody id="invoices"></tbody>
   </table>
 </div>
-{% endif %}
 {% if failed_htlcs %}
 <div class="w3-container w3-padding-small">
   <h2>Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
@@ -646,7 +633,7 @@
     "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
     "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_in}</a>`}),
     "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_out}</a>`}),
-    "fee": f => ({innerHTML: f.fee.toFixed(2) }),
+    "fee": f => ({innerHTML: f.fee.toFixed(2)}),
     "ppm": f => ({innerHTML: f.ppm.toFixed(2)}),
   }
   let {fee, ppm} = routed_template
@@ -656,10 +643,22 @@
     "value": p => ({innerHTML: p.value.intcomma()})
     }, {fee, ppm}, {
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
-    "chan_out_alias": p => ({innerHTML: p.chan_out_alias.default('---')}),
+    "chan_out_alias": p => ({innerHTML: p.chan_out_alias||p.chan_out||'---'}),
     "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${p.chan_out}` : p.chan_out.default('---')}),
     "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
     "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
+    }
+  )
+  let {creation_date, value, keysend_preimage} = payments_template
+  const invoices_template = Object.assign({}, {creation_date}, {
+    "settle_date": i => ({innerHTML: i.settle_date ? formatDate(i.settle_date) : '---', title: adjustTZ(i.settle_date)}),
+    "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash}</a>`})
+    }, {value}, {
+    "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
+    "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
+    "chan_in_alias": i => ({innerHTML: i.chan_in_alias||i.chan_in||'---'}),
+    "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${i.chan_in}</a>` : '---'}),
+    "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
     }
   )
 
@@ -825,7 +824,7 @@
     let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
     if(remaining > 0) payments = [...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results, ...payments]
 
-    if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments Sent</a>`)) return
+    if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
     const table = byId('payments')
     for(let i = 0; i<10; i++){
       let p = payments[i]
@@ -835,7 +834,13 @@
       table.append(template.render(p))
     }
   }
+  function build_invoices(invoices){
+    if(!addTitle('Invoices', invoices, `Last 10 <a href="/invoices" target="_blank">Invoices</a>`)) return
+    const table = byId('invoices'), template = use(invoices_template)
+    for(inv of invoices) table.append(template.render(inv))
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
+    const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
@@ -862,8 +867,8 @@
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
 
     build_routed(forwards7d)
-    console.log(payments7d)
     build_payments(payments7d)
+    build_invoices((await invoices_task).results)
     let [activeSum, inactiveSum, _] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
     update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum)
   })
