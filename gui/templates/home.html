@@ -835,7 +835,7 @@
   }
   async function build_payments(payments7d){
     let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
-    if(remaining > 0) payments = [...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results, ...payments]
+    if(remaining > 0) payments = [...payments, ...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results]
 
     if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
     const table = byId('payments')
