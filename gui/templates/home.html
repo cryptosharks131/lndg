@@ -818,13 +818,13 @@
     return {outbound: active.outbound + inactive.outbound}
   }
   async function build_routed(forwards7d){
-    let remaining = 10-forwards7d.length, template = use(routed_template), forwards = forwards7d
+    let remaining = 20-forwards7d.length, template = use(routed_template), forwards = forwards7d
     if(remaining > 0)
       forwards = [...forwards, ...(await GET('forwards', {data: {forward_date__lt: _7days_ago, limit: remaining} })).results]
 
-    if(!addTitle('Routed', forwards, `Last 10 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
+    if(!addTitle('Routed', forwards, `Last 20 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
     const table = byId('routed')
-    for(i=0; i<10; i++){
+    for(i=0; i<20; i++){
       f = forwards[i]
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
