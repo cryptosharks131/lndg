@@ -564,12 +564,12 @@
 </div>
 <script>
   const now = new Date(),
-    _1day_ago = adjustTZ(now.setDate(now.getDate()-1)).getTime(),
+    _1day_ago = new Date(now.setDate(now.getDate()-1)).getTime(),
     _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
 
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.substring(0,12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.substring(0,20) : ch.alias}</a>`, title: ch.remote_pubkey}),
     "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} (${ch.percent_outbound}%)`}),
     "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
     <div class="progress w3-round w3-grey">
@@ -628,7 +628,7 @@
     "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
     }, {ppm}, {
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
-    "chan_out_alias": p => ({innerHTML: p.chan_out_alias||p.chan_out||'---'}),
+    "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
     "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
     "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
     "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
@@ -641,7 +641,7 @@
     }, {value}, {
     "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
     "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
-    "chan_in_alias": i => ({innerHTML: i.chan_in_alias||i.chan_in||'---'}),
+    "chan_in_alias": i => ({innerHTML: i.chan_in_alias||'---'}),
     "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
     "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash.substring(0,7)}</a>`}),
     "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
@@ -698,7 +698,7 @@
     }
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
-    forwards1d = forwards7d.filter(f => adjustTZ(f.forward_date).getTime() >= _1day_ago)
+    forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
 
     channels.map(ch => { //derived properties
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target

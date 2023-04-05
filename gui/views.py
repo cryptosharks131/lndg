@@ -2264,7 +2264,7 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Forwards.objects.all().order_by('-forward_date')
+    queryset = Forwards.objects.all().order_by('-id')
     serializer_class = ForwardSerializer
     filterset_fields = {'forward_date': ['lte','gte', 'lt', 'gt']}
 
