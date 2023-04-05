@@ -824,8 +824,7 @@
 
     if(!addTitle('Routed', forwards, `Last 20 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
     const table = byId('routed')
-    for(i=0; i<20; i++){
-      f = forwards[i]
+    for(f of forwards.slice(0,20)){
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
       f.ppm = f.fee*1000000/f.amt_out
@@ -839,8 +838,7 @@
 
     if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
     const table = byId('payments')
-    for(let i = 0; i<10; i++){
-      let p = payments[i]
+    for(p of payments.slice(0,10)){
       if(p.status === 3) continue
 
       p.ppm = p.fee*1000000/p.value
