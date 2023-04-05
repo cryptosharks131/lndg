@@ -581,10 +581,10 @@
     "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
   }
   const detailed_ch_template = Object.assign({}, base_ch_template, {
-    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).intcomma()}M (${ch.routed_out_1day})`}),
-    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).intcomma()}M (${ch.routed_in_1day})`}),
-    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).intcomma()}M (${ch.routed_out_7day})`}),
-    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).intcomma()}M (${ch.routed_in_7day})`}),
+    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toFixed(2)}M (${ch.routed_out_1day})`, style: {color: ch.routed_out_1day > 0 ? `` : 'gray'} }),
+    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toFixed(2)}M (${ch.routed_in_1day})`, style: {color: ch.routed_in_1day > 0 ? `` : 'gray'} }),
+    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toFixed(2)}M (${ch.routed_out_7day})`, style: {color: ch.routed_out_7day > 0 ? `` : 'gray'} }),
+    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M (${ch.routed_in_7day})`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
@@ -612,8 +612,8 @@
   })
   const routed_template = {
     "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: f.forward_date }),
-    "amt_in": f => ({innerHTML: f.amt_in.intcomma()}),
-    "amt_out": f => ({innerHTML: f.amt_out.intcomma()}),
+    "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
+    "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
     "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
     "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
@@ -782,11 +782,11 @@
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
       byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} (${routed.amt.intcomma()} sats)`
-      byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} [${(earned*1000000/(routed.amt||1)).intcomma()}]`
-      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} [${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}]`
+      byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} (${(earned*1000000/(routed.amt||1)).intcomma()} ₚₚₘ)`
+      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} (${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()} ₚₚₘ)`
       byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
       byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `${((earned - fees)*1000000/public_outbound).intcomma()} [${((earned - costs)*1000000/public_outbound).intcomma()}]`
+      byId(`profit_per_outbound_${d}d`).innerHTML = `⚡${((earned - fees)*1000000/public_outbound).intcomma()} |⚡⛓️${((earned - costs)*1000000/public_outbound).intcomma()}`
       byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/public_outbound).toFixed(1)).toLocaleString()+'%'
     }
   }
