@@ -576,7 +576,7 @@
       <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
     </div>`}),
     "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} (${ch.percent_inbound}%)`}),
-    "unsettled": ch => ({innerHTML: `${ch.unsettled_balance.intcomma()} (${ch.htlc_count})`}),
+    "unsettled": ch => ({innerHTML: `${ch.unsettled_balance.intcomma()} (${ch.htlc_count})`, style: {color: ch.unsettled_balance > 0 ? '' : 'gray'} }),
     "oRate": ch => ({innerHTML: ch.local_fee_rate.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
     "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
   }
