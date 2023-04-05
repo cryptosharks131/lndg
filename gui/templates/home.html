@@ -443,15 +443,15 @@
     <thead>
       <tr>
         <th>Timestamp</th>
-        <th width=28%>Hash</th>
-        <th width=6%>Value</th>
-        <th width=6%>Fee Paid</th>
-        <th width=6%>PPM Paid</th>
-        <th width=6%>Status</th>
-        <th width=12%>Chan Out Alias</th>
-        <th width=12%>Chan Out ID</th>
-        <th width=4%>Rebalance</th>
-        <th width=6%>Keysend</th>
+        <th>Value</th>
+        <th>Fee Paid</th>
+        <th>PPM Paid</th>
+        <th>Status</th>
+        <th>Chan Out Alias</th>
+        <th>Chan Out ID</th>
+        <th>Hash</th>
+        <th>Rebalance</th>
+        <th>Keysend</th>
       </tr>
     </thead>
     <tbody id="payments"></tbody>
@@ -463,12 +463,12 @@
       <tr>
         <th>Created</th>
         <th>Settled</th>
-        <th width=25%>Payment Hash</th>
         <th>Value</th>
         <th>Amount Paid</th>
         <th>State</th>
         <th>Channel In Alias</th>
-        <th width=10%>Channel In</th>
+        <th>Channel In</th>
+        <th>Hash</th>
         <th><a href="/keysends" target="_blank">Keysend</a></th>
       </tr>
     </thead>
@@ -569,7 +569,7 @@
 
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.substring(0,12) : ch.alias}</a>`, title: ch.remote_pubkey}),
     "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} (${ch.percent_outbound}%)`}),
     "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
     <div class="progress w3-round w3-grey">
@@ -616,33 +616,34 @@
     "amt_out": f => ({innerHTML: f.amt_out.intcomma()}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
     "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
-    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_in}</a>`}),
-    "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_out}</a>`}),
-    "fee": f => ({innerHTML: f.fee.toFixed(2)}),
-    "ppm": f => ({innerHTML: f.ppm.toFixed(2)}),
+    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+    "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+    "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
+    "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
   }
   let {fee, ppm} = routed_template
   const payments_template = Object.assign({}, {
     "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: p.creation_date }),
-    "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash}</a>`}),
-    "value": p => ({innerHTML: p.value.intcomma()})
-    }, {fee, ppm}, {
+    "value": p => ({innerHTML: p.value.intcomma()}),
+    "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
+    }, {ppm}, {
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
     "chan_out_alias": p => ({innerHTML: p.chan_out_alias||p.chan_out||'---'}),
-    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${p.chan_out}` : p.chan_out.default('---')}),
+    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
+    "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
     "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
     "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
     }
   )
   let {creation_date, value, keysend_preimage} = payments_template
   const invoices_template = Object.assign({}, {creation_date}, {
-    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: i.settle_date}),
-    "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash}</a>`})
+    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: i.settle_date})
     }, {value}, {
     "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
     "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
     "chan_in_alias": i => ({innerHTML: i.chan_in_alias||i.chan_in||'---'}),
-    "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${i.chan_in}</a>` : '---'}),
+    "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
+    "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash.substring(0,7)}</a>`}),
     "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
     }
   )
@@ -650,13 +651,13 @@
   const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
   const failedHTLCs_template = {
     "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: htlc.timestamp }),
-    "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${htlc.chan_id_in}</a>`}),
-    "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${htlc.chan_id_out}</a>`}),
+    "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+    "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
     "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
     "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
     "chan_out_liq": htlc => ({innerHTML: `${htlc.chan_out_liq.intcomma()} (${htlc.chan_out_pending})`}),
-    "missed_fee": htlc => ({innerHTML: htlc.missed_fee.toFixed(2)}),
+    "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
     "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
     "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
   }
@@ -786,7 +787,7 @@
       byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
       byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
       byId(`profit_per_outbound_${d}d`).innerHTML = `${((earned - fees)*1000000/public_outbound).intcomma()} [${((earned - costs)*1000000/public_outbound).intcomma()}]`
-      byId(`routed_${d}day_percent`).innerHTML = (routed.amt*100/public_outbound).toFixed(2)+'%'
+      byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/public_outbound).toFixed(1)).toLocaleString()+'%'
     }
   }
   function build_private(channels){
