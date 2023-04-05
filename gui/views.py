@@ -150,7 +150,6 @@ def home(request):
                     pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
                     waiting_for_close.append(pending_item)
             limbo_balance -= pending_closing_balance
-            forwards = Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')
             try:
                 db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
             except:
@@ -160,16 +159,12 @@ def home(request):
                 'node_info': node_info,
                 'balances': balances,
                 'total_balance': balances.total_balance + pending_open_balance + limbo_balance,
-                'payments': Payments.objects.exclude(status=3).annotate(ppm=Round((Sum('fee')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-creation_date')[:6],
-                'invoices': Invoices.objects.exclude(state=2).order_by('-creation_date')[:6],
-                'forwards': forwards[:15],
                 'limbo_balance': limbo_balance,
                 'pending_open': pending_open,
                 'pending_closed': pending_closed,
                 'pending_force_closed': pending_force_closed,
                 'waiting_for_close': waiting_for_close,
                 'local_settings': get_local_settings('AR-'),
-                'failed_htlcs': FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:10],
                 'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
                 'graph_links': graph_links(),
                 'network_links': network_links(),
@@ -198,24 +193,24 @@ def channels(request):
         if channels_df.shape[0] > 0:
             forwards_df_30d = DataFrame.from_records(forwards.values())
             forwards_df_7d = DataFrame.from_records(forwards.filter(forward_date__gte=filter_7day).values())
-            forwards_df_in_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_in', as_index=True).sum()
-            forwards_df_out_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).sum()
-            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
-            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+            forwards_df_in_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
+            forwards_df_out_30d_sum = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
+            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
+            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
             forwards_df_in_30d_count = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_in', as_index=True).count()
             forwards_df_out_30d_count = DataFrame() if forwards_df_30d.empty else forwards_df_30d.groupby('chan_id_out', as_index=True).count()
             forwards_df_in_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).count()
             forwards_df_out_7d_count = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).count()
             payments_df_30d = DataFrame.from_records(payments.values())
             payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
-            payments_df_30d_sum = DataFrame() if payments_df_30d.empty else payments_df_30d.groupby('chan_out', as_index=True).sum()
-            payments_df_7d_sum = DataFrame() if payments_df_7d.empty else payments_df_7d.groupby('chan_out', as_index=True).sum()
+            payments_df_30d_sum = DataFrame() if payments_df_30d.empty else payments_df_30d.groupby('chan_out', as_index=True).sum(numeric_only=True)
+            payments_df_7d_sum = DataFrame() if payments_df_7d.empty else payments_df_7d.groupby('chan_out', as_index=True).sum(numeric_only=True)
             payments_df_30d_count = DataFrame() if payments_df_30d.empty else payments_df_30d.groupby('chan_out', as_index=True).count()
             payments_df_7d_count = DataFrame() if payments_df_7d.empty else payments_df_7d.groupby('chan_out', as_index=True).count()
             invoices_df_30d = DataFrame.from_records(invoices.values())
             invoices_df_7d = DataFrame.from_records(invoices.filter(settle_date__gte=filter_7day).values())
-            invoices_df_30d_sum = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).sum()
-            invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum()
+            invoices_df_30d_sum = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).sum(numeric_only=True)
+            invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum(numeric_only=True)
             invoices_df_30d_count = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).count()
             invoices_df_7d_count = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).count()
             invoice_hashes_7d = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
@@ -323,8 +318,8 @@ def fees(request):
                 failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
             forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
             forwards_df_7d = DataFrame.from_records(forwards.values())
-            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum()
-            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum()
+            forwards_df_in_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
+            forwards_df_out_7d_sum = DataFrame() if forwards_df_7d.empty else forwards_df_7d.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
             channels_df['local_balance'] = channels_df.apply(lambda row: row.local_balance + row.pending_outbound, axis=1)
             channels_df['remote_balance'] = channels_df.apply(lambda row: row.remote_balance + row.pending_inbound, axis=1)
             channels_df['in_percent'] = channels_df.apply(lambda row: int(round((row['remote_balance']/row['capacity'])*100, 0)), axis=1)
@@ -340,7 +335,7 @@ def fees(request):
             invoices = Invoices.objects.filter(state=1).filter(settle_date__gte=filter_7day).filter(r_hash__in=payments.values_list('payment_hash'))
             payments_df_7d = DataFrame.from_records(payments.filter(creation_date__gte=filter_7day).values())
             invoices_df_7d = DataFrame.from_records(invoices.filter(settle_date__gte=filter_7day).values())
-            invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum()
+            invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum(numeric_only=True)
             invoice_hashes_7d = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True)['r_hash'].apply(list)
             channels_df['amt_rebal_in_7day'] = channels_df.apply(lambda row: int(invoices_df_7d_sum.loc[row.chan_id].amt_paid) if invoices_df_7d_sum.empty == False and (invoices_df_7d_sum.index == row.chan_id).any() else 0, axis=1)
             channels_df['costs_7day'] = channels_df.apply(lambda row: 0 if row['amt_rebal_in_7day'] == 0 else int(payments_df_7d.set_index('payment_hash', inplace=False).loc[invoice_hashes_7d[row.chan_id] if invoice_hashes_7d.empty == False and (invoice_hashes_7d.index == row.chan_id).any() else []]['fee'].sum()), axis=1)
@@ -961,7 +956,7 @@ def channel(request):
                 forwards_out_df = DataFrame()
             if forwards_in_df.shape[0]> 0:
                 forwards_in_df_count = forwards_in_df.groupby('chan_id_in', as_index=True).count()
-                forwards_in_df_sum = forwards_in_df.groupby('chan_id_in', as_index=True).sum()
+                forwards_in_df_sum = forwards_in_df.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
                 channels_df['routed_in'] = forwards_in_df_count.loc[chan_id].amt_out_msat
                 channels_df['amt_routed_in'] = int(forwards_in_df_sum.loc[chan_id].amt_out_msat/1000)
                 channels_df['average_in'] = 0 if channels_df['routed_in'][0] == 0 else int(channels_df['amt_routed_in']/channels_df['routed_in'])
@@ -969,7 +964,7 @@ def channel(request):
                 forwards_in_df_30d = forwards_in_df.loc[forwards_in_df['forward_date'] >= filter_30day]
                 if forwards_in_df_30d.shape[0] > 0:
                     forwards_in_df_30d_count = forwards_in_df_30d.groupby('chan_id_in', as_index=True).count()
-                    forwards_in_df_30d_sum = forwards_in_df_30d.groupby('chan_id_in', as_index=True).sum()
+                    forwards_in_df_30d_sum = forwards_in_df_30d.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
                     channels_df['routed_in_30day'] = forwards_in_df_30d_count.loc[chan_id].amt_out_msat
                     channels_df['amt_routed_in_30day'] = int(forwards_in_df_30d_sum.loc[chan_id].amt_out_msat/1000)
                     channels_df['average_in_30day'] = 0 if channels_df['routed_in_30day'][0] == 0 else int(channels_df['amt_routed_in_30day']/channels_df['routed_in_30day'])
@@ -977,19 +972,19 @@ def channel(request):
                     forwards_in_df_7d = forwards_in_df_30d.loc[forwards_in_df_30d['forward_date'] >= filter_7day]
                     if forwards_in_df_7d.shape[0] > 0:
                         forwards_in_df_7d_count = forwards_in_df_7d.groupby('chan_id_in', as_index=True).count()
-                        forwards_in_df_7d_sum = forwards_in_df_7d.groupby('chan_id_in', as_index=True).sum()
+                        forwards_in_df_7d_sum = forwards_in_df_7d.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
                         channels_df['routed_in_7day'] = forwards_in_df_7d_count.loc[chan_id].amt_out_msat
                         channels_df['amt_routed_in_7day'] = int(forwards_in_df_7d_sum.loc[chan_id].amt_out_msat/1000)
                         channels_df['average_in_7day'] = 0 if channels_df['routed_in_7day'][0] == 0 else int(channels_df['amt_routed_in_7day']/channels_df['routed_in_7day'])
                         channels_df['revenue_assist_7day'] = int(forwards_in_df_7d_sum.loc[chan_id].fee)
-                        forwards_in_df_7d_sum = forwards_in_df_7d[forwards_in_df_7d['amt_out_msat']>=1000000].groupby('chan_id_in', as_index=True).sum()
+                        forwards_in_df_7d_sum = forwards_in_df_7d[forwards_in_df_7d['amt_out_msat']>=1000000].groupby('chan_id_in', as_index=True).sum(numeric_only=True)
                         if forwards_in_df_7d_sum.shape[0] > 0:
                             channels_df['amt_routed_in_7day_fees'] = int(forwards_in_df_7d_sum.loc[chan_id].amt_out_msat/1000)
                             channels_df['revenue_assist_7day_fees'] = int(forwards_in_df_7d_sum.loc[chan_id].fee)
                         forwards_in_df_1d = forwards_in_df_7d.loc[forwards_in_df_7d['forward_date'] >= filter_1day]
                         if forwards_in_df_1d.shape[0] > 0:
                             forwards_in_df_1d_count = forwards_in_df_1d.groupby('chan_id_in', as_index=True).count()
-                            forwards_in_df_1d_sum = forwards_in_df_1d.groupby('chan_id_in', as_index=True).sum()
+                            forwards_in_df_1d_sum = forwards_in_df_1d.groupby('chan_id_in', as_index=True).sum(numeric_only=True)
                             channels_df['routed_in_1day'] = forwards_in_df_1d_count.loc[chan_id].amt_out_msat
                             channels_df['amt_routed_in_1day'] = int(forwards_in_df_1d_sum.loc[chan_id].amt_out_msat/1000)
                             channels_df['average_in_1day'] = 0 if channels_df['routed_in_1day'][0] == 0 else int(channels_df['amt_routed_in_1day']/channels_df['routed_in_1day'])
@@ -997,7 +992,7 @@ def channel(request):
             if forwards_out_df.shape[0]> 0:
                 start_date = forwards_out_df['forward_date'].min()
                 forwards_out_df_count = forwards_out_df.groupby('chan_id_out', as_index=True).count()
-                forwards_out_df_sum = forwards_out_df.groupby('chan_id_out', as_index=True).sum()
+                forwards_out_df_sum = forwards_out_df.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
                 channels_df['routed_out'] = forwards_out_df_count.loc[chan_id].amt_out_msat
                 channels_df['amt_routed_out'] = int(forwards_out_df_sum.loc[chan_id].amt_out_msat/1000)
                 channels_df['average_out'] = 0 if channels_df['routed_out'][0] == 0 else int(channels_df['amt_routed_out']/channels_df['routed_out'])
@@ -1005,7 +1000,7 @@ def channel(request):
                 forwards_out_df_30d = forwards_out_df.loc[forwards_out_df['forward_date'] >= filter_30day]
                 if forwards_out_df_30d.shape[0] > 0:
                     forwards_out_df_30d_count = forwards_out_df_30d.groupby('chan_id_out', as_index=True).count()
-                    forwards_out_df_30d_sum = forwards_out_df_30d.groupby('chan_id_out', as_index=True).sum()
+                    forwards_out_df_30d_sum = forwards_out_df_30d.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
                     channels_df['routed_out_30day'] = forwards_out_df_30d_count.loc[chan_id].amt_out_msat
                     channels_df['amt_routed_out_30day'] = int(forwards_out_df_30d_sum.loc[chan_id].amt_out_msat/1000)
                     channels_df['average_out_30day'] = 0 if channels_df['routed_out_30day'][0] == 0 else int(channels_df['amt_routed_out_30day']/channels_df['routed_out_30day'])
@@ -1013,44 +1008,44 @@ def channel(request):
                     forwards_out_df_7d = forwards_out_df_30d.loc[forwards_out_df_30d['forward_date'] >= filter_7day]
                     if forwards_out_df_7d.shape[0] > 0:
                         forwards_out_df_7d_count = forwards_out_df_7d.groupby('chan_id_out', as_index=True).count()
-                        forwards_out_df_7d_sum = forwards_out_df_7d.groupby('chan_id_out', as_index=True).sum()
+                        forwards_out_df_7d_sum = forwards_out_df_7d.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
                         channels_df['routed_out_7day'] = forwards_out_df_7d_count.loc[chan_id].amt_out_msat
                         channels_df['amt_routed_out_7day'] = int(forwards_out_df_7d_sum.loc[chan_id].amt_out_msat/1000)
                         channels_df['average_out_7day'] = 0 if channels_df['routed_out_7day'][0] == 0 else int(channels_df['amt_routed_out_7day']/channels_df['routed_out_7day'])
                         channels_df['revenue_7day'] = int(forwards_out_df_7d_sum.loc[chan_id].fee)
-                        forwards_out_df_7d_sum = forwards_out_df_7d[forwards_out_df_7d['amt_out_msat']>=1000000].groupby('chan_id_out', as_index=True).sum()
+                        forwards_out_df_7d_sum = forwards_out_df_7d[forwards_out_df_7d['amt_out_msat']>=1000000].groupby('chan_id_out', as_index=True).sum(numeric_only=True)
                         if forwards_out_df_7d_sum.shape[0] > 0:
                             channels_df['amt_routed_out_7day_fees'] = int(forwards_out_df_7d_sum.loc[chan_id].amt_out_msat/1000)
                             channels_df['revenue_7day_fees'] = int(forwards_out_df_7d_sum.loc[chan_id].fee)
                         forwards_out_df_1d = forwards_out_df_7d.loc[forwards_out_df_7d['forward_date'] >= filter_1day]
                         if forwards_out_df_1d.shape[0] > 0:
                             forwards_out_df_1d_count = forwards_out_df_1d.groupby('chan_id_out', as_index=True).count()
-                            forwards_out_df_1d_sum = forwards_out_df_1d.groupby('chan_id_out', as_index=True).sum()
+                            forwards_out_df_1d_sum = forwards_out_df_1d.groupby('chan_id_out', as_index=True).sum(numeric_only=True)
                             channels_df['routed_out_1day'] = forwards_out_df_1d_count.loc[chan_id].amt_out_msat
                             channels_df['amt_routed_out_1day'] = int(forwards_out_df_1d_sum.loc[chan_id].amt_out_msat/1000)
                             channels_df['average_out_1day'] = 0 if channels_df['routed_out_1day'][0] == 0 else int(channels_df['amt_routed_out_1day']/channels_df['routed_out_1day'])
                             channels_df['revenue_1day'] = int(forwards_out_df_1d_sum.loc[chan_id].fee)
             if payments_df.shape[0] > 0:
                 payments_df_count = payments_df.groupby('chan_out', as_index=True).count()
-                payments_df_sum = payments_df.groupby('chan_out', as_index=True).sum()
+                payments_df_sum = payments_df.groupby('chan_out', as_index=True).sum(numeric_only=True)
                 channels_df['rebal_out'] = payments_df_count.loc[chan_id].value
                 channels_df['amt_rebal_out'] = int(payments_df_sum.loc[chan_id].value)
                 payments_df_30d = payments_df.loc[payments_df['creation_date'] >= filter_30day]
                 if payments_df_30d.shape[0] > 0:
                     payments_df_30d_count = payments_df_30d.groupby('chan_out', as_index=True).count()
-                    payments_df_30d_sum = payments_df_30d.groupby('chan_out', as_index=True).sum()
+                    payments_df_30d_sum = payments_df_30d.groupby('chan_out', as_index=True).sum(numeric_only=True)
                     channels_df['rebal_out_30day'] = payments_df_30d_count.loc[chan_id].value
                     channels_df['amt_rebal_out_30day'] = int(payments_df_30d_sum.loc[chan_id].value)
                     payments_df_7d = payments_df_30d.loc[payments_df_30d['creation_date'] >= filter_7day]
                     if payments_df_7d.shape[0] > 0:
                         payments_df_7d_count = payments_df_7d.groupby('chan_out', as_index=True).count()
-                        payments_df_7d_sum = payments_df_7d.groupby('chan_out', as_index=True).sum()
+                        payments_df_7d_sum = payments_df_7d.groupby('chan_out', as_index=True).sum(numeric_only=True)
                         channels_df['rebal_out_7day'] = payments_df_7d_count.loc[chan_id].value
                         channels_df['amt_rebal_out_7day'] = int(payments_df_7d_sum.loc[chan_id].value)
                         payments_df_1d = payments_df_7d.loc[payments_df_7d['creation_date'] >= filter_1day]
                         if payments_df_1d.shape[0] > 0:
                             payments_df_1d_count = payments_df_1d.groupby('chan_out', as_index=True).count()
-                            payments_df_1d_sum = payments_df_1d.groupby('chan_out', as_index=True).sum()
+                            payments_df_1d_sum = payments_df_1d.groupby('chan_out', as_index=True).sum(numeric_only=True)
                             channels_df['rebal_out_1day'] = payments_df_1d_count.loc[chan_id].value
                             channels_df['amt_rebal_out_1day'] = int(payments_df_1d_sum.loc[chan_id].value)
             if invoices_df.shape[0]> 0:
@@ -1061,10 +1056,10 @@ def channel(request):
                 invoices_df_30d_count = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).count()
                 invoices_df_7d_count = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).count()
                 invoices_df_1d_count = DataFrame() if invoices_df_1d.empty else invoices_df_1d.groupby('chan_in', as_index=True).count()
-                invoices_df_sum = DataFrame() if invoices_df.empty else invoices_df.groupby('chan_in', as_index=True).sum()
-                invoices_df_30d_sum = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).sum()
-                invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum()
-                invoices_df_1d_sum = DataFrame() if invoices_df_1d.empty else invoices_df_1d.groupby('chan_in', as_index=True).sum()
+                invoices_df_sum = DataFrame() if invoices_df.empty else invoices_df.groupby('chan_in', as_index=True).sum(numeric_only=True)
+                invoices_df_30d_sum = DataFrame() if invoices_df_30d.empty else invoices_df_30d.groupby('chan_in', as_index=True).sum(numeric_only=True)
+                invoices_df_7d_sum = DataFrame() if invoices_df_7d.empty else invoices_df_7d.groupby('chan_in', as_index=True).sum(numeric_only=True)
+                invoices_df_1d_sum = DataFrame() if invoices_df_1d.empty else invoices_df_1d.groupby('chan_in', as_index=True).sum(numeric_only=True)
                 channels_df['rebal_in'] = invoices_df_count.loc[chan_id].amt_paid if invoices_df_count.empty == False else 0
                 channels_df['rebal_in_30day'] = invoices_df_30d_count.loc[chan_id].amt_paid if invoices_df_30d_count.empty == False else 0
                 channels_df['rebal_in_7day'] = invoices_df_7d_count.loc[chan_id].amt_paid if invoices_df_7d_count.empty == False else 0
@@ -2243,9 +2238,9 @@ def sign_message(request):
 
 class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Payments.objects.all()
+    queryset = Payments.objects.all().order_by('-creation_date')
     serializer_class = PaymentSerializer
-    filterset_fields = {'status':['exact'], 'creation_date':['lte','gte']}
+    filterset_fields = {'status':['exact','lt','gt'], 'creation_date':['lte','gte']}
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2254,9 +2249,9 @@ class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
 
 class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Invoices.objects.all()
+    queryset = Invoices.objects.all().order_by('-creation_date')
     serializer_class = InvoiceSerializer
-    filterset_fields = ['state']
+    filterset_fields = {'state': ['lt', 'gt']}
 
     def update(self, request, pk=None):
         setting = get_object_or_404(Invoices.objects.all(), pk=pk)
@@ -2269,9 +2264,9 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Forwards.objects.all()
+    queryset = Forwards.objects.all().order_by('-id')
     serializer_class = ForwardSerializer
-    filterset_fields = {'forward_date': ['lte','gte']}
+    filterset_fields = {'forward_date': ['lte','gte', 'lt', 'gt']}
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2302,8 +2297,9 @@ class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
 
 class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = FailedHTLCs.objects.all()
+    queryset = FailedHTLCs.objects.all().order_by('-id')
     serializer_class = FailedHTLCSerializer
+    filterset_fields = {'wire_failure': ['lt','gt']}
 
 class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

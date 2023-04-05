@@ -31,7 +31,7 @@
       'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance.start ? adjustTZ(rebalance.start) : '---'}),
       'stop': rebalance => ({innerHTML: formatDate(rebalance.stop), title: rebalance.stop ? adjustTZ(rebalance.stop) : '---'}),
       'duration': rebalance => ({innerHTML: formatDuration(rebalance.duration)}),
-      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance?.stop || null).replace(" ago", "")}),
+      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance.stop).replace(" ago", "")}),
       'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),

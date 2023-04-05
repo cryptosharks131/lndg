@@ -2,6 +2,7 @@
 function byId(id){ return document.getElementById(id) }
 String.prototype.toInt = function(){ return parseInt(this.replace(/,/g,''))}
 String.prototype.toBool = function(if_false = 0){ return this && /^true$/i.test(this) ? 1 : if_false}
+String.prototype.default = function(value){ return (this || '').length === 0 ? value : this}
 Number.prototype.intcomma = function(){ return parseInt(this).toLocaleString() }
 HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
 HTMLElement.prototype.cloneNode = function(attrs){
@@ -98,7 +99,7 @@ function flash(element, response){
       if(b == bOrigin) element.style.removeProperty("background-color");
   }, 50);
 }
-function formatDate(start, end = new Date().getTime() + new Date().getTimezoneOffset()*60000){
+function formatDate(start, end = adjustTZ(new Date())){
   if (end == null) return '---'
   end = new Date(end)
   if (start == null) return '---'
