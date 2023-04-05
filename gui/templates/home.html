@@ -565,7 +565,7 @@
 <script>
   const now = new Date(),
     _1day_ago = adjustTZ(now.setDate(now.getDate()-1)).getTime(),
-    _7days_ago = adjustTZ(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
+    _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
 
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
