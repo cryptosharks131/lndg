@@ -148,16 +148,16 @@
         <tr>
           <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
           <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(event.target, 2, 'int', 0, 'small')">Outbound Liquidity</th>
           <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
-          <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
+          <th onclick="sortTable(event.target, 4, 'int', 0, 'small')">Inbound Liquidity</th>
+          <th onclick="sortTable(event.target, 5, 'int', 0, 'small')">Unsettled</th>
           <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
           <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
-          <th onclick="sortTable(event.target, 8, ' m (')">o1D</th>
-          <th onclick="sortTable(event.target, 9, ' m (')">i1D</th>
-          <th onclick="sortTable(event.target, 10, ' m (')">o7D</th>
-          <th onclick="sortTable(event.target, 11, ' m (')">i7D</th>
+          <th onclick="sortTable(event.target, 8, 'int', 0, 'small')">o1D</th>
+          <th onclick="sortTable(event.target, 9, 'int', 0, 'small')">i1D</th>
+          <th onclick="sortTable(event.target, 10, 'int', 0, 'small')">o7D</th>
+          <th onclick="sortTable(event.target, 11, 'int', 0, 'small')">i7D</th>
           <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
           <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
@@ -570,12 +570,12 @@
   const base_ch_template = {
     "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
     "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.substring(0,20) : ch.alias}</a>`, title: ch.remote_pubkey}),
-    "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} (${ch.percent_outbound}%)`}),
+    "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} <small style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">${ch.percent_outbound}%</span>`}),
     "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
     <div class="progress w3-round w3-grey">
       <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
     </div>`}),
-    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} (${ch.percent_inbound}%)`}),
+    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">${ch.percent_inbound}%</span>`}),
     "unsettled": ch => ({innerHTML: `${ch.unsettled_balance.intcomma()} <small style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">${ch.htlc_count}</span>`, style: {color: ch.unsettled_balance > 0 ? '' : 'gray'} }),
     "oRate": ch => ({innerHTML: ch.local_fee_rate.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
     "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
