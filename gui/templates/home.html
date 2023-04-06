@@ -614,7 +614,7 @@
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const routed_template = {
-    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: f.forward_date }),
+    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
     "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
     "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
@@ -626,7 +626,7 @@
   }
   let {fee, ppm} = routed_template
   const payments_template = Object.assign({}, {
-    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: p.creation_date }),
+    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
     "value": p => ({innerHTML: p.value.intcomma()}),
     "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
     }, {ppm}, {
@@ -640,7 +640,7 @@
   )
   let {creation_date, value, keysend_preimage} = payments_template
   const invoices_template = Object.assign({}, {creation_date}, {
-    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: i.settle_date})
+    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: adjustTZ(i.settle_date)})
     }, {value}, {
     "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
     "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
@@ -653,7 +653,7 @@
   const wire_failures = "0|1|2|3|4|5|6|7|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
   const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
   const failedHTLCs_template = {
-    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: htlc.timestamp }),
+    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
     "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
     "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
@@ -758,7 +758,7 @@
   async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
     let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
-      if(adjustTZ(p.creation_date).getTime() >= _1day_ago){
+      if(new Date(p.creation_date).getTime() >= _1day_ago){
         offchain.d1.fee += p.fee
         offchain.d1.amt += p.value
       } 
@@ -767,7 +767,7 @@
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
-      if(adjustTZ(tx.time_stamp).getTime() >= _1day_ago){
+      if(new Date(tx.time_stamp).getTime() >= _1day_ago){
         chainCosts.d1 += tx.fee
       }
       chainCosts.d7 += tx.fee
@@ -831,7 +831,6 @@
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
       f.ppm = f.fee*1000000/f.amt_out
-      f.forward_date = adjustTZ(f.forward_date)
       table.append(template.render(f))
     }
   }
@@ -845,7 +844,6 @@
       if(p.status === 3) continue
 
       p.ppm = p.fee*1000000/p.value
-      p.creation_date = adjustTZ(p.creation_date)
       table.append(template.render(p))
     }
   }
@@ -853,8 +851,6 @@
     if(!addTitle('Invoices', invoices, `Last 10 <a href="/invoices" target="_blank">Invoices</a>`)) return
     const table = byId('invoices'), template = use(invoices_template)
     for(inv of invoices) {
-      inv.creation_date = adjustTZ(inv.creation_date)
-      inv.settle_date = adjustTZ(inv.settle_date)
       table.append(template.render(inv))
     }
   }
@@ -862,7 +858,6 @@
     if(!addTitle('failed_htlcs', fHTLCs, `Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
     const table = byId('failed_htlcs'), template = use(failedHTLCs_template)
     for(htlc of fHTLCs){
-      htlc.timestamp = adjustTZ(htlc.timestamp)
       table.append(template.render(htlc))
     } 
   }
