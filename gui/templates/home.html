@@ -841,8 +841,6 @@
     if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
     const table = byId('payments')
     for(p of payments.slice(0,10)){
-      if(p.status === 3) continue
-
       p.ppm = p.fee*1000000/p.value
       table.append(template.render(p))
     }
