@@ -632,7 +632,7 @@
     }, {ppm}, {
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
     "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
-    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
+    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
     "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
     "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
     "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
