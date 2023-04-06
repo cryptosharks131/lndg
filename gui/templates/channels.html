@@ -7,26 +7,26 @@
   <h2>Channel Performance</h2>
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
     <table id="channelsTable" class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th></th>
-        <th></th>
-        <th></th>
-        <th colspan="4">7-Day Activity And Revenue | {{ apy_7day }}% APY</th>
-        <th colspan="4">30-Day Activity And Revenue | {{ apy_30day }}% APY </th>
-        <th colspan="2"> Channel Health</th>
-      </tr>
+      <thead>
+        <tr>
+          <th colspan="3">Channel</th>
+          <th colspan="4">7-Day Activity And Revenue | {{ apy_7day }}% APY</th>
+          <th colspan="4">30-Day Activity And Revenue | {{ apy_30day }}% APY </th>
+          <th colspan="2"> Channel Health</th>
+        </tr>
+      </thead>
       <tr>
         <th onclick="sortTable(event.target, 0, 'String', 1)" width=1%>Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 1, 'a')">Peer Alias</th>
-        <th onclick="sortTable(event.target, 2, ' m', 1)" width=1%>Capacity</th>
-        <th onclick="sortTable(event.target, 3, ' m (', 1)" title="7-Day Routed Out | Rebalanced In">Outbound Flow</th>
-        <th onclick="sortTable(event.target, 4, '% | ', 1)" title="7-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
-        <th onclick="sortTable(event.target, 5, ' [', 1)" title="7-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th onclick="sortTable(event.target, 6, ' m (', 1)" title="7-Day Routed In | Rebalanced Out">Inbound Flow</th>
-        <th onclick="sortTable(event.target, 7, ' m (', 1)" title="30-Day Routed Out | Rebalanced In">Outbound Flow</th>
-        <th onclick="sortTable(event.target, 8, '% | ', 1)" title="30-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
-        <th onclick="sortTable(event.target, 9, ' [', 1)" title="30-Day Revenue Out [Net Profits] | Assisted Revenue In">Out [Profit] | In</th>
-        <th onclick="sortTable(event.target, 10, ' m (', 1)" title="30-Day Routed In | Rebalanced Out">Inbound Flow</th>
+        <th onclick="sortTable(event.target, 2, 'int', 1)" width=1%>Capacity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 1)" title="7-Day Routed Out | Routed In">Routed Out | In</th>
+        <th onclick="sortTable(event.target, 4, 'int', 1)" title="7-Day Rebalanced In | Rebalanced Out">Rebal In | Out</th>
+        <th onclick="sortTable(event.target, 5, 'int', 1, 'small')" title="7-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
+        <th onclick="sortTable(event.target, 6, 'int', 1)" title="7-Day Revenue Out [Net Profits] | Assisted Revenue In">Out <small class="w3-round w3-border-small w3-border-grey">Profit</small> | In</th>
+        <th onclick="sortTable(event.target, 7, 'int', 1)" title="30-Day Routed Out | Routed In">Routed Out | Routed In</th>
+        <th onclick="sortTable(event.target, 8, 'int', 1)" title="30-Day Rebalanced In | Rebalanced Out">Rebal In | Out</th>
+        <th onclick="sortTable(event.target, 9, 'int', 1, 'small')" title="30-Day APY | CV (Channel Value: annualized revenue + assisted revenue">APY | CV</th>
+        <th onclick="sortTable(event.target, 10, 'int', 1)" title="30-Day Revenue Out [Net Profits] | Assisted Revenue In">Out <small class="w3-round w3-border-small w3-border-grey">Profit</small> | In</th>
         <th onclick="sortTable(event.target, 11, 'int', 1)" title="The count of updates is directly correlated to the space the channel takes up in your channel database." width=1%>Updates</th>
         <th onclick="sortTable(event.target, 12, 'String', 1)" title="The opener of the channel usually pays the closing costs during a co-operative close." width=1%>Opener</th>
       </tr>
@@ -34,15 +34,15 @@
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td title="Local Balance: {{ channel.local_balance|intcomma }}">{{ channel.mil_capacity }} M</td>
-        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }}) | {{ channel.amt_rebal_in_7day|intcomma }} M ({{ channel.rebal_in_7day }})</td>
-        <td>{{ channel.apy_7day }}% | {{ channel.cv_7day }}%</td>
-        <td>{{ channel.revenue_7day|intcomma }} [{{ channel.profits_7day|intcomma }}] | {{ channel.revenue_assist_7day|intcomma }}</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }}) | {{ channel.amt_rebal_out_7day|intcomma }} M ({{ channel.rebal_out_7day }})</td>
-        <td>{{ channel.amt_routed_out_30day|intcomma }} M ({{ channel.routed_out_30day }}) | {{ channel.amt_rebal_in_30day|intcomma }} M ({{ channel.rebal_in_30day }})</td>
-        <td>{{ channel.apy_30day }}% | {{ channel.cv_30day }}%</td>
-        <td>{{ channel.revenue_30day|intcomma }} [{{ channel.profits_30day|intcomma }}] | {{ channel.revenue_assist_30day|intcomma }}</td>
-        <td>{{ channel.amt_routed_in_30day|intcomma }} M ({{ channel.routed_in_30day }}) | {{ channel.amt_rebal_out_30day|intcomma }} M ({{ channel.rebal_out_30day }})</td>
+        <td title="Local Balance: {{ channel.local_balance|intcomma }}">{{ channel.mil_capacity }}M</td>
+        <td>{{ channel.amt_routed_out_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_out_7day }}</small> | {{ channel.amt_routed_in_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_in_7day }}</small></td>
+        <td>{{ channel.amt_rebal_in_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.rebal_in_7day }}</small> | {{ channel.amt_rebal_out_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.rebal_out_7day }}</small></td>
+        <td><small class="w3-round w3-border-small w3-border-grey">{{ channel.apy_7day }}%</small> <small class="w3-round w3-border-small w3-border-grey">{{ channel.cv_7day }}%</small></td>
+        <td>{{ channel.revenue_7day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ channel.profits_7day|intcomma }}</small> | {{ channel.revenue_assist_7day|intcomma }}</td>
+        <td>{{ channel.amt_routed_out_30day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_out_30day }}</small> | {{ channel.amt_routed_in_30day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_in_30day }}</small></td>
+        <td>{{ channel.amt_rebal_in_30day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.rebal_in_30day }}</small> | {{ channel.amt_rebal_out_30day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.rebal_out_30day }}</small></td>
+        <td><small class="w3-round w3-border-small w3-border-grey">{{ channel.apy_30day }}%</small> <small class="w3-round w3-border-small w3-border-grey">{{ channel.cv_30day }}%</small></td>
+        <td>{{ channel.revenue_30day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ channel.profits_30day|intcomma }}</small> | {{ channel.revenue_assist_30day|intcomma }}</td>
         <td title="Update Count: {{ channel.num_updates|intcomma }}">{{ channel.updates }}%</td>
         <td title="Block Opened: {{ channel.open_block }}">{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
       </tr>
