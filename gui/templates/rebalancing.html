@@ -11,9 +11,9 @@
           <th title="Public Key">PK</th>
           <th onclick="sortTable(this, 2, 'String')">Channel ID</th>
           <th onclick="sortTable(this, 3, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(this, 4, 'int', 0, 'small')">Outbound Liquidity</th>
+          <th onclick="sortTable(this, 4, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(this, 6, 'int', 0, 'small')">Inbound Liquidity</th>
+          <th onclick="sortTable(this, 6, 'int')">Inbound Liquidity</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
           <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
           <th onclick="sortTable(this, 9, 'String')">Rebal In?</th>
@@ -63,29 +63,29 @@
     }, base_ch_template, {
     "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-    "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
+    "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} } ),
     "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
     "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/>`, 
       changed: function(new_value){
-        updateCols(this, new_value, ['ar_max_cost', 'fee_ratio'])
+        updateCols(['ar_max_cost', 'fee_ratio'], this, new_value)
       }
     }),
     "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" name="AR out target %" id="target" type="number" min="1" max="100" value="${ch.ar_out_target}" onkeydown="update('ar_out_target')"/>`, style: {backgroundColor: !ch.auto_rebalance ? green : red},
       changed: function(new_value){
-        updateCols(this, new_value, ['rebal_out', 'ar_out_target'])
-        update_title(new_value, ch)
+        updateCols(['rebal_out', 'ar_out_target'], this, new_value)
+        update_title(ch, new_value)
       }
     }),
-    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target', {9: 'rebalance_in', 13: 'ar_in_target'})"/>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
+    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target')"/>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
       changed: function(new_value){
-        updateCols(this, new_value, ['rebalance_in', 'ar_in_target'])
-        update_title(new_value, ch)
+        updateCols(['rebalance_in', 'ar_in_target'], this, new_value)
+        update_title(ch, new_value)
       }
     }),
-    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : red},
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" name="Auto Rebalance" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="update('auto_rebalance')">`, style: {backgroundColor: ch.auto_rebalance ? green : red},
     changed: function(new_value){
-      updateCols(this, new_value, ['ar_in_target', 'rebalance_in', 'ar_out_target', 'rebal_out', 'auto_rebalance'])
-      update_title(new_value, ch)
+      updateCols(['ar_in_target', 'rebalance_in', 'ar_out_target', 'rebal_out', 'auto_rebalance'], this, new_value)
+      update_title(ch, new_value)
       }
     }),
     "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
@@ -109,27 +109,23 @@
     </svg>`, dataTag: ch.remote_pubkey}),
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
-  function updateCols(element, ch, columns) {
+  function updateCols(columns, element, ch) {
     columns.forEach(col => element.parentElement.cells[col].render(rebalance_template[col](ch)))
   }
   async function update(selector){
-    if(event.key !== 'Enter') return
-    let element = event.target, body = {}, tr = element.closest('tr'); body[selector] = element.value;
+    if(selector !== 'auto_rebalance' && event.key !== 'Enter') return
+    let element = event.target, tr = element.closest('tr'), body = {}; body[selector] = selector == 'auto_rebalance' ? element.value=='Enable' : element.value;
     const ch = await PUT(`channels/${tr.objId}`, {body})
     tr.cells[selector].changed(extend(ch))
-    showBannerMsg(element.name, ch[selector])
+    showBannerMsg(`${ch.alias}'s <u>${element.name}</u>`, ch[selector])
   }
-  function update_title(is, was){
+  function update_title(was, is){
     const container = byId("rebalances_container"), title = container.children[0], had = title.dataset
     title.remove()
     const el = had.elegible.toInt() + (was.elegible === is.elegible ? 0 : is.elegible || -1)
     const av = had.available.toInt() + (was.available === is.available ? 0 : is.available || -1)
     const en = had.enabled.toInt() + (was.auto_rebalance === is.auto_rebalance ? 0 : is.auto_rebalance || -1)
     container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${el}" data-enabled="${en}" data-available="${av}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${el} of ${en} enabled channels for rebalancing via ${av} outbound channels)</h2>`)
-  }
-  async function toggleAR(button){
-    const ch = await PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value === 'Enable' }})
-    button.parentElement.changed(extend(ch))
   }
   function extend(ch){
     ch.local_balance += ch.pending_outbound
