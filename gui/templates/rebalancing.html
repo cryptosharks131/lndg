@@ -11,9 +11,9 @@
           <th title="Public Key">PK</th>
           <th onclick="sortTable(this, 2, 'String')">Channel ID</th>
           <th onclick="sortTable(this, 3, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(this, 4, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(this, 4, 'int', 0, 'small')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(this, 6, ' (')">Inbound Liquidity</th>
+          <th onclick="sortTable(this, 6, 'int', 0, 'small')">Inbound Liquidity</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
           <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
           <th onclick="sortTable(this, 9, 'String')">Rebal In?</th>
@@ -63,7 +63,7 @@
     }, base_ch_template, {
     "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-    "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
+    "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
     "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
     "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/>`, 
       changed: function(new_value){
@@ -179,7 +179,7 @@
       [...rebal_table.rows].forEach(row => {
         const rate_7day = row.cells['rate_7day']
         let stat = stats.find(obj => obj.last_hop_pubkey === rate_7day.dataTag)
-        rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${(stat['successes'] || 0)}/${stat['attempts']})`
+        rate_7day.innerHTML = stat == null? '---' : `${(stat['successes'] || 0)}/${stat['attempts']} <small class="w3-round w3-border-small w3-border-grey">${parseInt(stat['successes']*100/stat['attempts'])}%</span>`
     })
   }
 </script>

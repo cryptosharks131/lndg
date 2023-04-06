@@ -99,7 +99,7 @@ function flash(element, response){
       if(b == bOrigin) element.style.removeProperty("background-color");
   }, 50);
 }
-function formatDate(start, end = adjustTZ(new Date())){
+function formatDate(start, end = new Date().getTime() + new Date().getTimezoneOffset()*60000){
   if (end == null) return '---'
   end = new Date(end)
   if (start == null) return '---'

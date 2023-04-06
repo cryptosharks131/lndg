@@ -17,10 +17,13 @@
       byId('qrcode').style.display = 'none'
     }
   </script>
-  <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
+    <h3>
+      <span style="font-size: 12px;vertical-align: middle; padding-left: 18px; border:1px solid {{ node_info.color }}; background-color: {{ node_info.color }}" class="w3-circle" title="{{ node_info.color }}"></span>
+      <a style="margin-left:6px;" href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}
+    </h3>
   <h6>
-    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">LND</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{{ node_info.version }}">LND</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="Chain {% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
   </h6>
   <h6>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="public_capacity">0</span></span>
@@ -148,16 +151,16 @@
         <tr>
           <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
           <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(event.target, 2, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
-          <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
+          <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
+          <th onclick="sortTable(event.target, 5, 'int')">Unsettled</th>
           <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
           <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
-          <th onclick="sortTable(event.target, 8, ' m (')">o1D</th>
-          <th onclick="sortTable(event.target, 9, ' m (')">i1D</th>
-          <th onclick="sortTable(event.target, 10, ' m (')">o7D</th>
-          <th onclick="sortTable(event.target, 11, ' m (')">i7D</th>
+          <th onclick="sortTable(event.target, 8, 'm')">o1D</th>
+        <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
+          <th onclick="sortTable(event.target, 10, 'm')">o7D</th>
+          <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
           <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
           <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
@@ -568,7 +571,7 @@
     _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
 
   const home_ch_base = Object.assign({}, base_ch_template, {
-    "unsettled": ch => ({innerHTML: `${ch.unsettled_balance} (${ch.htlc_count})`, style: {color: ch.unsettled_balance > 0 ? '' : 'gray'}}),
+    "unsettled": ch => (ch.unsettled_balance > 0 ? {innerHTML: `${ch.unsettled_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.htlc_count}</span>`} : {innerHTML: `${ch.unsettled_balance.intcomma()}`, style: {color: 'gray'} }),
     "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
     "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
   })
@@ -584,7 +587,7 @@
       <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
       <input type="hidden" name="chan_id" value="${ch.chan_id}">
       <input type="hidden" name="update_target" value="3">
-    </form>`, style: {backgroundColor: ch.auto_rebalance ? green : null} }),
+    </form>`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : null} }),
   })
   let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
@@ -603,7 +606,7 @@
     "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const routed_template = {
-    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: f.forward_date }),
+    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
     "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
     "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
@@ -615,13 +618,13 @@
   }
   let {fee, ppm} = routed_template
   const payments_template = Object.assign({}, {
-    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: p.creation_date }),
+    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
     "value": p => ({innerHTML: p.value.intcomma()}),
     "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
     }, {ppm}, {
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
     "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
-    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MMP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
+    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
     "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
     "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
     "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
@@ -629,7 +632,7 @@
   )
   let {creation_date, value, keysend_preimage} = payments_template
   const invoices_template = Object.assign({}, {creation_date}, {
-    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: i.settle_date})
+    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: adjustTZ(i.settle_date)})
     }, {value}, {
     "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
     "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
@@ -642,7 +645,7 @@
   const wire_failures = "0|1|2|3|4|5|6|7|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
   const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
   const failedHTLCs_template = {
-    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: htlc.timestamp }),
+    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
     "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
     "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
@@ -747,7 +750,7 @@
   async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
     let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
-      if(adjustTZ(p.creation_date).getTime() >= _1day_ago){
+      if(new Date(p.creation_date).getTime() >= _1day_ago){
         offchain.d1.fee += p.fee
         offchain.d1.amt += p.value
       } 
@@ -756,7 +759,7 @@
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
-      if(adjustTZ(tx.time_stamp).getTime() >= _1day_ago){
+      if(new Date(tx.time_stamp).getTime() >= _1day_ago){
         chainCosts.d1 += tx.fee
       }
       chainCosts.d7 += tx.fee
@@ -774,12 +777,12 @@
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
       byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} (${routed.amt.intcomma()} sats)`
-      byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
-      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} <small style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}ₚₚₘ</small>`
+      byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
+      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
       byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `<span style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">⚡${((earned - fees)*1000000/public_outbound).intcomma()}</span> 
-        <span style="padding:1.5px 4px;" class="w3-round w3-border w3-border-grey">⚡${((earned - costs)*1000000/public_outbound).intcomma()}⛓️</span>`
+      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - fees)*1000000/public_outbound).intcomma()}</span> 
+        <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/public_outbound).intcomma()}⛓️</span>`
       byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/public_outbound).toFixed(1)).toLocaleString()+'%'
     }
   }
@@ -820,7 +823,6 @@
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
       f.ppm = f.fee*1000000/f.amt_out
-      f.forward_date = adjustTZ(f.forward_date)
       table.append(template.render(f))
     }
   }
@@ -834,7 +836,6 @@
       if(p.status === 3) continue
 
       p.ppm = p.fee*1000000/p.value
-      p.creation_date = adjustTZ(p.creation_date)
       table.append(template.render(p))
     }
   }
@@ -842,8 +843,6 @@
     if(!addTitle('Invoices', invoices, `Last 10 <a href="/invoices" target="_blank">Invoices</a>`)) return
     const table = byId('invoices'), template = use(invoices_template)
     for(inv of invoices) {
-      inv.creation_date = adjustTZ(inv.creation_date)
-      inv.settle_date = adjustTZ(inv.settle_date)
       table.append(template.render(inv))
     }
   }
@@ -851,7 +850,6 @@
     if(!addTitle('failed_htlcs', fHTLCs, `Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
     const table = byId('failed_htlcs'), template = use(failedHTLCs_template)
     for(htlc of fHTLCs){
-      htlc.timestamp = adjustTZ(htlc.timestamp)
       table.append(template.render(htlc))
     } 
   }
