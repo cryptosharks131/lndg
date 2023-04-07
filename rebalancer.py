@@ -182,6 +182,7 @@ def update_channels(stub, incoming_channel, outgoing_channel):
 def auto_schedule() -> List[Rebalancer]:
     try:
         #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
+        to_schedule = []
         if LocalSettings.objects.filter(key='AR-Enabled').exists():
             enabled = int(LocalSettings.objects.filter(key='AR-Enabled')[0].value)
         else:
@@ -223,14 +224,13 @@ def auto_schedule() -> List[Rebalancer]:
             LocalSettings(key='AR-Target%', value='5').save()
         if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
             LocalSettings(key='AR-MaxCost%', value='65').save()
-        to_schedule = []
         for target in inbound_cans:
             target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
             if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
                 target_value = int(target.ar_amt_target+(target.ar_amt_target*((secrets.choice(range(-1000,1001))/1000)*variance/100)))
                 target_fee = round(target_fee_rate*target_value*0.000001, 3) if target_fee_rate <= max_fee_rate else round(max_fee_rate*target_value*0.000001, 3)
                 if target_fee == 0:
-                    return []
+                    continue
             
                 if LocalSettings.objects.filter(key='AR-Time').exists():
                     target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
@@ -253,6 +253,7 @@ def auto_schedule() -> List[Rebalancer]:
         return to_schedule
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : Error scheduling rebalances: {str(e)}")
+        return to_schedule
 
 @sync_to_async
 def auto_enable():
@@ -346,6 +347,8 @@ async def async_queue_manager(rebalancer_queue):
             await asyncio.sleep(30)
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : Queue manager exception: {str(e)}")
+        global shutdown_rebalancer
+        shutdown_rebalancer = True
     finally:
         print(f"{datetime.now().strftime('%c')} : Queue manager has shut down...")
 
