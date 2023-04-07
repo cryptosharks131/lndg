@@ -322,6 +322,7 @@ def get_pending_rebals():
 shutdown_rebalancer = False
 active_rebalances = []
 async def async_queue_manager(rebalancer_queue):
+    global shutdown_rebalancer
     print(f"{datetime.now().strftime('%c')} : Queue manager is starting...")
     pending_rebalances, rebal_count = await get_pending_rebals()
     if rebal_count > 0:
@@ -341,13 +342,11 @@ async def async_queue_manager(rebalancer_queue):
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
                 print(f"{datetime.now().strftime('%c')} : Queue is still empty, stoping the rebalancer...")
-                global shutdown_rebalancer
                 shutdown_rebalancer = True
                 return
             await asyncio.sleep(30)
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : Queue manager exception: {str(e)}")
-        global shutdown_rebalancer
         shutdown_rebalancer = True
     finally:
         print(f"{datetime.now().strftime('%c')} : Queue manager has shut down...")
