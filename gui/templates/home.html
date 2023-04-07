@@ -825,10 +825,11 @@
       }
       return result
     }
-    let public = merge(active, inactive), sum = merge(public, private)
+    
+    const public = merge(active, inactive), sum = merge(public, private)
     const [total_outbound, total_bal] = [sum.outbound || 1, byId('total_balance')]
     byId('liq_ratio').innerHTML = (public.inbound*100/public.outbound||1).intcomma()+'%'
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).intcomma()
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + sum.outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const earned = sum.earned[`d${d}`], routed = sum.rOUTed[`d${d}`], chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
@@ -836,7 +837,7 @@
       byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`onchain_costs_${d}day`).innerHTML = chaincosts.intcomma()
-      byId(`percent_cost_${d}day`).innerHTML = (earned || costs*100/earned).intcomma()+'%'
+      byId(`percent_cost_${d}day`).innerHTML = (earned ? costs*100/earned : 0).intcomma()+'%'
       byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}</span> 
         <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/total_outbound).intcomma()}⛓️</span>`
       byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/total_outbound).toFixed(1)).toLocaleString()+'%'
@@ -898,10 +899,8 @@
       ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
       ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
 
-      if(ch.is_open && !ch.private){
-        (ch.is_active ? active : inactive).push(ch)
-      }
-      else if(ch.is_open && ch.private) private.push(ch)
+      if(ch.private) private.push(ch)
+      else (ch.is_active ? active : inactive).push(ch)
     }
 
     byId("updates").innerHTML = updates.intcomma()
