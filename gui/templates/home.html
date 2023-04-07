@@ -679,26 +679,25 @@
     container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
     return true
   }
+  function sumRoutedValues(forwards, ch, fields){
+    let earned = 0
+    for(field of fields) ch[field] = 0
+    for(f of forwards){
+      if(f.chan_id_in == ch.chan_id){
+        ch[fields[0]] += 1
+        ch[fields[2]] += f.amt_in_msat/1000
+      }
+      if(f.chan_id_out == ch.chan_id){
+        earned += f.fee
+        ch[fields[1]] += 1
+        ch[fields[3]] += f.amt_out_msat/1000
+      }
+    }
+    return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
+  }
   function build_active(channels, forwards7d){
     let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
-
-    function sumRoutedValues(forwards, ch, fields){
-      let earned = 0
-      for(field of fields) ch[field] = 0
-      for(f of forwards){
-        if(f.chan_id_in == ch.chan_id){
-          ch[fields[0]] += 1
-          ch[fields[2]] += f.amt_in_msat/1000
-        }
-        if(f.chan_id_out == ch.chan_id){
-          earned += f.fee
-          ch[fields[1]] += 1
-          ch[fields[3]] += f.amt_out_msat/1000
-        }
-      }
-      return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
-    }
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
     forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
@@ -730,6 +729,45 @@
     byId('public_capacity').innerHTML = sum.capacity.intcomma()
     return update_sum('active_', sum)
   }
+  function build_private(channels, forwards7d){
+    let act = {outbound: 0, inbound: 0}, ina = {outbound: 0, inbound: 0} 
+    let sum = {earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
+    if(!addTitle("Private Channels", channels)) return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
+
+    const forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
+    let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
+    channels.forEach(ch => {
+      capacity += ch.capacity
+      if(ch.is_active) {
+        active_count += 1
+        act.outbound += ch.local_balance
+        act.inbound += ch.remote_balance
+      }
+      else {
+        ina.outbound += ch.local_balance
+        ina.inbound += ch.remote_balance
+      }
+
+      var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sum.earned.d1 += earned
+      sum.rOUTed.d1.amt += rOUTed.amt
+      sum.rOUTed.d1.count += rOUTed.count
+
+      var {rOUTed, earned} = sumRoutedValues(forwards7d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      sum.earned.d7 += earned
+      sum.rOUTed.d7.amt += rOUTed.amt
+      sum.rOUTed.d7.count += rOUTed.count
+      table.append(template.render(ch))
+    })
+
+    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
+    byId("private_stats").insertAdjacentHTML('beforeend', `
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(act.outbound + ina.outbound).intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
+
+    return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
+  }
   function build_inactive(channels){
     let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0}
     if(!addTitle("Inactive Channels", channels)) return sum
@@ -756,14 +794,14 @@
     return sum
   }
   async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
-    let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
+    let offChain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
       if(new Date(p.creation_date).getTime() >= _1day_ago){
-        offchain.d1.fee += p.fee
-        offchain.d1.amt += p.value
+        offChain.d1.fee += p.fee
+        offChain.d1.amt += p.value
       } 
-      offchain.d7.fee += p.fee
-      offchain.d7.amt += p.value
+      offChain.d7.fee += p.fee
+      offChain.d7.amt += p.value
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
@@ -778,47 +816,31 @@
       }
       chainCosts.d7 += close.closing_costs
     }
-    const [public_outbound, total_bal] = [active.outbound+inactive.outbound || 1, byId('total_balance')]
-    byId('liq_ratio').innerHTML = ((active.inbound + inactive.inbound)*100/public_outbound).intcomma()+'%'
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + public_outbound + (private?.outbound||0)).intcomma()
+    function merge(obj, other){
+      const result = Object.assign({}, obj)
+    
+      for(let [key, value] of Object.entries(other)){
+        if(value instanceof Object) result[key] = merge(result[key], value) //deep sum
+        else result[key] = (result[key] || 0) + value 
+      }
+      return result
+    }
+    let public = merge(active, inactive), sum = merge(public, private)
+    const [total_outbound, total_bal] = [sum.outbound || 1, byId('total_balance')]
+    byId('liq_ratio').innerHTML = (public.inbound*100/public.outbound||1).intcomma()+'%'
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + total_outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
-      const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
+      const earned = sum.earned[`d${d}`], routed = sum.rOUTed[`d${d}`], chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
       byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} (${routed.amt.intcomma()} sats)`
       byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
-      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}ₚₚₘ</small>`
-      byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
-      byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - fees)*1000000/public_outbound).intcomma()}</span> 
-        <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/public_outbound).intcomma()}⛓️</span>`
-      byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/public_outbound).toFixed(1)).toLocaleString()+'%'
+      byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
+      byId(`onchain_costs_${d}day`).innerHTML = chaincosts.intcomma()
+      byId(`percent_cost_${d}day`).innerHTML = (earned || costs*100/earned).intcomma()+'%'
+      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}</span> 
+        <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/total_outbound).intcomma()}⛓️</span>`
+      byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/total_outbound).toFixed(1)).toLocaleString()+'%'
     }
-  }
-  function build_private(channels){
-    let active = {inbound: 0, outbound: 0, unsettled: 0}
-    let inactive = {inbound: 0, outbound: 0, unsettled: 0}
-    if(!addTitle("Private Channels", channels)) return
-
-    let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
-    channels.forEach(ch => {
-      capacity += ch.capacity
-      if(ch.is_active) {
-        active_count += 1
-        active.outbound += ch.local_balance
-      }
-      else {
-        inactive.outbound += ch.local_balance
-      }
-      table.append(template.render(ch))
-    })
-
-    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
-    byId("private_stats").insertAdjacentHTML('beforeend', `
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(active.outbound + inactive.outbound).intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
-
-    return {outbound: active.outbound + inactive.outbound}
   }
   async function build_routed(forwards7d){
     let remaining = 20-forwards7d.length, template = use(routed_template), forwards = forwards7d
@@ -886,7 +908,7 @@
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
-    let [activeSum, inactiveSum, privateSum] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
+    let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards7d), build_private(private, forwards7d), build_inactive(inactive)]
     update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum)
     build_routed(forwards7d)
     build_payments(payments7d)
