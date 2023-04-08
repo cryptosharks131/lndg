@@ -158,7 +158,7 @@
           <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
           <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
           <th onclick="sortTable(event.target, 8, 'm')">o1D</th>
-        <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
+          <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
           <th onclick="sortTable(event.target, 10, 'm')">o7D</th>
           <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
           <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
@@ -213,7 +213,7 @@
         <th width=5%>Local Commit</th>
         <th width=5%>Local Reserve</th>
         <th width=5%>Opener</th>
-        <th width=5%>Up/Down</th>
+        <th width=5%>Active</th>
       </tr>
     </thead>
     <tbody id="private_channels"></tbody>
@@ -611,7 +611,7 @@
     "total_sent": ch => ({innerHTML: ch.total_sent.intcomma()}),
     "total_received": ch => ({innerHTML: ch.total_received.intcomma()})
   }, {local_commit, local_chan_reserve, initiator}, {
-    "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+    "is_active": ch => ({innerHTML: ch.is_active, title: (ch.is_active ? 'Up' : 'Down') + 'time: ' + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const routed_template = {
     "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
