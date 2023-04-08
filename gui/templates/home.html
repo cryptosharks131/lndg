@@ -812,7 +812,8 @@
       table.append(template.render(ch))
     })
 
-    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
+    byId("total_channels").innerHTML = (byId("total_channels").innerHTML.toInt() - channels.length)
+    byId("public_channels_count").innerHTML = (byId("public_channels_count").innerHTML.toInt() - active_count)
     byId("private_stats").insertAdjacentHTML('beforeend', `
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(active.outbound + inactive.outbound).intcomma()}</span>
