@@ -833,13 +833,13 @@
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const earned = sum.earned[`d${d}`], routed = sum.rOUTed[`d${d}`], chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
-      byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} <span class="w3-round w3-border-small w3-border-grey">⚡${routed.amt.intcomma()} </span>`
+      byId(`routed_${d}day`).innerHTML = `${routed.amt.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${routed.count.intcomma()}</span>`
       byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`onchain_costs_${d}day`).innerHTML = chaincosts.intcomma()
       byId(`percent_cost_${d}day`).innerHTML = (earned ? costs*100/earned : 0).intcomma()+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}</span> 
-        <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/total_outbound).intcomma()}⛓️</span>`
+      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}ₚₚₘ</span> 
+        <span class="w3-round w3-border-small w3-border-grey">⛓️${((earned - costs)*1000000/total_outbound).intcomma()}ₚₚₘ</span>`
       byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/total_outbound).toFixed(1)).toLocaleString()+'%'
     }
   }
