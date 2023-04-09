@@ -8,7 +8,7 @@
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <canvas id="balances"></canvas>
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', async function() {
       const data = {
         datasets: [
           {
@@ -47,7 +47,11 @@
           }
         ]
       };
-      
+
+      data.labels = [0]
+      data.datasets.forEach(ds => ds.data = [0])
+      const response = await GET('chart', {data: {} })
+
       const chart = new Chart(document.getElementById('balances'), {
         type: 'line',
         data: data,
@@ -90,28 +94,22 @@
           }
         },
       })
+      for(balance of response){
+        data.labels.push(adjustTZ(balance.dt).toLocaleDateString())  
+        data.datasets[1].data.push(balance.onchain + data.datasets[1].data.at(-1))
+        data.datasets[3].data.push(parseInt(balance.cost + data.datasets[3].data.at(-1)))
+        data.datasets[0].data.push(parseInt(balance.total + data.datasets[0].data.at(-1)))
+        data.datasets[2].data.push(parseInt(balance.offchain + data.datasets[2].data.at(-1)))
+      }
 
       function applyThemeToGrid(){
-        const lightGridLineColor = 'rgba(0,0,0,0.1)';
-        const darkGridLineColor = 'rgba(255,255,255,0.1)'
         if (document.body.classList.contains("dark-mode")) {
-          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = darkGridLineColor
+          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(255,255,255,0.1)'
         } else {
-          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = lightGridLineColor
+          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(0,0,0,0.1)'
         }
 
         chart.update();
-      }
-      chart.data.labels = [0]
-      chart.data.datasets.forEach(ds => ds.data = [0])
-      const response = await GET('chart', {data: {} })
-
-      for(balance of response){
-        chart.data.labels.push(adjustTZ(balance.dt).toLocaleDateString())  
-        chart.data.datasets[1].data.push(balance.onchain + chart.data.datasets[1].data.at(-1))
-        chart.data.datasets[3].data.push(parseInt(balance.cost + chart.data.datasets[3].data.at(-1)))
-        chart.data.datasets[0].data.push(parseInt(balance.total + chart.data.datasets[0].data.at(-1)))
-        chart.data.datasets[2].data.push(parseInt(balance.offchain + chart.data.datasets[2].data.at(-1)))
       }
       applyThemeToGrid()
       byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
