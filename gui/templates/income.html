@@ -123,7 +123,7 @@
         chart.update()
       }
       applyThemeToGrid()
-      byId('toggleTheme').addEventListener('click', applyThemeToGrid)
+      byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
       const _7day = byId('d7')
       _7day.addEventListener('click', function() {
         const now = new Date(), _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
