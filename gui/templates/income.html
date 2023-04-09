@@ -8,10 +8,6 @@
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <canvas id="balances"></canvas>
   <script>
-    function adjustTZ(datetime){
-      datetime = new Date(datetime).getTime() - new Date(datetime).getTimezoneOffset()*60000
-      return new Date(datetime)
-    }
     document.addEventListener('DOMContentLoaded', async () => {
       const response = await GET('chart', {data: {}})
       const data = {
