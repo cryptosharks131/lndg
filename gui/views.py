@@ -816,10 +816,11 @@ def income(request):
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def chart(request):
-    payments = Payments.objects.values('creation_date', 'fee', 'value').filter(status=2).order_by('creation_date').all()
-    invoices = Invoices.objects.values('settle_date', 'amt_paid').filter(state=1).order_by('settle_date').all()
-    onchain = Onchain.objects.values('time_stamp', 'tx_hash', 'fee', 'amount').order_by('time_stamp').all()
-    forwards = Forwards.objects.values('forward_date', 'fee').order_by('forward_date').all()
+    start_from = request.GET.get('start_from') if request.GET.get('start_from') else str(datetime(2015, 1, 1, 0, 0, 0))
+    payments = Payments.objects.values('creation_date', 'fee', 'value').filter(status=2, creation_date__gte=start_from).order_by('creation_date').all()
+    invoices = Invoices.objects.values('settle_date', 'amt_paid').filter(state=1,settle_date__gte=start_from).order_by('settle_date').all()
+    onchain = Onchain.objects.values('time_stamp', 'tx_hash', 'fee', 'amount').filter(time_stamp__gte=start_from).order_by('time_stamp').all()
+    forwards = Forwards.objects.values('forward_date', 'fee').filter(forward_date__gte=start_from).order_by('forward_date').all()
     closures = Closures.objects.values('closing_costs', 'settled_balance', 'chan_id').all()
     channels = Channels.objects.values('funding_txid', 'local_commit', 'capacity').all()
     resolutions = Resolutions.objects.values('sweep_txid', 'amount_sat', 'chan_id').all()
@@ -827,7 +828,7 @@ def chart(request):
     now = datetime.now()
     events_time = sorted([
         *[on['time_stamp'] for on in onchain],
-        *[i['settle_date'] for i in invoices], 
+        *[i['settle_date'] for i in invoices],
         *[f['forward_date'] for f in forwards],
         *[p['creation_date'] for p in payments], now, now])
     min_dt = events_time[0]

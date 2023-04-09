@@ -7,11 +7,13 @@
 <div class="w3-container w3-padding-small">
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <canvas id="balances"></canvas>
+  <button id="d7">7 days</button>
+  <button id="d30">30 days</button>
+  <button id="d90">90 days</button>
+  <button id="lifetime">Lifetime</button>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      const response = await GET('chart', {data: {}})
       const data = {
-        labels: [0, ...response.dates.map(dt => adjustTZ(dt).toLocaleDateString())],
         datasets: [
           {
             label: 'Balance',
@@ -21,7 +23,6 @@
             backgroundColor: 'rgba(251, 192, 147, 0.2)',
             borderColor: 'rgba(251, 192, 147, 0.5)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.balance_over_time.map(b => parseInt(b))]
           },
           {
             label: 'On chain',
@@ -30,7 +31,6 @@
             borderColor: 'rgba(255,119,0,1)',
             backgroundColor: 'rgba(255,119,0,0.1)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.on_chain]
           },
           {
             label: 'Off chain',
@@ -39,7 +39,6 @@
             borderColor: 'rgba(33,150,243)',
             backgroundColor: 'rgba(33,150,243,.2)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.off_chain.map(b => parseInt(b))]
           },
           {
             label: 'Costs',
@@ -49,7 +48,6 @@
             borderColor: 'rgba(248,81,73)',
             backgroundColor: 'rgba(248,81,73,0.15)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.costs.map(b => parseInt(b))]
           }
         ]
       };
@@ -82,7 +80,6 @@
               }
             },
             y1: {
-              type: 'linear',
               display: true,
               position: 'left',
               title: {
@@ -97,6 +94,7 @@
           }
         },
       })
+
       function applyThemeToGrid(){
         const lightGridLineColor = 'rgba(0,0,0,0.1)';
         const darkGridLineColor = 'rgba(255,255,255,0.1)'
@@ -108,8 +106,39 @@
 
         chart.update();
       }
+      async function updateChart(date){
+        const response = await GET('chart', {data: date ? {start_from: date} : {} })
+        chart.data.labels = response.dates.map(dt => adjustTZ(dt).toLocaleDateString())
+        chart.data.datasets[0].data = response.balance_over_time.map(v => parseInt(v))
+        chart.data.datasets[2].data = response.off_chain.map(v => parseInt(v))
+        chart.data.datasets[3].data = response.costs.map(v => parseInt(v))
+        chart.data.datasets[1].data = response.on_chain
+        if (!date){ //lifetime
+          chart.data.labels.unshift(0)
+          chart.data.datasets[0].data.unshift(0)
+          chart.data.datasets[1].data.unshift(0)
+          chart.data.datasets[2].data.unshift(0)
+          chart.data.datasets[3].data.unshift(0)
+        }
+        chart.update()
+      }
       applyThemeToGrid()
-      document.getElementById('toggleTheme').addEventListener('click', applyThemeToGrid)
+      byId('toggleTheme').addEventListener('click', applyThemeToGrid)
+      const _7day = byId('d7')
+      _7day.addEventListener('click', function() {
+        const now = new Date(), _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
+        updateChart(_7days_ago)
+      })
+      _7day.click()
+      byId('d30').addEventListener('click', function() {
+        const now = new Date(), _30days_ago = new Date(now.setDate(now.getDate()-30)).toISOString().substring(0,19)
+        updateChart(_30days_ago)
+      })
+      byId('d90').addEventListener('click', function() {
+        const now = new Date(), _90days_ago = new Date(now.setDate(now.getDate()-90)).toISOString().substring(0,19)
+        updateChart(_90days_ago)
+      })
+      byId('lifetime').addEventListener('click', _ => updateChart())
     })
   </script>
   <hr/>
