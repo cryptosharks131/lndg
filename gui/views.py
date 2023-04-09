@@ -828,12 +828,11 @@ def income(request):
         filter_7day = datetime.now() - timedelta(days=7)
         filter_1day = datetime.now() - timedelta(days=1)
         node_info = stub.GetInfo(ln.GetInfoRequest())
-        invoices = Invoices.objects.filter(state=1)
-        revenues = invoices.filter(is_revenue=True)
-        revenues_90day = revenues.filter(settle_date__gte=filter_90day)
-        revenues_30day = revenues.filter(settle_date__gte=filter_30day)
-        revenues_7day = revenues.filter(settle_date__gte=filter_7day)
-        revenues_1day = revenues.filter(settle_date__gte=filter_1day)
+        invoices = Invoices.objects.filter(state=1, is_revenue=True)
+        invoices_90day = invoices.filter(settle_date__gte=filter_90day)
+        invoices_30day = invoices.filter(settle_date__gte=filter_30day)
+        invoices_7day = invoices.filter(settle_date__gte=filter_7day)
+        invoices_1day = invoices.filter(settle_date__gte=filter_1day)
         payments = Payments.objects.filter(status=2)
         payments_90day = payments.filter(creation_date__gte=filter_90day)
         payments_30day = payments.filter(creation_date__gte=filter_30day)
@@ -869,11 +868,11 @@ def income(request):
         total_revenue_30day = 0 if forward_count_30day == 0 else int(forwards_30day.aggregate(Sum('fee'))['fee__sum'])
         total_revenue_7day = 0 if forward_count_7day == 0 else int(forwards_7day.aggregate(Sum('fee'))['fee__sum'])
         total_revenue_1day = 0 if forward_count_1day == 0 else int(forwards_1day.aggregate(Sum('fee'))['fee__sum'])
-        total_received = 0 if revenues.count() == 0 else int(revenues.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_90day = 0 if revenues_90day.count() == 0 else int(revenues_90day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_30day = 0 if revenues_30day.count() == 0 else int(revenues_30day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_7day = 0 if revenues_7day.count() == 0 else int(revenues_7day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
-        total_received_1day = 0 if revenues_1day.count() == 0 else int(revenues_1day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received = 0 if invoices.count() == 0 else int(invoices.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_90day = 0 if invoices_90day.count() == 0 else int(invoices_90day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_30day = 0 if invoices_30day.count() == 0 else int(invoices_30day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_7day = 0 if invoices_7day.count() == 0 else int(invoices_7day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
+        total_received_1day = 0 if invoices_1day.count() == 0 else int(invoices_1day.aggregate(Sum('amt_paid'))['amt_paid__sum'])
         total_revenue += total_received
         total_revenue_90day += total_received_90day
         total_revenue_30day += total_received_30day
@@ -919,7 +918,6 @@ def income(request):
         profits_30day = int(total_revenue_30day-total_fees_30day-onchain_costs_30day)
         profits_7day = int(total_revenue_7day-total_fees_7day-onchain_costs_7day)
         profits_1day = int(total_revenue_1day-total_fees_1day-onchain_costs_1day)
-
         context = {
             'node_info': node_info,
             'forward_count': forward_count,
@@ -973,10 +971,6 @@ def income(request):
             'percent_cost_7day': 0 if total_revenue_7day == 0 else int(((total_fees_7day+onchain_costs_7day)/total_revenue_7day)*100),
             'percent_cost_1day': 0 if total_revenue_1day == 0 else int(((total_fees_1day+onchain_costs_1day)/total_revenue_1day)*100),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
-            'forward_90': forwards_90day,
-            'forward_30': forwards_30day,
-            'forward_7':  forwards_7day,
-            'forward_1':  forwards_1day,
             'graph_links': graph_links()
         }
         return render(request, 'income.html', context)
