@@ -17,6 +17,7 @@ router.register(r'rebalancer', views.RebalancerViewSet)
 router.register(r'settings', views.LocalSettingsViewSet)
 router.register(r'pendinghtlcs', views.PendingHTLCViewSet)
 router.register(r'failedhtlcs', views.FailedHTLCViewSet)
+router.register(r'balance', views.BalanceViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -80,6 +81,5 @@ urlpatterns = [
     path('api/income/', views.api_income, name='api-income'),
     path('api/pendingchannels/', views.pending_channels, name='pending-channels'),
     path('api/bumpfee/', views.bump_fee, name='bump-fee'),
-    path('api/chart/', views.chart, name='chart'),
     path('lndg-admin/', admin.site.urls),
 ]

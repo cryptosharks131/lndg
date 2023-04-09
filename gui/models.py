@@ -322,3 +322,10 @@ class HistFailedHTLC(models.Model):
     class Meta:
         app_label = 'gui'
         unique_together = (('date', 'chan_id_in', 'chan_id_out'),)
+
+class Balance(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    on_chain = models.BigIntegerField()
+    off_chain = models.BigIntegerField()
+    costs = models.BigIntegerField()
+    total = models.BigIntegerField()

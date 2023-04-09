@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, Balance
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
+class IdSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
 
 class PaymentSerializer(serializers.HyperlinkedModelSerializer):
     payment_hash = serializers.ReadOnlyField()
@@ -28,8 +30,7 @@ class InvoiceSerializer(serializers.HyperlinkedModelSerializer):
         model = Invoices
         exclude = []
 
-class ForwardSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+class ForwardSerializer(IdSerializer):
     class Meta:
         model = Forwards
         exclude = []
@@ -80,8 +81,7 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
         model = Channels
         exclude = []
 
-class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+class RebalancerSerializer(IdSerializer):
     requested = serializers.ReadOnlyField()
     start = serializers.ReadOnlyField()
     stop = serializers.ReadOnlyField()
@@ -128,14 +128,12 @@ class OnchainSerializer(serializers.HyperlinkedModelSerializer):
         model = Onchain
         exclude = []
 
-class ClosuresSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+class ClosuresSerializer(IdSerializer):
     class Meta:
         model = Closures
         exclude = []
 
-class ResolutionsSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+class ResolutionsSerializer(IdSerializer):
     class Meta:
         model = Resolutions
         exclude = []
@@ -152,14 +150,17 @@ class LocalSettingsSerializer(serializers.HyperlinkedModelSerializer):
         model = LocalSettings
         exclude = []
 
-class PendingHTLCSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+class PendingHTLCSerializer(IdSerializer):
     class Meta:
         model = PendingHTLCs
         exclude = []
 
-class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+class FailedHTLCSerializer(IdSerializer):
     class Meta:
         model = FailedHTLCs
+        exclude = []
+
+class BalanceSerializer(IdSerializer):
+    class Meta:
+        model = Balance
         exclude = []
