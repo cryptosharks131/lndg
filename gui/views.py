@@ -9,8 +9,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, Balance
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, BalanceSerializer
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -812,6 +812,83 @@ def income(request):
         return render(request, 'income.html', context)
     else:
         return redirect('home')
+
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def chart(request):
+    start_from = request.GET.get('start_from') if request.GET.get('start_from') else str(datetime(2015, 1, 1, 0, 0, 0))
+    payments = Payments.objects.values('creation_date', 'fee', 'value').filter(status=2, creation_date__gte=start_from).order_by('creation_date').all()
+    invoices = Invoices.objects.values('settle_date', 'amt_paid').filter(state=1,settle_date__gte=start_from).order_by('settle_date').all()
+    onchain = Onchain.objects.values('time_stamp', 'tx_hash', 'fee', 'amount').filter(time_stamp__gte=start_from).order_by('time_stamp').all()
+    forwards = Forwards.objects.values('forward_date', 'fee').filter(forward_date__gte=start_from).order_by('forward_date').all()
+    closures = Closures.objects.values('closing_costs', 'settled_balance', 'chan_id').all()
+    channels = Channels.objects.values('funding_txid', 'local_commit', 'capacity').all()
+    resolutions = Resolutions.objects.values('sweep_txid', 'amount_sat', 'chan_id').all()
+
+    now = datetime.now()
+    events_time = sorted([
+        *[on['time_stamp'] for on in onchain],
+        *[i['settle_date'] for i in invoices],
+        *[f['forward_date'] for f in forwards],
+        *[p['creation_date'] for p in payments], now, now])
+    min_dt = events_time[0]
+
+    timeline = []
+    one_hour = timedelta(hours=1)
+    costs, on_chain, off_chain, balance_over_time = [0], [0], [0], [0]
+    i,j = 0,0
+    chan_id_list = []
+    while min_dt <= now:
+        append = min_dt == now
+        next_dt = events_time[j+1]
+        if next_dt < min_dt + one_hour: # min step between events: 1h
+            next_dt = min_dt + one_hour
+
+        for tx in onchain.filter(time_stamp__gte=min_dt, time_stamp__lt=next_dt):
+            append = True
+            costs[i] += tx['fee']
+            on_chain[i] += tx['amount']
+            for closure in closures.filter(closing_tx=tx['tx_hash']):
+                costs[i] += closure['closing_costs']
+                if closure['chan_id'] not in chan_id_list:
+                    off_chain[i] -= closure['settled_balance']
+                    chan_id_list.append(closure['chan_id'])
+            for ch in channels.filter(funding_txid=tx['tx_hash']): #open channel
+                off_chain[i] += ch['capacity'] - ch['local_commit']
+            for resolution in resolutions.filter(sweep_txid=tx['tx_hash']):
+                if resolution['chan_id'] not in chan_id_list:
+                    costs[i] += closures.filter(chan_id=resolution['chan_id']).first()['closing_costs']
+                    off_chain[i] -= resolution['amount_sat']
+                    chan_id_list.append(resolution['chan_id'])
+
+        for invoice in invoices.filter(settle_date__gte=min_dt, settle_date__lt=next_dt):
+            append = True
+            off_chain[i] += invoice['amt_paid']
+            
+        for forward in forwards.filter(forward_date__gte=min_dt, forward_date__lt=next_dt):
+            append = True
+            off_chain[i] += forward['fee']
+                
+        for payment in payments.filter(creation_date__gte=min_dt, creation_date__lt=next_dt):
+            append = True
+            costs[i] += payment['fee']
+            off_chain[i] -= (payment['fee'] + payment['value'])
+
+        balance_over_time[i] = on_chain[i] + off_chain[i]
+        if append:
+            i += 1
+            timeline.append(min_dt)
+            costs.append(costs[-1])
+            on_chain.append(on_chain[-1])
+            off_chain.append(off_chain[-1])
+            balance_over_time.append(balance_over_time[-1])
+        
+        if min_dt == next_dt:
+            break
+        j += 1
+        min_dt = next_dt
+    
+    return Response({'dates': [t.isoformat() for t in timeline], 'balance_over_time': balance_over_time, 'on_chain':on_chain, 'off_chain': off_chain, 'costs': costs})
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
@@ -2352,12 +2429,6 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors)
-    
-class BalanceViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = Balance.objects.all().order_by('id')
-    serializer_class = BalanceSerializer
-    filterset_fields = {'timestamp': ['lte','gte']}
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)

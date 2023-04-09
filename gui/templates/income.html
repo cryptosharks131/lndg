@@ -107,22 +107,18 @@
         chart.update();
       }
       async function updateChart(date){
-        chart.data.labels = []
-        chart.data.datasets.forEach(ds => ds.data = [])
-        const response = await GET('balance', {data: date ? {timestamp__gte: date} : {} })
-        if(!date){ //lifetime
-          chart.data.labels.push(0)
-          chart.data.datasets[0].data.push(0)
-          chart.data.datasets[1].data.push(0)
-          chart.data.datasets[2].data.push(0)
-          chart.data.datasets[3].data.push(0)
-        }
-        for (const bal of response.results){
-          chart.data.labels.push(adjustTZ(bal.timestamp).toLocaleDateString())
-          chart.data.datasets[2].data.push(bal.off_chain)
-          chart.data.datasets[1].data.push(bal.on_chain)
-          chart.data.datasets[3].data.push(bal.costs)
-          chart.data.datasets[0].data.push(bal.total)
+        const response = await GET('chart', {data: date ? {start_from: date} : {} })
+        chart.data.labels = response.dates.map(dt => adjustTZ(dt).toLocaleDateString())
+        chart.data.datasets[0].data = response.balance_over_time.map(v => parseInt(v))
+        chart.data.datasets[2].data = response.off_chain.map(v => parseInt(v))
+        chart.data.datasets[3].data = response.costs.map(v => parseInt(v))
+        chart.data.datasets[1].data = response.on_chain
+        if (!date){ //lifetime
+          chart.data.labels.unshift(0)
+          chart.data.datasets[0].data.unshift(0)
+          chart.data.datasets[1].data.unshift(0)
+          chart.data.datasets[2].data.unshift(0)
+          chart.data.datasets[3].data.unshift(0)
         }
         chart.update()
       }
