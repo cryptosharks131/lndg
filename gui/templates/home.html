@@ -7,52 +7,38 @@
 <div class="w3-container w3-padding-small">
   <script language="Javascript">
     var dt = new Date();
-    document.getElementById("datetime").innerHTML = dt.toLocaleTimeString();
-    function toogleAR(elem){
-      Sync.PUT(`channels/${elem.dataset.chanId}`, {body:{auto_rebalance: elem.value == 'Enable' }}, function (ch) { 
-        elem.value = (ch.auto_rebalance ? 'Dis' : 'En') + 'able' 
-        elem.parentElement.previousElementSibling.innerHTML = !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
-          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          <input type="hidden" name="update_target" value="3">
-        </form>` 
-      })
-    }
+    byId("datetime").innerHTML = dt.toLocaleTimeString();
     function qr_gen(addr){
-      var qrcode = new QRCode(document.getElementById('qrcode'), {text:addr, width:256, height:256})
-      document.getElementById('qrcode').style.display = 'block'
+      var qrcode = new QRCode(byId('qrcode'), {text:addr, width:256, height:256})
+      byId('qrcode').style.display = 'block'
     }
     function qr_clear(){
-      document.getElementById('qrcode').replaceChildren()
-      document.getElementById('qrcode').style.display = 'none'
+      byId('qrcode').replaceChildren()
+      byId('qrcode').style.display = 'none'
     }
   </script>
-  <h3><a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}</h3>
+    <h3>
+      <span style="font-size: 12px;vertical-align: middle; padding-left: 18px; border:1px solid {{ node_info.color }}; background-color: {{ node_info.color }}" class="w3-circle" title="{{ node_info.color }}"></span>
+      <a style="margin-left:6px;" href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}
+    </h3>
   <h6>
-    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_graph %}Not {% endif %}Synced">LND</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="{% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{{ node_info.version }}">LND</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="Chain {% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
   </h6>
   <h6>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: {{ total_capacity|intcomma }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: {{ active_count }} / {{ total_channels }}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="public_capacity">0</span></span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="public_channels_count">{{node_info.num_active_channels}}</span> / <span id="total_channels">{{node_info.num_active_channels|add:node_info.num_inactive_channels}}</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: {% if num_updates > 0 %}{{ num_updates|intcomma }} {% else %}---{% endif %}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: <span id="updates">---</span></span>
     <span style="padding:1.5px 8px;margin-left:4px" class="w3-round w3-border w3-border-grey"><a href="#sign">Sign a message</a></span>
   </h6>
-  {% if total_private > 0 %}
-  <h6>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: {{ private_capacity|intcomma }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: {{ private_outbound|intcomma }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: {{ active_private }} / {{ total_private }}</span>
-  </h6>
-  {% endif %}
+  <h6 id="private_stats"></h6>
   Addresses: 
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
     <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
-    <a href="#." data-value="{{addr}}" onclick="toogle(this)" onmouseleave="qr_clear()" onmouseenter="qr_gen('{{ addr }}');">
+    <a href="#." data-value="{{addr}}" onclick="toggle(this)" onmouseleave="qr_clear()" onmouseenter="qr_gen('{{ addr }}');">
       <svg style="height:30px;width:30px;transform:matrix(1, 0, 0, 1, 4, 3)" version="1.1" >
         <path style="" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
         <path style="" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
@@ -68,39 +54,39 @@
 <div class="w3-row w3-container w3-padding-small" >
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:300px;width:25%">
     <tr>
-      <th title="Total Inbound/Total Outbound">Ratio: {{ liq_ratio }}%</h>
+      <th title="Total Inbound/Total Outbound">Ratio: <span id="liq_ratio">0</span></h>
       <th>Inbound</th>
       <th>Outbound</th>
       <th>Unsettled</th>
     </tr>
     <tr>
       <th>Active</th>
-      <td>{{ inbound|intcomma }}</td>
-      <td>{{ outbound|intcomma }}</td>
-      <td>{{ unsettled|intcomma }}</td>
+      <td id="active_inbound">0</td>
+      <td id="active_outbound">0</td>
+      <td id="active_unsettled">0</td>
     </tr>
     <tr>
       <th>Inactive</th>
-      <td>{{ inactive_inbound|intcomma }}</td>
-      <td>{{ inactive_outbound|intcomma }}</td>
-      <td>{{ inactive_unsettled|intcomma }}</td>
+      <td id="inactive_inbound">0</td>
+      <td id="inactive_outbound">0</td>
+      <td id="inactive_unsettled">0</td>
     </tr>
     <tr>
       <th>Total</th>
-      <td>{{ sum_inbound|intcomma }}</td>
-      <td>{{ sum_outbound|intcomma }}</td>
-      <td>{{ total_unsettled|intcomma }}</td>
+      <td id="total_inbound">0</td>
+      <td id="total_outbound">0</td>
+      <td id="total_unsettled">0</td>
     </tr>
   </table>
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: {{ total_balance|intcomma }}</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: <span id="total_balance">{{total_balance}}</span></th>
         <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
+        <th colspan="2" class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
         <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
         <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: {{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span>{{ pending_htlc_count }}</th>
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
@@ -112,29 +98,32 @@
     <tr>
       <th>Period</th>
       <th>Routed</th>
-      <th>Fees earned | paid</th>
+      <th>Fees Earned</th>
+      <th>Fees Paid</th>
       <th>Onchain fees</th>
-      <th>Cost (%)</th>
+      <th>Cost</th>
       <th title="Profit made per outbound [profit per outbound including onchain fees]">Profit/Outbound</th>
       <th>Outbound Utilization</th>
     </tr>
     <tr>
       <td>1-Day</td>
-      <td>{{ routed_1day|intcomma }} ({{ routed_1day_amt|intcomma }} sats)</td>
-      <td>{{ earned_1day|intcomma }} [{{ 1day_routed_ppm|intcomma }}] | {{ total_1day_fees|intcomma }} [{{ 1day_payments_ppm|intcomma }}]</td>
-      <td>{{ onchain_costs_1day|intcomma }}</td>
-      <td>{{ percent_cost_1day }}%</td>
-      <td>{{ profit_per_outbound_1d|intcomma }} [{{ profit_per_outbound_real_1d|intcomma }}]</td>
-      <td>{{ routed_1day_percent }}%</td>
+      <td id="routed_1day">0</td>
+      <td id="earned_1day">0</td>
+      <td id="fees_1day">0</td>
+      <td id="onchain_costs_1day">0</td>
+      <td id="percent_cost_1day">0</td>
+      <td id="profit_per_outbound_1d">0</td>
+      <td id="routed_1day_percent">0</td>
     </tr>
     <tr>
       <td>7-Day</td>
-      <td>{{ routed_7day|intcomma }} ({{ routed_7day_amt|intcomma }} sats)</td>
-      <td>{{ earned_7day|intcomma }} [{{ 7day_routed_ppm|intcomma }}] | {{ total_7day_fees|intcomma }} [{{ 7day_payments_ppm|intcomma }}]</td>
-      <td>{{ onchain_costs_7day|intcomma }}</td>
-      <td>{{ percent_cost_7day }}%</td>
-      <td>{{ profit_per_outbound_7d|intcomma }} [{{ profit_per_outbound_real_7d|intcomma }}]</td>
-      <td>{{ routed_7day_percent }}%</td>
+      <td id="routed_7day">0</td>
+      <td id="earned_7day">0</td>
+      <td id="fees_7day">0</td>
+      <td id="onchain_costs_7day">0</td>
+      <td id="percent_cost_7day">0</td>
+      <td id="profit_per_outbound_7d">0</td>
+      <td id="routed_7day_percent">0</td>
     </tr>
   </table>
 </div>
@@ -155,186 +144,81 @@
   <a class="w3-bar-item w3-hover-blue" href="/batch" target="_blank">Batching</a>
   <a class="w3-bar-item w3-hover-blue" href="/advanced" target="_blank">Advanced Settings</a>
 </div>
-{% if active_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Active Channels</h2>
-  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table id="activeChannels" class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
-        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
-        <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-        <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
-        <th onclick="sortTable(event.target, 5, ' (')">Unsettled</th>
-        <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
-        <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
-        <th onclick="sortTable(event.target, 8, ' m (')">o1D</th>
-        <th onclick="sortTable(event.target, 9, ' m (')">i1D</th>
-        <th onclick="sortTable(event.target, 10, ' m (')">o7D</th>
-        <th onclick="sortTable(event.target, 11, ' m (')">i7D</th>
-        <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
-        <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
-        <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
-        <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
-      </tr>
-      {% for channel in active_channels %}
-      <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
-        <td>
-          <label>{{channel.capacity|intcomma}}</label>
-          <div class="progress w3-round w3-grey">
-            <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
-          </div>
-        </td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
-        <td>{{ channel.unsettled_balance|intcomma }} ({{ channel.htlc_count }})</td>
-        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
-        <td>{{ channel.amt_routed_out_1day|intcomma }} M ({{ channel.routed_out_1day }})</td>
-        <td>{{ channel.amt_routed_in_1day|intcomma }} M ({{ channel.routed_in_1day }})</td>
-        <td>{{ channel.amt_routed_out_7day|intcomma }} M ({{ channel.routed_out_7day }})</td>
-        <td>{{ channel.amt_routed_in_7day|intcomma }} M ({{ channel.routed_in_7day }})</td>
-        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
-        <td>
-          {% if channel.auto_rebalance == True %}
-            <form action="/update_channel/" method="post">
-              {% csrf_token %}
-              <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{channel.ar_in_target}}" onChange="Sync.PUT('channels/{{channel.chan_id}}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)})">
-              <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-              <input type="hidden" name="update_target" value="3">
-            </form>
-          {% else %}
-            ---
-          {% endif %}
-        </td>
-        <td>
-          <input type="submit" data-chan-id="{{channel.chan_id}}" value="{% if channel.auto_rebalance == True %}Dis{% else %}En{% endif %}able" onclick="toogleAR(this)">
-        </td>
-      </tr>
-      {% endfor %}
+<div id="active_channels_container" class="w3-container w3-padding-small">
+  <div class="w3-container w3-padding-small table" style="overflow:auto;max-height:1000px">
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
+          <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+          <th onclick="sortTable(event.target, 2, 'int')">Outbound Liquidity</th>
+          <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
+          <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
+          <th onclick="sortTable(event.target, 5, 'int')">Unsettled</th>
+          <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
+          <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
+          <th onclick="sortTable(event.target, 8, 'm')">o1D</th>
+        <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
+          <th onclick="sortTable(event.target, 10, 'm')">o7D</th>
+          <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
+          <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
+          <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
+          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
+          <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
+        </tr>
+      </thead>
+      <tbody id="active_channels"></tbody>
     </table>
   </div>
 </div>
-{% endif %}
-{% if inactive_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Inactive Channels</h2>
-  <table id="inactiveChannels" class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
-      <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-      <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
-      <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-      <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
-      <th onclick="sortTable(event.target, 5, ' (')" width=6%>Unsettled</th>
-      <th onclick="sortTable(event.target, 6, 'int')" width=4%>oRate</th>
-      <th onclick="sortTable(event.target, 7, 'int')" width=4%>oBase</th>
-      <th onclick="sortTable(event.target, 8, 'int')" width=4%>iRate</th>
-      <th onclick="sortTable(event.target, 9, 'int')" width=4%>iBase</th>
-      <th width=5%>Local Commit</th>
-      <th width=5%>Local Reserve</th>
-      <th width=5%>Downtime</th>
-      <th width=5%>Opener</th>
-      <th width=4%>iTarget%</th>
-      <th width=4%>AR</th>
-    </tr>
-    {% for channel in inactive_channels %}
-    <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>
-        <label>{{channel.capacity|intcomma}}</label>
-        <div class="progress w3-round w3-grey">
-          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
-        </div>
-      </td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
-      <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
-      <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
-      <td>{{ channel.local_commit|intcomma }}</td>
-      <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
-      <td>{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
-      <td>
-        {% if channel.auto_rebalance == True %}
-          <form action="/update_channel/" method="post">
-            {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
-            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-            <input type="hidden" name="update_target" value="3">
-          </form>
-        {% else %}
-          ---
-        {% endif %}
-      </td>
-      <td>
-        <form action="/update_channel/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-          <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
-          <input type="hidden" name="update_target" value="5">
-          <input type="hidden" name="target" value="0">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if private_channels %}
-<div class="w3-container w3-padding-small">
-  <h2>Private Channels</h2>
+<div id="inactive_channels_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th width=9%>Outbound Liquidity</th>
-      <th>Capacity</th>
-      <th width=9%>Inbound Liquidity</th>
-      <th width=6%>Unsettled</th>
-      <th width=4%>oRate</th>
-      <th width=4%>oBase</th>
-      <th width=4%>oLife</th>
-      <th width=4%>iLife</th>
-      <th width=5%>Local Commit</th>
-      <th width=5%>Local Reserve</th>
-      <th width=5%>Opener</th>
-      <th width=5%>Up/Down</th>
-    </tr>
-    {% for channel in private_channels %}
-    <tr>
-      <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>
-        <label>{{channel.capacity|intcomma}}</label>
-        <div class="progress w3-round w3-grey">
-          <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
-        </div>
-      </td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.unsettled_balance|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_fee_rate|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.local_base_fee|intcomma }}</td>
-      <td>{{ channel.total_sent|intcomma }}</td>
-      <td>{{ channel.total_received|intcomma }}</td>
-      <td>{{ channel.local_commit|intcomma }}</td>
-      <td>{{ channel.local_chan_reserve|intcomma }}</td>
-      <td>{% if channel.initiator == True %}Local{% else %}Remote{% endif %}</td>
-      <td {% if channel.is_active == True %}style="background-color: rgba(56,139,253,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %} title="{{ channel.last_update }}">{{ channel.last_update|naturaltime|slice:":-4" }}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
+        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
+        <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 5, ' (')" width=6%>Unsettled</th>
+        <th onclick="sortTable(event.target, 6, 'int')" width=4%>oRate</th>
+        <th onclick="sortTable(event.target, 7, 'int')" width=4%>oBase</th>
+        <th onclick="sortTable(event.target, 8, 'int')" width=4%>iRate</th>
+        <th onclick="sortTable(event.target, 9, 'int')" width=4%>iBase</th>
+        <th width=5%>Local Commit</th>
+        <th width=5%>Local Reserve</th>
+        <th width=5%>Downtime</th>
+        <th width=5%>Opener</th>
+        <th width=4%>iTarget%</th>
+        <th width=4%>AR</th>
+      </tr>
+    </thead>
+    <tbody id="inactive_channels"></tbody>
   </table>
 </div>
-{% endif %}
+<div id="private_channels_container" class="w3-container w3-padding-small">
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th width=9%>Outbound Liquidity</th>
+        <th>Capacity</th>
+        <th width=9%>Inbound Liquidity</th>
+        <th width=6%>Unsettled</th>
+        <th width=4%>oRate</th>
+        <th width=4%>oBase</th>
+        <th width=4%>oLife</th>
+        <th width=4%>iLife</th>
+        <th width=5%>Local Commit</th>
+        <th width=5%>Local Reserve</th>
+        <th width=5%>Opener</th>
+        <th width=5%>Up/Down</th>
+      </tr>
+    </thead>
+    <tbody id="private_channels"></tbody>
+  </table>
+</div>
 {% if pending_open %}
 <div class="w3-container w3-padding-small">
   <h2>Pending Open Channels</h2>
@@ -537,141 +421,82 @@
   </table>
 </div>
 {% endif %}
-{% if forwards %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10  <a href="/forwards" target="_blank">Payments Routed</a></h2>
+<div id="routed_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Amount In</th>
-      <th>Amount Out</th>
-      <th>Channel In Alias</th>
-      <th>Channel Out Alias</th>
-      <th>Channel In Id</th>
-      <th>Channel Out Id</th>
-      <th>Fees Earned</th>
-      <th>PPM Earned</th>
-    </tr>
-    {% for forward in forwards %}
-    <tr>
-      <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
-      <td>{{ forward.amt_in|intcomma }}</td>
-      <td>{{ forward.amt_out|intcomma }}</td>
-      <td>{% if forward.chan_in_alias == '' %}---{% else %}{{ forward.chan_in_alias }}{% endif %}</td>
-      <td>{% if forward.chan_out_alias == '' %}---{% else %}{{ forward.chan_out_alias }}{% endif %}</td>
-      <td><a href="/channel?={{ forward.chan_id_in }}" target="_blank">{{ forward.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ forward.chan_id_out }}" target="_blank">{{ forward.chan_id_out }}</a></td>
-      <td>{{ forward.fee|intcomma }}</td>
-      <td>{{ forward.ppm|intcomma }}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Amount In</th>
+        <th>Amount Out</th>
+        <th>Channel In Alias</th>
+        <th>Channel Out Alias</th>
+        <th>Channel In Id</th>
+        <th>Channel Out Id</th>
+        <th>Fees Earned</th>
+        <th>PPM Earned</th>
+      </tr>
+    </thead>
+    <tbody id="routed">
+    </tbody>
   </table>
 </div>
-{% endif %}
-{% with elegible_str=eligible_count|intcomma enabled_str=enabled_count|intcomma available_str=available_count|intcomma %}
-  {% with title='<a href="/rebalances" target="_blank">Rebalance Requests</a> (currently scheduling '|add:elegible_str|add:" of "|add:enabled_str|add:" enabled channels for rebalancing via "|add:available_str|add:" outbound channels)" %}
-    {% autoescape off %}
-      {% include 'rebalances_table.html' with count=10 title=title %}
-    {% endautoescape %}
-  {% endwith %}
-{% endwith %}
-{% if payments %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
+{% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+<div id="payments_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th width=28%>Hash</th>
-      <th width=6%>Value</th>
-      <th width=6%>Fee Paid</th>
-      <th width=6%>PPM Paid</th>
-      <th width=6%>Status</th>
-      <th width=12%>Chan Out Alias</th>
-      <th width=12%>Chan Out ID</th>
-      <th width=4%>Route</th>
-      <th width=6%>Keysend</th>
-    </tr>
-    {% for payment in payments %}
-    <tr>
-      <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</a></td>
-      <td>{{ payment.value|add:"0"|intcomma }}</td>
-      <td>{{ payment.fee|intcomma }}</td>
-      <td>{{ payment.ppm|intcomma }}</td>
-      <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}{% if payment.chan_out != 'MPP' %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}{{ payment.chan_out }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}---{% endif %}</td>
-      <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Value</th>
+        <th>Fee Paid</th>
+        <th>PPM Paid</th>
+        <th>Status</th>
+        <th>Chan Out Alias</th>
+        <th>Chan Out ID</th>
+        <th>Hash</th>
+        <th>Rebalance</th>
+        <th>Keysend</th>
+      </tr>
+    </thead>
+    <tbody id="payments"></tbody>
   </table>
 </div>
-{% endif %}
-{% if invoices %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 5 <a href="/invoices" target="_blank">Payments Received</a></h2>
+<div id="invoices_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Created</th>
-      <th>Settled</th>
-      <th width=25%>Payment Hash</th>
-      <th>Value</th>
-      <th>Amount Paid</th>
-      <th>State</th>
-      <th>Channel In Alias</th>
-      <th width=10%>Channel In</th>
-      <th><a href="/keysends" target="_blank">Keysend</a></th>
-    </tr>
-    {% for invoice in invoices %}
-    <tr>
-      <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
-      <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
-      <td>{{ invoice.value|add:"0"|intcomma }}</td>
-      <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
-      <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
-      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Created</th>
+        <th>Settled</th>
+        <th>Value</th>
+        <th>Amount Paid</th>
+        <th>State</th>
+        <th>Channel In Alias</th>
+        <th>Channel In</th>
+        <th>Hash</th>
+        <th><a href="/keysends" target="_blank">Keysend</a></th>
+      </tr>
+    </thead>
+    <tbody id="invoices"></tbody>
   </table>
 </div>
-{% endif %}
-{% if failed_htlcs %}
-<div class="w3-container w3-padding-small">
-  <h2>Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
+<div id="failed_htlcs_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Chan In ID</th>
-      <th>Chan Out ID</th>
-      <th>Chan In Alias</th>
-      <th>Chan Out Alias</th>
-      <th>Forward Amount</th>
-      <th>Actual Outbound</th>
-      <th>Potential Fee</th>
-      <th>HTLC Failure</th>
-      <th>Failure Detail</th>
-    </tr>
-    {% for failed_htlc in failed_htlcs %}
-    <tr>
-      <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I" target="_blank">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O" target="_blank">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
-      <td>{{ failed_htlc.amount|intcomma }}</td>
-      <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
-      <td>{{ failed_htlc.missed_fee|intcomma }}</td>
-      <td>{% if failed_htlc.wire_failure == 11 %}Amount Below Minimum{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% elif failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 22 %}Expiry Too Far{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
-      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 13 %}Invoice Not Open{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Chan In ID</th>
+        <th>Chan Out ID</th>
+        <th>Chan In Alias</th>
+        <th>Chan Out Alias</th>
+        <th>Forward Amount</th>
+        <th>Actual Outbound</th>
+        <th>Potential Fee</th>
+        <th>HTLC Failure</th>
+        <th>Failure Detail</th>
+      </tr>
+    </thead>
+    <tbody id="failed_htlcs"></tbody>
   </table>
 </div>
-{% endif %}
 {% include 'local_settings.html' with settings=local_settings title="Auto-Rebalancer" url='rebalancing' %}
 <div class="w3-container w3-padding-small">
   <h2>Connect to a Peer</h2>
@@ -740,4 +565,336 @@
     </form>
   </div>
 </div>
+<script>
+  const now = new Date(),
+    _1day_ago = new Date(now.setDate(now.getDate()-1)).getTime(),
+    _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
+
+  const base_ch_template = {
+    "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+    "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.substring(0,20) : ch.alias}</a>`, title: ch.remote_pubkey}),
+    "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_outbound}%</span>`}),
+    "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
+    <div class="progress w3-round w3-grey">
+      <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+    </div>`}),
+    "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</span>`}),
+    "unsettled": ch => (ch.unsettled_balance > 0 ? {innerHTML: `${ch.unsettled_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.htlc_count}</span>`} : {innerHTML: `${ch.unsettled_balance.intcomma()}`, style: {color: 'gray'} }),
+    "oRate": ch => ({innerHTML: ch.local_fee_rate.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
+  }
+  const detailed_ch_template = Object.assign({}, base_ch_template, {
+    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_1day}</span>`, style: {color: ch.routed_out_1day > 0 ? `` : 'gray'} }),
+    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_1day}</span>`, style: {color: ch.routed_in_1day > 0 ? `` : 'gray'} }),
+    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_7day}</span>`, style: {color: ch.routed_out_7day > 0 ? `` : 'gray'} }),
+    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</span>`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
+    "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
+    "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
+    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
+      <input type="hidden" name="chan_id" value="${ch.chan_id}">
+      <input type="hidden" name="update_target" value="3">
+    </form>`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : null} }),
+  })
+  let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
+  const inactive_ch_template = Object.assign({}, base_ch_template, {iRate, iBase}, {
+    "local_commit": ch => ({innerHTML: ch.local_commit.intcomma()}),
+    "local_chan_reserve": ch => ({innerHTML: ch.local_chan_reserve.intcomma()}),
+    "last_update": ch =>  ({innerHTML: formatDate(ch.last_update).replace(" ago", ""), title: adjustTZ(ch.last_update)}),
+    "initiator": ch => ({innerHTML: ch.initiator ? 'Local': 'Remote'}),
+  }, {ar_in_target, auto_rebalance})
+
+  let {local_commit, local_chan_reserve, initiator} = inactive_ch_template
+  const private_ch_template = Object.assign({}, base_ch_template, {
+    "total_sent": ch => ({innerHTML: ch.total_sent.intcomma()}),
+    "total_received": ch => ({innerHTML: ch.total_received.intcomma()})
+  }, {local_commit, local_chan_reserve, initiator}, {
+    "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+  })
+  const routed_template = {
+    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
+    "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
+    "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
+    "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
+    "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
+    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+    "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+    "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
+    "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
+  }
+  let {fee, ppm} = routed_template
+  const payments_template = Object.assign({}, {
+    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
+    "value": p => ({innerHTML: p.value.intcomma()}),
+    "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
+    }, {ppm}, {
+    "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
+    "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
+    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
+    "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
+    "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
+    "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
+    }
+  )
+  let {creation_date, value, keysend_preimage} = payments_template
+  const invoices_template = Object.assign({}, {creation_date}, {
+    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: adjustTZ(i.settle_date)})
+    }, {value}, {
+    "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
+    "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
+    "chan_in_alias": i => ({innerHTML: i.chan_in_alias||'---'}),
+    "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
+    "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash.substring(0,7)}</a>`}),
+    "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
+    }
+  )
+  const wire_failures = "0|1|2|3|4|5|6|7|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
+  const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
+  const failedHTLCs_template = {
+    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
+    "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+    "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+    "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
+    "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
+    "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
+    "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} (${htlc.chan_out_pending})`}),
+    "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
+    "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
+    "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
+  }
+  function toggleAR(button){
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
+      button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
+      button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
+    })
+  }
+  function addTitle(id, results, title = null){
+    const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
+    if (results.length == 0) {
+      container.remove()
+      return false
+    }
+    container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
+    return true
+  }
+  function build_active(channels, forwards7d){
+    let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
+    if(!addTitle("Active Channels", channels)) return sum
+
+    function sumRoutedValues(forwards, ch, fields){
+      let earned = 0
+      for(field of fields) ch[field] = 0
+      for(f of forwards){
+        if(f.chan_id_in == ch.chan_id){
+          ch[fields[0]] += 1
+          ch[fields[2]] += f.amt_in_msat/1000
+        }
+        if(f.chan_id_out == ch.chan_id){
+          earned += f.fee
+          ch[fields[1]] += 1
+          ch[fields[3]] += f.amt_out_msat/1000
+        }
+      }
+      return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
+    }
+
+    const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
+    forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
+
+    channels.map(ch => { //derived properties
+      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
+      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
+      
+      sum.capacity += ch.capacity
+      sum.inbound += ch.remote_balance
+      sum.outbound += ch.local_balance
+      sum.unsettled += ch.unsettled_balance
+      
+      var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sum.earned.d1 += earned
+      sum.rOUTed.d1.amt += rOUTed.amt
+      sum.rOUTed.d1.count += rOUTed.count
+
+      var {rOUTed, earned} = sumRoutedValues(forwards7d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      sum.earned.d7 += earned
+      sum.rOUTed.d7.amt += rOUTed.amt
+      sum.rOUTed.d7.count += rOUTed.count
+
+      return ch
+    }).sort((ch1, ch2) => ch1.percent_outbound - ch2.percent_outbound)
+      .forEach(ch => activeChannels.append(template.render(ch)))
+
+    byId('public_capacity').innerHTML = sum.capacity.intcomma()
+    return update_sum('active_', sum)
+  }
+  function build_inactive(channels){
+    let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0}
+    if(!addTitle("Inactive Channels", channels)) return sum
+
+    const table = byId('inactive_channels'), template = use(inactive_ch_template), public_capacity = byId('public_capacity')
+    channels.forEach(ch => {
+      sum.capacity += ch.capacity
+      sum.inbound += ch.remote_balance
+      sum.outbound += ch.local_balance
+      sum.unsettled += ch.unsettled_balance
+      table.append(template.render(ch))
+    })
+
+    public_capacity.innerHTML = (public_capacity.innerHTML.toInt() + sum.capacity).intcomma()
+    return update_sum('inactive_', sum)
+  }
+  function update_sum(status, sum){
+    for (id of ['inbound', 'outbound', 'unsettled']){
+      const [value, total] = [sum[id], byId('total_'+id)]
+
+      byId(status+id).innerHTML = value.intcomma()
+      total.innerHTML = (total.innerHTML.toInt() + value).intcomma()
+    }
+    return sum
+  }
+  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
+    let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
+    for(p of payments7d){
+      if(new Date(p.creation_date).getTime() >= _1day_ago){
+        offchain.d1.fee += p.fee
+        offchain.d1.amt += p.value
+      } 
+      offchain.d7.fee += p.fee
+      offchain.d7.amt += p.value
+    }
+    let chainCosts = {d1: 0, d7:0}
+    for(tx of (await onchain_task).results){
+      if(new Date(tx.time_stamp).getTime() >= _1day_ago){
+        chainCosts.d1 += tx.fee
+      }
+      chainCosts.d7 += tx.fee
+    }
+    for(close of (await closures_task).results){
+      if(close.close_height >= ({{node_info.block_height}} - 144)){
+        chainCosts.d1 += close.closing_costs
+      }
+      chainCosts.d7 += close.closing_costs
+    }
+    const [public_outbound, total_bal] = [active.outbound+inactive.outbound || 1, byId('total_balance')]
+    byId('liq_ratio').innerHTML = ((active.inbound + inactive.inbound)*100/public_outbound).intcomma()+'%'
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + public_outbound + (private?.outbound||0)).intcomma()
+
+    for(d of [1,7]){ //build 1 & 7 days table statistics
+      const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
+      byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} (${routed.amt.intcomma()} sats)`
+      byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
+      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}ₚₚₘ</small>`
+      byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
+      byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
+      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - fees)*1000000/public_outbound).intcomma()}</span> 
+        <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/public_outbound).intcomma()}⛓️</span>`
+      byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/public_outbound).toFixed(1)).toLocaleString()+'%'
+    }
+  }
+  function build_private(channels){
+    let active = {inbound: 0, outbound: 0, unsettled: 0}
+    let inactive = {inbound: 0, outbound: 0, unsettled: 0}
+    if(!addTitle("Private Channels", channels)) return
+
+    let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
+    channels.forEach(ch => {
+      capacity += ch.capacity
+      if(ch.is_active) {
+        active_count += 1
+        active.outbound += ch.local_balance
+      }
+      else {
+        inactive.outbound += ch.local_balance
+      }
+      table.append(template.render(ch))
+    })
+
+    byId("total_channels").innerHTML = (byId("total_channels").innerHTML.toInt() - channels.length)
+    byId("public_channels_count").innerHTML = (byId("public_channels_count").innerHTML.toInt() - active_count)
+    byId("private_stats").insertAdjacentHTML('beforeend', `
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(active.outbound + inactive.outbound).intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
+
+    return {outbound: active.outbound + inactive.outbound}
+  }
+  async function build_routed(forwards7d){
+    let remaining = 20-forwards7d.length, template = use(routed_template), forwards = forwards7d
+    if(remaining > 0)
+      forwards = [...forwards, ...(await GET('forwards', {data: {forward_date__lt: _7days_ago, limit: remaining} })).results]
+
+    if(!addTitle('Routed', forwards, `Last 20 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
+    const table = byId('routed')
+    for(f of forwards.slice(0,20)){
+      f.amt_in = f.amt_in_msat/1000
+      f.amt_out = f.amt_out_msat/1000
+      f.ppm = f.fee*1000000/f.amt_out
+      table.append(template.render(f))
+    }
+  }
+  async function build_payments(payments7d){
+    let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
+    if(remaining > 0) payments = [...payments, ...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results]
+
+    if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
+    const table = byId('payments')
+    for(p of payments.slice(0,10)){
+      if(p.status === 3) continue
+
+      p.ppm = p.fee*1000000/p.value
+      table.append(template.render(p))
+    }
+  }
+  function build_invoices(invoices){
+    if(!addTitle('Invoices', invoices, `Last 10 <a href="/invoices" target="_blank">Invoices</a>`)) return
+    const table = byId('invoices'), template = use(invoices_template)
+    for(inv of invoices) {
+      table.append(template.render(inv))
+    }
+  }
+  function build_failedHTLC(fHTLCs){
+    if(!addTitle('failed_htlcs', fHTLCs, `Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
+    const table = byId('failed_htlcs'), template = use(failedHTLCs_template)
+    for(htlc of fHTLCs){
+      table.append(template.render(htlc))
+    } 
+  }
+  document.addEventListener('DOMContentLoaded', async () =>{
+    const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
+    const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
+    const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
+    const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
+    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
+    const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
+    
+    let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
+    for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
+      updates += ch.num_updates
+      pending_htlcs += ch.htlc_count
+      ch.local_balance += ch.pending_outbound
+      ch.remote_balance += ch.pending_inbound
+      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
+      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
+
+      if(ch.is_open && !ch.private){
+        (ch.is_active ? active : inactive).push(ch)
+      }
+      else if(ch.is_open && ch.private) private.push(ch)
+    }
+
+    byId("updates").innerHTML = updates.intcomma()
+    byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
+
+    let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
+    let [activeSum, inactiveSum, privateSum] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
+    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum)
+    build_routed(forwards7d)
+    build_payments(payments7d)
+    build_invoices((await invoices_task).results)
+    build_failedHTLC((await failedHTLCs_task).results)
+  })
+</script>
 {% endblock %}

@@ -29,17 +29,13 @@
         return duration + ' minutes'
       }
     }
-    function adjustTZ(datetime){
-      datetime = new Date(datetime).getTime() - new Date(datetime).getTimezoneOffset()*60000
-      return new Date(datetime)
-    }
     statuses = {0: 'Pending', 1: 'In-Flight', 2: 'Successful', 3: 'Timeout', 4: 'No-Route', 5: 'Error', 6: 'Incorrect-Payment-Details', 7: 'Insufficient-Balance', 400: 'Rebalancer-Request-Failed', 406: 'No-Sources', 408: 'Rebalancer-Request-Timeout', 499: 'Cancelled'}
     transformations = {
       'requested': rebalance => ({innerHTML: formatDate(rebalance.requested), title: adjustTZ(rebalance.requested)}),
       'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance.start ? adjustTZ(rebalance.start) : '---'}),
       'stop': rebalance => ({innerHTML: formatDate(rebalance.stop), title: rebalance.stop ? adjustTZ(rebalance.stop) : '---'}),
       'duration': rebalance => ({innerHTML: formatDuration(rebalance.duration)}),
-      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance?.stop || null).replace(" ago", "")}),
+      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance.stop).replace(" ago", "")}),
       'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),
@@ -59,7 +55,7 @@
             const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
-            table.prepend(use(transformations).fillWith(response))
+            table.prepend(use(transformations).render(response))
           } 
         }
         else {
@@ -71,7 +67,7 @@
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1
             table.deleteRow(index)
-            use(transformations).fillWith(response, table.insertRow(index))
+            use(transformations).render(response, table.insertRow(index))
           }
         } 
         return {innerHTML: input}
@@ -85,7 +81,7 @@
         return
       }
 
-      const table = document.getElementById("rebalances_{{count}}")
-      res.results.forEach(rebalance => table.append(use(transformations).fillWith(rebalance)));
+      const table = document.getElementById("rebalances_{{count}}"), template = use(transformations)
+      res.results.forEach(rebalance => table.append(template.render(rebalance)));
     });
   </script>
