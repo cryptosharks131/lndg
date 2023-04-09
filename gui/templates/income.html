@@ -7,10 +7,6 @@
 <div class="w3-container w3-padding-small">
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <canvas id="balances"></canvas>
-  <button id="d7">7 days</button>
-  <button id="d30">30 days</button>
-  <button id="d90">90 days</button>
-  <button id="lifetime">Lifetime</button>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const data = {
@@ -106,39 +102,19 @@
 
         chart.update();
       }
-      async function updateChart(date){
-        const response = await GET('chart', {data: date ? {start_from: date} : {} })
-        chart.data.labels = response.dates.map(dt => adjustTZ(dt).toLocaleDateString())
-        chart.data.datasets[0].data = response.balance_over_time.map(v => parseInt(v))
-        chart.data.datasets[2].data = response.off_chain.map(v => parseInt(v))
-        chart.data.datasets[3].data = response.costs.map(v => parseInt(v))
-        chart.data.datasets[1].data = response.on_chain
-        if (!date){ //lifetime
-          chart.data.labels.unshift(0)
-          chart.data.datasets[0].data.unshift(0)
-          chart.data.datasets[1].data.unshift(0)
-          chart.data.datasets[2].data.unshift(0)
-          chart.data.datasets[3].data.unshift(0)
-        }
-        chart.update()
+      chart.data.labels = [0]
+      chart.data.datasets.forEach(ds => ds.data = [0])
+      const response = await GET('chart', {data: {} })
+
+      for(balance of response){
+        chart.data.labels.push(adjustTZ(balance.dt).toLocaleDateString())  
+        chart.data.datasets[1].data.push(balance.onchain + chart.data.datasets[1].data.at(-1))
+        chart.data.datasets[3].data.push(parseInt(balance.cost + chart.data.datasets[3].data.at(-1)))
+        chart.data.datasets[0].data.push(parseInt(balance.total + chart.data.datasets[0].data.at(-1)))
+        chart.data.datasets[2].data.push(parseInt(balance.offchain + chart.data.datasets[2].data.at(-1)))
       }
       applyThemeToGrid()
       byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
-      const _7day = byId('d7')
-      _7day.addEventListener('click', function() {
-        const now = new Date(), _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
-        updateChart(_7days_ago)
-      })
-      _7day.click()
-      byId('d30').addEventListener('click', function() {
-        const now = new Date(), _30days_ago = new Date(now.setDate(now.getDate()-30)).toISOString().substring(0,19)
-        updateChart(_30days_ago)
-      })
-      byId('d90').addEventListener('click', function() {
-        const now = new Date(), _90days_ago = new Date(now.setDate(now.getDate()-90)).toISOString().substring(0,19)
-        updateChart(_90days_ago)
-      })
-      byId('lifetime').addEventListener('click', _ => updateChart())
     })
   </script>
   <hr/>
