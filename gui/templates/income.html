@@ -21,13 +21,14 @@
             backgroundColor: 'rgba(251, 192, 147, 0.2)',
             borderColor: 'rgba(251, 192, 147, 0.5)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.balance_over_time]
+            data: [0, ...response.balance_over_time.map(b => parseInt(b))]
           },
           {
             label: 'On chain',
-            fill: false,
+            fill: true,
             pointHoverRadius: 10,
-            borderColor: 'orange',
+            borderColor: 'rgba(255,119,0,1)',
+            backgroundColor: 'rgba(255,119,0,0.1)',
             cubicInterpolationMode: 'monotone',
             data: [0, ...response.on_chain]
           },
@@ -38,7 +39,7 @@
             borderColor: 'rgba(33,150,243)',
             backgroundColor: 'rgba(33,150,243,.2)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.off_chain]
+            data: [0, ...response.off_chain.map(b => parseInt(b))]
           },
           {
             label: 'Costs',
@@ -48,7 +49,7 @@
             borderColor: 'rgba(248,81,73)',
             backgroundColor: 'rgba(248,81,73,0.15)',
             cubicInterpolationMode: 'monotone',
-            data: [0, ...response.costs]
+            data: [0, ...response.costs.map(b => parseInt(b))]
           }
         ]
       };
@@ -74,6 +75,7 @@
             },
             y: {
               display: true,
+              position: 'right',
               title: {
                 display: true,
                 text: 'sats'
@@ -82,7 +84,7 @@
             y1: {
               type: 'linear',
               display: true,
-              position: 'right',
+              position: 'left',
               title: {
                 display: true,
                 text: 'Cost'
