@@ -6,8 +6,8 @@
 {% load humanize %}
 <div class="w3-container w3-padding-small">
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
-  <span class="input" data-unit="%"><label>Step > </label> <input id="step" value="0.01" min="0" step="0.1" max="100" type="number"/></span>
-  <canvas id="balances"></canvas>
+  <span class="input" data-unit="%"><label title="Aggregate events with `cost`, `offchain` or `onchain` < minimum `step`% value">Step > </label> <input id="step" value="0.01" min="0" step="0.1" max="100" type="number"/></span>
+  <canvas id="balances" style="max-height:500px"></canvas>
   <script>
     document.addEventListener('DOMContentLoaded', async function() {
       const data = {
@@ -52,33 +52,55 @@
       const response = await GET('chart', {data: {} })
       function buildChart(step){
         data.labels = [0]
-        data.datasets.forEach(ds => ds.data = [0])
-        let sum = {onchain: 0, cost: 0, total:0, offchain:0}
+        data.datasets.forEach(ds => {ds.data = [0]; ds.extra = [{time: adjustTZ(response[0].dt), count: 0, diff: 0}]})
+        let sum = {onchain: 0, cost: 0, total:0, offchain:0}, count = 0;
         for(balance of response){
           sum.cost += balance.cost
-          sum.total += balance.total
+          sum.total += balance.total - balance.cost
           sum.onchain += balance.onchain
           sum.offchain += balance.offchain
-          let costDiff = sum.cost/(data.datasets[3].data.at(-1)||1)
-          let chainDiff = sum.onchain/(data.datasets[1].data.at(-1)||1)
-          let offDiff = sum.offchain/(data.datasets[2].data.at(-1)||1)
-          if( (costDiff+chainDiff+offDiff) < (3+parseFloat(step/100))) continue
-  
-          data.labels.push(adjustTZ(balance.dt).toLocaleDateString())
+          let costDiff = Math.pow(sum.cost-data.datasets[3].data.at(-1), 2)/(data.datasets[3].data.at(-1)||1)
+          let chainDiff = Math.pow(sum.onchain-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
+          let offDiff = Math.pow(sum.offchain-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
+          count++
+          if((costDiff+chainDiff+offDiff)/3 < parseFloat(step/100)) continue
+          data.datasets[0].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.total - data.datasets[0].data.at(-1)})
+          data.datasets[3].extra.push({diff: sum.cost - data.datasets[3].data.at(-1)})
+          data.datasets[1].extra.push({diff: sum.onchain - data.datasets[1].data.at(-1)})
+          data.datasets[2].extra.push({diff: sum.offchain - data.datasets[2].data.at(-1)})
+          count = 0
           data.datasets[1].data.push(sum.onchain)
           data.datasets[3].data.push(parseInt(sum.cost))
           data.datasets[0].data.push(parseInt(sum.total))
           data.datasets[2].data.push(parseInt(sum.offchain))
+          data.labels.push(adjustTZ(balance.dt).toLocaleDateString())
         }
       }
       buildChart(0.01)
-
       const chart = new Chart(byId('balances'), {
         type: 'line',
         data: data,
         options: {
           responsive: true,
           plugins: {
+            tooltip: {
+              callbacks: {
+                title: function(ctx) {
+                  let evt = ctx[0].dataset.extra[ctx[0].dataIndex]
+                  for(i=0;i<4;i++){
+                    let diff = ctx[i].dataset.extra[ctx[i].dataIndex].diff
+                    let sign = ''
+                    if(diff > 0){
+                      sign = '+'
+                      if(diff < 1) diff = diff.toFixed(2)
+                    }
+                    if (Math.abs(diff) > 1000) diff = parseInt(diff)
+                    if (diff != 0.0) ctx[i].formattedValue += ` (${sign}${diff.toLocaleString()})`
+                  }
+                  return `${evt.time.toLocaleString()} `+ (evt.count > 1 ? `(${evt.count})` : '')
+                }
+              }
+            },
             title: {
               display: true,
               text: 'Profitablity Overview'
