@@ -359,6 +359,7 @@ def update_peers(stub):
             db_peer.sat_sent = peer.sat_sent
             db_peer.sat_recv = peer.sat_recv
             db_peer.inbound = peer.inbound
+            db_peer.ping_time = round(peer.ping_time/1000)
             if db_peer.connected == False:
                 try:
                     db_peer.alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer.pub_key, include_channels=False)).node.alias
@@ -371,7 +372,7 @@ def update_peers(stub):
                 alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer.pub_key, include_channels=False)).node.alias
             except:
                 alias = ''
-            Peers(pubkey = peer.pub_key, address = peer.address, sat_sent = peer.sat_sent, sat_recv = peer.sat_recv, inbound = peer.inbound, alias=alias, connected = True).save()
+            Peers(pubkey = peer.pub_key, address = peer.address, sat_sent = peer.sat_sent, sat_recv = peer.sat_recv, inbound = peer.inbound, ping_time = peer.ping_time, alias=alias, connected = True).save()
         counter += 1
         peer_list.append(peer.pub_key)
     records = Peers.objects.filter(connected=True).count()
