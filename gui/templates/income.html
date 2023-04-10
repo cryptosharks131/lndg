@@ -56,7 +56,7 @@
         let sum = {onchain: 0, cost: 0, total:0, offchain:0}, count = 0;
         for(balance of response){
           sum.cost += balance.cost
-          sum.total += balance.total - balance.cost
+          sum.total += balance.total
           sum.onchain += balance.onchain
           sum.offchain += balance.offchain
           let costDiff = Math.pow(sum.cost-data.datasets[3].data.at(-1), 2)/(data.datasets[3].data.at(-1)||1)

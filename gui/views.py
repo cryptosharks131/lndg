@@ -836,11 +836,12 @@ forwards as (
 select strftime('%Y-%m-%d %H:00:00',gf.forward_date) as dt, 0 as cost, gf.fee as offchain, 0 as onchain, gf.fee as total from gui_forwards gf
 ),
 opens as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, -(oc.amount + oc.fee) as offchain, oc.amount as onchain, -oc.fee as total from gui_onchain oc
-where oc.tx_hash in (select gc.funding_txid from gui_channels gc)
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, SUM(gc.capacity - gc.local_commit) as offchain, oc.amount as onchain, SUM(gc.capacity - gc.local_commit)+oc.amount as total from gui_onchain oc
+join gui_channels gc on oc.tx_hash = gc.funding_txid 
+group by gc.funding_txid
 ),
 closures as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, cl.closing_costs as cost, COALESCE (cl.closing_costs - cl.settled_balance, rs.amount_sat) as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from gui_channels gc
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, cl.closing_costs  as cost, COALESCE (-cl.settled_balance-cl.closing_costs, rs.amount_sat) as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from gui_channels gc
 join gui_closures cl on gc.funding_txid = cl.funding_txid
 join gui_onchain oc on cl.closing_tx = oc.tx_hash and cl.chan_id = gc.chan_id 
 left join gui_resolutions rs on oc.tx_hash = rs.sweep_txid and rs.chan_id = gc.chan_id
