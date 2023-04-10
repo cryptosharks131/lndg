@@ -157,7 +157,7 @@ class Peers(models.Model):
     inbound = models.BooleanField()
     connected = models.BooleanField()
     last_reconnected = models.DateTimeField(null=True, default=None)
-    ping_time = models.BigIntegerField()
+    ping_time = models.BigIntegerField(default=0)
     class Meta:
         app_label = 'gui'
 
