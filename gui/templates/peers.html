@@ -20,8 +20,8 @@
       <td><a href="{{ graph_links }}/{{ network }}node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
       <td>{% if peer.alias != '' %}{{ peer.alias }}{% else %}---{% endif %}</td>
       <td>{{ peer.address }}</td>
-      <td>{{ peer.inbound }}</td>
       <td>{{ peer.ping_time }}</td>
+      <td>{{ peer.inbound }}</td>
       <td>{{ peer.sat_sent|intcomma }}</td>
       <td>{{ peer.sat_recv|intcomma }}</td>
     </tr>
