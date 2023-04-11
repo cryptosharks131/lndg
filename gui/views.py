@@ -47,10 +47,10 @@ def get_tx_fees(txid):
     fee = request_data['fee']
     return fee
 
-def pending_channel_details(channels, channel_point):
+def pending_channel_details(channel_point):
     funding_txid, output_index = channel_point.split(':')
-    if channels.filter(funding_txid=funding_txid, output_index=output_index).exists():
-        channel = channels.filter(funding_txid=funding_txid, output_index=output_index)[0]
+    if Channels.objects.filter(funding_txid=funding_txid, output_index=output_index).exists():
+        channel = Channels.objects.filter(funding_txid=funding_txid, output_index=output_index)[0]
         return {'short_chan_id':channel.short_chan_id,'chan_id':channel.chan_id,'alias':channel.alias}
     else:
         return {'short_chan_id':None,'chan_id':None,'alias':None}
@@ -129,7 +129,7 @@ def home(request):
                 for i in range(0,len(target_resp)):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat,'limbo_balance':target_resp[i].limbo_balance,'closing_txid':target_resp[i].closing_txid}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     pending_closed.append(pending_item)
             if pending_channels.pending_force_closing_channels:
                 target_resp = pending_channels.pending_force_closing_channels
@@ -138,7 +138,7 @@ def home(request):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
                     'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),
                     'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     pending_force_closed.append(pending_item)
             if pending_channels.waiting_close_channels:
                 target_resp = pending_channels.waiting_close_channels
@@ -147,7 +147,7 @@ def home(request):
                     pending_closing_balance += target_resp[i].limbo_balance
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance,'closing_txid':target_resp[i].closing_txid}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     waiting_for_close.append(pending_item)
             limbo_balance -= pending_closing_balance
             try:
@@ -473,7 +473,6 @@ def closures(request):
         try:
             stub = lnrpc.LightningStub(lnd_connect())
             pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
-            channels = Channels.objects.all()
             pending_closed = None
             pending_force_closed = None
             waiting_for_close = None
@@ -483,7 +482,7 @@ def closures(request):
                 for i in range(0,len(target_resp)):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance, 'closing_txid':target_resp[i].closing_txid}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     pending_closed.append(pending_item)
             if pending_channels.pending_force_closing_channels:
                 target_resp = pending_channels.pending_force_closing_channels
@@ -492,7 +491,7 @@ def closures(request):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
                     'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else find_next_block_maturity(target_resp[i]),
                     'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity if target_resp[i].blocks_til_maturity > 0 else 10*find_next_block_maturity(target_resp[i]) )))}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     pending_force_closed.append(pending_item)
             if pending_channels.waiting_close_channels:
                 target_resp = pending_channels.waiting_close_channels
@@ -500,7 +499,7 @@ def closures(request):
                 for i in range(0,len(target_resp)):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type, 'local_commit_fee_sat': target_resp[i].commitments.local_commit_fee_sat, 'limbo_balance':target_resp[i].limbo_balance, 'closing_txid':target_resp[i].closing_txid}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     waiting_for_close.append(pending_item)
             closures_df = DataFrame.from_records(Closures.objects.all().values())
             if closures_df.empty:
@@ -1784,8 +1783,11 @@ def rebalance(request):
                 if Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).exists() or form.cleaned_data['last_hop_pubkey'] == '':
                     chan_ids = [ch.chan_id for ch in form.cleaned_data['outgoing_chan_ids']]
                     if len(chan_ids) > 0:
-                        target_channel = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).first()
-                        target_alias = target_channel.alias if target_channel.alias != '' else target_channel.remote_pubkey[:12]
+                        if form.cleaned_data['last_hop_pubkey'] != '':
+                            target_channel = Channels.objects.filter(is_active=True, is_open=True, remote_pubkey=form.cleaned_data['last_hop_pubkey']).first()
+                            target_alias = target_channel.alias if target_channel.alias != '' else target_channel.remote_pubkey[:12]
+                        else:
+                            target_alias = ''
                         fee_limit = round(form.cleaned_data['fee_limit']*form.cleaned_data['value']*0.000001, 3)
                         Rebalancer(value=form.cleaned_data['value'], fee_limit=fee_limit, outgoing_chan_ids=str(chan_ids).replace('\'', ''), last_hop_pubkey=form.cleaned_data['last_hop_pubkey'], target_alias=target_alias, duration=form.cleaned_data['duration'], manual=True).save()
                         messages.success(request, 'Rebalancer request created!')
@@ -1815,7 +1817,7 @@ def get_local_settings(*prefixes):
         form.append({'unit': '%', 'form_id': 'inbound_percent', 'value': 0, 'label': 'AR Target In Above', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
         form.append({'unit': '%', 'form_id': 'max_cost', 'value': 0, 'label': 'AR Max Cost', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
         form.append({'unit': '%', 'form_id': 'variance', 'value': 0, 'label': 'AR Variance', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
-        form.append({'unit': 'min', 'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':100})
+        form.append({'unit': 'min', 'form_id': 'wait_period', 'value': 0, 'label': 'AR Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':10080})
         form.append({'unit': '', 'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
         form.append({'unit': 'days', 'form_id': 'autopilotdays', 'value': 0, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
         form.append({'unit': '', 'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
@@ -2636,32 +2638,29 @@ def pending_channels(request):
                 target.update({'pending_open': pending_open_channels})
             if response.pending_closing_channels:
                 target_resp = response.pending_closing_channels
-                channels = Channels.objects.all()
                 pending_closing_channels = []
                 for i in range(0,len(target_resp)):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     pending_closing_channels.append(pending_item)
                 target.update({'pending_closing':pending_closing_channels})
             if response.pending_force_closing_channels:
                 target_resp = response.pending_force_closing_channels
-                channels = Channels.objects.all()
                 pending_force_closing_channels = []
                 for i in range(0,len(target_resp)):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'initiator':target_resp[i].channel.initiator,
                     'commitment_type':target_resp[i].channel.commitment_type,'closing_txid':target_resp[i].closing_txid,'limbo_balance':target_resp[i].limbo_balance,'maturity_height':target_resp[i].maturity_height,'blocks_til_maturity':target_resp[i].blocks_til_maturity,'maturity_datetime':(datetime.now()+timedelta(minutes=(10*target_resp[i].blocks_til_maturity)))}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     pending_force_closing_channels.append(pending_item)
                 target.update({'pending_force_closing':pending_force_closing_channels})
             if response.waiting_close_channels:
                 target_resp = response.waiting_close_channels
-                channels = Channels.objects.all()
                 waiting_close_channels = []
                 for i in range(0,len(target_resp)):
                     pending_item = {'remote_node_pub':target_resp[i].channel.remote_node_pub,'channel_point':target_resp[i].channel.channel_point,'capacity':target_resp[i].channel.capacity,'local_balance':target_resp[i].channel.local_balance,'remote_balance':target_resp[i].channel.remote_balance,'local_chan_reserve_sat':target_resp[i].channel.local_chan_reserve_sat,
                     'remote_chan_reserve_sat':target_resp[i].channel.remote_chan_reserve_sat,'initiator':target_resp[i].channel.initiator,'commitment_type':target_resp[i].channel.commitment_type,'limbo_balance':target_resp[i].limbo_balance}
-                    pending_item.update(pending_channel_details(channels, target_resp[i].channel.channel_point))
+                    pending_item.update(pending_channel_details(target_resp[i].channel.channel_point))
                     waiting_close_channels.append(pending_item)
                 target.update({'waiting_close':waiting_close_channels})
             if response.total_limbo_balance:

@@ -659,7 +659,7 @@
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
     "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
     "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
-    "chan_out_liq": htlc => ({innerHTML: `${htlc.chan_out_liq.intcomma()} (${htlc.chan_out_pending})`}),
+    "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} <small title="Pending at HTLC time" class="w3-round w3-border-small w3-border-grey">${htlc.chan_out_pending}</small>`}),
     "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
     "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
     "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
