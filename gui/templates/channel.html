@@ -350,8 +350,12 @@
     </tr>
     {% endfor %}
   </table>
-  <h2>Failed Outgoing HTLC Events Due To Insufficient Balance</h2>
-  <h4>1-Day: {{ channel.failed_out_1day }} | 7-Day: {{ channel.failed_out_7day }} | 30-Day: {{ channel.failed_out_30day }} | Lifetime: {{ channel.failed_out }}</h4>
+  <h4>Failed Due To Insufficient Balance:
+    <small class="w3-round w3-border-small w3-border-grey">1-Day: {{ channel.failed_out_1day }}</small>
+    <small class="w3-round w3-border-small w3-border-grey">7-Day: {{ channel.failed_out_7day }}</small>
+    <small class="w3-round w3-border-small w3-border-grey">30-Day: {{ channel.failed_out_30day }}</small>
+    <small class="w3-round w3-border-small w3-border-grey">Lifetime: {{ channel.failed_out }}</small>
+  </h4>
 </div>
 {% endif %}
 {% if peer_events %}
