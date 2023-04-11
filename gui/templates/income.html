@@ -3,7 +3,7 @@
 {% block content %}
 {% load humanize %}
 <div class="w3-container w3-padding-small">
-  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> <small class="w3-round w3-border-small w3-border-grey">{{ node_info.identity_pubkey }}</small>{% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Line Item</th>
