@@ -58,9 +58,9 @@
             tooltip: {
               callbacks: {
                 title: function(ctx) {
-                  let event = null;
+                  let event
                   for(ct of ctx){
-                    event = event||ct.dataset.extra[ct.dataIndex]
+                    event = ct.dataset.extra[ct.dataIndex]
                     let diff = event.diff
                     let sign = ''
                     if(diff > 0){
