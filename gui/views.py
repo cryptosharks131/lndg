@@ -1192,7 +1192,6 @@ def channel(request):
             forwards_df = DataFrame()
             payments_df = DataFrame()
             invoices_df = DataFrame()
-            rebalancer_df = DataFrame()
             failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
             autofees_df = DataFrame()
@@ -1205,7 +1204,6 @@ def channel(request):
             'forwards': [] if forwards_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
             'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
-            'rebalances': [] if rebalancer_df.empty else rebalancer_df.to_dict(orient='records')[:5],
             'failed_htlcs': [] if failed_htlc_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
             'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
