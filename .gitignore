@@ -5,7 +5,3 @@ frontend
 node_modules
 lndg-admin.txt
 .vscode
-gui/static/admin
-gui/static/rest_framework
-data
-.venv
