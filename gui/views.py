@@ -2308,8 +2308,8 @@ class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LocalSettings.objects.all()
     serializer_class = LocalSettingsSerializer
 
-    def update(self, request, pk=None):
-        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
+    def update(self, request, pk):
+        setting = get_object_or_404(self.queryset, pk=pk)
         serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -2323,9 +2323,9 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ChannelSerializer
     filterset_fields = ['is_open', 'private', 'is_active', 'auto_rebalance']
 
-    def update(self, request, pk=None):
-        channel = get_object_or_404(Channels.objects.all(), pk=pk)
-        serializer = ChannelSerializer(channel, data=request.data, context={'request': request})
+    def update(self, request, pk):
+        channel = get_object_or_404(self.queryset, pk=pk)
+        serializer = ChannelSerializer(channel, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -2345,7 +2345,7 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.errors)
         
     def update(self, request, pk):
-        rebalance = get_object_or_404(Rebalancer.objects.all(), pk=pk)
+        rebalance = get_object_or_404(self.queryset, pk=pk)
         serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             rebalance.stop = datetime.now()
