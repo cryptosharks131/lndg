@@ -46,7 +46,7 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     local_commit = serializers.ReadOnlyField()
     local_chan_reserve = serializers.ReadOnlyField()
     initiator = serializers.ReadOnlyField()
-    local_base_fee = serializers.IntegerField(required=False)
+    local_base_fee = serializers.ReadOnlyField()
     local_fee_rate = serializers.IntegerField(required=False)
     remote_base_fee = serializers.ReadOnlyField()
     remote_fee_rate = serializers.ReadOnlyField()
