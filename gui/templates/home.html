@@ -581,7 +581,7 @@
     "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</span>`}),
     "unsettled": ch => (ch.unsettled_balance > 0 ? {innerHTML: `${ch.unsettled_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.htlc_count}</span>`} : {innerHTML: `${ch.unsettled_balance.intcomma()}`, style: {color: 'gray'} }),
     "oRate": ch => ({innerHTML: `<span class="input" style="min-width:110px;width:100%" data-unit="ₚₚₘ"><input style="text-align:left;width:100%" type="number" min="0" size="6" max="100000" value="${ch.local_fee_rate}" onkeydown="event.keyCode != 13? null : (Sync.PUT('channels/${ch.chan_id}', {body: {local_fee_rate: this.value}}, r => {flash(this, r.local_fee_rate);showBannerMsg('Out Fee Rate', r.local_fee_rate)}));"/></span>`, style: {backgroundColor: ch.local_disabled ? red : null} }),
-    "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oBase": ch => ({innerHTML: `<input style="text-align:center;min-width:90px;width:100%" type="number" min="0" size="6" max="100000" value="${ch.local_base_fee}" onkeydown="event.keyCode != 13? null : (Sync.PUT('channels/${ch.chan_id}', {body: {local_base_fee: this.value}}, r => {flash(this, r.local_base_fee);showBannerMsg('Out Fee Base', r.local_base_fee)}));"/>`, style: {backgroundColor: ch.local_disabled ? red : null} }),
   }
   const detailed_ch_template = Object.assign({}, base_ch_template, {
     "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_1day}</span>`, style: {color: ch.routed_out_1day > 0 ? `` : 'gray'} }),
