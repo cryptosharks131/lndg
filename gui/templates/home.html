@@ -659,7 +659,7 @@
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
     "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
     "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
-    "chan_out_liq": htlc => ({innerHTML: `${htlc.chan_out_liq.intcomma()} (${htlc.chan_out_pending})`}),
+    "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} (${htlc.chan_out_pending})`}),
     "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
     "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
     "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
@@ -812,7 +812,8 @@
       table.append(template.render(ch))
     })
 
-    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
+    byId("total_channels").innerHTML = (byId("total_channels").innerHTML.toInt() - channels.length)
+    byId("public_channels_count").innerHTML = (byId("public_channels_count").innerHTML.toInt() - active_count)
     byId("private_stats").insertAdjacentHTML('beforeend', `
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(active.outbound + inactive.outbound).intcomma()}</span>
