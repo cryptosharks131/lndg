@@ -155,14 +155,14 @@
           <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
           <th onclick="sortTable(event.target, 5, 'int')">Unsettled</th>
-          <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
-          <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
+          <th width=3% onclick="sortTable(event.target, 6, 'int')">oRate</th>
+          <th width=3% onclick="sortTable(event.target, 7, 'int')">oBase</th>
           <th onclick="sortTable(event.target, 8, 'm')">o1D</th>
           <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
           <th onclick="sortTable(event.target, 10, 'm')">o7D</th>
           <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
-          <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
-          <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
+          <th width=3% onclick="sortTable(event.target, 12, 'int')">iRate</th>
+          <th width=3% onclick="sortTable(event.target, 13, 'int')">iBase</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
           <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
         </tr>
@@ -213,7 +213,7 @@
         <th width=5%>Local Commit</th>
         <th width=5%>Local Reserve</th>
         <th width=5%>Opener</th>
-        <th width=5%>Active</th>
+        <th width=5%>Status</th>
       </tr>
     </thead>
     <tbody id="private_channels"></tbody>
@@ -580,7 +580,7 @@
     </div>`}),
     "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</span>`}),
     "unsettled": ch => (ch.unsettled_balance > 0 ? {innerHTML: `${ch.unsettled_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.htlc_count}</span>`} : {innerHTML: `${ch.unsettled_balance.intcomma()}`, style: {color: 'gray'} }),
-    "oRate": ch => ({innerHTML: `<span class="input" style="min-width:110px;width:100%" data-unit="ₚₚₘ"><input style="text-align:left;width:100%" type="number" min="0" size="6" max="100000" value="${ch.local_fee_rate}" onkeydown="event.keyCode != 13? null : (Sync.PUT('channels/${ch.chan_id}', {body: {local_fee_rate: this.value}}, r => {flash(this, r.local_fee_rate);showBannerMsg('Out Fee Rate', r.local_fee_rate)}));"/></span>`, style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oRate": ch => ({innerHTML: `<span class="input" style="min-width:100px;max-width:120px;width:100%" data-unit="ₚₚₘ"><input style="text-align:left;width:100%" type="number" min="0" size="6" max="100000" value="${ch.local_fee_rate}" onkeydown="event.keyCode != 13? null : (Sync.POST('chanpolicy/', {body: {chan_id:'${ch.chan_id}', fee_rate: this.value}}, r => {flash(this, r.fee_rate);showBannerMsg('Out Fee Rate', r.fee_rate)}));"/></span>`, style: {backgroundColor: ch.local_disabled ? red : null} }),
     "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
   }
   const detailed_ch_template = Object.assign({}, base_ch_template, {
@@ -590,7 +590,7 @@
     "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</span>`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
-    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onkeydown="event.keyCode != 13? null : (Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)}));">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
+    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : null} }),
   })
   let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
@@ -755,7 +755,8 @@
       table.append(template.render(ch))
     })
 
-    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
+    byId("total_channels").innerHTML = (byId("total_channels").innerHTML.toInt() - channels.length)
+    byId("public_channels_count").innerHTML = (byId("public_channels_count").innerHTML.toInt() - active_count)
     byId("private_stats").insertAdjacentHTML('beforeend', `
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
       <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(act.outbound + ina.outbound).intcomma()}</span>
