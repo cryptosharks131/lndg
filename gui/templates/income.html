@@ -113,12 +113,18 @@
       function buildChart(step){
         data.labels = [0]
         data.datasets.forEach(ds => {ds.data = [0]; ds.extra = [{time: adjustTZ(response[0].dt), count: 0, diff: 0}]})
+        let offchainAcc = 0
         let sum = {onchain: 0, cost: 0, total:0, offchain:0}, count = 0;
         for(balance of response){
           sum.cost += balance.cost
           sum.total += balance.total
           sum.onchain += balance.onchain
-          sum.offchain += balance.offchain
+          if (sum.offchain + balance.offchain < 0) {
+            offchainAcc += balance.offchain //captures offchain < 0
+          } else {
+            sum.offchain += balance.offchain + offchainAcc //releases offchain < 0 into first opened channel after LNDg instalation
+            offchainAcc = 0
+          }
           let costDiff = Math.pow(sum.cost-data.datasets[3].data.at(-1), 2)/(data.datasets[3].data.at(-1)||1)
           let chainDiff = Math.pow(sum.onchain-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
           let offDiff = Math.pow(sum.offchain-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
