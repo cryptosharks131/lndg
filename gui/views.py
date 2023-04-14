@@ -842,7 +842,7 @@ group by gc.funding_txid
 ),
 closures as (
 select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, cl.closing_costs as cost, -COALESCE(rs.amount_sat, cl.settled_balance)-cl.closing_costs as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from gui_closures cl
-join gui_onchain oc on cl.closing_tx = oc.tx_hash and cl.chan_id = cl.chan_id 
+join gui_onchain oc on cl.closing_tx = oc.tx_hash
 left join gui_resolutions rs on oc.tx_hash = rs.sweep_txid and rs.chan_id = cl.chan_id
 ),
 onchain as (
