@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -2308,8 +2308,8 @@ class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LocalSettings.objects.all()
     serializer_class = LocalSettingsSerializer
 
-    def update(self, request, pk=None):
-        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
+    def update(self, request, pk):
+        setting = get_object_or_404(self.queryset, pk=pk)
         serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -2323,9 +2323,9 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ChannelSerializer
     filterset_fields = ['is_open', 'private', 'is_active', 'auto_rebalance']
 
-    def update(self, request, pk=None):
-        channel = get_object_or_404(Channels.objects.all(), pk=pk)
-        serializer = ChannelSerializer(channel, data=request.data, context={'request': request})
+    def update(self, request, pk):
+        channel = get_object_or_404(self.queryset, pk=pk)
+        serializer = ChannelSerializer(channel, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -2345,7 +2345,7 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.errors)
         
     def update(self, request, pk):
-        rebalance = get_object_or_404(Rebalancer.objects.all(), pk=pk)
+        rebalance = get_object_or_404(self.queryset, pk=pk)
         serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             rebalance.stop = datetime.now()
@@ -2698,5 +2698,62 @@ def bump_fee(request):
             debug_error_index = error.find('debug_error_string =') - 3
             error_msg = error[details_index:debug_error_index]
             return Response({'error': f'Fee bump failed! Error: {error_msg}'})
+    else:
+        return Response({'error': 'Invalid request!'})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def chan_policy(request):
+    serializer = UpdateChanPolicy(data=request.data)
+    if serializer.is_valid() and Channels.objects.filter(chan_id=serializer.validated_data['chan_id']).exists():
+        chan_id = serializer.validated_data['chan_id']
+        db_channel = Channels.objects.get(chan_id=chan_id)
+        channel_point = point(db_channel)
+        return_response = {}
+        try:
+            if serializer.validated_data['base_fee'] is not None or serializer.validated_data['fee_rate'] is not None or serializer.validated_data['cltv'] is not None or serializer.validated_data['min_htlc'] is not None or serializer.validated_data['max_htlc'] is not None:
+                base_fee_msat = serializer.validated_data['base_fee'] if serializer.validated_data['base_fee'] is not None else db_channel.local_base_fee
+                fee_rate = (serializer.validated_data['fee_rate']/1000000) if serializer.validated_data['fee_rate'] is not None else (db_channel.local_fee_rate/1000000)
+                time_lock_delta = serializer.validated_data['cltv'] if serializer.validated_data['cltv'] is not None else db_channel.local_cltv
+                min_htlc_msat = int(serializer.validated_data['min_htlc']*1000) if serializer.validated_data['min_htlc'] is not None else db_channel.local_min_htlc_msat
+                max_htlc_msat = int(serializer.validated_data['max_htlc']*1000) if serializer.validated_data['max_htlc'] is not None else db_channel.local_max_htlc_msat
+                stub = lnrpc.LightningStub(lnd_connect())
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee_msat, fee_rate=fee_rate, time_lock_delta=time_lock_delta, min_htlc_msat_specified=True, min_htlc_msat=min_htlc_msat, max_htlc_msat=max_htlc_msat))               
+                if serializer.validated_data['base_fee'] is not None:
+                    db_channel.local_base_fee = serializer.validated_data['base_fee']
+                    db_channel.save()
+                    return_response['base_fee'] = serializer.validated_data['base_fee']
+                if serializer.validated_data['fee_rate'] is not None:
+                    old_fee_rate = db_channel.local_fee_rate
+                    db_channel.local_fee_rate = serializer.validated_data['fee_rate']
+                    db_channel.fees_updated = datetime.now()
+                    db_channel.save()
+                    return_response['fee_rate'] = serializer.validated_data['fee_rate']
+                    Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+                if serializer.validated_data['cltv'] is not None:
+                    db_channel.local_cltv = serializer.validated_data['cltv']
+                    db_channel.save()
+                    return_response['cltv'] = serializer.validated_data['cltv']
+                if serializer.validated_data['min_htlc'] is not None:
+                    db_channel.local_min_htlc_msat = int(serializer.validated_data['min_htlc']*1000)
+                    db_channel.save()
+                    return_response['min_htlc'] = serializer.validated_data['min_htlc']
+                if serializer.validated_data['max_htlc'] is not None:
+                    db_channel.local_max_htlc_msat = int(serializer.validated_data['max_htlc']*1000)
+                    db_channel.save()
+                    return_response['max_htlc'] = serializer.validated_data['max_htlc']
+            if serializer.validated_data['disabled'] is not None:
+                stub = lnrouter.RouterStub(lnd_connect())
+                stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=0)) if serializer.validated_data['disabled'] == 0 else stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=1))
+                db_channel.local_disabled = False if serializer.validated_data['disabled'] == 0 else True
+                db_channel.save()
+                return_response['disabled'] = serializer.validated_data['base_fee']
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': f'Channel policy update failed! Error: {error_msg}'})
+        return Response(return_response)
     else:
         return Response({'error': 'Invalid request!'})
