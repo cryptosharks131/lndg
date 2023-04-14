@@ -849,9 +849,11 @@ left join gui_resolutions rs on oc.tx_hash = rs.sweep_txid and rs.chan_id = gc.c
 onchain as (
 select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, 0 as offchain, oc.amount as onchain, oc.amount as total from gui_onchain oc
 where oc.tx_hash not in (
-	select cl.closing_tx from gui_closures cl
+	select gc.funding_txid from gui_channels gc -- exclude openings
 		UNION ALL
-	select gc.funding_txid from gui_channels gc
+	select cl.closing_tx from gui_closures cl -- exclude closures
+		UNION ALL
+	 select rs.sweep_txid from gui_resolutions rs -- exclude closures with resolutions
 	)
 ),
 balance as (
