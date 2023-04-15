@@ -836,15 +836,29 @@ forwards as (
 select strftime('%Y-%m-%d %H:00:00',gf.forward_date) as dt, 0 as cost, gf.fee as offchain, 0 as onchain, gf.fee as total from gui_forwards gf
 ),
 opens as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, SUM(gc.capacity - gc.local_commit) as offchain, oc.amount as onchain, SUM(gc.capacity - gc.local_commit)+oc.amount as total from gui_onchain oc
-join gui_channels gc on oc.tx_hash = gc.funding_txid 
-group by gc.funding_txid
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, -oc.amount as offchain, oc.amount-oc.fee as onchain, -oc.fee as total from gui_onchain oc
+left join gui_closures cl on oc.tx_hash = cl.funding_txid 
+left join gui_channels gc on oc.tx_hash = gc.funding_txid and gc.is_open = True
+WHERE cl.funding_txid is not null or gc.funding_txid is not null
+group by oc.tx_hash
+),
+closures1 as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, cl.closing_costs as cost, -cl.settled_balance as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from gui_closures cl
+join gui_onchain oc on cl.closing_tx = oc.tx_hash and cl.chan_id = cl.chan_id
+),
+closures2 as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, chan_id from gui_resolutions cl
+join gui_onchain oc on cl.sweep_txid = oc.tx_hash
+group by chan_id
+),
+closures3 as (
+select dt, cl.closing_costs as cost, -cl.settled_balance as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from closures2 as c2
+left join gui_closures cl on c2.chan_id = cl.chan_id
 ),
 closures as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, cl.closing_costs as cost, -COALESCE(rs.amount_sat, cl.settled_balance)-cl.closing_costs as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from gui_channels gc
-join gui_closures cl on gc.funding_txid = cl.funding_txid
-join gui_onchain oc on cl.closing_tx = oc.tx_hash and cl.chan_id = gc.chan_id 
-left join gui_resolutions rs on oc.tx_hash = rs.sweep_txid and rs.chan_id = gc.chan_id
+	select * from closures1 cl
+		UNION ALL
+	select * from closures3 gc
 ),
 onchain as (
 select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, 0 as offchain, oc.amount as onchain, oc.amount as total from gui_onchain oc
@@ -852,6 +866,10 @@ where oc.tx_hash not in (
 	select cl.closing_tx from gui_closures cl
 		UNION ALL
 	select gc.funding_txid from gui_channels gc
+        UNION ALL
+    select cl.funding_txid from gui_closures cl
+        UNION ALL
+    select cl.sweep_txid from gui_resolutions cl    
 	)
 ),
 balance as (
