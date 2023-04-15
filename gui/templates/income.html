@@ -119,12 +119,7 @@
           sum.cost += balance.cost
           sum.total += balance.total
           sum.onchain += balance.onchain
-          if (sum.offchain + balance.offchain < 0) {
-            offchainAcc += balance.offchain //captures offchain < 0
-          } else {
-            sum.offchain += balance.offchain + offchainAcc //releases offchain < 0 into first opened channel after LNDg instalation
-            offchainAcc = 0
-          }
+          sum.offchain += balance.offchain
           let costDiff = Math.pow(sum.cost-data.datasets[3].data.at(-1), 2)/(data.datasets[3].data.at(-1)||1)
           let chainDiff = Math.pow(sum.onchain-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
           let offDiff = Math.pow(sum.offchain-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)

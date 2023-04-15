@@ -827,48 +827,53 @@ def dictfetchall(cursor):
 def chart(request):
     with connection.cursor() as cursor:
         cursor.execute("""with payments as (
-select strftime('%Y-%m-%d %H:00:00',gp.creation_date) as dt, gp.fee as cost, -(gp.value + gp.fee) as offchain, 0 as onchain, -(gp.value + gp.fee) as total from gui_payments gp where gp.status = 2
+select strftime('%Y-%m-%d %H:00:00',creation_date) dt, fee cost, -(value + fee) offchain, 0 onchain, -(value + fee) total from gui_payments where status = 2
 ),
 invoices as (
-select strftime('%Y-%m-%d %H:00:00',gi.settle_date) as dt, 0 as cost, gi.amt_paid as offchain, 0 as onchain, gi.amt_paid as total from gui_invoices gi where gi.state = 1
+select strftime('%Y-%m-%d %H:00:00',settle_date) dt, 0 cost, amt_paid offchain, 0 onchain, amt_paid total from gui_invoices where state = 1
 ),
 forwards as (
-select strftime('%Y-%m-%d %H:00:00',gf.forward_date) as dt, 0 as cost, gf.fee as offchain, 0 as onchain, gf.fee as total from gui_forwards gf
-),
-opens as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, SUM(gc.capacity - gc.local_commit) as offchain, oc.amount as onchain, SUM(gc.capacity - gc.local_commit)+oc.amount as total from gui_onchain oc
-join gui_channels gc on oc.tx_hash = gc.funding_txid 
-group by gc.funding_txid
+select strftime('%Y-%m-%d %H:00:00',forward_date) dt, 0 cost, fee offchain, 0 onchain, fee total from gui_forwards
 ),
 closures as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, cl.closing_costs as cost, -COALESCE(rs.amount_sat, cl.settled_balance)-cl.closing_costs as offchain, cl.settled_balance as onchain, -cl.closing_costs as total from gui_closures cl
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -COALESCE(SUM(rs.amount_sat), cl.settled_balance)-cl.closing_costs offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
 join gui_onchain oc on cl.closing_tx = oc.tx_hash
 left join gui_resolutions rs on oc.tx_hash = rs.sweep_txid and rs.chan_id = cl.chan_id
+group by cl.chan_id
 ),
 onchain as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) as dt, oc.fee as cost, 0 as offchain, oc.amount as onchain, oc.amount as total from gui_onchain oc
+select oc.tx_hash, strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, 0 offchain, oc.amount onchain, oc.amount total from gui_onchain oc
 where oc.tx_hash not in (
-	select gc.funding_txid from gui_channels gc -- exclude openings
-		UNION ALL
-	select cl.closing_tx from gui_closures cl -- exclude closures
-		UNION ALL
-	 select rs.sweep_txid from gui_resolutions rs -- exclude closures with resolutions
-	)
+ select funding_txid from gui_closures
+ 	UNION
+ select closing_tx from gui_closures
+ 	UNION
+ select funding_txid from gui_channels
+    UNION
+ select sweep_txid from gui_resolutions
+ )
+),
+opens as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, -oc.amount-oc.fee-COALESCE(SUM(gc.local_commit),0) offchain, oc.amount onchain, -oc.fee-COALESCE(SUM(gc.local_commit),0) total from gui_onchain oc
+left join gui_closures cl on oc.tx_hash = cl.funding_txid
+left join gui_channels gc on oc.tx_hash = gc.funding_txid
+WHERE oc.fee > 0 and cl.funding_txid is not null or gc.funding_txid is not null
+group by oc.tx_hash
 ),
 balance as (
 select * from payments
-	UNION ALL 
+ UNION ALL 
 select * from invoices
-	UNION ALL
+ UNION ALL
 select * from forwards
-	UNION ALL
+ UNION ALL
 select * from opens
-	UNION ALL
+ UNION ALL
 select * from closures
-	UNION ALL
-select * from onchain
+ UNION ALL
+select dt, cost, offchain, onchain, total from onchain
 )
-select min(b.dt) as dt, sum(b.cost) as cost, sum(b.onchain) as onchain, sum(b.offchain) as offchain, sum(b.total) as total from balance b
+select min(b.dt) dt, sum(b.cost) cost, sum(b.onchain) onchain, sum(b.offchain) offchain, sum(b.total) total from balance b
 group by dt
 order by dt
 """)
