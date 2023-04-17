@@ -1393,14 +1393,21 @@ def batch(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def addresses(request):
     if request.method == 'GET':
-        stub = walletstub.WalletKitStub(lnd_connect())
-        address_data = stub.ListAddresses(walletrpc.ListAddressesRequest())
-        context = {
-            'address_data': address_data,
-            'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
-            'network_links': network_links()
-        }
-        return render(request, 'addresses.html', context)
+        try:
+            stub = walletstub.WalletKitStub(lnd_connect())
+            address_data = stub.ListAddresses(walletrpc.ListAddressesRequest())
+            context = {
+                'address_data': address_data,
+                'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
+                'network_links': network_links()
+            }
+            return render(request, 'addresses.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
