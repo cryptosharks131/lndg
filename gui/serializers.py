@@ -110,6 +110,9 @@ class BumpFeeSerializer(serializers.Serializer):
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 
+class BroadcastTXSerializer(serializers.Serializer):
+    raw_tx = serializers.CharField(label='raw_tx')
+
 class AddInvoiceSerializer(serializers.Serializer):
     value = serializers.IntegerField(label='value')
 

@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -460,6 +460,7 @@ def balances(request):
         context = {
             'utxos': stub.ListUnspent(walletrpc.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
+            'pending_sweeps': stub.PendingSweeps(walletrpc.PendingSweepsRequest()).pending_sweeps,
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'network_links': network_links()
         }
@@ -1386,6 +1387,20 @@ def batch(request):
             'balances': stub.WalletBalance(ln.WalletBalanceRequest())
         }
         return render(request, 'batch.html', context)
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def addresses(request):
+    if request.method == 'GET':
+        stub = walletstub.WalletKitStub(lnd_connect())
+        address_data = stub.ListAddresses(walletrpc.ListAddressesRequest())
+        context = {
+            'address_data': address_data,
+            'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
+            'network_links': network_links()
+        }
+        return render(request, 'addresses.html', context)
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
@@ -2762,5 +2777,27 @@ def chan_policy(request):
             error_msg = error[details_index:debug_error_index]
             return Response({'error': f'Channel policy update failed! Error: {error_msg}'})
         return Response(return_response)
+    else:
+        return Response({'error': 'Invalid request!'})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def broadcast_tx(request):
+    serializer = BroadcastTXSerializer(data=request.data)
+    if serializer.is_valid():
+        raw_tx = serializer.validated_data['raw_tx']
+        try:
+            stub = walletstub.WalletKitStub(lnd_connect())
+            response = stub.PublishTransaction(walletrpc.Transaction(tx_hex=bytes.fromhex(raw_tx)))
+            if response.publish_error == '':
+                return Response({'message': f'Successfully broadcast tx!'})
+            else:
+                return Response({'message': f'Error while broadcasting TX: {response.publish_error}'})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': f'TX broadcast failed! Error: {error_msg}'})
     else:
         return Response({'error': 'Invalid request!'})
