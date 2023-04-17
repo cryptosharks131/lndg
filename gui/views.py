@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -2484,24 +2484,31 @@ def add_invoice(request):
     else:
         return Response({'error': 'Invalid request!'})
 
-@api_view(['GET'])
+@api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def new_address(request):
-    try:
-        stub = lnrpc.LightningStub(lnd_connect())
-        version = stub.GetInfo(ln.GetInfoRequest()).version
-        # Verify sufficient version to handle p2tr address creation
-        if float(version[:4]) >= 0.15:
-            response = stub.NewAddress(ln.NewAddressRequest(type=4))
-        else:
-            response = stub.NewAddress(ln.NewAddressRequest(type=0))
-        return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
-    except Exception as e:
-        error = str(e)
-        details_index = error.find('details =') + 11
-        debug_error_index = error.find('debug_error_string =') - 3
-        error_msg = error[details_index:debug_error_index]
-        return Response({'error': 'Address creation failed! Error: ' + error_msg})
+    serializer = NewAddressSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            if serializer.validated_data['legacy'] == True:
+                response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            else:
+                # Verify sufficient version to handle p2tr address creation
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                if float(version[:4]) >= 0.15:
+                    response = stub.NewAddress(ln.NewAddressRequest(type=4))
+                else:
+                    response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Address creation failed! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'})
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)

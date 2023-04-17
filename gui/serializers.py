@@ -125,6 +125,9 @@ class UpdateChanPolicy(serializers.Serializer):
     min_htlc = serializers.FloatField(required=False, default=None)
     max_htlc = serializers.FloatField(required=False, default=None)
 
+class NewAddressSerializer(serializers.Serializer):
+    legacy = serializers.BooleanField(required=False, default=False)
+
 class PeerSerializer(serializers.HyperlinkedModelSerializer):
     pubkey = serializers.ReadOnlyField()
     class Meta:
