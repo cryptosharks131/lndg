@@ -835,14 +835,23 @@ select strftime('%Y-%m-%d %H:00:00',settle_date) dt, 0 cost, amt_paid offchain, 
 forwards as (
 select strftime('%Y-%m-%d %H:00:00',forward_date) dt, 0 cost, fee offchain, 0 onchain, fee total from gui_forwards
 ),
-closures as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -COALESCE(SUM(rs.amount_sat), cl.settled_balance)-cl.closing_costs offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
+closes as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
 join gui_onchain oc on cl.closing_tx = oc.tx_hash
-left join gui_resolutions rs on oc.tx_hash = rs.sweep_txid and rs.chan_id = cl.chan_id
-group by cl.chan_id
+),
+FCloses as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_resolutions rs
+join gui_onchain oc on rs.sweep_txid = oc.tx_hash
+left join gui_closures cl on cl.chan_id = rs.chan_id
+group by rs.chan_id
+),
+closures as (
+select * from closes
+   UNION ALL
+select * from FCloses
 ),
 onchain as (
-select oc.tx_hash, strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, 0 offchain, oc.amount onchain, oc.amount total from gui_onchain oc
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, 0 offchain, oc.amount onchain, oc.amount total from gui_onchain oc
 where oc.tx_hash not in (
  select funding_txid from gui_closures
  	UNION
@@ -871,9 +880,9 @@ select * from opens
  UNION ALL
 select * from closures
  UNION ALL
-select dt, cost, offchain, onchain, total from onchain
+select * from onchain
 )
-select min(b.dt) dt, sum(b.cost) cost, sum(b.onchain) onchain, sum(b.offchain) offchain, sum(b.total) total from balance b
+select dt, sum(cost) cost, sum(offchain) offchain, sum(onchain) onchain, sum(total) total from balance
 group by dt
 order by dt
 """)
