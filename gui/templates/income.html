@@ -8,6 +8,7 @@
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> <small class="w3-round w3-border-small w3-border-grey">{{ node_info.identity_pubkey }}</small>{% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <span class="input" data-unit="%"><label title="Aggregate events with `cost`, `offchain` or `onchain` < minimum `step`% value">Step > </label> <input id="step" value="0.01" min="0" step="0.1" max="100" type="number"/></span>
   <canvas id="balances" style="max-height:500px"></canvas>
+  <input id="timeFilter" type="range" min="0" max="100" style="width:100%" value="0"/>
   <script>
     document.addEventListener('DOMContentLoaded', async function() {
       const data = {
@@ -109,13 +110,18 @@
           }
         },
       })
+      const TZ = time => time.length == 0? '' : adjustTZ(time)
       const response = await GET('chart', {data: {} })
-      function buildChart(step){
-        data.labels = [0]
-        data.datasets.forEach(ds => {ds.data = [0]; ds.extra = [{time: adjustTZ(response[0].dt), count: 0, diff: 0}]})
-        let offchainAcc = 0
+      response.unshift({dt: '', onchain: 0, offchain: 0, cost: 0, total: 0})
+      function buildChart(step, datapoints){
+        data.datasets[3].data = [datapoints[0].cost]
+        data.datasets[0].data = [datapoints[0].total]
+        data.datasets[1].data = [datapoints[0].onchain]
+        data.datasets[2].data = [datapoints[0].offchain]
+        data.labels = [datapoints[0].dt.length > 0 ? TZ(datapoints[0].dt).toLocaleDateString() : '']
+        data.datasets.forEach(ds => ds.extra = [{time: TZ(datapoints[0].dt), count: 0, diff: 0}])
         let sum = {onchain: 0, cost: 0, total:0, offchain:0}, count = 0;
-        for(balance of response){
+        for(balance of datapoints){
           sum.cost += balance.cost
           sum.total += balance.total
           sum.onchain += balance.onchain
@@ -125,21 +131,21 @@
           let offDiff = Math.pow(sum.offchain-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
           count++
           if(Math.abs(costDiff+chainDiff+offDiff)/3 < parseFloat(step/100)) continue
-          data.datasets[0].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.total - data.datasets[0].data.at(-1)})
-          data.datasets[3].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.cost - data.datasets[3].data.at(-1)})
-          data.datasets[1].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.onchain - data.datasets[1].data.at(-1)})
-          data.datasets[2].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.offchain - data.datasets[2].data.at(-1)})
+          data.datasets[0].extra.push({time: TZ(balance.dt), count: count, diff: sum.total - data.datasets[0].data.at(-1)})
+          data.datasets[3].extra.push({time: TZ(balance.dt), count: count, diff: sum.cost - data.datasets[3].data.at(-1)})
+          data.datasets[1].extra.push({time: TZ(balance.dt), count: count, diff: sum.onchain - data.datasets[1].data.at(-1)})
+          data.datasets[2].extra.push({time: TZ(balance.dt), count: count, diff: sum.offchain - data.datasets[2].data.at(-1)})
           count = 0
           data.datasets[1].data.push(sum.onchain)
           data.datasets[3].data.push(parseInt(sum.cost))
           data.datasets[0].data.push(parseInt(sum.total))
           data.datasets[2].data.push(parseInt(sum.offchain))
-          data.labels.push(adjustTZ(balance.dt).toLocaleDateString())
+          data.labels.push(balance.dt.length > 0 ? TZ(balance.dt).toLocaleDateString() : '')
         }
         chart.options.scales.y1.max = (10 ** Math.ceil(Math.log10(data.datasets[3].data.at(-1)))) *2
         chart.update();
       }
-      buildChart(0.01)
+      buildChart(0.01, response)
 
       function applyThemeToGrid(){
         if (document.body.classList.contains("dark-mode")) {
@@ -147,16 +153,28 @@
         } else {
           chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(0,0,0,0.1)'
         }
-
         chart.update();
       }
       applyThemeToGrid()
       byId('step').addEventListener('keypress', function(e){
         if(e.keyCode != 13) return 
-        buildChart(e.target.value)
-        chart.update()
+        buildChart(e.target.value, response)
       })
       byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
+      byId('timeFilter').addEventListener('input', function(e){
+        const value = 100 - e.target.value, size = parseInt(value*response.length/100), datapoints = [...response].splice(response.length - size-1)
+        if (size == response.length || size < 10) return
+        let sum = {onchain: 0, cost: 0, total:0, offchain:0}
+        for(balance of [...response].splice(0, response.length - size)){
+          sum.cost += balance.cost
+          sum.total += balance.total
+          sum.onchain += balance.onchain
+          sum.offchain += balance.offchain
+          sum.dt = balance.dt
+        }
+        datapoints[0] = {dt: sum.dt, onchain: sum.onchain, offchain: parseInt(sum.offchain), cost: parseInt(sum.cost), total: parseInt(sum.total)}
+        buildChart(byId('step').value, datapoints)
+      })
     })
   </script>
   <hr/>
