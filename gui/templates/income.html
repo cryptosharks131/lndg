@@ -1,9 +1,166 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %} {{ block.super }} - P&L{% endblock %}
 {% block content %}
+<script src="{% static 'charts.js' %}"></script>
 {% load humanize %}
 <div class="w3-container w3-padding-small">
   <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> <small class="w3-round w3-border-small w3-border-grey">{{ node_info.identity_pubkey }}</small>{% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <span class="input" data-unit="%"><label title="Aggregate events with `cost`, `offchain` or `onchain` < minimum `step`% value">Step > </label> <input id="step" value="0.01" min="0" step="0.1" max="100" type="number"/></span>
+  <canvas id="balances" style="max-height:500px"></canvas>
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      const data = {
+        datasets: [
+          {
+            label: 'Balance',
+            yAxisID: 'y',
+            fill: true,
+            pointHoverRadius: 10,
+            backgroundColor: 'rgba(251, 192, 147, 0.2)',
+            borderColor: 'rgba(251, 192, 147, 0.5)',
+            cubicInterpolationMode: 'monotone',
+          },
+          {
+            label: 'On chain',
+            fill: true,
+            pointHoverRadius: 10,
+            borderColor: 'rgba(255,119,0,1)',
+            backgroundColor: 'rgba(255,119,0,0.1)',
+            cubicInterpolationMode: 'monotone',
+          },
+          {
+            label: 'Off chain',
+            fill: true,
+            pointHoverRadius: 10,
+            borderColor: 'rgba(33,150,243)',
+            backgroundColor: 'rgba(33,150,243,.2)',
+            cubicInterpolationMode: 'monotone',
+          },
+          {
+            label: 'Costs',
+            yAxisID: 'y1',
+            fill: true,
+            pointHoverRadius: 10,
+            borderColor: 'rgba(248,81,73)',
+            backgroundColor: 'rgba(248,81,73,0.15)',
+            cubicInterpolationMode: 'monotone',
+          }
+        ]
+      };
+
+      const chart = new Chart(byId('balances'), {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: function(ctx) {
+                  let event
+                  for(ct of ctx){
+                    event = ct.dataset.extra[ct.dataIndex]
+                    let diff = event.diff
+                    let sign = ''
+                    if(diff > 0){
+                      sign = '+'
+                      if(diff < 1) diff = diff.toFixed(2)
+                    }
+                    if (Math.abs(diff) > 1000) diff = parseInt(diff)
+                    if (diff != 0.0) ct.formattedValue += ` (${sign}${diff.toLocaleString()})`
+                  }
+                  return `${event.time.toLocaleString()}`+ (event.count > 1 ? ` (${event.count})` : '')
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'Profitablity Overview'
+            },
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          scales: {
+            x: {
+              display: true
+            },
+            y: {
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'sats'
+              }
+            },
+            y1: {
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Cost'
+              },
+              grid: {
+                drawOnChartArea: false, // only want the grid lines for one axis to show up
+              },
+            },
+          }
+        },
+      })
+      const response = await GET('chart', {data: {} })
+      function buildChart(step){
+        data.labels = [0]
+        data.datasets.forEach(ds => {ds.data = [0]; ds.extra = [{time: adjustTZ(response[0].dt), count: 0, diff: 0}]})
+        let offchainAcc = 0
+        let sum = {onchain: 0, cost: 0, total:0, offchain:0}, count = 0;
+        for(balance of response){
+          sum.cost += balance.cost
+          sum.total += balance.total
+          sum.onchain += balance.onchain
+          sum.offchain += balance.offchain
+          let costDiff = Math.pow(sum.cost-data.datasets[3].data.at(-1), 2)/(data.datasets[3].data.at(-1)||1)
+          let chainDiff = Math.pow(sum.onchain-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
+          let offDiff = Math.pow(sum.offchain-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
+          count++
+          if(Math.abs(costDiff+chainDiff+offDiff)/3 < parseFloat(step/100)) continue
+          data.datasets[0].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.total - data.datasets[0].data.at(-1)})
+          data.datasets[3].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.cost - data.datasets[3].data.at(-1)})
+          data.datasets[1].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.onchain - data.datasets[1].data.at(-1)})
+          data.datasets[2].extra.push({time: adjustTZ(balance.dt), count: count, diff: sum.offchain - data.datasets[2].data.at(-1)})
+          count = 0
+          data.datasets[1].data.push(sum.onchain)
+          data.datasets[3].data.push(parseInt(sum.cost))
+          data.datasets[0].data.push(parseInt(sum.total))
+          data.datasets[2].data.push(parseInt(sum.offchain))
+          data.labels.push(adjustTZ(balance.dt).toLocaleDateString())
+        }
+        chart.options.scales.y1.max = (10 ** Math.ceil(Math.log10(data.datasets[3].data.at(-1)))) *2
+        chart.update();
+      }
+      buildChart(0.01)
+
+      function applyThemeToGrid(){
+        if (document.body.classList.contains("dark-mode")) {
+          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(255,255,255,0.1)'
+        } else {
+          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(0,0,0,0.1)'
+        }
+
+        chart.update();
+      }
+      applyThemeToGrid()
+      byId('step').addEventListener('keypress', function(e){
+        if(e.keyCode != 13) return 
+        buildChart(e.target.value)
+        chart.update()
+      })
+      byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
+    })
+  </script>
+  <hr/>
+  <br/>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Line Item</th>

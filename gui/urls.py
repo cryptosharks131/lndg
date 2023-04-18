@@ -81,6 +81,7 @@ urlpatterns = [
     path('api/income/', views.api_income, name='api-income'),
     path('api/pendingchannels/', views.pending_channels, name='pending-channels'),
     path('api/bumpfee/', views.bump_fee, name='bump-fee'),
+    path('api/chart/', views.chart, name='chart'),
     path('api/chanpolicy/', views.chan_policy, name='chan-policy'),
     path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
     path('lndg-admin/', admin.site.urls),

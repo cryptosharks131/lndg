@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.db import connection
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When
 from django.db.models.functions import Round
@@ -813,6 +814,81 @@ def income(request):
         return render(request, 'income.html', context)
     else:
         return redirect('home')
+
+def dictfetchall(cursor):
+    """
+    Return all rows from a cursor as a dict.
+    Assume the column names are unique.
+    """
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def chart(request):
+    with connection.cursor() as cursor:
+        cursor.execute("""with payments as (
+select strftime('%Y-%m-%d %H:00:00',creation_date) dt, fee cost, -(value + fee) offchain, 0 onchain, -(value + fee) total from gui_payments where status = 2
+),
+invoices as (
+select strftime('%Y-%m-%d %H:00:00',settle_date) dt, 0 cost, amt_paid offchain, 0 onchain, amt_paid total from gui_invoices where state = 1
+),
+forwards as (
+select strftime('%Y-%m-%d %H:00:00',forward_date) dt, 0 cost, fee offchain, 0 onchain, fee total from gui_forwards
+),
+closes as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
+join gui_onchain oc on cl.closing_tx = oc.tx_hash
+),
+FCloses as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_resolutions rs
+join gui_onchain oc on rs.sweep_txid = oc.tx_hash
+left join gui_closures cl on cl.chan_id = rs.chan_id
+group by rs.chan_id
+),
+closures as (
+select * from closes
+   UNION ALL
+select * from FCloses
+),
+onchain as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, 0 offchain, oc.amount onchain, oc.amount total from gui_onchain oc
+where oc.tx_hash not in (
+ select funding_txid from gui_closures
+ 	UNION
+ select closing_tx from gui_closures
+ 	UNION
+ select funding_txid from gui_channels
+    UNION
+ select sweep_txid from gui_resolutions
+ )
+),
+opens as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, -oc.amount-oc.fee-COALESCE(SUM(gc.local_commit),0) offchain, oc.amount onchain, -oc.fee-COALESCE(SUM(gc.local_commit),0) total from gui_onchain oc
+left join gui_closures cl on oc.tx_hash = cl.funding_txid
+left join gui_channels gc on oc.tx_hash = gc.funding_txid
+WHERE oc.fee > 0 and cl.funding_txid is not null or gc.funding_txid is not null
+group by oc.tx_hash
+),
+balance as (
+select * from payments
+ UNION ALL 
+select * from invoices
+ UNION ALL
+select * from forwards
+ UNION ALL
+select * from opens
+ UNION ALL
+select * from closures
+ UNION ALL
+select * from onchain
+)
+select dt, sum(cost) cost, sum(offchain) offchain, sum(onchain) onchain, sum(total) total from balance
+group by dt
+order by dt
+""")
+        results = dictfetchall(cursor)
+        return Response(results)
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
