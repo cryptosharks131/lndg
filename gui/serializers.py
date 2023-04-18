@@ -116,6 +116,18 @@ class AddInvoiceSerializer(serializers.Serializer):
 class UpdateAliasSerializer(serializers.Serializer):
     peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
 
+class UpdateChanPolicy(serializers.Serializer):
+    chan_id = serializers.CharField(max_length=20)
+    base_fee = serializers.IntegerField(required=False, default=None)
+    fee_rate = serializers.IntegerField(required=False, default=None)
+    disabled = serializers.IntegerField(required=False, default=None)
+    cltv = serializers.IntegerField(required=False, default=None)
+    min_htlc = serializers.FloatField(required=False, default=None)
+    max_htlc = serializers.FloatField(required=False, default=None)
+
+class NewAddressSerializer(serializers.Serializer):
+    legacy = serializers.BooleanField(required=False, default=False)
+
 class PeerSerializer(serializers.HyperlinkedModelSerializer):
     pubkey = serializers.ReadOnlyField()
     class Meta:
