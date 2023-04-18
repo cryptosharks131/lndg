@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.db import connection
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When
 from django.db.models.functions import Round
@@ -10,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -460,6 +461,7 @@ def balances(request):
         context = {
             'utxos': stub.ListUnspent(walletrpc.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
+            'pending_sweeps': stub.PendingSweeps(walletrpc.PendingSweepsRequest()).pending_sweeps,
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'network_links': network_links()
         }
@@ -812,6 +814,81 @@ def income(request):
         return render(request, 'income.html', context)
     else:
         return redirect('home')
+
+def dictfetchall(cursor):
+    """
+    Return all rows from a cursor as a dict.
+    Assume the column names are unique.
+    """
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def chart(request):
+    with connection.cursor() as cursor:
+        cursor.execute("""with payments as (
+select strftime('%Y-%m-%d %H:00:00',creation_date) dt, fee cost, -(value + fee) offchain, 0 onchain, -(value + fee) total from gui_payments where status = 2
+),
+invoices as (
+select strftime('%Y-%m-%d %H:00:00',settle_date) dt, 0 cost, amt_paid offchain, 0 onchain, amt_paid total from gui_invoices where state = 1
+),
+forwards as (
+select strftime('%Y-%m-%d %H:00:00',forward_date) dt, 0 cost, fee offchain, 0 onchain, fee total from gui_forwards
+),
+closes as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
+join gui_onchain oc on cl.closing_tx = oc.tx_hash
+),
+FCloses as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_resolutions rs
+join gui_onchain oc on rs.sweep_txid = oc.tx_hash
+left join gui_closures cl on cl.chan_id = rs.chan_id
+group by rs.chan_id
+),
+closures as (
+select * from closes
+   UNION ALL
+select * from FCloses
+),
+onchain as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, 0 offchain, oc.amount onchain, oc.amount total from gui_onchain oc
+where oc.tx_hash not in (
+ select funding_txid from gui_closures
+ 	UNION
+ select closing_tx from gui_closures
+ 	UNION
+ select funding_txid from gui_channels
+    UNION
+ select sweep_txid from gui_resolutions
+ )
+),
+opens as (
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, oc.fee cost, -oc.amount-oc.fee-COALESCE(SUM(gc.local_commit),0) offchain, oc.amount onchain, -oc.fee-COALESCE(SUM(gc.local_commit),0) total from gui_onchain oc
+left join gui_closures cl on oc.tx_hash = cl.funding_txid
+left join gui_channels gc on oc.tx_hash = gc.funding_txid
+WHERE oc.fee > 0 and cl.funding_txid is not null or gc.funding_txid is not null
+group by oc.tx_hash
+),
+balance as (
+select * from payments
+ UNION ALL 
+select * from invoices
+ UNION ALL
+select * from forwards
+ UNION ALL
+select * from opens
+ UNION ALL
+select * from closures
+ UNION ALL
+select * from onchain
+)
+select dt, sum(cost) cost, sum(offchain) offchain, sum(onchain) onchain, sum(total) total from balance
+group by dt
+order by dt
+""")
+        results = dictfetchall(cursor)
+        return Response(results)
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
@@ -1384,6 +1461,27 @@ def batch(request):
             'balances': stub.WalletBalance(ln.WalletBalanceRequest())
         }
         return render(request, 'batch.html', context)
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def addresses(request):
+    if request.method == 'GET':
+        try:
+            stub = walletstub.WalletKitStub(lnd_connect())
+            address_data = stub.ListAddresses(walletrpc.ListAddressesRequest())
+            context = {
+                'address_data': address_data,
+                'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
+                'network_links': network_links()
+            }
+            return render(request, 'addresses.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
@@ -2306,8 +2404,8 @@ class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LocalSettings.objects.all()
     serializer_class = LocalSettingsSerializer
 
-    def update(self, request, pk=None):
-        setting = get_object_or_404(LocalSettings.objects.all(), pk=pk)
+    def update(self, request, pk):
+        setting = get_object_or_404(self.queryset, pk=pk)
         serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -2321,9 +2419,9 @@ class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ChannelSerializer
     filterset_fields = ['is_open', 'private', 'is_active', 'auto_rebalance']
 
-    def update(self, request, pk=None):
-        channel = get_object_or_404(Channels.objects.all(), pk=pk)
-        serializer = ChannelSerializer(channel, data=request.data, context={'request': request})
+    def update(self, request, pk):
+        channel = get_object_or_404(self.queryset, pk=pk)
+        serializer = ChannelSerializer(channel, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -2343,7 +2441,7 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.errors)
         
     def update(self, request, pk):
-        rebalance = get_object_or_404(Rebalancer.objects.all(), pk=pk)
+        rebalance = get_object_or_404(self.queryset, pk=pk)
         serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
         if serializer.is_valid():
             rebalance.stop = datetime.now()
@@ -2482,24 +2580,31 @@ def add_invoice(request):
     else:
         return Response({'error': 'Invalid request!'})
 
-@api_view(['GET'])
+@api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def new_address(request):
-    try:
-        stub = lnrpc.LightningStub(lnd_connect())
-        version = stub.GetInfo(ln.GetInfoRequest()).version
-        # Verify sufficient version to handle p2tr address creation
-        if float(version[:4]) >= 0.15:
-            response = stub.NewAddress(ln.NewAddressRequest(type=4))
-        else:
-            response = stub.NewAddress(ln.NewAddressRequest(type=0))
-        return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
-    except Exception as e:
-        error = str(e)
-        details_index = error.find('details =') + 11
-        debug_error_index = error.find('debug_error_string =') - 3
-        error_msg = error[details_index:debug_error_index]
-        return Response({'error': 'Address creation failed! Error: ' + error_msg})
+    serializer = NewAddressSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            if serializer.validated_data['legacy'] == True:
+                response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            else:
+                # Verify sufficient version to handle p2tr address creation
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                if float(version[:4]) >= 0.15:
+                    response = stub.NewAddress(ln.NewAddressRequest(type=4))
+                else:
+                    response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Address creation failed! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'})
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
@@ -2696,5 +2801,84 @@ def bump_fee(request):
             debug_error_index = error.find('debug_error_string =') - 3
             error_msg = error[details_index:debug_error_index]
             return Response({'error': f'Fee bump failed! Error: {error_msg}'})
+    else:
+        return Response({'error': 'Invalid request!'})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def chan_policy(request):
+    serializer = UpdateChanPolicy(data=request.data)
+    if serializer.is_valid() and Channels.objects.filter(chan_id=serializer.validated_data['chan_id']).exists():
+        chan_id = serializer.validated_data['chan_id']
+        db_channel = Channels.objects.get(chan_id=chan_id)
+        channel_point = point(db_channel)
+        return_response = {}
+        try:
+            if serializer.validated_data['base_fee'] is not None or serializer.validated_data['fee_rate'] is not None or serializer.validated_data['cltv'] is not None or serializer.validated_data['min_htlc'] is not None or serializer.validated_data['max_htlc'] is not None:
+                base_fee_msat = serializer.validated_data['base_fee'] if serializer.validated_data['base_fee'] is not None else db_channel.local_base_fee
+                fee_rate = (serializer.validated_data['fee_rate']/1000000) if serializer.validated_data['fee_rate'] is not None else (db_channel.local_fee_rate/1000000)
+                time_lock_delta = serializer.validated_data['cltv'] if serializer.validated_data['cltv'] is not None else db_channel.local_cltv
+                min_htlc_msat = int(serializer.validated_data['min_htlc']*1000) if serializer.validated_data['min_htlc'] is not None else db_channel.local_min_htlc_msat
+                max_htlc_msat = int(serializer.validated_data['max_htlc']*1000) if serializer.validated_data['max_htlc'] is not None else db_channel.local_max_htlc_msat
+                stub = lnrpc.LightningStub(lnd_connect())
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee_msat, fee_rate=fee_rate, time_lock_delta=time_lock_delta, min_htlc_msat_specified=True, min_htlc_msat=min_htlc_msat, max_htlc_msat=max_htlc_msat))               
+                if serializer.validated_data['base_fee'] is not None:
+                    db_channel.local_base_fee = serializer.validated_data['base_fee']
+                    db_channel.save()
+                    return_response['base_fee'] = serializer.validated_data['base_fee']
+                if serializer.validated_data['fee_rate'] is not None:
+                    old_fee_rate = db_channel.local_fee_rate
+                    db_channel.local_fee_rate = serializer.validated_data['fee_rate']
+                    db_channel.fees_updated = datetime.now()
+                    db_channel.save()
+                    return_response['fee_rate'] = serializer.validated_data['fee_rate']
+                    Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+                if serializer.validated_data['cltv'] is not None:
+                    db_channel.local_cltv = serializer.validated_data['cltv']
+                    db_channel.save()
+                    return_response['cltv'] = serializer.validated_data['cltv']
+                if serializer.validated_data['min_htlc'] is not None:
+                    db_channel.local_min_htlc_msat = int(serializer.validated_data['min_htlc']*1000)
+                    db_channel.save()
+                    return_response['min_htlc'] = serializer.validated_data['min_htlc']
+                if serializer.validated_data['max_htlc'] is not None:
+                    db_channel.local_max_htlc_msat = int(serializer.validated_data['max_htlc']*1000)
+                    db_channel.save()
+                    return_response['max_htlc'] = serializer.validated_data['max_htlc']
+            if serializer.validated_data['disabled'] is not None:
+                stub = lnrouter.RouterStub(lnd_connect())
+                stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=0)) if serializer.validated_data['disabled'] == 0 else stub.UpdateChanStatus(lnr.UpdateChanStatusRequest(chan_point=channel_point, action=1))
+                db_channel.local_disabled = False if serializer.validated_data['disabled'] == 0 else True
+                db_channel.save()
+                return_response['disabled'] = serializer.validated_data['base_fee']
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': f'Channel policy update failed! Error: {error_msg}'})
+        return Response(return_response)
+    else:
+        return Response({'error': 'Invalid request!'})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def broadcast_tx(request):
+    serializer = BroadcastTXSerializer(data=request.data)
+    if serializer.is_valid():
+        raw_tx = serializer.validated_data['raw_tx']
+        try:
+            stub = walletstub.WalletKitStub(lnd_connect())
+            response = stub.PublishTransaction(walletrpc.Transaction(tx_hex=bytes.fromhex(raw_tx)))
+            if response.publish_error == '':
+                return Response({'message': f'Successfully broadcast tx!'})
+            else:
+                return Response({'message': f'Error while broadcasting TX: {response.publish_error}'})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': f'TX broadcast failed! Error: {error_msg}'})
     else:
         return Response({'error': 'Invalid request!'})

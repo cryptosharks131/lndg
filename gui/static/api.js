@@ -31,4 +31,7 @@ class Sync{
     static PUT(url, {method = 'PUT', body}, callback){
         call({url, method, body}).then(res => callback(res))
     }
+    static POST(url, {method = 'POST', body}, callback){
+        call({url, method, body}).then(res => callback(res))
+    }
 }
