@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if peers %}
 <div class="w3-container w3-padding-small">
-  <h2>Peers List ({{ num_peers }})</h2>
+  <h2>Peers List <small class="w3-round w3-border-small w3-border-grey">{{ num_peers }}</small></h2>
   <table id="peersTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th onclick="sortTable(event.target, 0, 'String')" width=40%>Peer PubKey</th>

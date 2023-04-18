@@ -26,19 +26,19 @@
     <tr>
       <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
       <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.local_balance|intcomma }} ({{ channel.outbound_percent }}%)</td>
+      <td>{{ channel.local_balance|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ channel.outbound_percent }}%</small></td>
       <td>
         <label>{{channel.capacity|intcomma}}</label>
         <div class="progress w3-round w3-grey">
           <span class="value w3-round w3-blue" style="width:{{channel.outbound_percent|default:"0"}}%"></span>
         </div>
       </td>
-      <td>{{ channel.remote_balance|intcomma }} ({{ channel.inbound_percent }}%)</td>
+      <td>{{ channel.remote_balance|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ channel.inbound_percent }}%</small></td>
       <td>{{ channel.unsettled_balance|intcomma }}</td>
       <td>{{ channel.local_fee_rate|intcomma }}</td>
       <td>{{ channel.local_base_fee|intcomma }}</td>
-      <td>{{ channel.o7D|intcomma }} M ({{ channel.routed_out_7day }})</td>
-      <td>{{ channel.i7D|intcomma }} M ({{ channel.routed_in_7day }})</td>
+      <td>{{ channel.o7D|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_out_7day }}</small></td>
+      <td>{{ channel.i7D|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_in_7day }}</small></td>
       <td>{{ channel.remote_fee_rate|intcomma }}</td>
       <td>{{ channel.remote_base_fee|intcomma }}</td>
       <td>
