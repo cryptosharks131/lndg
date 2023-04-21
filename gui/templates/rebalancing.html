@@ -14,13 +14,12 @@
           <th onclick="sortTable(this, 4, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(this, 6, 'int')">Inbound Liquidity</th>
-          <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
+          <th>Rebalance</th>
           <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-          <th onclick="sortTable(this, 9, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-          <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
-          <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
-          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
+          <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost</th>
+          <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target</th>
+          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">In Target</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
           <th onclick="sortTable(this, 16, 'String')">Active</th>
@@ -61,31 +60,34 @@
       </svg>
     </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
     }, base_ch_template, {
-    "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
-    "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-    "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} } ),
+    "rebalance": ch => {
+      let out = ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance
+      let _in = ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance
+      return {innerHTML: out ? 'Out' : _in ? `In <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : '---', style: {backgroundColor: out ? 'rgba(100,100,100,.15)' : _in ? 'rgba(56,139,253,0.15)' : red} }
+    },
+    "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, title: `Out: ${ch.local_fee_rate}ₚₚₘ\nIn: ${ch.remote_fee_rate}ₚₚₘ`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
     "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
-    "ar_max_cost": ch => ({innerHTML: `<input style="text-align:center" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/>`, 
+    "ar_max_cost": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/></span>`, 
       changed: function(new_value){
         updateCols(['ar_max_cost', 'fee_ratio'], this, new_value)
       }
     }),
-    "ar_out_target": ch => ({innerHTML: `<input style="text-align:center" name="AR out target %" id="target" type="number" min="1" max="100" value="${ch.ar_out_target}" onkeydown="update('ar_out_target')"/>`, style: {backgroundColor: !ch.auto_rebalance ? green : red},
+    "ar_out_target": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR out target %" id="target" type="number" min="1" max="100" value="${ch.ar_out_target}" onkeydown="update('ar_out_target')"/></span>`, style: {backgroundColor: !ch.auto_rebalance ? green : red},
       changed: function(new_value){
-        updateCols(['rebal_out', 'ar_out_target'], this, new_value)
+        updateCols(['rebalance', 'ar_out_target'], this, new_value)
         update_title(ch, new_value)
       }
     }),
-    "ar_in_target": ch => ({innerHTML: `<input style="text-align:center" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target')"/>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
+    "ar_in_target": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target')"/></span>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
       changed: function(new_value){
-        updateCols(['rebalance_in', 'ar_in_target'], this, new_value)
+        updateCols(['ar_in_target'], this, new_value)
         update_title(ch, new_value)
       }
     }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" name="Auto Rebalance" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="update('auto_rebalance')">`, style: {backgroundColor: ch.auto_rebalance ? green : red},
-    changed: function(new_value){
-      updateCols(['ar_in_target', 'rebalance_in', 'ar_out_target', 'rebal_out', 'auto_rebalance'], this, new_value)
-      update_title(ch, new_value)
+      changed: function(new_value){
+        updateCols(['ar_in_target', 'ar_out_target', 'rebalance', 'auto_rebalance'], this, new_value)
+        update_title(ch, new_value)
       }
     }),
     "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
