@@ -20,15 +20,15 @@
   </span>
 </div>
 <br/>
-<div class="w3-row" style="text-align:center">
-  <div class="w3-col l1 m1 s1" style="padding-top:10px">{{channel.local_balance|intcomma}} <small class="w3-round w3-border-small w3-border-grey">{{ channel.in_percent }}%</small></div>
+<div class="w3-row" style="text-align:center;max-width:1500px;">
+  <div class="w3-col l1 m1 s1" style="padding-top:10px">{{channel.local_balance|intcomma}} <small class="w3-round w3-border-small w3-border-grey">{{ channel.out_percent }}%</small></div>
   <div class="w3-col l10 m10 s10">
     <label >{{channel.capacity|intcomma}}</label>
     <div class="progress w3-round w3-grey">
       <span class="value w3-round w3-blue" style="width:{{channel.out_percent}}%"></span>
     </div>
   </div>
-  <div class="w3-col l1 m1 s1" style="padding-top:10px">{{channel.remote_balance|intcomma}} <small class="w3-round w3-border-small w3-border-grey">{{ channel.out_percent }}%</small></div>
+  <div class="w3-col l1 m1 s1" style="padding-top:10px">{{channel.remote_balance|intcomma}} <small class="w3-round w3-border-small w3-border-grey">{{ channel.in_percent }}%</small></div>
 </div>
 <br/>
 <div class="w3-row w3-container w3-padding-small" >
