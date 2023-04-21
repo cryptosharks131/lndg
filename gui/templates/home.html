@@ -90,7 +90,7 @@
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
-            <a href="#" onclick="event.target.parentElement.submit()">New Onchain Address</a>
+            <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true)})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true)})">Legacy</a>
           </form>
         </th>
       </tr>
@@ -155,14 +155,14 @@
           <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
           <th onclick="sortTable(event.target, 5, 'int')">Unsettled</th>
-          <th onclick="sortTable(event.target, 6, 'int')">oRate</th>
-          <th onclick="sortTable(event.target, 7, 'int')">oBase</th>
+          <th width=3% onclick="sortTable(event.target, 6, 'int')">oRate</th>
+          <th width=3% onclick="sortTable(event.target, 7, 'int')">oBase</th>
           <th onclick="sortTable(event.target, 8, 'm')">o1D</th>
-        <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
+          <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
           <th onclick="sortTable(event.target, 10, 'm')">o7D</th>
           <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
-          <th onclick="sortTable(event.target, 12, 'int')">iRate</th>
-          <th onclick="sortTable(event.target, 13, 'int')">iBase</th>
+          <th width=3% onclick="sortTable(event.target, 12, 'int')">iRate</th>
+          <th width=3% onclick="sortTable(event.target, 13, 'int')">iBase</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
           <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
         </tr>
@@ -213,7 +213,7 @@
         <th width=5%>Local Commit</th>
         <th width=5%>Local Reserve</th>
         <th width=5%>Opener</th>
-        <th width=5%>Up/Down</th>
+        <th width=5%>Status</th>
       </tr>
     </thead>
     <tbody id="private_channels"></tbody>
@@ -567,27 +567,22 @@
 </div>
 <script>
   const now = new Date(),
-    _1day_ago = new Date(now.setDate(now.getDate()-1)).getTime(),
-    _7days_ago = new Date(now.setDate(now.getDate()-7)).toISOString().substring(0,19)
+    _1day_ago = new Date(new Date().setDate(now.getDate()-1)).getTime(),
+    _7days_ago = new Date(new Date().setDate(now.getDate()-7)).toISOString().substring(0,19)
 
   const home_ch_base = Object.assign({}, base_ch_template, {
     "unsettled": ch => (ch.unsettled_balance > 0 ? {innerHTML: `${ch.unsettled_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.htlc_count}</span>`} : {innerHTML: `${ch.unsettled_balance.intcomma()}`, style: {color: 'gray'} }),
-    "oRate": ch => ({innerHTML: ch.local_fee_rate, style: {backgroundColor: ch.local_disabled ? red : null} }),
-    "oBase": ch => ({innerHTML: ch.local_base_fee, style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oRate": ch => ({innerHTML: `<span class="input" style="min-width:100px;max-width:120px;width:100%" data-unit="ₚₚₘ"><input style="text-align:left;width:100%" type="number" min="0" size="6" max="100000" value="${ch.local_fee_rate}" onkeydown="event.keyCode != 13? null : (Sync.POST('chanpolicy/', {body: {chan_id:'${ch.chan_id}', fee_rate: this.value}}, r => {flash(this, r.fee_rate);showBannerMsg('Out Fee Rate', r.fee_rate)}));"/></span>`, style: {backgroundColor: ch.local_disabled ? red : null} }),
+    "oBase": ch => ({innerHTML: ch.local_base_fee.intcomma(), style: {backgroundColor: ch.local_disabled ? red : null} }),
   })
   const detailed_ch_template = Object.assign({}, home_ch_base, {
-    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toFixed(2)}M (${ch.routed_out_1day})`, style: {color: ch.routed_out_1day > 0 ? `` : 'gray'} }),
-    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toFixed(2)}M (${ch.routed_in_1day})`, style: {color: ch.routed_in_1day > 0 ? `` : 'gray'} }),
-    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toFixed(2)}M (${ch.routed_out_7day})`, style: {color: ch.routed_out_7day > 0 ? `` : 'gray'} }),
-    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M (${ch.routed_in_7day})`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
+    "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_1day}</span>`, style: {color: ch.routed_out_1day > 0 ? `` : 'gray'} }),
+    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_1day}</span>`, style: {color: ch.routed_in_1day > 0 ? `` : 'gray'} }),
+    "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_7day}</span>`, style: {color: ch.routed_out_7day > 0 ? `` : 'gray'} }),
+    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</span>`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
-    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<form action="/update_channel/" method="post">
-      {% csrf_token %}
-      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target);showBannerMsg('AR inTarget%', r.ar_in_target)});">
-      <input type="hidden" name="chan_id" value="${ch.chan_id}">
-      <input type="hidden" name="update_target" value="3">
-    </form>`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
+    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : null} }),
   })
   let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
@@ -603,7 +598,7 @@
     "total_sent": ch => ({innerHTML: ch.total_sent.intcomma()}),
     "total_received": ch => ({innerHTML: ch.total_received.intcomma()})
   }, {local_commit, local_chan_reserve, initiator}, {
-    "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+    "is_active": ch => ({innerHTML: ch.is_active, title: (ch.is_active ? 'Up' : 'Down') + 'time: ' + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const routed_template = {
     "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
@@ -611,7 +606,7 @@
     "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
     "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
     "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
-    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_in}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
     "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
     "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
     "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
@@ -651,7 +646,7 @@
     "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
     "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
     "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
-    "chan_out_liq": htlc => ({innerHTML: `${htlc.chan_out_liq.intcomma()} (${htlc.chan_out_pending})`}),
+    "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} <small title="Pending at HTLC time" class="w3-round w3-border-small w3-border-grey">${htlc.chan_out_pending}</small>`}),
     "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
     "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
     "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
@@ -671,26 +666,25 @@
     container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
     return true
   }
+  function sumRoutedValues(forwards, ch, fields){
+    let earned = 0
+    for(field of fields) ch[field] = 0
+    for(f of forwards){
+      if(f.chan_id_in == ch.chan_id){
+        ch[fields[0]] += 1
+        ch[fields[2]] += f.amt_in_msat/1000
+      }
+      if(f.chan_id_out == ch.chan_id){
+        earned += f.fee
+        ch[fields[1]] += 1
+        ch[fields[3]] += f.amt_out_msat/1000
+      }
+    }
+    return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
+  }
   function build_active(channels, forwards7d){
     let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
-
-    function sumRoutedValues(forwards, ch, fields){
-      let earned = 0
-      for(field of fields) ch[field] = 0
-      for(f of forwards){
-        if(f.chan_id_in == ch.chan_id){
-          ch[fields[0]] += 1
-          ch[fields[2]] += f.amt_in_msat/1000
-        }
-        if(f.chan_id_out == ch.chan_id){
-          earned += f.fee
-          ch[fields[1]] += 1
-          ch[fields[3]] += f.amt_out_msat/1000
-        }
-      }
-      return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
-    }
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
     forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
@@ -722,6 +716,46 @@
     byId('public_capacity').innerHTML = sum.capacity.intcomma()
     return update_sum('active_', sum)
   }
+  function build_private(channels, forwards7d){
+    let act = {outbound: 0, inbound: 0}, ina = {outbound: 0, inbound: 0} 
+    let sum = {earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
+    if(!addTitle("Private Channels", channels)) return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
+
+    const forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
+    let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
+    channels.forEach(ch => {
+      capacity += ch.capacity
+      if(ch.is_active) {
+        active_count += 1
+        act.outbound += ch.local_balance
+        act.inbound += ch.remote_balance
+      }
+      else {
+        ina.outbound += ch.local_balance
+        ina.inbound += ch.remote_balance
+      }
+
+      var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
+      sum.earned.d1 += earned
+      sum.rOUTed.d1.amt += rOUTed.amt
+      sum.rOUTed.d1.count += rOUTed.count
+
+      var {rOUTed, earned} = sumRoutedValues(forwards7d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
+      sum.earned.d7 += earned
+      sum.rOUTed.d7.amt += rOUTed.amt
+      sum.rOUTed.d7.count += rOUTed.count
+      table.append(template.render(ch))
+    })
+
+    byId("total_channels").innerHTML = (byId("total_channels").innerHTML.toInt() - channels.length)
+    byId("public_channels_count").innerHTML = (byId("public_channels_count").innerHTML.toInt() - active_count)
+    byId("private_stats").insertAdjacentHTML('beforeend', `
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(act.outbound + ina.outbound).intcomma()}</span>
+      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
+
+    return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
+  }
   function build_inactive(channels){
     let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0}
     if(!addTitle("Inactive Channels", channels)) return sum
@@ -748,14 +782,14 @@
     return sum
   }
   async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
-    let offchain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
+    let offChain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
       if(new Date(p.creation_date).getTime() >= _1day_ago){
-        offchain.d1.fee += p.fee
-        offchain.d1.amt += p.value
+        offChain.d1.fee += p.fee
+        offChain.d1.amt += p.value
       } 
-      offchain.d7.fee += p.fee
-      offchain.d7.amt += p.value
+      offChain.d7.fee += p.fee
+      offChain.d7.amt += p.value
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
@@ -770,47 +804,32 @@
       }
       chainCosts.d7 += close.closing_costs
     }
-    const [public_outbound, total_bal] = [active.outbound+inactive.outbound || 1, byId('total_balance')]
-    byId('liq_ratio').innerHTML = ((active.inbound + inactive.inbound)*100/public_outbound).intcomma()+'%'
-    total_bal.innerHTML = (total_bal.innerHTML.toInt() + public_outbound + (private?.outbound||0)).intcomma()
+    function merge(obj, other){
+      const result = Object.assign({}, obj)
+    
+      for(let [key, value] of Object.entries(other)){
+        if(value instanceof Object) result[key] = merge(result[key], value) //deep sum
+        else result[key] = (result[key] || 0) + value 
+      }
+      return result
+    }
+    
+    const public = merge(active, inactive), sum = merge(public, private)
+    const [total_outbound, total_bal] = [sum.outbound || 1, byId('total_balance')]
+    byId('liq_ratio').innerHTML = (public.inbound*100/public.outbound||1).intcomma()+'%'
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + sum.outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
-      const [earned, fees, costs, routed] = [active.earned[`d${d}`], offchain[`d${d}`].fee, offchain[`d${d}`].fee + chainCosts[`d${d}`], active.rOUTed[`d${d}`]]
-      byId(`routed_${d}day`).innerHTML = `${routed.count.intcomma()} (${routed.amt.intcomma()} sats)`
+      const earned = sum.earned[`d${d}`], routed = sum.rOUTed[`d${d}`], chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
+      byId(`routed_${d}day`).innerHTML = `${routed.amt.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${routed.count.intcomma()}</span>`
       byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
-      byId(`fees_${d}day`).innerHTML = `${fees.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(fees*1000000/(offchain[`d${d}`].amt||1)).intcomma()}ₚₚₘ</small>`
-      byId(`onchain_costs_${d}day`).innerHTML = chainCosts[`d${d}`].intcomma()
-      byId(`percent_cost_${d}day`).innerHTML = (earned == 0 ? 0 : (costs*100/earned).intcomma())+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - fees)*1000000/public_outbound).intcomma()}</span> 
-        <span class="w3-round w3-border-small w3-border-grey">⚡${((earned - costs)*1000000/public_outbound).intcomma()}⛓️</span>`
-      byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/public_outbound).toFixed(1)).toLocaleString()+'%'
+      byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
+      byId(`onchain_costs_${d}day`).innerHTML = chaincosts.intcomma()
+      byId(`percent_cost_${d}day`).innerHTML = (earned ? costs*100/earned : 0).intcomma()+'%'
+      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}ₚₚₘ</span> 
+        <span class="w3-round w3-border-small w3-border-grey">⛓️${((earned - costs)*1000000/total_outbound).intcomma()}ₚₚₘ</span>`
+      byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/total_outbound).toFixed(1)).toLocaleString()+'%'
     }
-  }
-  function build_private(channels){
-    let active = {inbound: 0, outbound: 0, unsettled: 0}
-    let inactive = {inbound: 0, outbound: 0, unsettled: 0}
-    if(!addTitle("Private Channels", channels)) return
-
-    let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
-    channels.forEach(ch => {
-      capacity += ch.capacity
-      if(ch.is_active) {
-        active_count += 1
-        active.outbound += ch.local_balance
-      }
-      else {
-        inactive.outbound += ch.local_balance
-      }
-      table.append(template.render(ch))
-    })
-
-    for(el of [byId("total_channels"), byId("public_channels_count")]) el.innerHTML = (el.innerHTML.toInt() - channels.length)
-    byId("private_stats").insertAdjacentHTML('beforeend', `
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(active.outbound + inactive.outbound).intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
-
-    return {outbound: active.outbound + inactive.outbound}
   }
   async function build_routed(forwards7d){
     let remaining = 20-forwards7d.length, template = use(routed_template), forwards = forwards7d
@@ -833,8 +852,6 @@
     if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
     const table = byId('payments')
     for(p of payments.slice(0,10)){
-      if(p.status === 3) continue
-
       p.ppm = p.fee*1000000/p.value
       table.append(template.render(p))
     }
@@ -870,17 +887,15 @@
       ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
       ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
 
-      if(ch.is_open && !ch.private){
-        (ch.is_active ? active : inactive).push(ch)
-      }
-      else if(ch.is_open && ch.private) private.push(ch)
+      if(ch.private) private.push(ch)
+      else (ch.is_active ? active : inactive).push(ch)
     }
 
     byId("updates").innerHTML = updates.intcomma()
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
-    let [activeSum, inactiveSum, privateSum] = [build_active(active, forwards7d), build_inactive(inactive), build_private(private)]
+    let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards7d), build_private(private, forwards7d), build_inactive(inactive)]
     update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum)
     build_routed(forwards7d)
     build_payments(payments7d)

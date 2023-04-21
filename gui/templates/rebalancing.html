@@ -116,7 +116,7 @@
     if(selector !== 'auto_rebalance' && event.key !== 'Enter') return
     let element = event.target, tr = element.closest('tr'), body = {}; body[selector] = selector == 'auto_rebalance' ? element.value=='Enable' : element.value;
     const ch = await PUT(`channels/${tr.objId}`, {body})
-    tr.cells[selector].changed(extend(ch))
+    if (tr.cells[selector].changed) tr.cells[selector].changed(extend(ch))
     showBannerMsg(`${ch.alias}'s <u>${element.name}</u>`, ch[selector])
   }
   function update_title(was, is){

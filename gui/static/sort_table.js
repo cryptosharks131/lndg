@@ -18,7 +18,7 @@ function sortTable(header, n, type, skip=0, tag="td") {
             }   
             if (dir == "asc") {
                 if (type == "String" && curr_row.innerHTML.toLowerCase() > next_row.innerHTML.toLowerCase()
-                    || type == "int" && parseInt(curr_row.innerHTML.replace(/,/g, '')) > parseInt(next_row.innerHTML.replace(/,/g, ''))
+                    || type == "int" && parseFloat(curr_row.innerHTML.replace(/,/g, '')) > parseFloat(next_row.innerHTML.replace(/,/g, ''))
                     || type != "String" && type != "int" && Number(curr_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) > Number(next_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
                 {
                     shouldSwitch = true;
@@ -26,7 +26,7 @@ function sortTable(header, n, type, skip=0, tag="td") {
                 }
             } else if (dir == "desc") {
                 if (type == "String" && curr_row.innerHTML.toLowerCase() < next_row.innerHTML.toLowerCase()
-                    || type == "int" && parseInt(curr_row.innerHTML.replace(/,/g, '')) < parseInt(next_row.innerHTML.replace(/,/g, ''))
+                    || type == "int" && parseFloat(curr_row.innerHTML.replace(/,/g, '')) < parseFloat(next_row.innerHTML.replace(/,/g, ''))
                     || type != "String" && type != "int" && Number(curr_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, '')) < Number(next_row.innerHTML.toLowerCase().split(type)[0].replace(/,/g, ''))) 
                 {
                     shouldSwitch = true;

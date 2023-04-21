@@ -69,7 +69,7 @@
       } 
     };
     document.addEventListener('DOMContentLoaded', async () => {
-      const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}'}})
+      const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:'{{last_hop_pubkey}}' }})
       if(res.errors) return
       if(res.results.length == 0){
         document.getElementById("rebalances_div_{{count}}").innerHTML = `<center><h1>You dont have any ${statuses['{{status}}']} rebalances yet.</h1></center>`
