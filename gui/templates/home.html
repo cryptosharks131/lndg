@@ -16,6 +16,9 @@
       byId('qrcode').replaceChildren()
       byId('qrcode').style.display = 'none'
     }
+    function qr_addr(addr){
+      var qrcode = new QRCode(byId(addr), {text:addr, width:256, height:256})
+    }
   </script>
     <h3>
       <span style="font-size: 12px;vertical-align: middle; padding-left: 18px; border:1px solid {{ node_info.color }}; background-color: {{ node_info.color }}" class="w3-circle" title="{{ node_info.color }}"></span>
@@ -90,7 +93,7 @@
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
-            <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true)})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true)})">Legacy</a>
+            <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true, r.data);qr_addr(r.data);})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true, r.data);qr_addr(r.data);})">Legacy</a>
           </form>
         </th>
       </tr>

@@ -458,10 +458,24 @@ def peers(request):
 def balances(request):
     if request.method == 'GET':
         stub = walletstub.WalletKitStub(lnd_connect())
+        pending_sweeps = stub.PendingSweeps(walletrpc.PendingSweepsRequest()).pending_sweeps
+        sweeps = []
+        for pending_sweep in pending_sweeps:
+            sweep = {}
+            sweep['txid_str'] = pending_sweep.outpoint.txid_bytes.hex()
+            sweep['amount_sat'] = pending_sweep.amount_sat
+            sweep['witness_type'] = pending_sweep.witness_type
+            sweep['requested_sat_per_vbyte'] = pending_sweep.requested_sat_per_vbyte
+            sweep['sat_per_vbyte'] = pending_sweep.sat_per_vbyte
+            sweep['requested_conf_target'] = pending_sweep.requested_conf_target
+            sweep['broadcast_attempts'] = pending_sweep.broadcast_attempts
+            sweep['next_broadcast_height'] = pending_sweep.next_broadcast_height
+            sweep['force'] = pending_sweep.force
+            sweeps.append(sweep)
         context = {
             'utxos': stub.ListUnspent(walletrpc.ListUnspentRequest(min_confs=0, max_confs=9999999)).utxos,
             'transactions': list(Onchain.objects.filter(block_height=0)) + list(Onchain.objects.exclude(block_height=0).order_by('-block_height')),
-            'pending_sweeps': stub.PendingSweeps(walletrpc.PendingSweepsRequest()).pending_sweeps,
+            'pending_sweeps': sweeps,
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'network_links': network_links()
         }

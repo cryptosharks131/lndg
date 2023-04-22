@@ -26,9 +26,9 @@
     </tr>
     {% for sweep in pending_sweeps %}
     <tr>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.outpoint.txid_str }}" target="_blank">{{ sweep.outpoint.txid_bytes }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.txid_str }}" target="_blank">{{ sweep.txid_str }}</a></td>
       <td>{{ sweep.amount_sat|intcomma }}</td>
-      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% else %}{{ sweep.witness_type }}{% endif %}</td>
+      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
       <td>{% if sweep.requested_sat_per_vbyte == 0 %}---{% else %}{{ sweep.requested_sat_per_vbyte|intcomma }}{% endif %}</td>
       <td>{{ sweep.sat_per_vbyte|intcomma }}</td>
       <td>{{ sweep.requested_conf_target|intcomma }}</td>
