@@ -1,6 +1,7 @@
 //HELPER FUNCTIONS
 function byId(id){ return document.getElementById(id) }
 String.prototype.toInt = function(){ return parseInt(this.replace(/,/g,''))}
+String.prototype.toBool = function(if_false = 0){ return this && /^true$/i.test(this) ? 1 : if_false}
 String.prototype.default = function(value){ return (this || '').length === 0 ? value : this}
 Number.prototype.intcomma = function(){ return parseInt(this).toLocaleString() }
 HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
@@ -9,11 +10,11 @@ HTMLElement.prototype.cloneNode = function(attrs){
   Object.keys(attrs).forEach(k => el[k] = attrs[k])
   return el
 }
-HTMLElement.prototype.apply = function(transforms){
+HTMLElement.prototype.render = function(transforms){
   for(key in transforms){
     const value = transforms[key]
     if(value instanceof HTMLElement) this.append(value)
-    else if (key == 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
+    else if (key === 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
     else this[key] = value
   }
 }
@@ -46,12 +47,14 @@ async function toggle(button){
 }
 function use(transformations){
   return { 
-    render: function(object, row = null){
+    render: function(object, id='id', row = null){
       const tr = row ?? document.createElement("tr")
+      tr.objId = object[id]
       for (id in transformations){
         const transforms = transformations[id](object)
         const td = document.createElement("td")
-        td.apply(transforms)
+        td.setAttribute('name', id)
+        td.render(transforms)
         tr.append(td)
       }
       return tr
