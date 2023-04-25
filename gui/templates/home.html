@@ -658,9 +658,6 @@
     "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
     "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
   }
-  function toggleAR(button){
-    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, ch => button.parentElement.changed(ch))
-  }
   function addTitle(id, results, title = null){
     const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
     if (results.length == 0) {
