@@ -45,15 +45,15 @@ async function toggle(button){
     button.children[1].style.visibility = 'collapse'
   }
 }
-function use(transformations){
+function use(template){
   return { 
     render: function(object, id='id', row = null){
       const tr = row ?? document.createElement("tr")
       tr.objId = object[id]
-      for (id in transformations){
-        const transforms = transformations[id](object)
+      for (key in template){
+        const transforms = template[key](object)
         const td = document.createElement("td")
-        td.setAttribute('name', id)
+        td.setAttribute('name', key)
         td.render(transforms)
         tr.append(td)
       }

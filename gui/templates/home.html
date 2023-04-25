@@ -585,8 +585,12 @@
     "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</small>`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
-    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray'} }),
-    "auto_rebalance": ch => ({innerHTML: `<input type="submit" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="toggleAR(this)">`, style: {backgroundColor: ch.auto_rebalance ? green : null} }),
+    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="Sync.PUT('channels/${ch.chan_id}', {body:{auto_rebalance: ${!ch.auto_rebalance} }}, ch => this.parentElement.changed(ch))">`, style: {backgroundColor: ch.auto_rebalance ? green : null},
+      changed: function(newVal) {
+        ['ar_in_target', 'auto_rebalance'].forEach(col => this.parentElement.cells[col].render(detailed_ch_template[col](newVal)))
+      }
+    }),
   })
   let {iRate, iBase, ar_in_target, auto_rebalance} = detailed_ch_template
   const inactive_ch_template = Object.assign({}, home_ch_base, {iRate, iBase}, {
@@ -655,10 +659,7 @@
     "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
   }
   function toggleAR(button){
-    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, function (ch) { 
-      button.parentElement.previousElementSibling.apply(detailed_ch_template.ar_in_target(ch))
-      button.parentElement.apply(detailed_ch_template.auto_rebalance(ch))
-    })
+    Sync.PUT(`channels/${button.dataset.chanId}`, {body:{auto_rebalance: button.value == 'Enable' }}, ch => button.parentElement.changed(ch))
   }
   function addTitle(id, results, title = null){
     const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
