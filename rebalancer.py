@@ -240,7 +240,7 @@ def auto_schedule() -> List[Rebalancer]:
                 # TLDR: willing to pay 1 sat for every value_per_fee sats moved
                 if Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).exists():
                     last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
-                    if not (last_rebalance.status == 2 or (last_rebalance.status in [3, 4, 5, 6, 7, 400, 408, 499] and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > wait_period)) or (last_rebalance.status == 1 and (int((datetime.now() - last_rebalance.start).total_seconds() / 60) > wait_period))):
+                    if not (last_rebalance.status == 2 or (last_rebalance.status > 2 and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > wait_period)) or (last_rebalance.status == 1 and ((int((datetime.now() - last_rebalance.start).total_seconds() / 60) + last_rebalance.duration) > wait_period))):
                         continue
                 print(f"{datetime.now().strftime('%c')} : Creating Auto Rebalance Request for: {target.chan_id}")
                 print(f"{datetime.now().strftime('%c')} : Request routing through: {outbound_cans}")
@@ -320,25 +320,29 @@ def get_pending_rebals():
         print(f"{datetime.now().strftime('%c')} : Error getting pending rebalances: {str(e)}")
 
 shutdown_rebalancer = False
+scheduled_rebalances = []
 active_rebalances = []
 async def async_queue_manager(rebalancer_queue):
-    global shutdown_rebalancer
+    global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     print(f"{datetime.now().strftime('%c')} : Queue manager is starting...")
-    pending_rebalances, rebal_count = await get_pending_rebals()
-    if rebal_count > 0:
-        for rebalance in pending_rebalances:
-            await rebalancer_queue.put(rebalance)
     try:
         while True:
-            global active_rebalances
             print(f"{datetime.now().strftime('%c')} : Queue currently has {rebalancer_queue.qsize()} items...")
             print(f"{datetime.now().strftime('%c')} : There are currently {len(active_rebalances)} tasks in progress...")
             print(f"{datetime.now().strftime('%c')} : Queue manager is checking for more work...")
+            pending_rebalances, rebal_count = await get_pending_rebals()
+            if rebal_count > 0:
+                for rebalance in pending_rebalances:
+                    if rebalance.id not in (scheduled_rebalances + active_rebalances):
+                        print(f"{datetime.now().strftime('%c')} : Found a pending job to schedule with id: {rebalance.id}")
+                        scheduled_rebalances.append(rebalance.id)
+                        await rebalancer_queue.put(rebalance)
             await auto_enable()
             scheduled = await auto_schedule()
             if len(scheduled) > 0:
                 print(f"{datetime.now().strftime('%c')} : Scheduling {len(scheduled)} more jobs...")
                 for rebalance in scheduled:
+                    scheduled_rebalances.append(rebalance.id)
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
                 print(f"{datetime.now().strftime('%c')} : Queue is still empty, stoping the rebalancer...")
@@ -353,7 +357,7 @@ async def async_queue_manager(rebalancer_queue):
 
 async def async_run_rebalancer(worker, rebalancer_queue):
     while True:
-        global active_rebalances, shutdown_rebalancer
+        global scheduled_rebalances, active_rebalances, shutdown_rebalancer
         if not rebalancer_queue.empty():
             rebalance = await rebalancer_queue.get()
             print(f"{datetime.now().strftime('%c')} : {worker} is starting a new request...")
@@ -361,6 +365,7 @@ async def async_run_rebalancer(worker, rebalancer_queue):
             if rebalance != None:
                 active_rebalance_id = rebalance.id
                 active_rebalances.append(active_rebalance_id)
+                scheduled_rebalances.remove(active_rebalance_id)
             while rebalance != None:
                 rebalance = await run_rebalancer(rebalance, worker)
             if active_rebalance_id != None:
