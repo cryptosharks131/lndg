@@ -6,6 +6,19 @@
   <script id="api" data-token="{{csrf_token}}" src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
   <script src="{% static 'dark_mode.js' %}"></script>
+  <script src="{% static 'helpers.js' %}"></script>
+  <script>
+    const base_ch_template = {
+      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
+      "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_outbound}%</small>`}),
+      "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
+      <div class="progress w3-round w3-grey">
+        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+      </div>`}),
+      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</small>`})
+    }
+  </script>
   <script src="{% static 'qrcode.js' %}"></script>
   <head>
     <meta charset="utf-8">
@@ -40,7 +53,7 @@
   <footer>
     <div id="footer">
       <div class="w3-container w3-padding-small">
-        <center><button onclick="toggleTheme()">Toggle dark mode</button></center>
+        <center><button id="toggleTheme" onclick="toggleTheme()">Toggle dark mode</button></center>
       </div>
       <div class="w3-container w3-padding-small">
         <center>LNDg v1.7.0</center>
@@ -48,21 +61,13 @@
     </div>
   </footer>
   <script>
+    //BASE CONFIG
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
         const el = evt.currentTarget, sT = el.scrollTop;
         el.querySelectorAll("thead th").forEach(th => th.style.transform = sT != 0 ? 'scale(1.05, 1.2)' : 'scale(1, 1)')
       })
     )
-    function sleep(ms){
-      return new Promise(res => setTimeout(res, ms));
-    }
-    HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
-    HTMLElement.prototype.cloneNode = function(attrs){
-      const el = this.defaultCloneNode(this)
-      Object.keys(attrs).forEach(k => el[k] = attrs[k])
-      return el
-    }
     const modes = {'soft-encrypted': 'soft', encrypted: 'hard'}
     document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
@@ -79,48 +84,7 @@
       if (document.cookie.includes("privacy=soft")) document.body.classList.toggle("soft-encrypted")
       else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
     })
-
-    async function toogle(button){
-      try{
-        button.children[0].style.visibility = 'collapse';
-        button.children[1].style.visibility = 'visible';
-        navigator.clipboard.writeText(button.getAttribute('data-value'))
-        await sleep(1000)
-      }
-      catch(e){
-        alert(button.getAttribute('data-value'))
-      }
-      finally{
-        button.children[0].style.visibility = 'visible';
-        button.children[1].style.visibility = 'collapse'
-      }
-    }
-    function use(transformations){
-      return { 
-        fillWith(object, row = null){
-          const tr = row ?? document.createElement("tr")
-          for (id in transformations){
-            const td = document.createElement("td")
-            const transforms = transformations[id](object)
-            tr.append(td)
-            for(key in transforms){
-              const value = transforms[key]
-              if(value instanceof HTMLElement){
-                td.append(value)
-              }
-              else if (key == 'style'){
-                for(prop of Object.keys(value)){
-                  td[key][prop] = value[prop]
-                }
-              }
-              else{
-                td[key] = value
-              }
-            }
-          }
-          return tr
-        }
-      }
-    }
+    //END: BASE CONFIG
+    //-------------------------------------------------------------------------------------------------------------------------
   </script>
 </html>
