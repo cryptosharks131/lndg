@@ -332,6 +332,7 @@ def update_channels(stub):
         if old_fee_rate is not None and old_fee_rate != local_policy.fee_rate_milli_msat:
             print(f"{datetime.now().strftime('%c')} : Ext Fee Change Detected {db_channel.chan_id=} {db_channel.alias=} {old_fee_rate=} {db_channel.local_fee_rate=}")
             #External Fee change detected, update auto fee log
+            db_channel.fees_updated = datetime.now()
             Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
         db_channel.save()
         counter += 1

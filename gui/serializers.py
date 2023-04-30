@@ -71,6 +71,7 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     remote_max_htlc_msat = serializers.ReadOnlyField()
     alias = serializers.ReadOnlyField()
     fees_updated = serializers.ReadOnlyField()
+    opened_in = serializers.SerializerMethodField()
     ar_max_cost = serializers.IntegerField(required=False)
     ar_amt_target = serializers.IntegerField(required=False)
     ar_out_target = serializers.IntegerField(required=False)
@@ -79,6 +80,9 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Channels
         exclude = []
+
+    def get_opened_in(self, obj):
+        return int(obj.short_chan_id.split('x')[0])
 
 class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()

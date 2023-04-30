@@ -1321,7 +1321,7 @@ def opens(request):
         current_peers = Channels.objects.filter(is_open=True).values_list('remote_pubkey')
         exlcude_list = AvoidNodes.objects.values_list('pubkey')
         filter_60day = datetime.now() - timedelta(days=60)
-        payments_60day = Payments.objects.filter(creation_date__gte=filter_60day).values_list('payment_hash')
+        payments_60day = Payments.objects.filter(creation_date__gte=filter_60day, status=2).values_list('payment_hash')
         open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).exclude(node_pubkey__in=exlcude_list).values('node_pubkey').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000, score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField()), count=Count('id'), amount=Sum('amt'), fees=Sum('fee'), sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000), alias=Max('alias')).exclude(score=0).order_by('-score', 'ppm')[:21]
         context = {
             'open_list': open_list,
