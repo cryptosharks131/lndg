@@ -186,6 +186,8 @@ def update_channels(stub):
             db_channel.output_index = index
             db_channel.capacity = channel.capacity
             db_channel.private = channel.private
+            db_channel.push_amt = channel.push_amount_sat
+            db_channel.close_address = channel.close_address
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
         # Update basic channel data
         db_channel.local_balance = channel.local_balance

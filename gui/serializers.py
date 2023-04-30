@@ -71,6 +71,8 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     remote_max_htlc_msat = serializers.ReadOnlyField()
     alias = serializers.ReadOnlyField()
     fees_updated = serializers.ReadOnlyField()
+    push_amt = serializers.ReadOnlyField()
+    close_address = serializers.ReadOnlyField()
     ar_max_cost = serializers.IntegerField(required=False)
     ar_amt_target = serializers.IntegerField(required=False)
     ar_out_target = serializers.IntegerField(required=False)

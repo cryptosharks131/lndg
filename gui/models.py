@@ -96,6 +96,8 @@ class Channels(models.Model):
     remote_cltv = models.IntegerField()
     remote_min_htlc_msat = models.BigIntegerField()
     remote_max_htlc_msat = models.BigIntegerField()
+    push_amt = models.BigIntegerField()
+    close_address = models.CharField(max_length=100)
     is_active = models.BooleanField()
     is_open = models.BooleanField()
     last_update = models.DateTimeField()
