@@ -154,7 +154,7 @@
       <th>Active</th>
     </tr>
     <tr>
-      <td {% if channel.auto_fees == False %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.auto_fees == False %}rgba(248,81,73,0.15){% else %}rgba(56,139,253,0.15){% endif %}">
         <form action="/update_channel/" method="post">
           {% csrf_token %}
           <input type="submit" value="{% if channel.auto_fees == True %}Disable{% else %}Enable{% endif %}">
@@ -163,14 +163,14 @@
           <input type="hidden" name="target" value="0">
         </form>
       </td>
-      <td {% if channel.eligible == True %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>{{ channel.fees_updated|naturaltime }}</td>
+      <td style="background-color: {% if channel.eligible == True %}rgba(248,81,73,0.15){% else %}rgba(56,139,253,0.15){% endif %}">{{ channel.fees_updated|naturaltime }}</td>
       <td>{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}{% if channel.net_routed_7day != 0 %} | {{ channel.net_routed_7day }}{% endif %}</td>
       <td>{{ channel.out_rate }}</td>
       <td>{{ channel.rebal_ppm }}</td>
       <td>{{ channel.assisted_ratio }}</td>
       <td>{{ channel.adjustment }}</td>
       <td>{{ channel.new_rate|intcomma }}</td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.local_disabled == True %}rgba(248,81,73,0.15){% else %}rgba(56,139,253,0.15){% endif %}">
         {% if channel.is_active == True %}
           <form action="/update_channel/" method="post">
             {% csrf_token %}
@@ -183,18 +183,18 @@
           ---
         {% endif %}
       </td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.local_disabled == True %}rgba(248,81,73,0.15){% else %}rgba(56,139,253,0.15){% endif %}">
         <form action="/update_channel/" method="post">
           {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
+          <input style="text-align:center" id="target" type="number" min="0" size="6" max="100000" name="target" value="{{ channel.local_fee_rate }}">
           <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
           <input type="hidden" name="update_target" value="1">
         </form>
       </td>
-      <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.local_disabled == True %}rgba(248,81,73,0.15){% else %}rgba(56,139,253,0.15){% endif %}">
         <form action="/update_channel/" method="post">
           {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
+          <input style="text-align:center" id="target" type="number" min="0" size="6" max="100000" name="target" value="{{ channel.local_base_fee }}">
           <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
           <input type="hidden" name="update_target" value="0">
         </form>
@@ -204,7 +204,7 @@
       <td>
         <form action="/update_channel/" method="post">
           {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
+          <input style="text-align:center" id="target" type="number" min="0" size="9" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
           <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
           <input type="hidden" name="update_target" value="2">
         </form>
@@ -212,28 +212,28 @@
       <td>
         <form action="/update_channel/" method="post">
           {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_max_cost }}">
+          <input style="text-align:center" id="target" type="number" min="0" size="3" max="100" name="target" value="{{ channel.ar_max_cost }}">
           <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
           <input type="hidden" name="update_target" value="6">
         </form>
       </td>
-      <td {% if channel.auto_rebalance == False %}style="background-color: rgba(56,139,253,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.auto_rebalance == False %}rgba(56,139,253,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_out_target }}">
+            <input style="text-align:center" id="target" type="number" min="0" size="3" max="100" name="target" value="{{ channel.ar_out_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="4">
           </form>
       </td>
-      <td {% if channel.auto_rebalance == True %}style="background-color: rgba(56,139,253,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.auto_rebalance == True %}rgba(56,139,253,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="{{ channel.ar_in_target }}">
+            <input style="text-align:center" id="target" type="number" min="0" size="3" max="100" name="target" value="{{ channel.ar_in_target }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="3">
           </form>
       </td>
-      <td {% if channel.auto_rebalance == True %}style="background-color: rgba(56,139,253,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
+      <td style="background-color: {% if channel.auto_rebalance == True %}rgba(56,139,253,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
         <form action="/update_channel/" method="post">
           {% csrf_token %}
           <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
@@ -242,7 +242,7 @@
           <input type="hidden" name="target" value="0">
         </form>
       </td>
-      <td {% if channel.inbound_can >= 1 and channel.fee_check < 100 and channel.auto_rebalance == True %}style="background-color: rgba(56,139,253,0.15)">True <small class="w3-round w3-border-small w3-border-grey">{{ channel.steps }}</small>{% else %}style="background-color: rgba(248,81,73,0.15);">False{% endif %}</td>
+      <td style="background-color: {% if channel.inbound_can >= 1 and channel.fee_check < 100 and channel.auto_rebalance == True %}rgba(56,139,253,0.15){% else %}rgba(248,81,73,0.15){% endif %}">{% if channel.inbound_can >= 1 and channel.fee_check < 100 and channel.auto_rebalance == True %}True{% else %}False{% endif %} <small class="w3-round w3-border-small w3-border-grey">{{ channel.steps }}</small></td>
       <td title="{% if channel.is_active == True %}Uptime: {{ channel.last_update|naturaltime|slice:":-4" }}{% else %}Downtime: {{ channel.last_update|naturaltime|slice:":-4" }}{% endif %}" {% if channel.is_active  == True %}style="background-color: rgba(56,139,253,0.15)">True{% else %}style="background-color: rgba(248,81,73,0.15);">False{% endif %}</td>
     </tr>
   </table>
@@ -467,7 +467,7 @@
       <th>Old Value</th>
       <th>New Value</th>
       <th>Change</th>
-      <th width=13% title="Outbound | Inbound"">Channel Liquidity</th>
+      <th width=13% title="Outbound | Inbound">Channel Liquidity</th>
     </tr>
     {% for log in peer_events %}
     <tr>
