@@ -851,11 +851,11 @@ forwards as (
 select strftime('%Y-%m-%d %H:00:00',forward_date) dt, 0 cost, fee offchain, 0 onchain, fee total from gui_forwards
 ),
 closes as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance-cl.closing_costs offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_closures cl
 join gui_onchain oc on cl.closing_tx = oc.tx_hash
 ),
 FCloses as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_resolutions rs
+select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, cl.closing_costs cost, -cl.settled_balance-cl.closing_costs offchain, cl.settled_balance onchain, -cl.closing_costs total from gui_resolutions rs
 join gui_onchain oc on rs.sweep_txid = oc.tx_hash
 left join gui_closures cl on cl.chan_id = rs.chan_id
 group by rs.chan_id
