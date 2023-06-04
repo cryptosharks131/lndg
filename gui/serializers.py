@@ -71,6 +71,7 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     remote_max_htlc_msat = serializers.ReadOnlyField()
     alias = serializers.ReadOnlyField()
     fees_updated = serializers.ReadOnlyField()
+    opened_in = serializers.SerializerMethodField()
     ar_max_cost = serializers.IntegerField(required=False)
     ar_amt_target = serializers.IntegerField(required=False)
     ar_out_target = serializers.IntegerField(required=False)
@@ -79,6 +80,9 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Channels
         exclude = []
+
+    def get_opened_in(self, obj):
+        return int(obj.short_chan_id.split('x')[0])
 
 class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
@@ -110,11 +114,26 @@ class BumpFeeSerializer(serializers.Serializer):
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 
+class BroadcastTXSerializer(serializers.Serializer):
+    raw_tx = serializers.CharField(label='raw_tx')
+
 class AddInvoiceSerializer(serializers.Serializer):
     value = serializers.IntegerField(label='value')
 
 class UpdateAliasSerializer(serializers.Serializer):
     peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
+
+class UpdateChanPolicy(serializers.Serializer):
+    chan_id = serializers.CharField(max_length=20)
+    base_fee = serializers.IntegerField(required=False, default=None)
+    fee_rate = serializers.IntegerField(required=False, default=None)
+    disabled = serializers.IntegerField(required=False, default=None)
+    cltv = serializers.IntegerField(required=False, default=None)
+    min_htlc = serializers.FloatField(required=False, default=None)
+    max_htlc = serializers.FloatField(required=False, default=None)
+
+class NewAddressSerializer(serializers.Serializer):
+    legacy = serializers.BooleanField(required=False, default=False)
 
 class PeerSerializer(serializers.HyperlinkedModelSerializer):
     pubkey = serializers.ReadOnlyField()

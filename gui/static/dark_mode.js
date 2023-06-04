@@ -21,5 +21,5 @@ function applyTheme(){
 function toggleTheme() {
   var element = document.body;
   element.classList.toggle("dark-mode")
-  document.cookie = `darkmode=${element.classList.contains("dark-mode")}`
+  document.cookie = `darkmode=${element.classList.contains("dark-mode")};max-age=34560000`
 }

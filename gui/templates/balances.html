@@ -2,12 +2,50 @@
 {% block title %} {{ block.super }} - Balances{% endblock %}
 {% block content %}
 {% load humanize %}
+<button style="position:absolute;top:50px;right:50px;" id="open" class="open-button" onclick="openForm()">Broadcast Transaction</button>
+<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background:white" id="tx" class="w3-round w3-container">
+    <h1>Broadcast A Raw Transaction</h1>
+    <input id="raw_tx" type="text" placeholder="Raw TX Data" name="raw_tx" required>
+    <button type="button" class="btn" onclick="broadcastTx()">Broadcast</button>
+    <button type="button" class="btn cancel" onclick="closeForm()">Cancel</button>
+</div>
+{% if pending_sweeps %}
+<div class="w3-container w3-padding-small">
+  <h2>Pending Sweeps</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th width=40%>Outpoint</th>
+      <th>Amount</th>
+      <th>Type</th>
+      <th>Requested Rate</th>
+      <th>Target Rate</th>
+      <th>Conf Target</th>
+      <th>Total Attempts</th>
+      <th>Next Attempt</th>
+      <th>Force</th>
+    </tr>
+    {% for sweep in pending_sweeps %}
+    <tr>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.txid_str }}" target="_blank">{{ sweep.txid_str }}</a></td>
+      <td>{{ sweep.amount_sat|intcomma }}</td>
+      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
+      <td>{% if sweep.requested_sat_per_vbyte == 0 %}---{% else %}{{ sweep.requested_sat_per_vbyte|intcomma }}{% endif %}</td>
+      <td>{{ sweep.sat_per_vbyte|intcomma }}</td>
+      <td>{{ sweep.requested_conf_target|intcomma }}</td>
+      <td>{{ sweep.broadcast_attempts|intcomma }}</td>
+      <td>{{ sweep.next_broadcast_height|intcomma }}</td>
+      <td>{% if sweep.force %}Yes{% else %}No{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 {% if utxos %}
 <div class="w3-container w3-padding-small">
   <h2>Balances</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th width=30%>Address</th>
+      <th width=30%><a href="/addresses" target="_blank">Addresses</a></th>
       <th>Amount</th>
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
@@ -69,6 +107,24 @@
     await POST('bumpfee', {body: {"target_fee":target_fee,"txid":txid,"index":index}})
     showBannerMsg('Fee rate for tx '+txid, target_fee)
     form.innerHTML = 'Updating...'
+  }
+  function openForm(){
+    byId("tx").style.display = "block";
+    byId("open").style.display = "none";
+  }
+  function closeForm(){
+    byId("open").style.display = "block";
+    byId("tx").style.display = "none";
+  }
+  function broadcastTx(){
+    tx_data = byId("raw_tx").value
+    byId("raw_tx").value = ''
+    Sync.POST('broadcast_tx', {body:{"raw_tx":tx_data}}, returnMsg)
+  }
+  function returnMsg(msg){
+    if(msg.error) showBannerMsg('', msg.error, true)
+    if(msg.message) showBannerMsg('', msg.message, true)
+    closeForm()
   }
 </script>
 {% endblock %}

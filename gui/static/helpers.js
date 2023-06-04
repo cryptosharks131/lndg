@@ -1,6 +1,7 @@
 //HELPER FUNCTIONS
 function byId(id){ return document.getElementById(id) }
 String.prototype.toInt = function(){ return parseInt(this.replace(/,/g,''))}
+String.prototype.toBool = function(if_false = 0){ return this && /^true$/i.test(this) ? 1 : if_false}
 String.prototype.default = function(value){ return (this || '').length === 0 ? value : this}
 Number.prototype.intcomma = function(){ return parseInt(this).toLocaleString() }
 HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
@@ -9,11 +10,11 @@ HTMLElement.prototype.cloneNode = function(attrs){
   Object.keys(attrs).forEach(k => el[k] = attrs[k])
   return el
 }
-HTMLElement.prototype.apply = function(transforms){
+HTMLElement.prototype.render = function(transforms){
   for(key in transforms){
     const value = transforms[key]
     if(value instanceof HTMLElement) this.append(value)
-    else if (key == 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
+    else if (key === 'style') for(prop of Object.keys(value)){ this[key][prop] = value[prop] }
     else this[key] = value
   }
 }
@@ -46,20 +47,23 @@ async function toggle(button){
 }
 function use(transformations){
   return { 
-    render: function(object, row = null){
+    render: function(object, id='id', row = null){
       const tr = row ?? document.createElement("tr")
+      tr.objId = object[id]
       for (id in transformations){
         const transforms = transformations[id](object)
         const td = document.createElement("td")
-        td.apply(transforms)
+        td.setAttribute('name', id)
+        td.render(transforms)
         tr.append(td)
       }
       return tr
     }
   }
 }
-function showBannerMsg(h1Msg, result){
-  document.getElementById('content').insertAdjacentHTML("beforebegin", `<div style="top:5px" class="message w3-panel w3-orange w3-display-container"><span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span><h1 style="word-wrap: break-word">${h1Msg} updated to: ${result}</h1></div>`);
+function showBannerMsg(h1Msg, result, generic=false, id="bannerMsg"){
+  if(!generic) h1Msg = `${h1Msg} updated to:`
+  document.getElementById('content').insertAdjacentHTML("beforebegin", `<div style="top:5px;padding:10px;" id="${id}" class="message w3-panel w3-orange w3-display-container"><span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span><h1 style="word-wrap: break-word">${h1Msg} ${result}</h1></div>`);
   window.scrollTo(0, 0);
 }
 function flash(element, response){
