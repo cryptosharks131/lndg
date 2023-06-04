@@ -14,9 +14,6 @@
         <th onclick="sortTable(event.target, 3, 'int', 0, 'label')" width=10%>Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
         <th onclick="sortTable(event.target, 5, ' | ')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
-        <th onclick="sortTable(event.target, 6, 'int')" title="The average rate earned outgoing on this channel">Out Rate</th>
-        <th onclick="sortTable(event.target, 7, 'int')" title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
-        <th onclick="sortTable(event.target, 8, 'int')" title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
         <th onclick="sortTable(event.target, 9, 'int')">Adjustment</th>
         <th onclick="sortTable(event.target, 10, 'int')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
         <th>oRate</th>
@@ -47,9 +44,6 @@
         </td>
         <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
         <td>{% if channel.net_routed_7day != 0 %}{{ channel.net_routed_7day }} | {% endif %}{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}</td>
-        <td>{{ channel.out_rate }}</td>
-        <td>{{ channel.rebal_ppm }}</td>
-        <td>{{ channel.assisted_ratio }}</td>
         <td>{{ channel.adjustment }}</td>
         <td>{{ channel.new_rate|intcomma }}</td>
         <td>
