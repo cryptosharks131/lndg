@@ -9,6 +9,15 @@
     <button type="button" class="btn" onclick="broadcastTx()">Broadcast</button>
     <button type="button" class="btn cancel" onclick="closeForm()">Cancel</button>
 </div>
+<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background:white" id="calc" class="w3-round w3-container">
+  <h1>Estimate A Fee Bump</h1>
+  <input id="desired" type="number" placeholder="Desired Fee Rate" name="desired" required>
+  <input id="fees_paid" type="number" placeholder="Parent TX Fees" name="fees_paid" required>
+  <input id="parent_size" type="number" placeholder="Parent TX Size" name="parent_size" required>
+  <button type="button" class="btn" onclick="calcFee()">Estimate</button>
+  <button type="button" class="btn cancel" onclick="closeCalcForm()">Cancel</button>
+  <h2 style="display:none" id="estimated"></h2>
+</div>
 {% if pending_sweeps %}
 <div class="w3-container w3-padding-small">
   <h2>Pending Sweeps</h2>
@@ -49,7 +58,7 @@
       <th>Amount</th>
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
-      <th>Fee Bumps</th>
+      <th>Fee Bumps <span onclick="calcForm()" style="font-size:40px; float: right; margin-right: 10px;cursor: pointer;">🖩</span></th>
     </tr>
     {% for utxo in utxos %}
     <tr>
@@ -125,6 +134,23 @@
     if(msg.error) showBannerMsg('', msg.error, true)
     if(msg.message) showBannerMsg('', msg.message, true)
     closeForm()
+  }
+  function calcForm(){
+    byId("calc").style.display = "block";
+  }
+  function closeCalcForm(){
+    byId("calc").style.display = "none";
+    byId('estimated').style.display = "none";
+  }
+  function calcFee(){
+    const sweep_size = 111
+    desired = Number(byId("desired").value)
+    fees_paid = Number(byId("fees_paid").value)
+    parent_size = Number(byId("parent_size").value)
+    target_rate = (((parent_size+sweep_size)*desired)-fees_paid)/sweep_size
+    console.log(target_rate)
+    byId('estimated').innerHTML = "Fee Rate Estimate: " + target_rate.toFixed(2) + " or ~" + (Math.floor(target_rate)+1) + " sats/vB"
+    byId('estimated').style.display = "block";
   }
 </script>
 {% endblock %}
