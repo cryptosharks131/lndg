@@ -1817,6 +1817,8 @@ def get_local_settings(*prefixes):
         form.append({'unit': '%', 'form_id': 'af_multiplier', 'value': 0, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':0, 'max':100})
         form.append({'unit': '', 'form_id': 'af_failedHTLCs', 'value': 0, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':0, 'max':100})
         form.append({'unit': 'hours', 'form_id': 'af_updateHours', 'value': 0, 'label': 'AF Update', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':0, 'max':100})
+        form.append({'unit': '%', 'form_id': 'af_lowliq', 'value': 0, 'label': 'AF LowLiq', 'id': 'AF-LowLiqLimit', 'title': 'Limit for low liq AF rules. Default 5', 'min':0, 'max':100})
+        form.append({'unit': '%', 'form_id': 'af_excess', 'value': 0, 'label': 'AF Excess', 'id': 'AF-ExcessLimit', 'title': 'Limit for excess liq AF rules. Default 95', 'min':0, 'max':100})
     if 'GUI-' in prefixes:
         form.append({'unit': '', 'form_id': 'gui_graphLinks', 'value': graph_links(), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
         form.append({'unit': '', 'form_id': 'gui_netLinks', 'value': network_links(), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
@@ -1854,14 +1856,16 @@ def update_settings(request):
                     {'form_id': 'af_minRate', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
                     {'form_id': 'af_increment', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
                     {'form_id': 'af_multiplier', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
-                    {'form_id': 'af_failedHTLCs', 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'}, 
-                    {'form_id': 'af_updateHours', 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'}, 
+                    {'form_id': 'af_failedHTLCs', 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'},
+                    {'form_id': 'af_updateHours', 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'},
+                    {'form_id': 'af_lowliq', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-LowLiqLimit'},
+                    {'form_id': 'af_excess', 'value': 95, 'parse': lambda x: int(x),'id': 'AF-ExcessLimit'},
                     #GUI
-                    {'form_id': 'gui_graphLinks', 'value': '0', 'parse': lambda x: x,'id': 'GUI-GraphLinks'}, 
-                    {'form_id': 'gui_netLinks', 'value': '0', 'parse': lambda x: x,'id': 'GUI-NetLinks'}, 
+                    {'form_id': 'gui_graphLinks', 'value': '0', 'parse': lambda x: x,'id': 'GUI-GraphLinks'},
+                    {'form_id': 'gui_netLinks', 'value': '0', 'parse': lambda x: x,'id': 'GUI-NetLinks'},
                     #LND
-                    {'form_id': 'lnd_cleanPayments', 'value': '0', 'parse': lambda x: x, 'id': 'LND-CleanPayments'}, 
-                    {'form_id': 'lnd_retentionDays', 'value': '0', 'parse': lambda x: x, 'id': 'LND-RetentionDays'}, 
+                    {'form_id': 'lnd_cleanPayments', 'value': '0', 'parse': lambda x: x, 'id': 'LND-CleanPayments'},
+                    {'form_id': 'lnd_retentionDays', 'value': '0', 'parse': lambda x: x, 'id': 'LND-RetentionDays'},
                     ]
 
         form = LocalSettingsForm(request.POST)
@@ -2122,15 +2126,14 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
-                enabled = int(value)
                 try:
                     db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
                 except:
                     LocalSettings(key='AF-UpdateHours', value='24').save()
                     db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
-                db_enabled.value = enabled
+                db_enabled.value = target
                 db_enabled.save()
-                messages.success(request, 'Updated autofees update hours setting to: ' + str(enabled))
+                messages.success(request, 'Updated autofees update hours setting to: ' + str(target))
             else:
                 messages.error(request, 'Invalid Request. Please try again. [' + key +']')
         else:

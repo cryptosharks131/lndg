@@ -54,6 +54,10 @@ def main(channels):
         else:
             LocalSettings(key='AF-ExcessLimit', value='95').save()
             excess_limit = 95
+        if lowliq_limit >= excess_limit:
+            print('Invalid thresholds detected, using defaults...')
+            lowliq_limit = 5
+            excess_limit = 95
         forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
         if forwards.exists():
             forwards_df_in_7d_sum = DataFrame.from_records(forwards.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
