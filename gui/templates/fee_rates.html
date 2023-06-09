@@ -22,14 +22,14 @@
         <th onclick="sortTable(event.target, 14, 'int')">iRate</th>
         <th onclick="sortTable(event.target, 15, 'int')">iBase</th>
         <th>Updated</th>
-        <th>
-          <form title="Enable all channels" style="position: absolute;margin-left:10px;" action="/update_setting/" method="post">
+        <th width=92px>
+          <form title="Enable all channels" style="position: absolute;" action="/update_setting/" method="post">
             {% csrf_token %}
             <input type="submit" value="✅">
             <input type="hidden" name="key" value="ALL-AF">
             <input type="hidden" name="value" value="1">
           </form>
-          <form title="Disable all channels" style="position: absolute;margin-left:50px" action="/update_setting/" method="post">
+          <form title="Disable all channels" style="position: absolute;margin-left:40px" action="/update_setting/" method="post">
             {% csrf_token %}
             <input type="submit" value="❌">
             <input type="hidden" name="key" value="ALL-AF">
