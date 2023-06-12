@@ -1,4 +1,4 @@
-import django, time
+import django
 from django.db.models import Sum
 from datetime import datetime, timedelta
 from os import environ
@@ -8,8 +8,6 @@ django.setup()
 from gui.models import Forwards, Channels, LocalSettings, FailedHTLCs
 
 def main(channels):
-    # start = time.time()
-    # channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
     channels_df = DataFrame.from_records(channels.values())
     filter_1day = datetime.now() - timedelta(days=1)
     filter_7day = datetime.now() - timedelta(days=7)
@@ -80,8 +78,8 @@ def main(channels):
         if failed_htlc_df.shape[0] > 0:
             failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
         lowliq_df['failed_out_1day'] = 0 if failed_htlc_df.empty else lowliq_df.apply(lambda row: len(failed_htlc_df[failed_htlc_df['chan_id_out']==row.chan_id]), axis=1)
-        # INCREASE IF (failed htlc > threshhold) && (flow out >> flow in)
-        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_1day']>failed_htlc_limit and row['net_routed_7day'] > 0 else row['local_fee_rate'], axis=1)
+        # INCREASE IF (failed htlc > threshhold) && (flow in == 0)
+        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_1day']>failed_htlc_limit and row['amt_routed_in_7day'] == 0 else row['local_fee_rate'], axis=1)
 
         # Balanced Liquidity
         balanced_df = channels_df[(channels_df['out_percent'] > lowliq_limit) & (channels_df['out_percent'] < excess_limit)].copy()
@@ -93,7 +91,7 @@ def main(channels):
         excess_df = channels_df[channels_df['out_percent'] >= excess_limit].copy()
         excess_df['revenue_7day'] = excess_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].fee) if forwards_df_out_7d_sum.empty == False and (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
         excess_df['revenue_assist_7day'] = excess_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
-        # DECREASE IF (assisted ratio?)
+        # DECREASE IF (assisting channel or stagnant liq)
         excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if row['net_routed_7day'] < 0 and row['revenue_assist_7day'] > (row['revenue_7day']*10) else row['local_fee_rate'], axis=1)
         excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['local_fee_rate'], axis=1)
 
@@ -103,9 +101,7 @@ def main(channels):
         result_df['new_rate'] = result_df.apply(lambda row: max_rate if max_rate < row['new_rate'] else row['new_rate'], axis=1)
         result_df['new_rate'] = result_df.apply(lambda row: min_rate if min_rate > row['new_rate'] else row['new_rate'], axis=1)
         result_df['adjustment'] = result_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
-        # print('Time taken:', str(round(time.time()-start,3))+'s')
-        return result_df
 
 
 if __name__ == '__main__':
-    main()
+    main(Channels.objects.filter(is_open=True))
