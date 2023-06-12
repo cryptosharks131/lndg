@@ -46,12 +46,12 @@ def main(channels):
             lowliq_limit = int(LocalSettings.objects.filter(key='AF-LowLiqLimit').get().value)
         else:
             LocalSettings(key='AF-LowLiqLimit', value='5').save()
-            lowliq_limit = 5
+            lowliq_limit = 15
         if LocalSettings.objects.filter(key='AF-ExcessLimit').exists():
             excess_limit = int(LocalSettings.objects.filter(key='AF-ExcessLimit').get().value)
         else:
             LocalSettings(key='AF-ExcessLimit', value='95').save()
-            excess_limit = 95
+            excess_limit = 90
         if lowliq_limit >= excess_limit:
             print('Invalid thresholds detected, using defaults...')
             lowliq_limit = 5
