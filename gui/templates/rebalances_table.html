@@ -1,6 +1,6 @@
 {% load humanize %}
 <div id="rebalances_div_{{count}}" class="w3-container w3-padding-small">
-    <h2>Last {{count}} {{title}}</h2>
+    <h2>{% if count %}Last {{count}}{% endif %} {{title}}</h2>
     <table class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th>Requested</th>
