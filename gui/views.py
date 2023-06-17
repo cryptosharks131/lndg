@@ -761,13 +761,13 @@ def dictfetchall(cursor):
 def chart(request):
     with connection.cursor() as cursor:
         cursor.execute("""with payments as (
-select strftime('%Y-%m-%d %H:00:00',creation_date) dt, fee cost, 0 revenue, 0 onchain from gui_payments where status = 2
+select strftime('%Y-%m-%d 00:00:00',creation_date) dt, fee cost, 0 revenue, 0 onchain from gui_payments where status = 2
 ),
 forwards as (
-select strftime('%Y-%m-%d %H:00:00',forward_date) dt, 0 cost, fee revenue, 0 onchain from gui_forwards
+select strftime('%Y-%m-%d 00:00:00',forward_date) dt, 0 cost, fee revenue, 0 onchain from gui_forwards
 ),
 onchain as (
-select strftime('%Y-%m-%d %H:00:00',oc.time_stamp) dt, 0 cost, 0 revenue, oc.amount onchain from gui_onchain oc
+select strftime('%Y-%m-%d 00:00:00',oc.time_stamp) dt, 0 cost, 0 revenue, oc.amount onchain from gui_onchain oc
 ),
 balance as (
 select * from payments

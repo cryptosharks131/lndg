@@ -70,7 +70,7 @@
             },
             title: {
               display: true,
-              text: 'Activity Overview'
+              text: 'Daily Activity'
             },
           },
           interaction: {
@@ -131,7 +131,7 @@
           data.datasets[1].data.push(parseInt(sum.revenue))
           data.labels.push(balance.dt.length > 0 ? TZ(balance.dt).toLocaleDateString() : '')
         }
-        chart.options.scales.y1.max = (10 ** Math.ceil(Math.log10(data.datasets[2].data.at(-1)))) *2
+        chart.options.scales.y.max = (10 ** Math.ceil(Math.log10(data.datasets[2].data.at(-1)))) *2
         chart.update();
       }
       buildChart(0.01, response)
