@@ -14,16 +14,8 @@
       const data = {
         datasets: [
           {
-            label: 'Balance',
+            label: 'Onchain',
             yAxisID: 'y',
-            fill: true,
-            pointHoverRadius: 10,
-            backgroundColor: 'rgba(251, 192, 147, 0.2)',
-            borderColor: 'rgba(251, 192, 147, 0.5)',
-            cubicInterpolationMode: 'monotone',
-          },
-          {
-            label: 'On chain',
             fill: true,
             pointHoverRadius: 10,
             borderColor: 'rgba(255,119,0,1)',
@@ -31,7 +23,8 @@
             cubicInterpolationMode: 'monotone',
           },
           {
-            label: 'Off chain',
+            label: 'Revenue',
+            yAxisID: 'y1',
             fill: true,
             pointHoverRadius: 10,
             borderColor: 'rgba(33,150,243)',
@@ -39,7 +32,7 @@
             cubicInterpolationMode: 'monotone',
           },
           {
-            label: 'Costs',
+            label: 'Offchain Costs',
             yAxisID: 'y1',
             fill: true,
             pointHoverRadius: 10,
@@ -77,7 +70,7 @@
             },
             title: {
               display: true,
-              text: 'Profitablity Overview'
+              text: 'Activity Overview'
             },
           },
           interaction: {
@@ -88,7 +81,7 @@
             x: {
               display: true
             },
-            y: {
+            y1: {
               display: true,
               position: 'right',
               title: {
@@ -96,12 +89,12 @@
                 text: 'sats'
               }
             },
-            y1: {
+            y: {
               display: true,
               position: 'left',
               title: {
                 display: true,
-                text: 'Cost'
+                text: 'sats'
               },
               grid: {
                 drawOnChartArea: false, // only want the grid lines for one axis to show up
@@ -112,37 +105,33 @@
       })
       const TZ = time => time.length == 0? '' : adjustTZ(time)
       const response = await GET('chart', {data: {} })
-      response.unshift({dt: '', onchain: 0, offchain: 0, cost: 0, total: 0})
+      response.unshift({dt: '', onchain: 0, revenue: 0, cost: 0})
       function buildChart(step, datapoints){
-        data.datasets[3].data = [datapoints[0].cost]
-        data.datasets[0].data = [datapoints[0].total]
-        data.datasets[1].data = [datapoints[0].onchain]
-        data.datasets[2].data = [datapoints[0].offchain]
+        data.datasets[2].data = [datapoints[0].cost]
+        data.datasets[0].data = [datapoints[0].onchain]
+        data.datasets[1].data = [datapoints[0].revenue]
         data.labels = [datapoints[0].dt.length > 0 ? TZ(datapoints[0].dt).toLocaleDateString() : '']
         data.datasets.forEach(ds => ds.extra = [{time: TZ(datapoints[0].dt), count: 0, diff: 0}])
-        let sum = {onchain: 0, cost: 0, total:0, offchain:0}, count = 0;
+        let sum = {onchain: 0, cost: 0, revenue:0}, count = 0;
         for(balance of datapoints){
           sum.cost += balance.cost
-          sum.total += balance.total
           sum.onchain += balance.onchain
-          sum.offchain += balance.offchain
-          let costDiff = Math.pow(sum.cost-data.datasets[3].data.at(-1), 2)/(data.datasets[3].data.at(-1)||1)
-          let chainDiff = Math.pow(sum.onchain-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
-          let offDiff = Math.pow(sum.offchain-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
+          sum.revenue += balance.revenue
+          let costDiff = Math.pow(sum.cost-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
+          let chainDiff = Math.pow(sum.onchain-data.datasets[0].data.at(-1), 2)/(data.datasets[0].data.at(-1)||1)
+          let offDiff = Math.pow(sum.revenue-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
           count++
           if(Math.abs(costDiff+chainDiff+offDiff)/3 < parseFloat(step/100)) continue
-          data.datasets[0].extra.push({time: TZ(balance.dt), count: count, diff: sum.total - data.datasets[0].data.at(-1)})
-          data.datasets[3].extra.push({time: TZ(balance.dt), count: count, diff: sum.cost - data.datasets[3].data.at(-1)})
-          data.datasets[1].extra.push({time: TZ(balance.dt), count: count, diff: sum.onchain - data.datasets[1].data.at(-1)})
-          data.datasets[2].extra.push({time: TZ(balance.dt), count: count, diff: sum.offchain - data.datasets[2].data.at(-1)})
+          data.datasets[2].extra.push({time: TZ(balance.dt), count: count, diff: sum.cost - data.datasets[2].data.at(-1)})
+          data.datasets[0].extra.push({time: TZ(balance.dt), count: count, diff: sum.onchain - data.datasets[0].data.at(-1)})
+          data.datasets[1].extra.push({time: TZ(balance.dt), count: count, diff: sum.revenue - data.datasets[1].data.at(-1)})
           count = 0
-          data.datasets[1].data.push(sum.onchain)
-          data.datasets[3].data.push(parseInt(sum.cost))
-          data.datasets[0].data.push(parseInt(sum.total))
-          data.datasets[2].data.push(parseInt(sum.offchain))
+          data.datasets[0].data.push(sum.onchain)
+          data.datasets[2].data.push(parseInt(sum.cost))
+          data.datasets[1].data.push(parseInt(sum.revenue))
           data.labels.push(balance.dt.length > 0 ? TZ(balance.dt).toLocaleDateString() : '')
         }
-        chart.options.scales.y1.max = (10 ** Math.ceil(Math.log10(data.datasets[3].data.at(-1)))) *2
+        chart.options.scales.y1.max = (10 ** Math.ceil(Math.log10(data.datasets[2].data.at(-1)))) *2
         chart.update();
       }
       buildChart(0.01, response)
@@ -164,15 +153,14 @@
       byId('timeFilter').addEventListener('input', function(e){
         const value = 100 - e.target.value, size = parseInt(value*response.length/100), datapoints = [...response].splice(response.length - size-1)
         if (size == response.length || size < 10) return
-        let sum = {onchain: 0, cost: 0, total:0, offchain:0}
+        let sum = {onchain: 0, cost: 0, revenue:0}
         for(balance of [...response].splice(0, response.length - size)){
           sum.cost += balance.cost
-          sum.total += balance.total
           sum.onchain += balance.onchain
-          sum.offchain += balance.offchain
+          sum.revenue += balance.revenue
           sum.dt = balance.dt
         }
-        datapoints[0] = {dt: sum.dt, onchain: sum.onchain, offchain: parseInt(sum.offchain), cost: parseInt(sum.cost), total: parseInt(sum.total)}
+        datapoints[0] = {dt: sum.dt, onchain: sum.onchain, revenue: parseInt(sum.revenue), cost: parseInt(sum.cost)}
         buildChart(byId('step').value, datapoints)
       })
     })
