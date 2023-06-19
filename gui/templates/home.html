@@ -768,7 +768,7 @@
   async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary){
     let offChain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
-      if(new Date(p.creation_date).getTime() >= _1day_ago){
+      if(adjustTZ(p.creation_date) >= _1day_ago){
         offChain.d1.fee += p.fee
         offChain.d1.amt += p.value
       } 
@@ -777,7 +777,7 @@
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
-      if(new Date(tx.time_stamp).getTime() >= _1day_ago){
+      if(adjustTZ(tx.time_stamp) >= _1day_ago){
         chainCosts.d1 += tx.fee
       }
       chainCosts.d7 += tx.fee
@@ -862,7 +862,7 @@
       chan_in = f.chan_id_in
       if(forwards_sum[chan_out] === undefined){ forwards_sum[chan_out]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
       if(forwards_sum[chan_in] === undefined){ forwards_sum[chan_in]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
-      if(new Date(f.forward_date).getTime() >= _1day_ago){
+      if(adjustTZ(f.forward_date) >= _1day_ago){
         forwards_sum[chan_out].o1d += f.amt_out_msat/1000
         forwards_sum[chan_out].o1dc += 1
         forwards_sum[chan_in].i1d += f.amt_in_msat/1000
