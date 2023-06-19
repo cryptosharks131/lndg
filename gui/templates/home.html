@@ -667,28 +667,11 @@
     container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
     return true
   }
-  function sumRoutedValues(forwards, ch, fields){
-    let earned = 0
-    for(field of fields) ch[field] = 0
-    for(f of forwards){
-      if(f.chan_id_in == ch.chan_id){
-        ch[fields[0]] += 1
-        ch[fields[2]] += f.amt_in_msat/1000
-      }
-      if(f.chan_id_out == ch.chan_id){
-        earned += f.fee
-        ch[fields[1]] += 1
-        ch[fields[3]] += f.amt_out_msat/1000
-      }
-    }
-    return {rOUTed: {count: ch[fields[1]], amt: ch[fields[3]]}, earned }
-  }
-  function build_active(channels, forwards7d){
+  function build_active(channels, forwards_sum){
     let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
-    forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
 
     channels.map(ch => { //derived properties
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
@@ -699,16 +682,26 @@
       sum.inbound += ch.remote_balance
       sum.outbound += ch.local_balance
       sum.unsettled += ch.unsettled_balance
-      
-      var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
-      sum.earned.d1 += earned
-      sum.rOUTed.d1.amt += rOUTed.amt
-      sum.rOUTed.d1.count += rOUTed.count
 
-      var {rOUTed, earned} = sumRoutedValues(forwards7d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
-      sum.earned.d7 += earned
-      sum.rOUTed.d7.amt += rOUTed.amt
-      sum.rOUTed.d7.count += rOUTed.count
+      if(forwards_sum[ch.chan_id]!=undefined){
+        ch['routed_in_1day'] = forwards_sum[ch.chan_id].i1dc
+        ch['amt_routed_in_1day'] = forwards_sum[ch.chan_id].i1d
+        ch['routed_out_1day'] = forwards_sum[ch.chan_id].o1dc
+        ch['amt_routed_out_1day'] = forwards_sum[ch.chan_id].o1d
+        ch['routed_in_7day'] = forwards_sum[ch.chan_id].i7dc
+        ch['amt_routed_in_7day'] = forwards_sum[ch.chan_id].i7d
+        ch['routed_out_7day'] = forwards_sum[ch.chan_id].o7dc
+        ch['amt_routed_out_7day'] = forwards_sum[ch.chan_id].o7d
+      }else{
+        ch['routed_in_1day'] = 0
+        ch['amt_routed_in_1day'] = 0
+        ch['routed_out_1day'] = 0
+        ch['amt_routed_out_1day'] = 0
+        ch['routed_in_7day'] = 0
+        ch['amt_routed_in_7day'] = 0
+        ch['routed_out_7day'] = 0
+        ch['amt_routed_out_7day'] = 0    
+      }
 
       return ch
     }).sort((ch1, ch2) => ch1.percent_outbound - ch2.percent_outbound)
@@ -717,12 +710,11 @@
     byId('public_capacity').innerHTML = sum.capacity.intcomma()
     return update_sum('active_', sum)
   }
-  function build_private(channels, forwards7d){
+  function build_private(channels){
     let act = {outbound: 0, inbound: 0}, ina = {outbound: 0, inbound: 0} 
     let sum = {earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Private Channels", channels)) return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
 
-    const forwards1d = forwards7d.filter(f => new Date(f.forward_date).getTime() >= _1day_ago)
     let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
     channels.forEach(ch => {
       capacity += ch.capacity
@@ -736,15 +728,6 @@
         ina.inbound += ch.remote_balance
       }
 
-      var {rOUTed, earned} = sumRoutedValues(forwards1d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_1day', p+'routed_out_1day']))
-      sum.earned.d1 += earned
-      sum.rOUTed.d1.amt += rOUTed.amt
-      sum.rOUTed.d1.count += rOUTed.count
-
-      var {rOUTed, earned} = sumRoutedValues(forwards7d, ch, ['', 'amt_'].flatMap(p => [p+'routed_in_7day', p+'routed_out_7day']))
-      sum.earned.d7 += earned
-      sum.rOUTed.d7.amt += rOUTed.amt
-      sum.rOUTed.d7.count += rOUTed.count
       table.append(template.render(ch))
     })
 
@@ -782,7 +765,7 @@
     }
     return sum
   }
-  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private){
+  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary){
     let offChain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
     for(p of payments7d){
       if(new Date(p.creation_date).getTime() >= _1day_ago){
@@ -821,7 +804,7 @@
     total_bal.innerHTML = (total_bal.innerHTML.toInt() + sum.outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
-      const earned = sum.earned[`d${d}`], routed = sum.rOUTed[`d${d}`], chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
+      const earned = forwards_summary[`earned${d}d`], routed = {'amt':forwards_summary[`o${d}d`],'count':forwards_summary[`o${d}dc`]}, chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
       byId(`routed_${d}day`).innerHTML = `${routed.amt.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${routed.count.intcomma()}</small>`
       byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
@@ -871,6 +854,33 @@
       table.append(template.render(htlc))
     } 
   }
+  function process_forwards(forwards7d){
+    let forwards_sum = {}
+    let forwards_summary = { o1d: 0, o1dc: 0, o7d: 0, o7dc: 0, earned1d: 0, earned7d: 0 }
+    for(f of forwards7d){
+      chan_out = f.chan_id_out
+      chan_in = f.chan_id_in
+      if(forwards_sum[chan_out] === undefined){ forwards_sum[chan_out]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
+      if(forwards_sum[chan_in] === undefined){ forwards_sum[chan_in]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
+      if(new Date(f.forward_date).getTime() >= _1day_ago){
+        forwards_sum[chan_out].o1d += f.amt_out_msat/1000
+        forwards_sum[chan_out].o1dc += 1
+        forwards_sum[chan_in].i1d += f.amt_in_msat/1000
+        forwards_sum[chan_in].i1dc += 1
+        forwards_summary.o1d += f.amt_out_msat/1000
+        forwards_summary.o1dc += 1
+        forwards_summary.earned1d += f.fee
+      }
+      forwards_sum[chan_out].o7d += f.amt_out_msat/1000
+      forwards_sum[chan_out].o7dc += 1
+      forwards_sum[chan_in].i7d += f.amt_in_msat/1000
+      forwards_sum[chan_in].i7dc += 1
+      forwards_summary.o7d += f.amt_out_msat/1000
+      forwards_summary.o7dc += 1
+      forwards_summary.earned7d += f.fee
+    }
+    return [forwards_sum, forwards_summary]
+  }
   document.addEventListener('DOMContentLoaded', async () =>{
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
@@ -896,8 +906,9 @@
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
-    let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards7d), build_private(private, forwards7d), build_inactive(inactive)]
-    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum)
+    let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
+    let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
+    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary)
     build_routed(forwards7d)
     build_payments(payments7d)
     build_invoices((await invoices_task).results)
