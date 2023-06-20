@@ -1,8 +1,7 @@
 from django.contrib import messages
-from django.db import connection
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When
-from django.db.models.functions import Round
+from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField
+from django.db.models.functions import Round, TruncDay
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta
 from rest_framework import viewsets
@@ -23,7 +22,7 @@ from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
-from pandas import DataFrame, merge, concat
+from pandas import DataFrame, merge
 from requests import get
 from . import af
 
@@ -759,29 +758,12 @@ def dictfetchall(cursor):
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def chart(request):
-    with connection.cursor() as cursor:
-        cursor.execute("""with payments as (
-select strftime('%Y-%m-%d 00:00:00',creation_date) dt, fee cost, 0 revenue, 0 onchain from gui_payments where status = 2
-),
-forwards as (
-select strftime('%Y-%m-%d 00:00:00',forward_date) dt, 0 cost, fee revenue, 0 onchain from gui_forwards
-),
-onchain as (
-select strftime('%Y-%m-%d 00:00:00',oc.time_stamp) dt, 0 cost, 0 revenue, oc.amount onchain from gui_onchain oc
-),
-balance as (
-select * from payments
- UNION ALL 
-select * from forwards
- UNION ALL
-select * from onchain
-)
-select dt, sum(cost) cost, sum(revenue) revenue, sum(onchain) onchain from balance
-group by dt
-order by dt
-""")
-        results = dictfetchall(cursor)
-        return Response(results)
+    payments = Payments.objects.filter(status=2).annotate(dt=TruncDay('creation_date')).values('dt').annotate(cost=Sum('fee', output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Value(0))
+    forwards = Forwards.objects.annotate(dt=TruncDay('forward_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('fee', output_field=FloatField()), onchain=Value(0))
+    onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('amount'))
+    balance = DataFrame.from_records(payments.union(forwards, onchain).values('dt', 'cost', 'onchain', 'revenue'))
+    results = balance.groupby('dt').sum().reset_index().sort_values('dt')
+    return Response(results.to_dict(orient='records'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
