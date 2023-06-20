@@ -483,6 +483,10 @@
     {% endfor %}
   </table>
 </div>
+<div class="w3-container w3-padding-small">
+  <h2>Channel Notes</h2>
+  <textarea id="w3review" name="w3review" rows="5" style="width:100%" onChange="Sync.PUT('channels/{{ chan_id }}', {body: {notes: this.value}}, r => {flash(this, r.notes)});">{{ channel.notes }}</textarea>
+</div>
 {% endif %}
 {% endif %}
 {% if not channel %}

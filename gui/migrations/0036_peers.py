@@ -34,6 +34,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='channels',
+            name='notes',
+            field=models.TextField(blank=True, default=''),
+        ),
+        migrations.AddField(
+            model_name='channels',
             name='close_address',
             field=models.CharField(default='', max_length=100),
             preserve_default=False,
