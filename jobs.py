@@ -187,6 +187,8 @@ def update_channels(stub):
             db_channel.output_index = index
             db_channel.capacity = channel.capacity
             db_channel.private = channel.private
+            db_channel.push_amt = channel.push_amount_sat
+            db_channel.close_address = channel.close_address
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
         # Update basic channel data
         db_channel.local_balance = channel.local_balance
@@ -361,6 +363,7 @@ def update_peers(stub):
             db_peer.sat_sent = peer.sat_sent
             db_peer.sat_recv = peer.sat_recv
             db_peer.inbound = peer.inbound
+            db_peer.ping_time = round(peer.ping_time/1000)
             if db_peer.connected == False:
                 try:
                     db_peer.alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer.pub_key, include_channels=False)).node.alias
@@ -373,7 +376,7 @@ def update_peers(stub):
                 alias = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=peer.pub_key, include_channels=False)).node.alias
             except:
                 alias = ''
-            Peers(pubkey = peer.pub_key, address = peer.address, sat_sent = peer.sat_sent, sat_recv = peer.sat_recv, inbound = peer.inbound, alias=alias, connected = True).save()
+            Peers(pubkey = peer.pub_key, address = peer.address, sat_sent = peer.sat_sent, sat_recv = peer.sat_recv, inbound = peer.inbound, ping_time = round(peer.ping_time/1000), alias=alias, connected = True).save()
         counter += 1
         peer_list.append(peer.pub_key)
     records = Peers.objects.filter(connected=True).count()
