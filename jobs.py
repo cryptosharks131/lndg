@@ -521,7 +521,7 @@ def auto_fees(stub):
     try:
         channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
         results_df = af.main(channels)
-        if results_df is not None: 
+        if not results_df.empty: 
             update_df = results_df[results_df['eligible'] == True]
             update_df = update_df[update_df['adjustment']!=0]
             if not update_df.empty:
