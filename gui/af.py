@@ -101,7 +101,9 @@ def main(channels):
         result_df['new_rate'] = result_df.apply(lambda row: max_rate if max_rate < row['new_rate'] else row['new_rate'], axis=1)
         result_df['new_rate'] = result_df.apply(lambda row: min_rate if min_rate > row['new_rate'] else row['new_rate'], axis=1)
         result_df['adjustment'] = result_df.apply(lambda row: int(row['new_rate']-row['local_fee_rate']), axis=1)
-        return(result_df)
+        return result_df
+    else:
+        return DataFrame()
 
 
 if __name__ == '__main__':
