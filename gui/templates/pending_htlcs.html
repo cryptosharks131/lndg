@@ -7,13 +7,13 @@
   <h2>Outgoing HTLCs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th width=10%>Channel Alias</th>
-      <th>Forwarding Channel</th>
-      <th width=10%>Forwarding Alias</th>
-      <th>Amount</th>
-      <th>Expiration</th>
-      <th width=25%>Hash Lock</th>
+      <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
+      <th onclick="sortTable(event.target, 1, 'String')" width=10%>Channel Alias</th>
+      <th onclick="sortTable(event.target, 2, 'String')">Forwarding Channel</th>
+      <th onclick="sortTable(event.target, 3, 'String')" width=10%>Forwarding Alias</th>
+      <th onclick="sortTable(event.target, 4, 'int')">Amount</th>
+      <th onclick="sortTable(event.target, 5, 'int')">Expiration</th>
+      <th onclick="sortTable(event.target, 6, 'String')" width=25%>Hash Lock</th>
     </tr>
     {% for htlc in outgoing_htlcs %}
     <tr>
@@ -34,13 +34,13 @@
   <h2>Incoming HTLCs</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th>Channel ID</th>
-      <th width=10%>Channel Alias</th>
-      <th>Forwarding Channel</th>
-      <th width=10%>Forwarding Alias</th>
-      <th>Amount</th>
-      <th>Expiration</th>
-      <th width=25%>Hash Lock</th>
+      <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
+      <th onclick="sortTable(event.target, 1, 'String')" width=10%>Channel Alias</th>
+      <th onclick="sortTable(event.target, 2, 'String')">Forwarding Channel</th>
+      <th onclick="sortTable(event.target, 3, 'String')" width=10%>Forwarding Alias</th>
+      <th onclick="sortTable(event.target, 4, 'int')">Amount</th>
+      <th onclick="sortTable(event.target, 5, 'int')">Expiration</th>
+      <th onclick="sortTable(event.target, 6, 'String')" width=25%>Hash Lock</th>
     </tr>
     {% for htlc in incoming_htlcs %}
     <tr>
