@@ -512,28 +512,34 @@ def clean_payments(stub):
 
 def auto_fees(stub):
     if LocalSettings.objects.filter(key='AF-Enabled').exists():
-        enabled = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
+        if int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) == 0: #disabled
+            return
     else:
         LocalSettings(key='AF-Enabled', value='0').save()
-        enabled = 0
-    if enabled == 1:
+        return
+
+    try:
         channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
         results_df = af.main(channels)
-        update_df = results_df[results_df['eligible'] == True]
-        update_df = update_df[update_df['adjustment']!=0]
-        if not update_df.empty:
-            for target_channel in update_df.to_dict(orient='records'):
-                print(f"{datetime.now().strftime('%c')} : Updating fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
-                channel = Channels.objects.filter(chan_id=target_channel['chan_id'])[0]
-                channel_point = ln.ChannelPoint()
-                channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                channel_point.funding_txid_str = channel.funding_txid
-                channel_point.output_index = channel.output_index
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
-                channel.local_fee_rate = target_channel['new_rate']
-                channel.fees_updated = datetime.now()
-                channel.save()
-                Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
+        if results_df is not None: 
+            update_df = results_df[results_df['eligible'] == True]
+            update_df = update_df[update_df['adjustment']!=0]
+            if not update_df.empty:
+                for target_channel in update_df.to_dict(orient='records'):
+                    print(f"{datetime.now().strftime('%c')} : Updating fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
+                    channel = Channels.objects.filter(chan_id=target_channel['chan_id'])[0]
+                    channel_point = ln.ChannelPoint()
+                    channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
+                    channel_point.funding_txid_str = channel.funding_txid
+                    channel_point.output_index = channel.output_index
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
+                    channel.local_fee_rate = target_channel['new_rate']
+                    channel.fees_updated = datetime.now()
+                    channel.save()
+                    Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
+    except Exception as e:
+        print(f"{datetime.now().strftime('%c')} : Error processing auto_fees: {str(e)}")
+
 
 def agg_htlcs(target_htlcs, category):
     try:
@@ -563,7 +569,7 @@ def agg_htlcs(target_htlcs, category):
             htlc_itm.save()
             FailedHTLCs.objects.filter(id__in=target_ids, chan_id_in=htlc['chan_id_in'], chan_id_out=htlc['chan_id_out']).annotate(day=TruncDay('timestamp')).filter(day=htlc['day']).delete()
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error processing background data: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : Error processing agg_htlcs: {str(e)}")
 
 def agg_failed_htlcs():
     time_filter = datetime.now() - timedelta(days=30)
