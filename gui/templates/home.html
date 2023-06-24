@@ -765,8 +765,8 @@
     }
     return sum
   }
-  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary){
-    let offChain = {d1: {fee:0, amt:0}, d7: {fee:0, amt:0} }
+  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary, inv_rev_task){
+    let offChain = {d1: {fee:0, amt:0, inv_rev:0}, d7: {fee:0, amt:0, inv_rev:0} }
     for(p of payments7d){
       if(adjustTZ(p.creation_date) >= _1day_ago){
         offChain.d1.fee += p.fee
@@ -774,6 +774,12 @@
       } 
       offChain.d7.fee += p.fee
       offChain.d7.amt += p.value
+    }
+    for(inv of (await inv_rev_task).results){
+      if(adjustTZ(p.creation_date) >= _1day_ago){
+        offChain.d1.inv_rev += inv.amt_paid
+      }
+      offChain.d7.inv_rev += inv.amt_paid
     }
     let chainCosts = {d1: 0, d7:0}
     for(tx of (await onchain_task).results){
@@ -804,7 +810,7 @@
     total_bal.innerHTML = (total_bal.innerHTML.toInt() + sum.outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
-      const earned = forwards_summary[`earned${d}d`], routed = {'amt':forwards_summary[`o${d}d`],'count':forwards_summary[`o${d}dc`]}, chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
+      const earned = forwards_summary[`earned${d}d`]+offChain[`d${d}`].inv_rev, routed = {'amt':forwards_summary[`o${d}d`],'count':forwards_summary[`o${d}dc`]}, chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
       byId(`routed_${d}day`).innerHTML = `${routed.amt.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${routed.count.intcomma()}</small>`
       byId(`earned_${d}day`).innerHTML = `${earned.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(earned*1000000/(routed.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
@@ -883,6 +889,7 @@
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
+    const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date_gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
@@ -908,7 +915,7 @@
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
     let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
-    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary)
+    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
     build_routed(forwards7d)
     build_payments(payments7d)
     build_invoices((await invoices_task).results)
