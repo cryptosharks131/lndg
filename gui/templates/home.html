@@ -889,7 +889,7 @@
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
-    const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date_gte: _7days_ago}})
+    const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })

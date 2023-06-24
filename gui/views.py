@@ -2179,7 +2179,7 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Invoices.objects.all().order_by('-creation_date')
     serializer_class = InvoiceSerializer
-    filterset_fields = {'state': ['exact','lt', 'gt'], 'is_revenue': ['exact']}
+    filterset_fields = {'state': ['exact','lt', 'gt'], 'is_revenue': ['exact'], 'settle_date': ['gte']}
 
     def update(self, request, pk=None):
         setting = get_object_or_404(Invoices.objects.all(), pk=pk)
