@@ -1,7 +1,7 @@
 {% load humanize %}
 <div id="rebalances_div_{{count}}" class="w3-container w3-padding-small">
     <h2>{% if count %}Last {{count}}{% endif %} {{title}}</h2>
-    <table class="w3-table-all w3-centered w3-hoverable">
+    <table id="rebalsTable" class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th>Requested</th>
         <th>Start</th>
@@ -19,6 +19,13 @@
       </tr>
       <tbody id="rebalances_{{count}}">
       </tbody>
+      <tfoot id="loadMoreRebals">
+        <tr style="background-color:transparent;cursor:pointer;">
+          <td colspan="13">
+            <a onclick="loadRebals()">Load More</a>
+          </td>
+        </tr>
+      </tfoot>
     </table>
   </div>
   <script>
@@ -79,4 +86,21 @@
       const table = document.getElementById("rebalances_{{count}}"), template = use(transformations)
       res.results.forEach(rebalance => table.append(template.render(rebalance)));
     });
+    async function loadRebals(){
+      const rebalsTable = byId('rebalsTable')
+      console.log(rebalsTable)
+      const lastId = rebalsTable.tBodies[1].lastChild.objId
+      console.log(lastId)
+      const rebals_task = GET('rebalancer', {data: {last_hop_pubkey: "{{ last_hop_pubkey }}", id__lt: lastId, limit: 5} })
+      build_rebals(rebals_task)
+    }
+    async function build_rebals(rebals_task){
+      let next_rebals = (await rebals_task).results
+      if(next_rebals.length==0){
+        byId("loadMoreRebals").style.display = "none"
+        return
+      }
+      const tableBody = rebalsTable.tBodies[1]
+      next_rebals.forEach(rebalance => tableBody.append(use(transformations).render(rebalance)))
+    }
   </script>

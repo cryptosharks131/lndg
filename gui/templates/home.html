@@ -425,7 +425,7 @@
 </div>
 {% endif %}
 <div id="routed_container" class="w3-container w3-padding-small">
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table  id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
         <th>Timestamp</th>
@@ -441,6 +441,13 @@
     </thead>
     <tbody id="routed">
     </tbody>
+    <tfoot id="loadMoreForwards">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a onclick="loadForwards()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 {% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
@@ -809,6 +816,25 @@
       byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}ₚₚₘ</span> 
         <span class="w3-round w3-border-small w3-border-grey">⛓️${((earned - costs)*1000000/total_outbound).intcomma()}ₚₚₘ</span>`
       byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/total_outbound).toFixed(1)).toLocaleString()+'%'
+    }
+  }
+  async function loadForwards(){
+    const lastId = forwardsTable.tBodies[0].lastChild.objId
+    const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
+    build_next_routed(forwards_task)
+  }
+  async function build_next_routed(forwards_task){
+    let next_forwards = (await forwards_task).results
+    if(next_forwards.length==0){
+      byId("loadMoreForwards").style.display = "none"
+      return
+    }
+    const tableBody = forwardsTable.querySelector("tbody")
+    for (f of next_forwards){
+      f.amt_in = f.amt_in_msat/1000
+      f.amt_out = f.amt_out_msat/1000
+      f.ppm = f.fee*1000000/f.amt_out
+      tableBody.appendChild(use(routed_template).render(f))
     }
   }
   async function build_routed(forwards7d){

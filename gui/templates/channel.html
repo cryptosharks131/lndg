@@ -495,7 +495,6 @@
     build_routed(forwards_task)
   })
   async function loadForwards(){
-    const forwardsTable = byId('forwardsTable')
     const lastId = forwardsTable.tBodies[0].lastChild.objId
     const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
     build_routed(forwards_task)
