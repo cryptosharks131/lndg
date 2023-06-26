@@ -325,7 +325,6 @@
   <h2>Last 5  <a href="/forwards" target="_blank">Payments Routed</a></h2>
   <table id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th style="display:none">ID</th>
       <th>Timestamp</th>
       <th>Amount In</th>
       <th>Amount Out</th>
@@ -336,20 +335,6 @@
       <th>Fees Earned</th>
       <th>PPM Earned</th>
     </tr>
-    {% for forward in forwards %}
-    <tr>
-      <td style="display:none">{{ forward.id }}</td>
-      <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
-      <td>{{ forward.amt_in|intcomma }}</td>
-      <td>{{ forward.amt_out|intcomma }}</td>
-      <td>{% if forward.chan_in_alias == '' %}---{% else %}{{ forward.chan_in_alias }}{% endif %}</td>
-      <td>{% if forward.chan_out_alias == '' %}---{% else %}{{ forward.chan_out_alias }}{% endif %}</td>
-      <td><a href="/channel?={{ forward.chan_id_in }}" target="_blank">{{ forward.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ forward.chan_id_out }}" target="_blank">{{ forward.chan_id_out }}</a></td>
-      <td>{{ forward.fee|intcomma }}</td>
-      <td>{{ forward.ppm|intcomma }}</td>
-    </tr>
-    {% endfor %}
     <tfoot id="loadMoreForwards">
       <tr style="background-color:transparent;cursor:pointer;">
         <td colspan="9">
@@ -504,23 +489,18 @@
 </div>
 {% endif %}
 <script>
-  const routed_template = {
-    "id": f => ({innerHTML: f.id, style: {display:"none"}}),
-    "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
-    "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
-    "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
-    "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
-    "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
-    "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_in}" target="_blank">${f.chan_id_in}</a>`}),
-    "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${f.chan_id_out}</a>`}),
-    "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
-    "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
-  }
+  document.addEventListener('DOMContentLoaded', async () =>{
+    const forwardsTable = byId('forwardsTable')
+    const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", limit: 5} })
+    build_routed(forwards_task)
+  })
   async function loadForwards(){
     const forwardsTable = byId('forwardsTable')
-    const currentRowCount = forwardsTable.querySelectorAll("tbody tr").length-1
-    const lastId = forwardsTable.querySelectorAll("tbody tr:last-child td:first-child")[0].innerHTML
+    const lastId = forwardsTable.tBodies[0].lastChild.objId
     const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
+    build_routed(forwards_task)
+  }
+  async function build_routed(forwards_task){
     let next_forwards = (await forwards_task).results
     if(next_forwards.length==0){
       byId("loadMoreForwards").style.display = "none"
