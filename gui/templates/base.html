@@ -5,7 +5,6 @@
   </style>
   <script id="api" data-token="{{csrf_token}}" src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
-  <script src="{% static 'dark_mode.js' %}"></script>
   <script src="{% static 'helpers.js' %}"></script>
   <script>
     const base_ch_template = {
@@ -27,7 +26,7 @@
     {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
-  <body onload="applyTheme()">
+  <body {% if request.COOKIES.darkmode == 'true' %}class="dark-mode"{% endif %}>
     <div id="content">
       {% if messages %}
       <div id="messages" class="w3-container w3-padding-small">
@@ -62,6 +61,11 @@
   </footer>
   <script>
     //BASE CONFIG
+    function toggleTheme() {
+      var element = document.body;
+      element.classList.toggle("dark-mode")
+      document.cookie = `darkmode=${element.classList.contains("dark-mode")};max-age=34560000`
+    }
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
         const el = evt.currentTarget, sT = el.scrollTop;
