@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField
 from django.db.models.functions import Round, TruncDay
 from django.contrib.auth.decorators import login_required
+from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
 from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
@@ -2190,11 +2191,28 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             return Response(serializer.errors)
 
+class ForwardsFilter(FilterSet):
+    chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')
+    forward_date__lte = DateTimeFilter(field_name='forward_date', lookup_expr='lte')
+    forward_date__gte = DateTimeFilter(field_name='forward_date', lookup_expr='gte')
+    forward_date__lt = DateTimeFilter(field_name='forward_date', lookup_expr='lt')
+    forward_date__gt = DateTimeFilter(field_name='forward_date', lookup_expr='gt')
+    id__lt = NumberFilter(field_name='id', lookup_expr='lt')
+
+    def filter_chan_in_or_out(self, queryset, name, value):
+        return queryset.filter(
+            Q(chan_id_in__exact=value) | Q(chan_id_out__exact=value)
+        )
+
+    class Meta:
+        model = Forwards
+        fields = ['chan_in_or_out', 'forward_date__lte', 'forward_date__gte', 'forward_date__lt', 'forward_date__gt', 'id__lt']
+
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Forwards.objects.all().order_by('-id')
     serializer_class = ForwardSerializer
-    filterset_fields = {'forward_date': ['lte','gte', 'lt', 'gt']}
+    filterset_class = ForwardsFilter
 
 class PeersViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

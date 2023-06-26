@@ -323,8 +323,9 @@
 {% if forwards %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5  <a href="/forwards" target="_blank">Payments Routed</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
+      <th style="display:none">ID</th>
       <th>Timestamp</th>
       <th>Amount In</th>
       <th>Amount Out</th>
@@ -337,6 +338,7 @@
     </tr>
     {% for forward in forwards %}
     <tr>
+      <td style="display:none">{{ forward.id }}</td>
       <td title="{{ forward.forward_date }}">{{ forward.forward_date|naturaltime }}</td>
       <td>{{ forward.amt_in|intcomma }}</td>
       <td>{{ forward.amt_out|intcomma }}</td>
@@ -348,6 +350,13 @@
       <td>{{ forward.ppm|intcomma }}</td>
     </tr>
     {% endfor %}
+    <tfoot id="loadMoreRow">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a id="loadMoreForwards" onclick="loadForwards()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 {% endif %}
@@ -494,4 +503,54 @@
   <center><h1>No data found for this channel!</h1></center>
 </div>
 {% endif %}
+<script>
+  async function loadForwards(){
+    const forwardTable = byId('forwardsTable')
+    const currentRowCount = forwardTable.querySelectorAll("tbody tr").length-1
+    const lastId = forwardTable.querySelectorAll("tbody tr:last-child td:first-child")[0].innerHTML
+    const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
+    let next_forwards = (await forwards_task).results
+    if(next_forwards.length==0){
+      byId("loadMoreRow").style.display = "none"
+    }
+    for (forward of next_forwards){
+      const tableBody = forwardTable.querySelector("tbody")
+      const row = document.createElement("tr")
+      const id = document.createElement("td")
+      const forward_date = document.createElement("td")
+      const amt_in_msat = document.createElement("td")
+      const amt_out_msat = document.createElement("td")
+      const chan_in_alias = document.createElement("td")
+      const chan_out_alias = document.createElement("td")
+      const chan_id_in = document.createElement("td")
+      const chan_id_out = document.createElement("td")
+      const fee = document.createElement("td")
+      const ppm = document.createElement("td")
+
+      id.innerText = forward.id
+      forward_date.innerText = formatDate(forward.forward_date)
+      amt_in_msat.innerText = (forward.amt_in_msat/1000).intcomma()
+      amt_out_msat.innerText = (forward.amt_out_msat/1000).intcomma()
+      chan_in_alias.innerText = forward.chan_in_alias
+      chan_out_alias.innerText = forward.chan_out_alias
+      chan_id_in.innerHTML = `<a href="/channel?=${forward.chan_id_in}" target="_blank">${forward.chan_id_in}</a>`
+      chan_id_out.innerHTML = `<a href="/channel?=${forward.chan_id_out}" target="_blank">${forward.chan_id_out}</a>`
+      fee.innerText = forward.fee
+      ppm.innerText = parseInt((forward.fee/((forward.amt_out_msat/1000) / 1000000)).toFixed(0)).intcomma()
+
+      row.appendChild(id)
+      row.appendChild(forward_date)
+      row.appendChild(amt_in_msat)
+      row.appendChild(amt_out_msat)
+      row.appendChild(chan_in_alias)
+      row.appendChild(chan_out_alias)
+      row.appendChild(chan_id_in)
+      row.appendChild(chan_id_out)
+      row.appendChild(fee)
+      row.appendChild(ppm)
+      tableBody.appendChild(row)
+      id.style.display = "none"
+    }
+  }
+</script>
 {% endblock %}
