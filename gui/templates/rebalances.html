@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %} {{ block.super }} - Rebalances{% endblock %}
 {% block content %}
-{% include 'rebalances_table.html' with count=69 status=2 title='Rebalances' %}
-{% include 'rebalances_table.html' with count=150 title='Rebalances' %}
+{% include 'rebalances_table.html' with count=20 status=2 load_count=20 title='Rebalance Requests' %}
+{% include 'rebalances_table.html' with count=50 load_count=50 title='Rebalance Requests' %}
 {% endblock %}

@@ -1453,10 +1453,7 @@ def batch_open(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def forwards(request):
     if request.method == 'GET':
-        context = {
-            'forwards': Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')[:150],
-        }
-        return render(request, 'forwards.html', context)
+        return render(request, 'forwards.html')
     else:
         return redirect('home')
 

@@ -148,7 +148,6 @@
     fees_paid = Number(byId("fees_paid").value)
     parent_size = Number(byId("parent_size").value)
     target_rate = (((parent_size+sweep_size)*desired)-fees_paid)/sweep_size
-    console.log(target_rate)
     byId('estimated').innerHTML = "Fee Rate Estimate: " + target_rate.toFixed(2) + " or ~" + (Math.floor(target_rate)+1) + " sats/vB"
     byId('estimated').style.display = "block";
   }

@@ -450,7 +450,7 @@
     </tfoot>
   </table>
 </div>
-{% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'rebalances_table.html' with count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 <div id="payments_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
@@ -820,7 +820,7 @@
   }
   async function loadForwards(){
     const lastId = forwardsTable.tBodies[0].lastChild.objId
-    const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
+    const forwards_task = GET('forwards', {data: {id__lt: lastId, limit: 10} })
     build_next_routed(forwards_task)
   }
   async function build_next_routed(forwards_task){
