@@ -412,8 +412,8 @@
 {% endif %}
 {% if failed_htlcs %}
 <div class="w3-container w3-padding-small">
-  <h2>Last 5 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <h2>Last <a href="/failed_htlcs?={{chan_id}}_O" target="_blank">Failed HTLCs</a></h2>
+  <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
       <th>Chan In ID</th>
@@ -426,20 +426,13 @@
       <th>HTLC Failure</th>
       <th>Failure Detail</th>
     </tr>
-    {% for failed_htlc in failed_htlcs %}
-    <tr>
-      <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I" target="_blank">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O" target="_blank">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
-      <td>{{ failed_htlc.amount|intcomma }}</td>
-      <td>{{ failed_htlc.chan_out_liq|intcomma }} <small title="Pending at HTLC time" class="w3-round w3-border-small w3-border-grey">{{ failed_htlc.chan_out_pending|intcomma }}</small></td>
-      <td>{{ failed_htlc.missed_fee|intcomma }}</td>
-      <td>{% if failed_htlc.wire_failure == 11 %}Amount Below Minimum{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% elif failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 22 %}Expiry Too Far{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
-      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 13 %}Invoice Not Open{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <tfoot id="loadMoreFailedHTLCs">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a onclick="loadFailedHTLCs()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
   <h4>Failed Due To Insufficient Balance:
     <small class="w3-round w3-border-small w3-border-grey">1-Day: {{ channel.failed_out_1day }}</small>
@@ -491,7 +484,11 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () =>{
     const forwardsTable = byId('forwardsTable')
+    const failedhtlcsTable = byId('failedhtlcsTable')
     const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", limit: 5} })
+    const failedhtlcs_task = GET('failedhtlcs', {data: {chan_in_or_out: "{{ chan_id}}", wire_failure__lt: 99, limit: 5} })
+    let failed_htlcs = (await failedhtlcs_task).results
+    build_failedhtlcs(failed_htlcs)
     build_routed(forwards_task)
   })
   async function loadForwards(){
@@ -511,6 +508,22 @@
       f.amt_out = f.amt_out_msat/1000
       f.ppm = f.fee*1000000/f.amt_out
       tableBody.appendChild(use(routed_template).render(f))
+    }
+  }
+  async function loadFailedHTLCs(){
+    const lastId = failedhtlcsTable.tBodies[0].lastChild.objId
+    const failedhtlcs_task = GET('failedhtlcs', {data: {chan_in_or_out: "{{ chan_id}}", wire_failure__lt: 99, id__lt: lastId, limit: 5} })
+    let next_failed_htlcs = (await failedhtlcs_task).results
+    if(next_failed_htlcs.length==0){
+      byId("loadMoreFailedHTLCs").style.display = "none"
+      return
+    }
+    build_failedhtlcs(next_failed_htlcs)
+  }
+  async function build_failedhtlcs(failed_htlcs){
+    const tableBody = failedhtlcsTable.querySelector("tbody")
+    for (f of failed_htlcs){
+      tableBody.appendChild(use(failedHTLCs_template).render(f))
     }
   }
 </script>

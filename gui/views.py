@@ -1105,10 +1105,10 @@ def channel(request):
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
-            'forwards': [] if forwards_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
+            'forwards': [] if forwards_df.empty else True,
             'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
-            'failed_htlcs': [] if failed_htlc_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
+            'failed_htlcs': [] if failed_htlc_df.empty else True,
             'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
@@ -1226,14 +1226,9 @@ def pending_htlcs(request):
 def failed_htlcs(request):
     if request.method == 'GET':
         try:
-            query = None if request.GET.urlencode()[1:] == '' else request.GET.urlencode()[1:].split('_')
-            chan_id = None if query is None or len(query) < 1 else query[0]
-            direction = None if query is None or len(query) < 2 else query[1]
-            failed_htlcs = FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_in=chan_id).order_by('-id')[:150])
             filter_7day = datetime.now() - timedelta(days=7)
             agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp__gte=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id'), volume=Sum('amount'), chan_in_alias=Max('chan_in_alias'), chan_out_alias=Max('chan_out_alias')).order_by('-count')[:21]
             context = {
-                'failed_htlcs': failed_htlcs,
                 'agg_failed_htlcs': agg_failed_htlcs
             }
             return render(request, 'failed_htlcs.html', context)
@@ -2238,11 +2233,28 @@ class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PendingHTLCs.objects.all()
     serializer_class = PendingHTLCSerializer
 
+class FailedHTLCFilter(FilterSet):
+    chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')
+    chan_id_in = CharFilter(field_name='chan_id_in', lookup_expr='exact')
+    chan_id_out = CharFilter(field_name='chan_id_out', lookup_expr='exact')
+    wire_failure__lt = NumberFilter(field_name='wire_failure', lookup_expr='lt')
+    wire_failure__gt = NumberFilter(field_name='wire_failure', lookup_expr='gt')
+    id__lt = NumberFilter(field_name='id', lookup_expr='lt')
+
+    def filter_chan_in_or_out(self, queryset, name, value):
+        return queryset.filter(
+            Q(chan_id_in__exact=value) | Q(chan_id_out__exact=value)
+        )
+
+    class Meta:
+        model = FailedHTLCs
+        fields = ['chan_in_or_out', 'chan_id_in', 'chan_id_out', 'wire_failure__lt', 'wire_failure__gt', 'id__lt']
+
 class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = FailedHTLCs.objects.all().order_by('-id')
     serializer_class = FailedHTLCSerializer
-    filterset_fields = {'wire_failure': ['lt','gt']}
+    filterset_class = FailedHTLCFilter
 
 class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
