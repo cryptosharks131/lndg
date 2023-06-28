@@ -21,7 +21,7 @@ def main():
                 out_chan = Channels.objects.filter(chan_id=out_chan_id)[0] if Channels.objects.filter(chan_id=out_chan_id).exists() else None
                 in_chan_alias = in_chan.alias if in_chan is not None else None
                 out_chan_alias = out_chan.alias if out_chan is not None else None
-                out_chan_liq = (out_chan.local_balance - out_chan.local_chan_reserve) if out_chan is not None else None
+                out_chan_liq = max(0, (out_chan.local_balance - out_chan.local_chan_reserve)) if out_chan is not None else None
                 out_chan_pending = out_chan.pending_outbound if out_chan is not None else None
                 amount = int(response.link_fail_event.info.outgoing_amt_msat/1000)
                 wire_failure = response.link_fail_event.wire_failure
@@ -47,7 +47,7 @@ def main():
                     out_chan = Channels.objects.filter(chan_id=out_chan_id)[0] if Channels.objects.filter(chan_id=out_chan_id).exists() else None
                     in_chan_alias = in_chan.alias if in_chan is not None else None
                     out_chan_alias = out_chan.alias if out_chan is not None else None
-                    out_chan_liq = (out_chan.local_balance - out_chan.local_chan_reserve) if out_chan is not None else None
+                    out_chan_liq = max(0, (out_chan.local_balance - out_chan.local_chan_reserve)) if out_chan is not None else None
                     out_chan_pending = out_chan.pending_outbound if out_chan is not None else None
                     amount = int(forward_event.info.incoming_amt_msat/1000)
                     wire_failure = 99
