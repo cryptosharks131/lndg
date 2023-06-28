@@ -42,6 +42,16 @@
       "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
       "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
     }
+    const peer_events_template = {
+      "timestamp": p => ({innerHTML: formatDate(p.timestamp), title: adjustTZ(p.timestamp) }),
+      "chan_id": p => ({innerHTML: `<a href="/channel?=${p.chan_id}" target="_blank">${(BigInt(p.chan_id)>>40n)+'x'+(BigInt(p.chan_id)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_id) & BigInt('0xFFFF'))}</a>`}),
+      "peer_alias": p => ({innerHTML: `<a href="/peerevents?=${p.chan_id}" target="_blank">${p.peer_alias || p.chan_id}</a>`}),
+      "event": p => ({innerHTML: p.event}),
+      "old_value": p => ({innerHTML: p.event == 'Connection' & p.old_value == 1 ? 'Online' : p.event == 'Connection' & p.old_value == 0 ? 'Offline' : p.event == 'Disabled' & p.old_value == 1 ? 'True' : p.event == 'Disabled' & p.old_value == 0 ? 'False' : p.old_value == null ? '---' : p.old_value }),
+      "new_value": p => ({innerHTML: p.event == 'Connection' & p.new_value == 1 ? 'Online' : p.event == 'Connection' & p.new_value == 0 ? 'Offline' : p.event == 'Disabled' & p.new_value == 1 ? 'True' : p.event == 'Disabled' & p.new_value == 0 ? 'False' : p.event == 'MinHTLC' | p.event == 'MaxHTLC' ? (p.new_value/1000).intcomma() : p.new_value.intcomma(), style: {backgroundColor: p.event == 'Disabled' & p.new_value == 0 ? 'rgba(46,160,67,0.15)' : p.event == 'Connection' & p.new_value == 1 ? 'rgba(46,160,67,0.15)' : p.event == 'Disabled' & p.new_value == 1 ? 'rgba(248,81,73,0.15)' : p.new_value > p.old_value & p.old_value != null ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
+      "change": p => ({innerHTML: p.event == 'Connection' | p.event == 'Disabled' | p.old_value == null ? '---' : p.old_value != 0 ? (p.new_value-p.old_value)*100/p.old_value+'%' : '0%', style: {backgroundColor: p.event == 'Connection' | p.event == 'Disabled' | p.old_value == null ? '' : p.new_value > p.old_value ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
+      "chan_liq": p => ({innerHTML: '<span class="w3-round w3-border-small w3-border-grey">'+p.out_liq_percent+'%</span> <span class="w3-round w3-border-small w3-border-grey">'+(100-p.out_liq_percent)+'%</span>', title: 'Outbound Liquidity: ' + p.out_liq.intcomma()}),
+    }
   </script>
   <script src="{% static 'qrcode.js' %}"></script>
   <head>

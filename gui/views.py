@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -1513,27 +1513,7 @@ def autofees(request):
 def peerevents(request):
     if request.method == 'GET':
         try:
-            chan_id = request.GET.urlencode()[1:]
-            filter_7d = datetime.now() - timedelta(days=7)
-            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(timestamp__gte=filter_7d).order_by('-id')[:150].values() if chan_id == "" else PeerEvents.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id')[:150].values())
-            channels_df = DataFrame.from_records(Channels.objects.values() if chan_id == "" else Channels.objects.filter(chan_id=chan_id).values())
-            if peer_events_df.shape[0]> 0:
-                peer_events_df = peer_events_df.merge(channels_df)
-                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/peer_events_df['capacity'])*100, 1)
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df = peer_events_df.fillna('')
-                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
-                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
-                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
-                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
-            context = {
-                'peer_events': [] if peer_events_df.empty else peer_events_df.sort_values(by=['id'], ascending=False).to_dict(orient='records')
-            }
-            return render(request, 'peerevents.html', context)
+            return render(request, 'peerevents.html')
         except Exception as e:
             try:
                 error = str(e.code())
@@ -2232,6 +2212,12 @@ class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = PendingHTLCs.objects.all()
     serializer_class = PendingHTLCSerializer
+
+class PeerEventsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = PeerEvents.objects.all().order_by('-id')
+    serializer_class = PeerEventsSerializer
+    filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
 
 class FailedHTLCFilter(FilterSet):
     chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -178,6 +178,17 @@ class PendingHTLCSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = PendingHTLCs
         exclude = []
+
+class PeerEventsSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    out_liq_percent = serializers.SerializerMethodField()
+    class Meta:
+        model = PeerEvents
+        exclude = []
+
+    def get_out_liq_percent(self, obj):
+        capacity = Channels.objects.filter(chan_id=obj.chan_id).get().capacity
+        return int(round((obj.out_liq/capacity)*100, 1))
 
 class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
