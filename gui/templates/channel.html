@@ -320,8 +320,7 @@
   </table>
 </div>
 {% endif %}
-{% if forwards %}
-<div class="w3-container w3-padding-small">
+<div id="forwardsDiv" class="w3-container w3-padding-small">
   <h2>Last <a href="/forwards" target="_blank">Payments Routed</a></h2>
   <table id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
@@ -344,8 +343,9 @@
     </tfoot>
   </table>
 </div>
-{% endif %}
-{% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title='<a href="/rebalancing" target="_blank">Rebalance Requests</a>' %}
+<div id="rebalancerDiv">
+  {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title='<a href="/rebalancing" target="_blank">Rebalance Requests</a>' %}
+</div>
 {% if payments %}
 <div class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
@@ -410,8 +410,7 @@
   </table>
 </div>
 {% endif %}
-{% if failed_htlcs %}
-<div class="w3-container w3-padding-small">
+<div id="failedhtlcsDiv" class="w3-container w3-padding-small">
   <h2>Last <a href="/failed_htlcs?={{chan_id}}_O" target="_blank">Failed HTLCs</a></h2>
   <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
@@ -441,9 +440,7 @@
     <small class="w3-round w3-border-small w3-border-grey">Lifetime: {{ channel.failed_out }}</small>
   </h4>
 </div>
-{% endif %}
-{% if peer_events %}
-<div class="w3-container w3-padding-small">
+<div id="peerEventsDiv" class="w3-container w3-padding-small">
   <h2>Last <a href="/peerevents">Peer Log Events</a></h2>
   <table id="peerEventsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
@@ -470,7 +467,6 @@
   <textarea id="w3review" name="w3review" rows="5" style="width:100%" onChange="Sync.PUT('channels/{{ chan_id }}', {body: {notes: this.value}}, r => {flash(this, r.notes)});">{{ channel.notes }}</textarea>
 </div>
 {% endif %}
-{% endif %}
 {% if not channel %}
 <div class="w3-container w3-padding-small">
   <center><h1>No data found for this channel!</h1></center>
@@ -486,17 +482,33 @@
     const peerEvents_task = GET('peerevents', {data: {chan_id: "{{ chan_id}}", limit: 5} })
     let failed_htlcs = (await failedhtlcs_task).results
     let peer_events = (await peerEvents_task).results
-    build_failedhtlcs(failed_htlcs)
-    build_routed(forwards_task)
-    build_peerEvents(peer_events)
+    let forwards = (await forwards_task).results
+    if(byId('rebalsTable_')==null){
+      byId("rebalancerDiv").style.display = "none"
+    }
+    if(failed_htlcs.length==0){
+      byId("failedhtlcsDiv").style.display = "none"
+    }else{
+      build_failedhtlcs(failed_htlcs)
+    }
+    if(peer_events.length==0){
+      byId("peerEventsDiv").style.display = "none"
+    }else{
+      build_peerEvents(peer_events)
+    }
+    if(forwards.length==0){
+      byId("forwardsDiv").style.display = "none"
+    }else{
+      build_routed(forwards)
+    }
   })
   async function loadForwards(){
     const lastId = forwardsTable.tBodies[0].lastChild.objId
     const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
-    build_routed(forwards_task)
+    let forwards = (await forwards_task).results
+    build_routed(forwards)
   }
-  async function build_routed(forwards_task){
-    let next_forwards = (await forwards_task).results
+  async function build_routed(next_forwards){
     if(next_forwards.length==0){
       byId("loadMoreForwards").style.display = "none"
       return

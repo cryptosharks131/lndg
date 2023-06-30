@@ -3,13 +3,13 @@
 {% block content %}
 {% load humanize %}
 <button style="position:absolute;top:50px;right:50px;" id="open" class="open-button" onclick="openForm()">Broadcast Transaction</button>
-<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:darkcyan;border-style:solid;border-width:3px;" id="tx" class="w3-round w3-container">
+<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:rgb(225, 145, 50);border-style:solid;border-width:3px;" id="tx" class="w3-round w3-container">
     <h1>Broadcast A Raw Transaction</h1>
     <textarea id="raw_tx" type="text" placeholder="Raw TX Data" name="raw_tx"></textarea>
     <button style="margin-left: 10px;" type="button" class="btn" onclick="broadcastTx()">Broadcast</button>
     <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
 </div>
-<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:darkcyan;border-style:solid;border-width:3px;" id="calc" class="w3-round w3-container">
+<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:rgb(225, 145, 50);border-style:solid;border-width:3px;" id="calc" class="w3-round w3-container">
   <h1>Estimate A Fee Bump</h1>
   <input title="Desired Fee Rate" id="desired" type="number" placeholder="Desired Fee Rate" name="desired">
   <input title="Parent TX Fees" id="fees_paid" type="number" placeholder="Parent TX Fees" name="fees_paid">
