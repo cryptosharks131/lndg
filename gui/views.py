@@ -782,6 +782,7 @@ def channel(request):
             channels_df = DataFrame.from_records(channel.values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
+            peer_info_df = DataFrame.from_records(Peers.objects.filter(pubkey=channels_df['remote_pubkey'][0]).values())
             channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
             channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
             channels_df['in_percent'] = ((channels_df['remote_balance']/channels_df['capacity'])*100).round(0).astype(int)
@@ -1073,19 +1074,6 @@ def channel(request):
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(chan_id=chan_id).order_by('-id')[:10].values())
-            if peer_events_df.shape[0]> 0:
-                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/channels_df['capacity'][0])*100, 1)
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df = peer_events_df.fillna('')
-                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
-                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
-                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
-                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
             results_df = af.main(channel)
             channels_df['new_rate'] = results_df[results_df['chan_id']==chan_id]['new_rate']
             channels_df['adjustment'] = results_df[results_df['chan_id']==chan_id]['adjustment']
@@ -1094,8 +1082,8 @@ def channel(request):
             channels_df = DataFrame()
             payments_df = DataFrame()
             invoices_df = DataFrame()
+            peer_info_df = DataFrame()
             autofees_df = DataFrame()
-            peer_events_df = DataFrame()
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
@@ -1103,11 +1091,11 @@ def channel(request):
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
             'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
+            'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links(),
             'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records'),
-            'peer_events': [] if peer_events_df.empty else peer_events_df.to_dict(orient='records')
         }
         try:
             return render(request, 'channel.html', context)
