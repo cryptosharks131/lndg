@@ -238,8 +238,10 @@ th{position:sticky;overflow: hidden;top:0px;z-index:10}tr:first-child th:first-c
 .dark-mode {color-scheme: dark;background-color: #0d1117;color: #c9d1d9}
 .dark-mode .w3-table-all, .dark-mode thead th {border: 1px solid rgba(200,200,200,.2)!important;}
 .dark-mode table tr {background-color: #161b22;border: 1px solid #30363d;} .dark-mode table tbody tr td {border-top: 1px solid #30363d}
-textarea, input:not([type=submit]):not([type=checkbox]), select {-moz-appearance: none; -webkit-appearance: none; appearance: none;border-radius: 6px;border-color: rgba(0,0,0,0.1);background-color: white; color: black;padding: 1px 2px;border: 2px solid rgba(0,0,0,0.1);min-height: 28px;}
-.dark-mode textarea, input:not([type=submit]):not([type=checkbox]), .dark-mode select{-moz-appearance: none; -webkit-appearance: none; appearance: none;border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
+input:not([type=submit]):not([type=checkbox]), select {-moz-appearance: none; -webkit-appearance: none; appearance: none;border-radius: 6px;border-color: rgba(0,0,0,0.1);background-color: white; color: black;padding: 1px 2px;border: 2px solid rgba(0,0,0,0.1);min-height: 28px;}
+.dark-mode input:not([type=submit]):not([type=checkbox]), .dark-mode select{-moz-appearance: none; -webkit-appearance: none; appearance: none;border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
+textarea, select {-moz-appearance: none; -webkit-appearance: none; appearance: none;border-radius: 6px;border-color: rgba(0,0,0,0.1);background-color: white; color: black;padding: 1px 2px;border: 2px solid rgba(0,0,0,0.1);min-height: 28px;}
+.dark-mode textarea, .dark-mode select{-moz-appearance: none; -webkit-appearance: none; appearance: none;border-color: rgba(240,246,252,0.1);background-color: #0d1117;color: #c9d1d9;}
 input[type=submit] {cursor: pointer;border-radius: 6px;border-color: rgba(0,0,0,0.1);}input:disabled{cursor: default;opacity:0.3}
 .dark-mode input[type=submit]{background-color: #30363d;color: #c9d1d9;border-color: rgba(240,246,252,0.1);}
 .dark-mode table th {background-color: #0d1119;}
