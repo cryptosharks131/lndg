@@ -5,7 +5,54 @@
   </style>
   <script id="api" data-token="{{csrf_token}}" src="{% static 'api.js' %}"></script>
   <script src="{% static 'sort_table.js' %}"></script>
-  <script src="{% static 'dark_mode.js' %}"></script>
+  <script src="{% static 'helpers.js' %}"></script>
+  <script>
+    const base_ch_template = {
+      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>${ch.notes.length > 0 ? ` <sup href class="w3-round w3-border-small w3-border-grey" title="${ch.notes}">i</sup>` : ''}`, title: ch.remote_pubkey}),
+      "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_outbound}%</small>`}),
+      "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
+      <div class="progress w3-round w3-grey">
+        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
+      </div>`}),
+      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</small>`})
+    }
+    const routed_template = {
+      "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
+      "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
+      "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
+      "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
+      "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
+      "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_in}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+      "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+      "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
+      "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
+    }
+    const wire_failures = "0|1|2|3|4|5|6|Expiry Too Soon|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
+    const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
+    const failedHTLCs_template = {
+      "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
+      "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+      "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+      "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
+      "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
+      "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
+      "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} <small title="Pending at HTLC time" class="w3-round w3-border-small w3-border-grey">${htlc.chan_out_pending}</small>`}),
+      "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
+      "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
+      "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
+    }
+    const peer_events_template = {
+      "timestamp": p => ({innerHTML: formatDate(p.timestamp), title: adjustTZ(p.timestamp) }),
+      "chan_id": p => ({innerHTML: `<a href="/channel?=${p.chan_id}" target="_blank">${(BigInt(p.chan_id)>>40n)+'x'+(BigInt(p.chan_id)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_id) & BigInt('0xFFFF'))}</a>`}),
+      "peer_alias": p => ({innerHTML: `<a href="/peerevents?=${p.chan_id}" target="_blank">${p.peer_alias || p.chan_id}</a>`}),
+      "event": p => ({innerHTML: p.event}),
+      "old_value": p => ({innerHTML: p.event == 'Connection' & p.old_value == 1 ? 'Online' : p.event == 'Connection' & p.old_value == 0 ? 'Offline' : p.event == 'Disabled' & p.old_value == 1 ? 'True' : p.event == 'Disabled' & p.old_value == 0 ? 'False' : p.old_value == null ? '---' : p.old_value }),
+      "new_value": p => ({innerHTML: p.event == 'Connection' & p.new_value == 1 ? 'Online' : p.event == 'Connection' & p.new_value == 0 ? 'Offline' : p.event == 'Disabled' & p.new_value == 1 ? 'True' : p.event == 'Disabled' & p.new_value == 0 ? 'False' : p.event == 'MinHTLC' | p.event == 'MaxHTLC' ? (p.new_value/1000).intcomma() : p.new_value.intcomma(), style: {backgroundColor: p.event == 'Disabled' & p.new_value == 0 ? 'rgba(46,160,67,0.15)' : p.event == 'Connection' & p.new_value == 1 ? 'rgba(46,160,67,0.15)' : p.event == 'Disabled' & p.new_value == 1 ? 'rgba(248,81,73,0.15)' : p.new_value > p.old_value & p.old_value != null ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
+      "change": p => ({innerHTML: p.event == 'Connection' | p.event == 'Disabled' | p.old_value == null ? '---' : p.old_value != 0 ? (p.new_value-p.old_value)*100/p.old_value+'%' : '0%', style: {backgroundColor: p.event == 'Connection' | p.event == 'Disabled' | p.old_value == null ? '' : p.new_value > p.old_value ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
+      "chan_liq": p => ({innerHTML: '<span class="w3-round w3-border-small w3-border-grey">'+p.out_liq_percent+'%</span> <span class="w3-round w3-border-small w3-border-grey">'+(100-p.out_liq_percent)+'%</span>', title: 'Outbound Liquidity: ' + p.out_liq.intcomma()}),
+    }
+  </script>
   <script src="{% static 'qrcode.js' %}"></script>
   <head>
     <meta charset="utf-8">
@@ -14,7 +61,7 @@
     {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
-  <body onload="applyTheme()">
+  <body {% if request.COOKIES.darkmode == 'true' %}class="dark-mode"{% endif %}>
     <div id="content">
       {% if messages %}
       <div id="messages" class="w3-container w3-padding-small">
@@ -40,29 +87,26 @@
   <footer>
     <div id="footer">
       <div class="w3-container w3-padding-small">
-        <center><button onclick="toggleTheme()">Toggle dark mode</button></center>
+        <center><button id="toggleTheme" onclick="toggleTheme()">Toggle dark mode</button></center>
       </div>
       <div class="w3-container w3-padding-small">
-        <center>LNDg v1.6.4</center>
+        <center>LNDg v1.7.0</center>
       </div>
     </div>
   </footer>
   <script>
+    //BASE CONFIG
+    function toggleTheme() {
+      var element = document.body;
+      element.classList.toggle("dark-mode")
+      document.cookie = `darkmode=${element.classList.contains("dark-mode")};max-age=34560000`
+    }
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
         const el = evt.currentTarget, sT = el.scrollTop;
         el.querySelectorAll("thead th").forEach(th => th.style.transform = sT != 0 ? 'scale(1.05, 1.2)' : 'scale(1, 1)')
       })
     )
-    function sleep(ms){
-      return new Promise(res => setTimeout(res, ms));
-    }
-    HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
-    HTMLElement.prototype.cloneNode = function(attrs){
-      const el = this.defaultCloneNode(this)
-      Object.keys(attrs).forEach(k => el[k] = attrs[k])
-      return el
-    }
     const modes = {'soft-encrypted': 'soft', encrypted: 'hard'}
     document.onkeypress = function (e) {
       if(e.ctrlKey && e.shiftKey && e.charCode == 5) document.body.classList.toggle("encrypted")
@@ -79,48 +123,7 @@
       if (document.cookie.includes("privacy=soft")) document.body.classList.toggle("soft-encrypted")
       else if (document.cookie.includes("privacy=hard")) document.body.classList.toggle("encrypted")
     })
-
-    async function toogle(button){
-      try{
-        button.children[0].style.visibility = 'collapse';
-        button.children[1].style.visibility = 'visible';
-        navigator.clipboard.writeText(button.getAttribute('data-value'))
-        await sleep(1000)
-      }
-      catch(e){
-        alert(button.getAttribute('data-value'))
-      }
-      finally{
-        button.children[0].style.visibility = 'visible';
-        button.children[1].style.visibility = 'collapse'
-      }
-    }
-    function use(transformations){
-      return { 
-        fillWith(object, row = null){
-          const tr = row ?? document.createElement("tr")
-          for (id in transformations){
-            const td = document.createElement("td")
-            const transforms = transformations[id](object)
-            tr.append(td)
-            for(key in transforms){
-              const value = transforms[key]
-              if(value instanceof HTMLElement){
-                td.append(value)
-              }
-              else if (key == 'style'){
-                for(prop of Object.keys(value)){
-                  td[key][prop] = value[prop]
-                }
-              }
-              else{
-                td[key] = value
-              }
-            }
-          }
-          return tr
-        }
-      }
-    }
+    //END: BASE CONFIG
+    //-------------------------------------------------------------------------------------------------------------------------
   </script>
 </html>

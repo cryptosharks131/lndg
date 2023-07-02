@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -71,6 +71,9 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     remote_max_htlc_msat = serializers.ReadOnlyField()
     alias = serializers.ReadOnlyField()
     fees_updated = serializers.ReadOnlyField()
+    push_amt = serializers.ReadOnlyField()
+    close_address = serializers.ReadOnlyField()
+    opened_in = serializers.SerializerMethodField()
     ar_max_cost = serializers.IntegerField(required=False)
     ar_amt_target = serializers.IntegerField(required=False)
     ar_out_target = serializers.IntegerField(required=False)
@@ -79,6 +82,9 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Channels
         exclude = []
+
+    def get_opened_in(self, obj):
+        return int(obj.short_chan_id.split('x')[0])
 
 class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
@@ -110,11 +116,26 @@ class BumpFeeSerializer(serializers.Serializer):
     target_fee = serializers.IntegerField(label='target_fee')
     force = serializers.BooleanField(default=False)
 
+class BroadcastTXSerializer(serializers.Serializer):
+    raw_tx = serializers.CharField(label='raw_tx')
+
 class AddInvoiceSerializer(serializers.Serializer):
     value = serializers.IntegerField(label='value')
 
 class UpdateAliasSerializer(serializers.Serializer):
     peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
+
+class UpdateChanPolicy(serializers.Serializer):
+    chan_id = serializers.CharField(max_length=20)
+    base_fee = serializers.IntegerField(required=False, default=None)
+    fee_rate = serializers.IntegerField(required=False, default=None)
+    disabled = serializers.IntegerField(required=False, default=None)
+    cltv = serializers.IntegerField(required=False, default=None)
+    min_htlc = serializers.FloatField(required=False, default=None)
+    max_htlc = serializers.FloatField(required=False, default=None)
+
+class NewAddressSerializer(serializers.Serializer):
+    legacy = serializers.BooleanField(required=False, default=False)
 
 class PeerSerializer(serializers.HyperlinkedModelSerializer):
     pubkey = serializers.ReadOnlyField()
@@ -157,6 +178,17 @@ class PendingHTLCSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = PendingHTLCs
         exclude = []
+
+class PeerEventsSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    out_liq_percent = serializers.SerializerMethodField()
+    class Meta:
+        model = PeerEvents
+        exclude = []
+
+    def get_out_liq_percent(self, obj):
+        capacity = Channels.objects.filter(chan_id=obj.chan_id).get().capacity
+        return int(round((obj.out_liq/capacity)*100, 1))
 
 class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()

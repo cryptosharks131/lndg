@@ -1,7 +1,7 @@
 {% load humanize %}
-<div id="rebalances_div_{{count}}" class="w3-container w3-padding-small">
-    <h2>Last {{count}} {{title}}</h2>
-    <table class="w3-table-all w3-centered w3-hoverable">
+<div id="rebalances_div_{{status}}" class="w3-container w3-padding-small">
+    <h2>{% if status %}Successful{% else %}Last{% endif %} {{title}}</h2>
+    <table id="rebalsTable_{{status}}" class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th>Requested</th>
         <th>Start</th>
@@ -17,21 +17,20 @@
         <th>Hash</th>
         <th>Action</th>
       </tr>
-      <tbody id="rebalances_{{count}}">
+      <tbody id="rebalances_{{status}}">
       </tbody>
+      <tfoot id="loadMoreRebals_{{status}}">
+        <tr style="background-color:transparent;cursor:pointer;">
+          <td colspan="13">
+            <a onclick='loadRebals_{{status}}()'>Load More</a>
+          </td>
+        </tr>
+      </tfoot>
     </table>
   </div>
   <script>
     function formatDuration(duration){
-      if (duration == 1){
-        return duration + ' minute'
-      }else{
-        return duration + ' minutes'
-      }
-    }
-    function adjustTZ(datetime){
-      datetime = new Date(datetime).getTime() - new Date(datetime).getTimezoneOffset()*60000
-      return new Date(datetime)
+      return `${duration} minute${duration === 1 ? 's':''}`
     }
     statuses = {0: 'Pending', 1: 'In-Flight', 2: 'Successful', 3: 'Timeout', 4: 'No-Route', 5: 'Error', 6: 'Incorrect-Payment-Details', 7: 'Insufficient-Balance', 400: 'Rebalancer-Request-Failed', 406: 'No-Sources', 408: 'Rebalancer-Request-Timeout', 499: 'Cancelled'}
     transformations = {
@@ -39,7 +38,7 @@
       'start': rebalance => ({innerHTML: formatDate(rebalance.start), title: rebalance.start ? adjustTZ(rebalance.start) : '---'}),
       'stop': rebalance => ({innerHTML: formatDate(rebalance.stop), title: rebalance.stop ? adjustTZ(rebalance.stop) : '---'}),
       'duration': rebalance => ({innerHTML: formatDuration(rebalance.duration)}),
-      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance?.stop || null).replace(" ago", "")}),
+      'elapsed': rebalance => ({innerHTML: formatDate(rebalance.start, rebalance.stop).replace(" ago", "")}),
       'value': rebalance => ({innerHTML: Number(rebalance.value).toLocaleString()}),
       'fee_limit': rebalance => ({innerHTML: Number(rebalance.fee_limit).toLocaleString()}),
       'ppm': rebalance => ({innerHTML: Math.round(rebalance.fee_limit*1000000/rebalance.value).toLocaleString()}),
@@ -48,8 +47,7 @@
       'status': rebalance => ({innerHTML: statuses[rebalance.status], title: rebalance.status}),
       'payment_hash': rebalance => ({innerHTML: (rebalance.payment_hash || '').length == 0 ? '---' :
            `<a href="/route?=${rebalance.payment_hash}" target="_blank">${rebalance.payment_hash.substring(0,7)}</a>`}),
-      'id': rebalance => {
-        
+      'action': rebalance => {
         const input = document.createElement("button")
         if (rebalance.status != 0){
           input.innerHTML = "🔂"
@@ -59,7 +57,7 @@
             const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
-            table.prepend(use(transformations).fillWith(response))
+            table.prepend(use(transformations).render(response))
           } 
         }
         else {
@@ -71,21 +69,37 @@
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1
             table.deleteRow(index)
-            use(transformations).fillWith(response, table.insertRow(index))
+            use(transformations).render(response, table.insertRow(index))
           }
         } 
         return {innerHTML: input}
       } 
     };
     document.addEventListener('DOMContentLoaded', async () => {
-      const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}'}})
+      const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:'{{last_hop_pubkey}}' }})
       if(res.errors) return
       if(res.results.length == 0){
-        document.getElementById("rebalances_div_{{count}}").innerHTML = `<center><h1>You dont have any ${statuses['{{status}}']} rebalances yet.</h1></center>`
+        document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any rebalances yet.</h1></center>`
         return
       }
 
-      const table = document.getElementById("rebalances_{{count}}")
-      res.results.forEach(rebalance => table.append(use(transformations).fillWith(rebalance)));
+      const table = document.getElementById("rebalances_{{status}}"), template = use(transformations)
+      res.results.forEach(rebalance => table.append(template.render(rebalance)));
     });
+    async function loadRebals_{{status}}(){
+      const status = "{{ status }}"
+      const rebalsTable = byId('rebalsTable_'+status)
+      const lastId = rebalsTable.tBodies[1].lastChild.objId
+      const rebals_task = GET('rebalancer', {data: {last_hop_pubkey: "{{ last_hop_pubkey }}", id__lt: lastId, status: status, limit: "{{ load_count }}"} })
+      build_rebals(rebals_task, rebalsTable, status)
+    }
+    async function build_rebals(rebals_task, rebalsTable, status){
+      let next_rebals = (await rebals_task).results
+      if(next_rebals.length==0){
+        byId("loadMoreRebals_"+status).style.display = "none"
+        return
+      }
+      const tableBody = rebalsTable.tBodies[1]
+      next_rebals.forEach(rebalance => tableBody.append(use(transformations).render(rebalance)))
+    }
   </script>

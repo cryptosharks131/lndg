@@ -2,44 +2,6 @@
 {% block title %} {{ block.super }} - Failed HTLCs{% endblock %}
 {% block content %}
 {% load humanize %}
-{% if failed_htlcs %}
-<div class="w3-container w3-padding-small">
-  <h2><a href="/failed_htlcs">Last 150 Failed HTLCs</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Timestamp</th>
-      <th>Chan In ID</th>
-      <th>Chan Out ID</th>
-      <th>Chan In Alias</th>
-      <th>Chan Out Alias</th>
-      <th>Forward Amount</th>
-      <th>Actual Outbound</th>
-      <th>Potential Fee</th>
-      <th>HTLC Failure</th>
-      <th>Failure Detail</th>
-    </tr>
-    {% for failed_htlc in failed_htlcs %}
-    <tr>
-      <td title="{{ failed_htlc.timestamp }}">{{ failed_htlc.timestamp|naturaltime }}</td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
-      <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
-      <td>{{ failed_htlc.amount|intcomma }}</td>
-      <td>{{ failed_htlc.chan_out_liq|intcomma }} ({{ failed_htlc.chan_out_pending|intcomma }})</td>
-      <td>{{ failed_htlc.missed_fee|intcomma }}</td>
-      <td>{% if failed_htlc.wire_failure == 11 %}Amount Below Minimum{% elif failed_htlc.wire_failure == 12 %}Fee Insufficient{% elif failed_htlc.wire_failure == 15 %}Temporary Channel Failure{% elif failed_htlc.wire_failure == 18 %}Unknown Next Peer{% elif failed_htlc.wire_failure == 22 %}Expiry Too Far{% else %}{{ failed_htlc.wire_failure }}{% endif %}</td>
-      <td>{% if failed_htlc.failure_detail == 1 %}---{% elif failed_htlc.failure_detail == 5 %}HTLC Exceeds Max{% elif failed_htlc.failure_detail == 6 %}Insufficient Balance{% elif failed_htlc.failure_detail == 13 %}Invoice Not Open{% elif failed_htlc.failure_detail == 20 %}Invalid Keysend{% elif failed_htlc.failure_detail == 22 %}Circular Route{% else %}{{ failed_htlc.failure_detail }}{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-{% if not failed_htlcs %}
-<div class="w3-container w3-padding-small">
-  <center><h1>You dont have any failed HTLCs yet.</h1></center>
-</div>
-{% endif %}
 {% if agg_failed_htlcs %}
 <div class="w3-container w3-padding-small">
   <h2><a href="/failed_htlcs">Top 21 Failed Downstream Routes</a></h2>
@@ -70,4 +32,70 @@
   <center><h1>You dont have any failed downstream routes in the last 7 days.</h1></center>
 </div>
 {% endif %}
+<div id="failedhtlcsDiv" class="w3-container w3-padding-small">
+  <h2><a href="/failed_htlcs">Last Failed HTLCs</a></h2>
+  <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Timestamp</th>
+      <th>Chan In ID</th>
+      <th>Chan Out ID</th>
+      <th>Chan In Alias</th>
+      <th>Chan Out Alias</th>
+      <th>Forward Amount</th>
+      <th>Actual Outbound</th>
+      <th>Potential Fee</th>
+      <th>HTLC Failure</th>
+      <th>Failure Detail</th>
+    </tr>
+    <tfoot id="loadMoreFailedHTLCs">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a onclick="loadFailedHTLCs()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', async () =>{
+    const failedhtlcsTable = byId('failedhtlcsTable')
+    url_query = document.URL.split('?=')[1]
+    api_data = {wire_failure__lt: 99, limit: 50}
+    if(url_query){
+      query_chan = url_query.split('_')[0]
+      query_direction = url_query.split('_')[1]
+      if(query_chan){
+        if(query_direction=='O'){
+          api_data = {chan_id_out: query_chan, wire_failure__lt: 99, limit: 50}
+        }else{
+          api_data = {chan_id_in: query_chan, wire_failure__lt: 99, limit: 50}
+        }
+      }
+    }
+    const failedhtlcs_task = GET('failedhtlcs', {data: api_data })
+    let failed_htlcs = (await failedhtlcs_task).results
+    if(failed_htlcs.length == 0){
+      document.getElementById("failedhtlcsDiv").innerHTML = `<center><h1>You dont have any failed htlcs yet.</h1></center>`
+      return
+    }
+    build_failedhtlcs(failed_htlcs)
+  })
+  async function loadFailedHTLCs(){
+    const lastId = failedhtlcsTable.tBodies[0].lastChild.objId
+    api_data['id__lt'] = lastId
+    const failedhtlcs_task = GET('failedhtlcs', {data: api_data })
+    let next_failed_htlcs = (await failedhtlcs_task).results
+    if(next_failed_htlcs.length==0){
+      byId("loadMoreFailedHTLCs").style.display = "none"
+      return
+    }
+    build_failedhtlcs(next_failed_htlcs)
+  }
+  async function build_failedhtlcs(failed_htlcs){
+    const tableBody = failedhtlcsTable.querySelector("tbody")
+    for (f of failed_htlcs){
+      tableBody.appendChild(use(failedHTLCs_template).render(f))
+    }
+  }
+</script>
 {% endblock %}

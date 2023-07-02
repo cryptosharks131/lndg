@@ -4,21 +4,23 @@
 {% load humanize %}
 {% if peers %}
 <div class="w3-container w3-padding-small">
-  <h2>Peers List ({{ num_peers }})</h2>
+  <h2>Peers List <small class="w3-round w3-border-small w3-border-grey">{{ num_peers }}</small></h2>
   <table id="peersTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th onclick="sortTable(event.target, 0, 'String')" width=40%>Peer PubKey</th>
       <th onclick="sortTable(event.target, 1, 'String')">Peer Alias</th>
       <th onclick="sortTable(event.target, 2, 'String')">Network Address</th>
-      <th onclick="sortTable(event.target, 3, 'String')">Inbound</th>
-      <th onclick="sortTable(event.target, 4, 'int')">Sats Sent</th>
-      <th onclick="sortTable(event.target, 5, 'int')">Sats Received</th>
+      <th onclick="sortTable(event.target, 3, 'int')">Ping Time (ms)</th>
+      <th onclick="sortTable(event.target, 4, 'String')">Inbound</th>
+      <th onclick="sortTable(event.target, 5, 'int')">Sats Sent</th>
+      <th onclick="sortTable(event.target, 6, 'int')">Sats Received</th>
     </tr>
     {% for peer in peers %}
     <tr>
       <td><a href="{{ graph_links }}/{{ network }}node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
       <td>{% if peer.alias != '' %}{{ peer.alias }}{% else %}---{% endif %}</td>
       <td>{{ peer.address }}</td>
+      <td>{{ peer.ping_time }}</td>
       <td>{{ peer.inbound }}</td>
       <td>{{ peer.sat_sent|intcomma }}</td>
       <td>{{ peer.sat_recv|intcomma }}</td>

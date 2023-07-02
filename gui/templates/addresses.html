@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Addresses{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if address_data %}
+{% for addresses in address_data.account_with_addresses reversed %}
+<div class="w3-container w3-padding-small">
+  <h2>{% if addresses.address_type == 1 %}Legacy{% elif addresses.address_type == 4 %}Taproot{% else %}{{ addresses.address_type }}{% endif %} Addresses</h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th width="25%">Change</th>
+      <th width="25%">Balance</th>
+      <th>Address</th>
+    </tr>
+    {% for address in addresses.addresses reversed %}
+    <tr>
+      <td>{{ address.is_internal }}</td>
+      <td>{% if address.balance == 0 %}---{% else %}{{ address.balance|intcomma }}{% endif %}</td>
+      <td><a href="{{ network_links }}/{{ network }}address/{{ address.address }}" target="_blank">{{ address.address }}</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endfor %}
+{% else %}
+<div class="w3-container w3-padding-small">
+  <center><h1>You dont have any addresses yet.</h1></center>
+</div>
+{% endif %}
+{% endblock %}

@@ -40,7 +40,7 @@
   <center><h1>A route was not found for this payment hash!</h1></center>
 </div>
 {% endif %}
-{% include 'rebalances_table.html' with count=150 title='Rebalances' payment_hash=payment_hash %}
+{% include 'rebalances_table.html' with title='Linked Rebalance' payment_hash=payment_hash %}
 {% if invoices %}
 <div class="w3-container w3-padding-small">
   <h2>Linked Invoice</h2>

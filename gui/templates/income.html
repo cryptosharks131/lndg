@@ -1,9 +1,171 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %} {{ block.super }} - P&L{% endblock %}
 {% block content %}
+<script src="{% static 'charts.js' %}"></script>
 {% load humanize %}
 <div class="w3-container w3-padding-small">
-  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> ({{ node_info.identity_pubkey }}){% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> <small class="w3-round w3-border-small w3-border-grey">{{ node_info.identity_pubkey }}</small>{% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <span class="input" data-unit="%"><label title="Aggregate events with `cost`, `offchain` or `onchain` < minimum `step`% value">Step > </label> <input id="step" value="0.01" min="0" step="0.1" max="100" type="number"/></span>
+  <canvas id="balances" style="max-height:500px"></canvas>
+  <input id="timeFilter" type="range" min="0" max="100" style="width:100%" value="0"/>
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      const data = {
+        datasets: [
+          {
+            label: 'Onchain',
+            yAxisID: 'y',
+            fill: true,
+            pointHoverRadius: 10,
+            borderColor: 'rgba(255,119,0,1)',
+            backgroundColor: 'rgba(255,119,0,0.1)',
+            cubicInterpolationMode: 'monotone',
+          },
+          {
+            label: 'Revenue',
+            yAxisID: 'y1',
+            fill: true,
+            pointHoverRadius: 10,
+            borderColor: 'rgba(33,150,243)',
+            backgroundColor: 'rgba(33,150,243,.2)',
+            cubicInterpolationMode: 'monotone',
+          },
+          {
+            label: 'Offchain Costs',
+            yAxisID: 'y1',
+            fill: true,
+            pointHoverRadius: 10,
+            borderColor: 'rgba(248,81,73)',
+            backgroundColor: 'rgba(248,81,73,0.15)',
+            cubicInterpolationMode: 'monotone',
+          }
+        ]
+      };
+
+      const chart = new Chart(byId('balances'), {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: function(ctx) {
+                  let event
+                  for(ct of ctx){
+                    event = ct.dataset.extra[ct.dataIndex]
+                    let diff = event.diff
+                    let sign = ''
+                    if(diff > 0){
+                      sign = '+'
+                      if(diff < 1) diff = diff.toFixed(2)
+                    }
+                    if (Math.abs(diff) > 1000) diff = parseInt(diff)
+                    if (diff != 0.0) ct.formattedValue += ` (${sign}${diff.toLocaleString()})`
+                  }
+                  return `${event.time.toLocaleString()}`+ (event.count > 1 ? ` (${event.count})` : '')
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'Daily Activity'
+            },
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          scales: {
+            x: {
+              display: true
+            },
+            y1: {
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'sats'
+              }
+            },
+            y: {
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'sats'
+              },
+              grid: {
+                drawOnChartArea: false, // only want the grid lines for one axis to show up
+              },
+            },
+          }
+        },
+      })
+      const TZ = time => time.length == 0? '' : adjustTZ(time)
+      const response = await GET('chart', {data: {} })
+      response.unshift({dt: '', onchain: 0, revenue: 0, cost: 0})
+      function buildChart(step, datapoints){
+        data.datasets[2].data = [datapoints[0].cost]
+        data.datasets[0].data = [datapoints[0].onchain]
+        data.datasets[1].data = [datapoints[0].revenue]
+        data.labels = [datapoints[0].dt.length > 0 ? TZ(datapoints[0].dt).toLocaleDateString() : '']
+        data.datasets.forEach(ds => ds.extra = [{time: TZ(datapoints[0].dt), count: 0, diff: 0}])
+        let sum = {onchain: 0, cost: 0, revenue:0}, count = 0;
+        for(balance of datapoints){
+          sum.cost += balance.cost
+          sum.onchain += balance.onchain
+          sum.revenue += balance.revenue
+          let costDiff = Math.pow(sum.cost-data.datasets[2].data.at(-1), 2)/(data.datasets[2].data.at(-1)||1)
+          let chainDiff = Math.pow(sum.onchain-data.datasets[0].data.at(-1), 2)/(data.datasets[0].data.at(-1)||1)
+          let offDiff = Math.pow(sum.revenue-data.datasets[1].data.at(-1), 2)/(data.datasets[1].data.at(-1)||1)
+          count++
+          if(Math.abs(costDiff+chainDiff+offDiff)/3 < parseFloat(step/100)) continue
+          data.datasets[2].extra.push({time: TZ(balance.dt), count: count, diff: sum.cost - data.datasets[2].data.at(-1)})
+          data.datasets[0].extra.push({time: TZ(balance.dt), count: count, diff: sum.onchain - data.datasets[0].data.at(-1)})
+          data.datasets[1].extra.push({time: TZ(balance.dt), count: count, diff: sum.revenue - data.datasets[1].data.at(-1)})
+          count = 0
+          data.datasets[0].data.push(sum.onchain)
+          data.datasets[2].data.push(parseInt(sum.cost))
+          data.datasets[1].data.push(parseInt(sum.revenue))
+          data.labels.push(balance.dt.length > 0 ? TZ(balance.dt).toLocaleDateString() : '')
+        }
+        chart.update();
+      }
+      buildChart(0.01, response)
+
+      function applyThemeToGrid(){
+        if (document.body.classList.contains("dark-mode")) {
+          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(255,255,255,0.1)'
+        } else {
+          chart.options.scales.x.grid.color = chart.options.scales.y.grid.color = 'rgba(0,0,0,0.1)'
+        }
+        chart.update();
+      }
+      applyThemeToGrid()
+      byId('step').addEventListener('keypress', function(e){
+        if(e.keyCode != 13) return 
+        buildChart(e.target.value, response)
+      })
+      byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
+      byId('timeFilter').addEventListener('input', function(e){
+        const value = 100 - e.target.value, size = parseInt(value*response.length/100), datapoints = [...response].splice(response.length - size-1)
+        if (size == response.length || size < 10) return
+        let sum = {onchain: 0, cost: 0, revenue:0}
+        for(balance of [...response].splice(0, response.length - size)){
+          sum.cost += balance.cost
+          sum.onchain += balance.onchain
+          sum.revenue += balance.revenue
+          sum.dt = balance.dt
+        }
+        datapoints[0] = {dt: sum.dt, onchain: sum.onchain, revenue: parseInt(sum.revenue), cost: parseInt(sum.cost)}
+        buildChart(byId('step').value, datapoints)
+      })
+    })
+  </script>
+  <hr/>
+  <br/>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Line Item</th>
@@ -31,11 +193,11 @@
     </tr>
     <tr>
       <td>Revenue Earned</td>
-      <td>{{ total_revenue_1day|intcomma }} [{{ total_revenue_ppm_1day|intcomma }}]</td>
-      <td>{{ total_revenue_7day|intcomma }} [{{ total_revenue_ppm_7day|intcomma }}]</td>
-      <td>{{ total_revenue_30day|intcomma }} [{{ total_revenue_ppm_30day|intcomma }}]</td>
-      <td>{{ total_revenue_90day|intcomma }} [{{ total_revenue_ppm_90day|intcomma }}]</td>
-      <td>{{ total_revenue|intcomma }} [{{ total_revenue_ppm|intcomma }}]</td>
+      <td>{{ total_revenue_1day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_revenue_ppm_1day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_revenue_7day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_revenue_ppm_7day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_revenue_30day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_revenue_ppm_30day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_revenue_90day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_revenue_ppm_90day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_revenue|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_revenue_ppm|intcomma }}ₚₚₘ</small></td>
     </tr>
     <tr>
       <td>Onchain Costs</td>
@@ -47,11 +209,11 @@
     </tr>
     <tr>
       <td>Offchain Costs</td>
-      <td>{{ total_fees_1day|intcomma }} [{{ total_fees_ppm_1day }}]</td>
-      <td>{{ total_fees_7day|intcomma }} [{{ total_fees_ppm_7day }}]</td>
-      <td>{{ total_fees_30day|intcomma }} [{{ total_fees_ppm_30day }}]</td>
-      <td>{{ total_fees_90day|intcomma }} [{{ total_fees_ppm_90day }}]</td>
-      <td>{{ total_fees|intcomma }} [{{ total_fees_ppm }}]</td>
+      <td>{{ total_fees_1day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_fees_ppm_1day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_fees_7day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_fees_ppm_7day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_fees_30day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_fees_ppm_30day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_fees_90day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_fees_ppm_90day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ total_fees|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ total_fees_ppm|intcomma }}ₚₚₘ</small></td>
     </tr>
     <tr>
       <td>Percent Cost</td>
@@ -63,11 +225,11 @@
     </tr>
     <tr>
       <td>Profits</td>
-      <td>{{ profits_1day|intcomma }} [{{ profits_ppm_1day }}]</td>
-      <td>{{ profits_7day|intcomma }} [{{ profits_ppm_7day }}]</td>
-      <td>{{ profits_30day|intcomma }} [{{ profits_ppm_30day }}]</td>
-      <td>{{ profits_90day|intcomma }} [{{ profits_ppm_90day }}]</td>
-      <td>{{ profits|intcomma }} [{{ profits_ppm }}]</td>
+      <td>{{ profits_1day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ profits_ppm_1day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ profits_7day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ profits_ppm_7day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ profits_30day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ profits_ppm_30day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ profits_90day|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ profits_ppm_90day|intcomma }}ₚₚₘ</small></td>
+      <td>{{ profits|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ profits_ppm|intcomma }}ₚₚₘ</small></td>
     </tr>
   </table>
 </div>

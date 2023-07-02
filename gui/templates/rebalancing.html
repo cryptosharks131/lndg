@@ -11,19 +11,18 @@
           <th title="Public Key">PK</th>
           <th onclick="sortTable(this, 2, 'String')">Channel ID</th>
           <th onclick="sortTable(this, 3, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(this, 4, ' (')">Outbound Liquidity</th>
+          <th onclick="sortTable(this, 4, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(this, 6, ' (')">Inbound Liquidity</th>
-          <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=false">Rebal Out?</a></th>
+          <th onclick="sortTable(this, 6, 'int')">Inbound Liquidity</th>
+          <th>Rebalance</th>
           <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
-          <th onclick="sortTable(this, 9, 'String')">Rebal In?</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
-          <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
-          <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
-          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
+          <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost</th>
+          <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target</th>
+          <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">In Target</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-          <th onclick="sortTable(this, 16, 'String')">Active</th>
+          <th onclick="sortTable(this, 15, 'String')">Active</th>
         </tr>
       </thead>
       <tbody id="rebalancingTable">
@@ -48,131 +47,140 @@
     </form>
   </div>
 </div>
-{% include 'rebalances_table.html' with count=20 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 <script>
+  const rebalance_template = Object.assign({}, {
+    "select": ch => ({innerHTML: `<input onclick="this.checked ? byId('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : byId('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
+    "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toggle(this)">
+      <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
+        <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+        <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+      </svg>
+      <svg style="visibility:collapse;transform:translateY(-25px)" version="1.1" viewBox="0 0 16 16" width="25" height="25">
+        <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
+      </svg>
+    </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
+    }, base_ch_template, {
+    "rebalance": ch => {
+      let out = ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance
+      let _in = ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance
+      return {innerHTML: out ? 'Out' : _in ? `In <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : '---', style: {backgroundColor: out ? 'rgba(100,100,100,.15)' : _in ? 'rgba(56,139,253,0.15)' : red} }
+    },
+    "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, title: `Out: ${ch.local_fee_rate}ₚₚₘ\nIn: ${ch.remote_fee_rate}ₚₚₘ`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
+    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
+    "ar_max_cost": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/></span>`, 
+      changed: function(new_value){
+        updateCols(['ar_max_cost', 'fee_ratio'], this, new_value)
+      }
+    }),
+    "ar_out_target": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR out target %" id="target" type="number" min="1" max="100" value="${ch.ar_out_target}" onkeydown="update('ar_out_target')"/></span>`, style: {backgroundColor: !ch.auto_rebalance ? green : red},
+      changed: function(new_value){
+        updateCols(['rebalance', 'ar_out_target'], this, new_value)
+        update_title(ch, new_value)
+      }
+    }),
+    "ar_in_target": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target')"/></span>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
+      changed: function(new_value){
+        updateCols(['ar_in_target'], this, new_value)
+        update_title(ch, new_value)
+      }
+    }),
+    "auto_rebalance": ch => ({innerHTML: `<input type="submit" name="Auto Rebalance" data-chan-id="${ch.chan_id}" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="update('auto_rebalance')">`, style: {backgroundColor: ch.auto_rebalance ? green : red},
+      changed: function(new_value){
+        updateCols(['ar_in_target', 'ar_out_target', 'rebalance', 'auto_rebalance'], this, new_value)
+        update_title(ch, new_value)
+      }
+    }),
+    "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
+      <defs>
+          <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%">
+              <stop stop-color="#fff" stop-opacity="0" offset="0%"/>
+              <stop stop-color="#fff" stop-opacity=".631" offset="63.146%"/>
+              <stop stop-color="#fff" offset="100%"/>
+          </linearGradient>
+      </defs>
+      <g fill="none" fill-rule="evenodd">
+          <g transform="translate(1 1)">
+              <path d="M36 18c0-9.94-8.06-18-18-18" stroke="#aaa" stroke-width="2">
+                  <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
+              </path>
+              <circle fill="#aaa" cx="36" cy="18" r="1">
+                  <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
+              </circle>
+          </g>
+      </g>
+    </svg>`, dataTag: ch.remote_pubkey}),
+    "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+  })
+  function updateCols(columns, element, ch) {
+    columns.forEach(col => element.parentElement.cells[col].render(rebalance_template[col](ch)))
+  }
+  async function update(selector){
+    if(selector !== 'auto_rebalance' && event.key !== 'Enter') return
+    let element = event.target, tr = element.closest('tr'), body = {}; body[selector] = selector == 'auto_rebalance' ? element.value=='Enable' : element.value;
+    const ch = await PUT(`channels/${tr.objId}`, {body})
+    if (tr.cells[selector].changed) tr.cells[selector].changed(extend(ch))
+    showBannerMsg(`${ch.alias}'s <u>${element.name}</u>`, ch[selector])
+  }
+  function update_title(was, is){
+    const container = byId("rebalances_container"), title = container.children[0], had = title.dataset
+    title.remove()
+    const el = had.elegible.toInt() + (was.elegible === is.elegible ? 0 : is.elegible || -1)
+    const av = had.available.toInt() + (was.available === is.available ? 0 : is.available || -1)
+    const en = had.enabled.toInt() + (was.auto_rebalance === is.auto_rebalance ? 0 : is.auto_rebalance || -1)
+    container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${el}" data-enabled="${en}" data-available="${av}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${el} of ${en} enabled channels for rebalancing via ${av} outbound channels)</h2>`)
+  }
+  function extend(ch){
+    ch.local_balance += ch.pending_outbound
+    ch.remote_balance += ch.pending_inbound
+    ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
+    ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
+    ch.inbound_can = ch.percent_inbound / ch.ar_in_target
+    ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+    ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
+    ch.steps = parseInt(ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
+
+    ch.elegible = ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance, 
+    ch.available = ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1
+    return ch
+  }
   document.addEventListener('DOMContentLoaded', async () => {
     const _7days_ago = new Date(new Date().setDate(new Date().getDate()-7)).toISOString().substring(0,19)
     const resp = await GET('channels', {data: {is_open:true, private:false, auto_rebalance:'{{request.GET.auto_rebalance}}', is_active:'{{request.GET.is_active}}'}})
-    const rebal_stats = GET('rebalance_stats', {method : 'GET', data : {}})
-    const container = document.getElementById("rebalances_container")
+    const rebal_stats = GET('rebalance_stats', {method: 'GET', data: {}})
+    const container = byId("rebalances_container")
     if (resp.results.length == 0){
       container.innerHTML = '<center><h1>You dont have any channels to rebalance yet.</h1></center>'
       return
     }
 
-    const red = 'rgba(248,81,73,0.15)'
-    const green = 'rgba(46,160,67,0.15)'
-    const transformations = {
-      "select": ch => ({innerHTML: `<input onclick="this.checked ? document.getElementById('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : document.getElementById('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
-      "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toogle(this)">
-        <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
-          <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
-          <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
-        </svg>
-        <svg style="visibility:collapse;transform:translateY(-25px)" version="1.1" viewBox="0 0 16 16" width="25" height="25">
-          <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
-        </svg>
-      </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
-      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>`, title: ch.remote_pubkey}),
-      "local_balance": ch => ({innerHTML: `${ch.local_balance.toLocaleString()} (${ch.percent_outbound}%)`}),
-      "capacity": ch => ({innerHTML: `<label>${ch.capacity.toLocaleString()}</label>
-      <div class="progress w3-round w3-grey">
-        <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
-      </div>`}),
-      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.toLocaleString()} (${ch.percent_inbound}%)`}),
-      "rebal_out": ch => ({innerHTML: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance, style: {backgroundColor: ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance ? green: red} }),
-      "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-      "rebalance_in": ch => ({innerHTML: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? `true (${ch.steps})` : 'false', title: ch.steps == 0 ? "" : `${ch.steps} rebalances to fulfill your in target %`, style: {backgroundColor: ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance ? green : red} }),
-      "ar_amt_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100000000" name="target" value="${ch.ar_amt_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="2">
-      </form>`}),
-      "ar_max_cost": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_max_cost}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="6">
-      </form>`}),
-      "ar_out_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_out_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="4">
-      </form>`, style: {backgroundColor: !ch.auto_rebalance ? green : red} }),
-      "ar_in_target": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input style="text-align:center" id="target" type="number" min="0" max="100" name="target" value="${ch.ar_in_target}">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="3">
-      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-      "auto_rebalance": ch => ({innerHTML: `<form action="/update_channel/" method="post">
-        {% csrf_token %}
-        <input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able">
-        <input type="hidden" name="chan_id" value="${ch.chan_id}">
-        <input type="hidden" name="update_target" value="5">
-        <input type="hidden" name="target" value="0">
-      </form>`, style: {backgroundColor: ch.auto_rebalance ? green : red} }),
-      "rate_7day": ch => ({innerHTML: `<svg width="38" height="38" viewBox="0 0 38 38">
-        <defs>
-            <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%">
-                <stop stop-color="#fff" stop-opacity="0" offset="0%"/>
-                <stop stop-color="#fff" stop-opacity=".631" offset="63.146%"/>
-                <stop stop-color="#fff" offset="100%"/>
-            </linearGradient>
-        </defs>
-        <g fill="none" fill-rule="evenodd">
-            <g transform="translate(1 1)">
-                <path d="M36 18c0-9.94-8.06-18-18-18" stroke="#aaa" stroke-width="2">
-                    <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
-                </path>
-                <circle fill="#aaa" cx="36" cy="18" r="1">
-                    <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.9s" repeatCount="indefinite"/>
-                </circle>
-            </g>
-        </g>
-    </svg>`, dataTag: ch.remote_pubkey}),
-      "is_active": ch => ({innerHTML: ch.is_active , title: (ch.is_active ? 'Uptime: ' : 'Downtime: ') + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
-    }
-    let enabled = 0, elegible = 0, available = 0
-    const rebal_table = document.getElementById("rebalancingTable")
+    let [enabled, elegible, available, rebal_table] = [0,0,0,byId("rebalancingTable")]
     resp.results.forEach(ch => {
-      //derived properties
-      ch.local_balance += ch.pending_outbound
-      ch.remote_balance += ch.pending_inbound
-      ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
-      ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
-      ch.inbound_can = ch.percent_inbound / ch.ar_in_target
-      ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
-      ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
-      ch.steps = parseInt(ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
-      //global counters
-      enabled += ch.auto_rebalance ? 1 : 0
-      elegible += ch.is_active && ch.inbound_can > 1 && ch.fee_check < 100 ? 1 : 0
-      available += ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1 ? 1: 0
+      extend(ch)
+      elegible += ch.elegible
+      available += ch.available
+      enabled += ch.auto_rebalance
     })
-    container.insertAdjacentHTML('afterbegin', `<h2>Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
+    container.insertAdjacentHTML('afterbegin', `<h2 data-elegible="${elegible}" data-enabled="${enabled}" data-available="${available}">Channel <a href="/rebalancing">Rebalancing</a> (currently scheduling ${elegible} of ${enabled} enabled channels for rebalancing via ${available} outbound channels)</h2>`)
 
-    const template = use(transformations)
+    const template = use(rebalance_template)
     resp.results
       .sort((ch1, ch2) => { //sort by active, out%
         if(ch1.is_active && !ch2.is_active) return -1
         if(!ch1.is_active && ch2.is_active) return 1
         return ch1.percent_outbound - ch2.percent_outbound
       })
-      .forEach(ch => rebal_table.append(template.fillWith(ch)))
+      .forEach(ch => rebal_table.append(template.render(ch, 'chan_id')))
     
     update_stats(await rebal_stats, rebal_table)
   })
   function update_stats(stats, rebal_table){
       [...rebal_table.rows].forEach(row => {
-        const rate_7day = [...row.cells].at(-2)
+        const rate_7day = row.cells['rate_7day']
         let stat = stats.find(obj => obj.last_hop_pubkey === rate_7day.dataTag)
-        rate_7day.innerHTML = stat == null? '---' : `${parseInt(stat['successes']*100/stat['attempts'])}% (${(stat['successes'] || 0)}/${stat['attempts']})`
+        rate_7day.innerHTML = stat == null? '---' : `${(stat['successes'] || 0)}/${stat['attempts']} <small class="w3-round w3-border-small w3-border-grey">${parseInt(stat['successes']*100/stat['attempts'])}%</span>`
     })
   }
 </script>
+{% include 'rebalances_table.html' with count=20 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
 {% endblock %}

@@ -86,6 +86,8 @@ class AutoFeesForm(AutoRebalanceForm):
     af_multiplier = forms.IntegerField(label='af_multiplier', required=False)	
     af_failedHTLCs = forms.IntegerField(label='af_failedHTLCs', required=False)	
     af_updateHours = forms.IntegerField(label='af_updateHours', required=False)
+    af_lowliq = forms.IntegerField(label='af_lowliq', required=False)
+    af_excess = forms.IntegerField(label='af_excess', required=False)
 
 class GUIForm(AutoFeesForm):	
     gui_graphLinks = forms.CharField(label='gui_graphLinks', required=False)	

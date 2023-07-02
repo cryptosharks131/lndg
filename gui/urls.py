@@ -17,6 +17,7 @@ router.register(r'rebalancer', views.RebalancerViewSet)
 router.register(r'settings', views.LocalSettingsViewSet)
 router.register(r'pendinghtlcs', views.PendingHTLCViewSet)
 router.register(r'failedhtlcs', views.FailedHTLCViewSet)
+router.register(r'peerevents', views.PeerEventsViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -63,9 +64,10 @@ urlpatterns = [
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
     path('autofees/', views.autofees, name='autofees'),
-    path('peerevents/', views.peerevents, name='peerevents'),
+    path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
     path('sign_message/', views.sign_message, name='sign-message'),
+    path('addresses/', views.addresses, name='addresses'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
@@ -80,5 +82,8 @@ urlpatterns = [
     path('api/income/', views.api_income, name='api-income'),
     path('api/pendingchannels/', views.pending_channels, name='pending-channels'),
     path('api/bumpfee/', views.bump_fee, name='bump-fee'),
+    path('api/chart/', views.chart, name='chart'),
+    path('api/chanpolicy/', views.chan_policy, name='chan-policy'),
+    path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
     path('lndg-admin/', admin.site.urls),
 ]

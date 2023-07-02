@@ -10,13 +10,10 @@
       <tr>
         <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
         <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-        <th onclick="sortTable(event.target, 2, ' (')">Outbound Liquidity</th>
+        <th onclick="sortTable(event.target, 2, 'int')">Outbound Liquidity</th>
         <th onclick="sortTable(event.target, 3, 'int', 0, 'label')" width=10%>Capacity</th>
-        <th onclick="sortTable(event.target, 4, ' (')">Inbound Liquidity</th>
-        <th onclick="sortTable(event.target, 5, ' | ')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
-        <th onclick="sortTable(event.target, 6, 'int')" title="The average rate earned outgoing on this channel">Out Rate</th>
-        <th onclick="sortTable(event.target, 7, 'int')" title="The average rate paid for rebalances to refill this channel">Rebal Rate</th>
-        <th onclick="sortTable(event.target, 8, 'int')" title="When revenue > 0 --> assisted revenue / revenue">Assisted Ratio</th>
+        <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
+        <th onclick="sortTable(event.target, 5, 'int')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
         <th onclick="sortTable(event.target, 9, 'int')">Adjustment</th>
         <th onclick="sortTable(event.target, 10, 'int')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
         <th>oRate</th>
@@ -25,12 +22,18 @@
         <th onclick="sortTable(event.target, 14, 'int')">iRate</th>
         <th onclick="sortTable(event.target, 15, 'int')">iBase</th>
         <th>Updated</th>
-        <th>
-          <form action="/update_setting/" method="post">
+        <th width=92px>
+          <form title="Enable all channels" style="position: absolute;" action="/update_setting/" method="post">
             {% csrf_token %}
-            <input type="submit" value="Enable All">
+            <input type="submit" value="✅">
             <input type="hidden" name="key" value="ALL-AF">
             <input type="hidden" name="value" value="1">
+          </form>
+          <form title="Disable all channels" style="position: absolute;margin-left:40px" action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input type="submit" value="❌">
+            <input type="hidden" name="key" value="ALL-AF">
+            <input type="hidden" name="value" value="0">
           </form>
         </th>
       </tr>
@@ -38,18 +41,15 @@
       <tr>
         <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
         <td title="{{ channel.remote_pubkey }}">{% if channel.private == False %}<a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% endif %}{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}{% if channel.private == False %}</a>{% endif %}</td>
-        <td>{{ channel.local_balance|intcomma }} ({{ channel.out_percent }}%)</td>
+        <td>{{ channel.local_balance|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ channel.out_percent }}%</small></td>
         <td>
           <label>{{channel.capacity|intcomma}}</label>
           <div class="progress w3-round w3-grey">
             <span class="value w3-round w3-blue" style="width:{{channel.out_percent|default:"0"}}%"></span>
           </div>
         </td>
-        <td>{{ channel.remote_balance|intcomma }} ({{ channel.in_percent }}%)</td>
-        <td>{% if channel.net_routed_7day != 0 %}{{ channel.net_routed_7day }} | {% endif %}{% if channel.net_routed_7day > 0 %}OUT{% elif channel.net_routed_7day < 0 %}IN{% else %}---{% endif %}</td>
-        <td>{{ channel.out_rate }}</td>
-        <td>{{ channel.rebal_ppm }}</td>
-        <td>{{ channel.assisted_ratio }}</td>
+        <td>{{ channel.remote_balance|intcomma }} <small class="w3-round w3-border-small w3-border-grey">{{ channel.in_percent }}%</small></td>
+        <td>{% if channel.net_routed_7day != 0 %}{{ channel.net_routed_7day }} <small class="w3-round w3-border-small w3-border-grey">{% if channel.net_routed_7day > 0 %}OUT{% else %}IN{% endif %}</small>{% else %}0{% endif %}</td>
         <td>{{ channel.adjustment }}</td>
         <td>{{ channel.new_rate|intcomma }}</td>
         <td>

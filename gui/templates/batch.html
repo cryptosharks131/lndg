@@ -23,7 +23,7 @@
       <tr>
         <td>{{ num }}</td>
         <td><input style="text-align:center;min-width:800px" id="pubkey{{ num }}" name="pubkey{{ num }}" value=""></td>
-        <td><input style="text-align:center" oninput="update_total(this)" id="amt{{ num }}" type="number" min="0" step="1000" name="amt{{ num }}" value=""></td>
+        <td><input style="text-align:center" oninput="update_total(this)" id="amt{{ num }}" type="number" min="0" step="1" name="amt{{ num }}" value=""></td>
       </tr>
       {% endfor %}
       <tr><td>#</td><td id="remaining" style="min-width:800px">Remaining Onchain Balance: {{balances.total_balance|intcomma}}</td><td id="total">Total: 0</td></tr>
