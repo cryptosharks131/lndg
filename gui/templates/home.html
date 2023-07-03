@@ -25,14 +25,14 @@
       <a style="margin-left:6px;" href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}
     </h3>
   <h6>
-    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{{ node_info.version }}">LND</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="Chain {% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+    <span id="lnd" class="w3-tag w3-round" title="{{ node_info.version }}">LND</span>
+    <span id="timechain" style="padding:1.5px 8px;" class="w3-round w3-border">---</span>
   </h6>
   <h6>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="public_capacity">0</span></span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="public_channels_count">{{node_info.num_active_channels}}</span> / <span id="total_channels">{{node_info.num_active_channels|add:node_info.num_inactive_channels}}</span></span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="public_channels_count">0</span> / <span id="total_channels">0</span></span>
+    <span id="peers" style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">0</span>
+    <span id="dbSize" style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">---</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: <span id="updates">---</span></span>
     <span style="padding:1.5px 8px;margin-left:4px" class="w3-round w3-border w3-border-grey"><a href="#sign">Sign a message</a></span>
   </h6>
@@ -919,7 +919,26 @@
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
     const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
-    
+    const node_info = await GET('node_info', {data: {}})
+    console.log(node_info)
+    const lnd = byId('lnd')
+    lnd.classList.remove('w3-red')
+    lnd.classList.remove('w3-green')
+    lnd.classList.toggle('w3-red', !node_info.synced_to_graph)
+    lnd.classList.toggle('w3-green', node_info.synced_to_graph)
+    const timechain = byId('timechain')
+    timechain.classList.remove('w3-border-red')
+    timechain.classList.remove('w3-border-green')
+    timechain.classList.toggle('w3-border-red', !node_info.synced_to_chain)
+    timechain.classList.toggle('w3-border-green', node_info.synced_to_chain)
+    timechain.title = `Chain ${!node_info.synced_to_chain ? 'Not' : ''} Synced`
+    timechain.innerHTML = node_info.chains.join(', ') + ` | ${node_info.block.height} #${node_info.block.hash}`
+
+    byId('public_channels_count').innerHTML = node_info.num_active_channels
+    byId('total_channels').innerHTML = node_info.num_active_channels + node_info.num_inactive_channels
+    byId('peers').innerHTML = `<a href="/peers" target="_blank">Peers</a>: ${node_info.num_peers}`
+    if(node_info.db_size > 0) byId('dbSize').innerHTML = `DB Size: ${node_info.db_size} GB`
+
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       updates += ch.num_updates
