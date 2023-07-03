@@ -17,6 +17,7 @@ router.register(r'rebalancer', views.RebalancerViewSet)
 router.register(r'settings', views.LocalSettingsViewSet)
 router.register(r'pendinghtlcs', views.PendingHTLCViewSet)
 router.register(r'failedhtlcs', views.FailedHTLCViewSet)
+router.register(r'peerevents', views.PeerEventsViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -63,7 +64,7 @@ urlpatterns = [
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
     path('autofees/', views.autofees, name='autofees'),
-    path('peerevents/', views.peerevents, name='peerevents'),
+    path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
     path('sign_message/', views.sign_message, name='sign-message'),
     path('addresses/', views.addresses, name='addresses'),

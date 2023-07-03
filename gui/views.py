@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
 from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -981,47 +981,28 @@ def channel(request):
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(chan_id=chan_id).order_by('-id')[:10].values())
-            if peer_events_df.shape[0]> 0:
-                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/channels_df['capacity'][0])*100, 1)
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df = peer_events_df.fillna('')
-                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
-                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
-                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
-                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
             results_df = af.main(channel)
             channels_df['new_rate'] = results_df[results_df['chan_id']==chan_id]['new_rate']
             channels_df['adjustment'] = results_df[results_df['chan_id']==chan_id]['adjustment']
             channels_df['net_routed_7day'] = results_df[results_df['chan_id']==chan_id]['net_routed_7day']
         else:
             channels_df = DataFrame()
-            forwards_df = DataFrame()
             payments_df = DataFrame()
             invoices_df = DataFrame()
-            failed_htlc_df = DataFrame()
             peer_info_df = DataFrame()
             autofees_df = DataFrame()
-            peer_events_df = DataFrame()
         context = {
             'chan_id': chan_id,
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
-            'forwards': [] if forwards_df.empty else forwards_df.sort_values(by=['forward_date'], ascending=False).to_dict(orient='records')[:5],
             'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
             'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
-            'failed_htlcs': [] if failed_htlc_df.empty else failed_htlc_df.to_dict(orient='records')[:5],
             'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links(),
             'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records'),
-            'peer_events': [] if peer_events_df.empty else peer_events_df.to_dict(orient='records')
         }
         try:
             return render(request, 'channel.html', context)
@@ -1133,14 +1114,9 @@ def pending_htlcs(request):
 def failed_htlcs(request):
     if request.method == 'GET':
         try:
-            query = None if request.GET.urlencode()[1:] == '' else request.GET.urlencode()[1:].split('_')
-            chan_id = None if query is None or len(query) < 1 else query[0]
-            direction = None if query is None or len(query) < 2 else query[1]
-            failed_htlcs = FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id')[:150] if chan_id is None else (FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_out=chan_id).order_by('-id')[:150] if direction == "O" else FailedHTLCs.objects.exclude(wire_failure=99).filter(chan_id_in=chan_id).order_by('-id')[:150])
             filter_7day = datetime.now() - timedelta(days=7)
             agg_failed_htlcs = FailedHTLCs.objects.filter(timestamp__gte=filter_7day, wire_failure=99).values('chan_id_in', 'chan_id_out').annotate(count=Count('id'), volume=Sum('amount'), chan_in_alias=Max('chan_in_alias'), chan_out_alias=Max('chan_out_alias')).order_by('-count')[:21]
             context = {
-                'failed_htlcs': failed_htlcs,
                 'agg_failed_htlcs': agg_failed_htlcs
             }
             return render(request, 'failed_htlcs.html', context)
@@ -1360,10 +1336,7 @@ def batch_open(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def forwards(request):
     if request.method == 'GET':
-        context = {
-            'forwards': Forwards.objects.all().annotate(amt_in=Sum('amt_in_msat')/1000, amt_out=Sum('amt_out_msat')/1000, ppm=Round((Sum('fee')*1000000000)/Sum('amt_out_msat'), output_field=IntegerField())).order_by('-id')[:150],
-        }
-        return render(request, 'forwards.html', context)
+        return render(request, 'forwards.html')
     else:
         return redirect('home')
 
@@ -1428,27 +1401,7 @@ def autofees(request):
 def peerevents(request):
     if request.method == 'GET':
         try:
-            chan_id = request.GET.urlencode()[1:]
-            filter_7d = datetime.now() - timedelta(days=7)
-            peer_events_df = DataFrame.from_records(PeerEvents.objects.filter(timestamp__gte=filter_7d).order_by('-id')[:150].values() if chan_id == "" else PeerEvents.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id')[:150].values())
-            channels_df = DataFrame.from_records(Channels.objects.values() if chan_id == "" else Channels.objects.filter(chan_id=chan_id).values())
-            if peer_events_df.shape[0]> 0:
-                peer_events_df = peer_events_df.merge(channels_df)
-                peer_events_df['change'] = peer_events_df.apply(lambda row: 0 if row.old_value == 0 or row.old_value == None else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-                peer_events_df['out_percent'] = round((peer_events_df['out_liq']/peer_events_df['capacity'])*100, 1)
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MinHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'old_value'] = peer_events_df['old_value']/1000
-                peer_events_df.loc[peer_events_df['event']=='MaxHTLC', 'new_value'] = peer_events_df['new_value']/1000
-                peer_events_df = peer_events_df.fillna('')
-                peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'] = peer_events_df.loc[peer_events_df['old_value']!='', 'old_value'].astype(int)
-                peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'] = peer_events_df.loc[peer_events_df['new_value']!='', 'new_value'].astype(int)
-                peer_events_df['out_percent'] = peer_events_df['out_percent'].astype(int)
-                peer_events_df['in_percent'] = (100-peer_events_df['out_percent'])
-            context = {
-                'peer_events': [] if peer_events_df.empty else peer_events_df.sort_values(by=['id'], ascending=False).to_dict(orient='records')
-            }
-            return render(request, 'peerevents.html', context)
+            return render(request, 'peerevents.html')
         except Exception as e:
             try:
                 error = str(e.code())
@@ -2148,11 +2101,34 @@ class PendingHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PendingHTLCs.objects.all()
     serializer_class = PendingHTLCSerializer
 
+class PeerEventsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = PeerEvents.objects.all().order_by('-id')
+    serializer_class = PeerEventsSerializer
+    filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
+
+class FailedHTLCFilter(FilterSet):
+    chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')
+    chan_id_in = CharFilter(field_name='chan_id_in', lookup_expr='exact')
+    chan_id_out = CharFilter(field_name='chan_id_out', lookup_expr='exact')
+    wire_failure__lt = NumberFilter(field_name='wire_failure', lookup_expr='lt')
+    wire_failure__gt = NumberFilter(field_name='wire_failure', lookup_expr='gt')
+    id__lt = NumberFilter(field_name='id', lookup_expr='lt')
+
+    def filter_chan_in_or_out(self, queryset, name, value):
+        return queryset.filter(
+            Q(chan_id_in__exact=value) | Q(chan_id_out__exact=value)
+        )
+
+    class Meta:
+        model = FailedHTLCs
+        fields = ['chan_in_or_out', 'chan_id_in', 'chan_id_out', 'wire_failure__lt', 'wire_failure__gt', 'id__lt']
+
 class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = FailedHTLCs.objects.all().order_by('-id')
     serializer_class = FailedHTLCSerializer
-    filterset_fields = {'wire_failure': ['lt','gt']}
+    filterset_class = FailedHTLCFilter
 
 class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

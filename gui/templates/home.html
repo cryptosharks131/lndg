@@ -450,7 +450,7 @@
     </tfoot>
   </table>
 </div>
-{% include 'rebalances_table.html' with count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'rebalances_table.html' with count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 <div id="payments_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
@@ -489,7 +489,7 @@
   </table>
 </div>
 <div id="failed_htlcs_container" class="w3-container w3-padding-small">
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
         <th>Timestamp</th>
@@ -505,6 +505,13 @@
       </tr>
     </thead>
     <tbody id="failed_htlcs"></tbody>
+    <tfoot id="loadMoreFailedHTLCs">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a onclick="loadFailedHTLCs()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 {% include 'local_settings.html' with settings=local_settings title="Auto-Rebalancer" url='rebalancing' %}
@@ -641,20 +648,6 @@
     "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
     }
   )
-  const wire_failures = "0|1|2|3|4|5|6|7|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
-  const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
-  const failedHTLCs_template = {
-    "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
-    "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
-    "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
-    "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
-    "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
-    "amount": htlc => ({innerHTML: htlc.amount.intcomma()}),
-    "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} <small title="Pending at HTLC time" class="w3-round w3-border-small w3-border-grey">${htlc.chan_out_pending}</small>`}),
-    "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
-    "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
-    "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
-  }
   function addTitle(id, results, title = null){
     const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
     if (results.length == 0) {
@@ -827,7 +820,7 @@
   }
   async function loadForwards(){
     const lastId = forwardsTable.tBodies[0].lastChild.objId
-    const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", id__lt: lastId, limit: 5} })
+    const forwards_task = GET('forwards', {data: {id__lt: lastId, limit: 10} })
     build_next_routed(forwards_task)
   }
   async function build_next_routed(forwards_task){
@@ -849,7 +842,7 @@
     if(remaining > 0)
       forwards = [...forwards, ...(await GET('forwards', {data: {forward_date__lt: _7days_ago, limit: remaining} })).results]
 
-    if(!addTitle('Routed', forwards, `Last 20 <a href="/forwards" target="_blank">Payments Routed</a>`)) return
+    if(!addTitle('Routed', forwards, `Last <a href="/forwards" target="_blank">Payments Routed</a>`)) return
     const table = byId('routed')
     table.innerHTML = null
     for(f of forwards.slice(0,20)){
@@ -878,8 +871,24 @@
       table.append(template.render(inv))
     }
   }
+  async function loadFailedHTLCs(){
+    const lastId = failedhtlcsTable.tBodies[0].lastChild.objId
+    const failedhtlcs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, id__lt: lastId, limit: 10} })
+    let next_failed_htlcs = (await failedhtlcs_task).results
+    if(next_failed_htlcs.length==0){
+      byId("loadMoreFailedHTLCs").style.display = "none"
+      return
+    }
+    build_failedhtlcs(next_failed_htlcs)
+  }
+  async function build_failedhtlcs(failed_htlcs){
+    const tableBody = failedhtlcsTable.querySelector("tbody")
+    for (f of failed_htlcs){
+      tableBody.appendChild(use(failedHTLCs_template).render(f))
+    }
+  }
   function build_failedHTLC(fHTLCs){
-    if(!addTitle('failed_htlcs', fHTLCs, `Last 10 <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
+    if(!addTitle('failed_htlcs', fHTLCs, `Last <a href="/failed_htlcs" target="_blank">Failed HTLCs</a>`)) return
     const table = byId('failed_htlcs'), template = use(failedHTLCs_template)
     for(htlc of fHTLCs){
       table.append(template.render(htlc))

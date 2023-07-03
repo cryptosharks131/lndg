@@ -8,3 +8,4 @@ lndg-admin.txt
 .vs
 gui/static/admin
 gui/static/rest_framework
+data/

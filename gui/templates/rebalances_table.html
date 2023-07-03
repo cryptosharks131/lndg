@@ -1,7 +1,7 @@
 {% load humanize %}
-<div id="rebalances_div_{{count}}" class="w3-container w3-padding-small">
-    <h2>{% if count %}Last {{count}}{% endif %} {{title}}</h2>
-    <table id="rebalsTable" class="w3-table-all w3-centered w3-hoverable">
+<div id="rebalances_div_{{status}}" class="w3-container w3-padding-small">
+    <h2>{% if status %}Successful{% else %}Last{% endif %} {{title}}</h2>
+    <table id="rebalsTable_{{status}}" class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th>Requested</th>
         <th>Start</th>
@@ -17,12 +17,12 @@
         <th>Hash</th>
         <th>Action</th>
       </tr>
-      <tbody id="rebalances_{{count}}">
+      <tbody id="rebalances_{{status}}">
       </tbody>
-      <tfoot id="loadMoreRebals">
+      <tfoot id="loadMoreRebals_{{status}}">
         <tr style="background-color:transparent;cursor:pointer;">
           <td colspan="13">
-            <a onclick="loadRebals()">Load More</a>
+            <a onclick='loadRebals_{{status}}()'>Load More</a>
           </td>
         </tr>
       </tfoot>
@@ -79,25 +79,24 @@
       const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:'{{last_hop_pubkey}}' }})
       if(res.errors) return
       if(res.results.length == 0){
-        document.getElementById("rebalances_div_{{count}}").innerHTML = `<center><h1>You dont have any rebalances yet.</h1></center>`
+        document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any rebalances yet.</h1></center>`
         return
       }
 
-      const table = document.getElementById("rebalances_{{count}}"), template = use(transformations)
+      const table = document.getElementById("rebalances_{{status}}"), template = use(transformations)
       res.results.forEach(rebalance => table.append(template.render(rebalance)));
     });
-    async function loadRebals(){
-      const rebalsTable = byId('rebalsTable')
-      console.log(rebalsTable)
+    async function loadRebals_{{status}}(){
+      const status = "{{ status }}"
+      const rebalsTable = byId('rebalsTable_'+status)
       const lastId = rebalsTable.tBodies[1].lastChild.objId
-      console.log(lastId)
-      const rebals_task = GET('rebalancer', {data: {last_hop_pubkey: "{{ last_hop_pubkey }}", id__lt: lastId, limit: 5} })
-      build_rebals(rebals_task)
+      const rebals_task = GET('rebalancer', {data: {last_hop_pubkey: "{{ last_hop_pubkey }}", id__lt: lastId, status: status, limit: "{{ load_count }}"} })
+      build_rebals(rebals_task, rebalsTable, status)
     }
-    async function build_rebals(rebals_task){
+    async function build_rebals(rebals_task, rebalsTable, status){
       let next_rebals = (await rebals_task).results
       if(next_rebals.length==0){
-        byId("loadMoreRebals").style.display = "none"
+        byId("loadMoreRebals_"+status).style.display = "none"
         return
       }
       const tableBody = rebalsTable.tBodies[1]
