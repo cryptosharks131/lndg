@@ -222,121 +222,29 @@
     <tbody id="private_channels"></tbody>
   </table>
 </div>
-{% if pending_open %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Open Channels</h2>
+<div id="pending_open_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Peer Alias</th>
-      <th width=20%>Channel Point</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>AF</th>
-      <th>Fee Rate</th>
-      <th>Base Fee</th>
-      <th>CLTV</th>
-      <th>Amt</th>
-      <th>Max Cost%</th>
-      <th>oTarget%</th>
-      <th>iTarget%</th>
-      <th>AR</th>
-    </tr>
-    {% for channel in pending_open %}
-    <tr>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
-      <td title="Commit Fee: {{ channel.commit_fee }}">{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td {% if channel.auto_fees == False %}style="background-color: rgba(46,160,67,0.15);"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="{% if channel.auto_fees == True %}Disable{% else %}Enable{% endif %}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="8">
-          <input type="hidden" name="target" value="0">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="1">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="0">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="9">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="2">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_max_cost }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="6">
-        </form>
-      </td>
-      <td style="background-color: {% if channel.auto_rebalance == False %}rgba(248,81,73,0.15){% else %}rgba(46,160,67,0.15){% endif %}">
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="4">
-        </form>
-      </td>
-      <td style="background-color: {% if channel.auto_rebalance == True %}rgba(46,160,67,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="3">
-        </form>
-      </td>
-      <td style="background-color: {% if channel.auto_rebalance == True %}rgba(46,160,67,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="5">
-          <input type="hidden" name="target" value="0">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Peer Alias</th>
+        <th width=20%>Channel Point</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>AF</th>
+        <th>Fee Rate</th>
+        <th>Base Fee</th>
+        <th>CLTV</th>
+        <th>Amt</th>
+        <th>Max Cost%</th>
+        <th>oTarget%</th>
+        <th>iTarget%</th>
+        <th>AR</th>
+      </tr>
+    </thead>
+    <tbody id="pending_open"></tbody>
   </table>
 </div>
-{% endif %}
 {% if pending_closed %}
 <div class="w3-container w3-padding-small">
   <h2>Pending Close Channels</h2>
@@ -648,12 +556,85 @@
     "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
     }
   )
+  const pending_open_template = {
+    "alias": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}),
+    "channel_point": ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.funding_txid}' target="_blank">${ch.channel_point}</a>`}),
+    "capacity": ch => ({innerHTML: ch.capacity.intcomma(), title: `Commit Fee: ${ch.commit_fee}`}),
+    "local_balance": ch => ({innerHTML: ch.local_balance.intcomma()}),
+    "remote_balance": ch => ({innerHTML: ch.remote_balance.intcomma()}),
+    "af": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input type="submit" value="${ch.auto_fees ? 'Dis' : 'En'}able">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="8">
+      <input type="hidden" name="target" value="0">
+    </form>`, style: {backgroundColor: ch.auto_fees? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
+    "fee_rate": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="${ch.local_fee_rate}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="1">
+    </form>`}),
+    "base_fee": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="${ch.local_base_fee}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="0">
+    </form>`}),
+    "cltv": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="${ch.local_cltv}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="9">
+    </form>`}),
+    "amt": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100000000" name="target" value="${ch.ar_amt_target}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="2">
+    </form>`}),
+    "max_cost": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_max_cost}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="6">
+    </form>`}),
+    "otarget": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="4">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
+    "itarget": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="3">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
+    "ar": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input type="submit" value="${ch.auto_rebalance ? 'Dis': 'En'}able">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="5">
+      <input type="hidden" name="target" value="0">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
+  }
   function addTitle(id, results, title = null){
     const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
     if (results.length == 0) {
-      container?.remove()
+      container.style.display = 'none'
       return false
     }
+    container.style.display = 'block'
     if (container.querySelector('h2')) container.querySelector('h2').innerHTML = null
     container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
     return true
@@ -950,6 +931,14 @@
     
     return node_info
   }
+  function build_pending_open(channels){
+    if(!addTitle('Pending Open', channels)){
+      return;
+    }
+    const table = byId('pending_open'), template = use(pending_open_template)
+    table.innerHTML = null
+    channels.forEach(ch => table.append(template.render(ch)))
+  }
   async function buildMain() {
     const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
@@ -978,6 +967,7 @@
     let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
     update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
+    build_pending_open(node_info.pending_open||[])
     build_routed(forwards7d)
     build_payments(payments7d)
     async function auto_refresh(){
