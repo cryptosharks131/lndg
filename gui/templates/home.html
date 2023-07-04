@@ -262,35 +262,23 @@
     <tbody id="pending_closed"></tbody>
   </table>
 </div>
-{% if pending_force_closed %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Force Close Channels</h2>
+<div id="pending_force_closed_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Maturity</th>
-      <th width=20%>Closing TX</th>
-    </tr>
-    {% for channel in pending_force_closed %}
-    <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>Balance In Limbo</th>
+        <th>Maturity</th>
+        <th width=20%>Closing TX</th>
+      </tr>
+    </thead>
+    <tbody id="pending_force_closed"></tbody>
   </table>
 </div>
-{% endif %}
 {% if waiting_for_close %}
 <div class="w3-container w3-padding-small">
   <h2>Channels Waiting To Close</h2>
@@ -627,8 +615,11 @@
     "local_commit" : ch => ({innerHTML: ch.local_commit_fee_sat.intcomma() }),
     "closing_tx" : ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.closing_txid}' target="_blank">${ch.closing_txid}</a>`}),
   })
+  const pending_fclosed_template = Object.assign({}, pending_closed_template)
+  pending_fclosed_template["local_commit"] = ch => ({innerHTML: adjustTZ(ch.maturity_datetime), title: ch.blocks_til_maturity.intcomma() })
+
   function addTitle(id, results, title = null){
-    const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
+    const container = byId(id.split(" ").join("_").toLowerCase() + '_container')
     if (results.length == 0) {
       container.style.display = 'none'
       return false
@@ -946,6 +937,14 @@
     table.innerHTML = null
     channels.forEach(ch => table.append(template.render(ch)))
   }
+  function build_pending_fclosed(channels){
+    if(!addTitle('Pending Force Closed', channels)){
+      return;
+    }
+    const table = byId('pending_force_closed'), template = use(pending_fclosed_template)
+    table.innerHTML = null
+    channels.forEach(ch => table.append(template.render(ch)))
+  }
   async function buildMain() {
     const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
@@ -976,6 +975,7 @@
     update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
     build_pending_open(node_info.pending_open||[])
     build_pending_closed(node_info.pending_closed||[])
+    build_pending_fclosed(node_info.pending_force_closed||[])
     build_routed(forwards7d)
     build_payments(payments7d)
     async function auto_refresh(){
