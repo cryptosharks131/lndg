@@ -84,12 +84,12 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: <span id="total_balance">{{total_balance}}</span></th>
-        <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th colspan="2" class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
-        <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
-        <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span>{{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: <span id="total_balance">0</span></th>
+        <th id="onChain" class="w3-border-bottom w3-border-right">Onchain: 0</th>
+        <th id="confirmed" colspan="2" class="w3-border-bottom w3-border-right">Confirmed: 0</th>
+        <th id="unconfirmed" class="w3-border-bottom w3-border-right">Unconfirmed: 0</th>
+        <th id="limbo" class="w3-border-bottom w3-border-right">Limbo: 0</th>
+        <th id="pending_htlcs" class="w3-border-bottom w3-border-right">Pending HTLCs: 0</th>
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
@@ -804,7 +804,7 @@
     const public = merge(active, inactive), sum = merge(public, private)
     const [total_outbound, total_bal] = [sum.outbound || 1, byId('total_balance')]
     byId('liq_ratio').innerHTML = (public.inbound*100/public.outbound||1).intcomma()+'%'
-    total_bal.innerHTML = ({{total_balance}} + sum.outbound).intcomma()
+    total_bal.innerHTML = (total_bal.innerHTML.toInt() + sum.outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
       const earned = forwards_summary[`earned${d}d`]+offChain[`d${d}`].inv_rev, routed = {'amt':forwards_summary[`o${d}d`],'count':forwards_summary[`o${d}dc`]}, chaincosts = chainCosts[`d${d}`], offchain = offChain[`d${d}`], costs = chaincosts + offchain.fee
@@ -922,19 +922,13 @@
     return [forwards_sum, forwards_summary]
   }
   
-  async function buildMain() {
-    const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
-    const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
-    const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
-    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
-    const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
-    const node_info = await GET('node_info', {data: {}})
-    console.log(node_info)
+  function buildMainStats(node_info) {
     const lnd = byId('lnd')
     lnd.classList.remove('w3-red')
     lnd.classList.remove('w3-green')
     lnd.classList.toggle('w3-red', !node_info.synced_to_graph)
     lnd.classList.toggle('w3-green', node_info.synced_to_graph)
+    
     const timechain = byId('timechain')
     timechain.classList.remove('w3-border-red')
     timechain.classList.remove('w3-border-green')
@@ -947,6 +941,22 @@
     byId('total_channels').innerHTML = node_info.num_active_channels + node_info.num_inactive_channels
     byId('peers').innerHTML = `<a href="/peers" target="_blank">Peers</a>: ${node_info.num_peers}`
     if(node_info.db_size > 0) byId('dbSize').innerHTML = `DB Size: ${node_info.db_size} GB`
+
+    byId('total_balance').innerHTML = node_info.balance.total.intcomma()
+    byId('onChain').innerHTML = `Onchain: ${node_info.balance.onchain.intcomma()}`
+    byId('confirmed').innerHTML = `Confirmed: ${node_info.balance.confirmed.intcomma()}`
+    byId('unconfirmed').innerHTML = `Unconfirmed: ${node_info.balance.unconfirmed.intcomma()}`
+    byId('limbo').innerHTML = `Limbo: ${node_info.balance.limbo.intcomma()}`
+    
+    return node_info
+  }
+  async function buildMain() {
+    const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
+    const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
+    const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
+    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
+    const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
+    const node_info = buildMainStats(await GET('node_info', {data: {}}))
 
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
@@ -962,7 +972,7 @@
     }
 
     byId("updates").innerHTML = updates.intcomma()
-    byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
+    byId("pending_htlcs").innerHTML = `<a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: ${pending_htlcs.intcomma()}`
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
     let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
