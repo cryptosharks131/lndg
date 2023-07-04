@@ -245,35 +245,23 @@
     <tbody id="pending_open"></tbody>
   </table>
 </div>
-{% if pending_closed %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Close Channels</h2>
+<div id="pending_closed_container" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Local Commit Fee</th>
-      <th width=20%>Closing TX</th>
-    </tr>
-    {% for channel in pending_closed %}
-    <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.local_commit_fee_sat|intcomma }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>Balance In Limbo</th>
+        <th>Local Commit Fee</th>
+        <th width=20%>Closing TX</th>
+      </tr>
+    </thead>
+    <tbody id="pending_closed"></tbody>
   </table>
 </div>
-{% endif %}
 {% if pending_force_closed %}
 <div class="w3-container w3-padding-small">
   <h2>Pending Force Close Channels</h2>
@@ -628,6 +616,17 @@
       <input type="hidden" name="target" value="0">
     </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
   }
+
+  let {capacity, local_balance, remote_balance} = pending_open_template
+  const pending_closed_template = Object.assign({}, {
+    "channel_id" : ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: ch.channel_point}),
+    "peer_alias" : ch => ({innerHTML: `<a href="{{ graph_links }}/{{ network }}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}) 
+  }, {capacity, local_balance, remote_balance },
+  {
+    "limbo_bal" : ch => ({innerHTML: ch.limbo_balance.intcomma() }),
+    "local_commit" : ch => ({innerHTML: ch.local_commit_fee_sat.intcomma() }),
+    "closing_tx" : ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.closing_txid}' target="_blank">${ch.closing_txid}</a>`}),
+  })
   function addTitle(id, results, title = null){
     const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
     if (results.length == 0) {
@@ -939,6 +938,14 @@
     table.innerHTML = null
     channels.forEach(ch => table.append(template.render(ch)))
   }
+  function build_pending_closed(channels){
+    if(!addTitle('Pending Closed', channels)){
+      return;
+    }
+    const table = byId('pending_closed'), template = use(pending_closed_template)
+    table.innerHTML = null
+    channels.forEach(ch => table.append(template.render(ch)))
+  }
   async function buildMain() {
     const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
@@ -968,6 +975,7 @@
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
     update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
     build_pending_open(node_info.pending_open||[])
+    build_pending_closed(node_info.pending_closed||[])
     build_routed(forwards7d)
     build_payments(payments7d)
     async function auto_refresh(){
