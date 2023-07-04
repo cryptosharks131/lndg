@@ -147,7 +147,7 @@
   <a class="w3-bar-item w3-hover-blue" href="/batch" target="_blank">Batching</a>
   <a class="w3-bar-item w3-hover-blue" href="/advanced" target="_blank">Advanced Settings</a>
 </div>
-<div id="active_channels_container" class="w3-container w3-padding-small">
+<div id="active_channels_container" style="display:none" class="w3-container w3-padding-small">
   <div class="w3-container w3-padding-small table" style="overflow:auto;max-height:1000px">
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
@@ -174,7 +174,7 @@
     </table>
   </div>
 </div>
-<div id="inactive_channels_container" class="w3-container w3-padding-small">
+<div id="inactive_channels_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -199,7 +199,7 @@
     <tbody id="inactive_channels"></tbody>
   </table>
 </div>
-<div id="private_channels_container" class="w3-container w3-padding-small">
+<div id="private_channels_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -222,7 +222,7 @@
     <tbody id="private_channels"></tbody>
   </table>
 </div>
-<div id="pending_open_container" class="w3-container w3-padding-small">
+<div id="pending_open_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -245,7 +245,7 @@
     <tbody id="pending_open"></tbody>
   </table>
 </div>
-<div id="pending_closed_container" class="w3-container w3-padding-small">
+<div id="pending_closed_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -262,7 +262,7 @@
     <tbody id="pending_closed"></tbody>
   </table>
 </div>
-<div id="pending_force_closed_container" class="w3-container w3-padding-small">
+<div id="pending_force_closed_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -279,7 +279,7 @@
     <tbody id="pending_force_closed"></tbody>
   </table>
 </div>
-<div id="waiting_for_close_container" class="w3-container w3-padding-small">
+<div id="waiting_for_close_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -296,7 +296,7 @@
     <tbody id="waiting_for_close"></tbody>
   </table>
 </div>
-<div id="routed_container" class="w3-container w3-padding-small">
+<div id="routed_container" style="display:none" class="w3-container w3-padding-small">
   <table id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -323,7 +323,7 @@
   </table>
 </div>
 {% include 'rebalances_table.html' with count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-<div id="payments_container" class="w3-container w3-padding-small">
+<div id="payments_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -342,7 +342,7 @@
     <tbody id="payments"></tbody>
   </table>
 </div>
-<div id="invoices_container" class="w3-container w3-padding-small">
+<div id="invoices_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -360,7 +360,7 @@
     <tbody id="invoices"></tbody>
   </table>
 </div>
-<div id="failed_htlcs_container" class="w3-container w3-padding-small">
+<div id="failed_htlcs_container" style="display:none" class="w3-container w3-padding-small">
   <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
