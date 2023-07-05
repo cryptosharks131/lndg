@@ -89,7 +89,7 @@
         <th id="confirmed" colspan="2" class="w3-border-bottom w3-border-right">Confirmed: 0</th>
         <th id="unconfirmed" class="w3-border-bottom w3-border-right">Unconfirmed: 0</th>
         <th id="limbo" class="w3-border-bottom w3-border-right">Limbo: 0</th>
-        <th id="pending_htlcs" class="w3-border-bottom w3-border-right">Pending HTLCs: 0</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span></th>
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
@@ -717,7 +717,7 @@
     }
     return sum
   }
-  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary, inv_rev_task){
+  async function update_summary(node_info, payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary, inv_rev_task){
     let offChain = {d1: {fee:0, amt:0, inv_rev:0}, d7: {fee:0, amt:0, inv_rev:0} }
     for(p of payments7d){
       if(adjustTZ(p.creation_date) >= _1day_ago){
@@ -741,7 +741,7 @@
       chainCosts.d7 += tx.fee
     }
     for(close of (await closures_task).results){
-      if(close.close_height >= ({{node_info.block_height}} - 144)){
+      if(close.close_height >= (node_info.block.height - 144)){
         chainCosts.d1 += close.closing_costs
       }
       chainCosts.d7 += close.closing_costs
@@ -946,8 +946,8 @@
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
-    const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
     const node_info = buildMainStats(await GET('node_info', {data: {}}))
+    const closures_task = GET('closures', {data: {close_height__gte: (node_info.block.height - 1008) } })
 
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
@@ -963,12 +963,12 @@
     }
 
     byId("updates").innerHTML = updates.intcomma()
-    byId("pending_htlcs").innerHTML = `<a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: ${pending_htlcs.intcomma()}`
+    byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
     let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
-    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
+    update_summary(node_info, payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
     build_pending_open(node_info.pending_open||[])
     build_pending_closed(node_info.pending_closed||[])
     build_wating_close(node_info.waiting_for_close||[])
