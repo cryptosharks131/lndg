@@ -909,35 +909,11 @@
     
     return node_info
   }
-  function build_pending_open(channels){
-    if(!addTitle('Pending Open', channels)){
+  function build(id, template_arg, channels){
+    if(!addTitle(id, channels)){
       return;
     }
-    const table = byId('pending_open'), template = use(pending_open_template)
-    table.innerHTML = null
-    channels.forEach(ch => table.append(template.render(ch)))
-  }
-  function build_pending_closed(channels){
-    if(!addTitle('Pending Closed', channels)){
-      return;
-    }
-    const table = byId('pending_closed'), template = use(pending_closed_template)
-    table.innerHTML = null
-    channels.forEach(ch => table.append(template.render(ch)))
-  }
-  function build_pending_fclosed(channels){
-    if(!addTitle('Pending Force Closed', channels)){
-      return;
-    }
-    const table = byId('pending_force_closed'), template = use(pending_fclosed_template)
-    table.innerHTML = null
-    channels.forEach(ch => table.append(template.render(ch)))
-  }
-  function build_wating_close(channels){
-    if(!addTitle('Waiting For Close', channels)){
-      return;
-    }
-    const table = byId('waiting_for_close'), template = use(pending_closed_template)
+    const table = byId(id.split(" ").join("_").toLowerCase()), template = use(template_arg)
     table.innerHTML = null
     channels.forEach(ch => table.append(template.render(ch)))
   }
@@ -969,17 +945,16 @@
     let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
     update_summary(node_info, payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
-    build_pending_open(node_info.pending_open||[])
-    build_pending_closed(node_info.pending_closed||[])
-    build_wating_close(node_info.waiting_for_close||[])
-    build_pending_fclosed(node_info.pending_force_closed||[])
+    build('Pending Open', pending_open_template, node_info.pending_open||[])
+    build('Pending Closed', pending_closed_template, node_info.pending_closed||[])
+    build('Waiting For Close', pending_closed_template, node_info.waiting_for_close||[])
+    build('Pending Force Closed', pending_fclosed_template, node_info.pending_force_closed||[])
     build_routed(forwards7d)
     build_payments(payments7d)
     async function auto_refresh(){
       while(document.hidden) {
         await sleep(500)
       }
-      
       await buildMain()
     }
     setTimeout(async () => await auto_refresh(), 21000)
