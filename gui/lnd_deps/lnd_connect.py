@@ -16,10 +16,10 @@ def creds():
     return creds
 
 def lnd_connect():
-    return grpc.secure_channel(settings.LND_RPC_SERVER, creds(), options=[('grpc.max_send_message_length', 29999999), ('grpc.max_receive_message_length', 29999999),])
+    return grpc.secure_channel(settings.LND_RPC_SERVER, creds(), options=[('grpc.max_send_message_length', int(settings.LND_MAX_MESSAGE)*1000000), ('grpc.max_receive_message_length', int(settings.LND_MAX_MESSAGE)*1000000),])
 
 def async_lnd_connect():
-    return grpc.aio.secure_channel(settings.LND_RPC_SERVER, creds(), options=[('grpc.max_send_message_length', 29999999), ('grpc.max_receive_message_length', 29999999),])
+    return grpc.aio.secure_channel(settings.LND_RPC_SERVER, creds(), options=[('grpc.max_send_message_length', int(settings.LND_MAX_MESSAGE)*1000000), ('grpc.max_receive_message_length', int(settings.LND_MAX_MESSAGE)*1000000),])
 
 def main():
     pass
