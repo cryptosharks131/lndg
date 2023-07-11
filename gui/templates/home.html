@@ -766,7 +766,7 @@
       offChain.d7.amt += p.value
     }
     for(inv of (await inv_rev_task).results){
-      if(adjustTZ(p.creation_date) >= _1day_ago){
+      if(adjustTZ(inv.creation_date) >= _1day_ago){
         offChain.d1.inv_rev += inv.amt_paid
       }
       offChain.d7.inv_rev += inv.amt_paid
