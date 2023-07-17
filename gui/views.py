@@ -1139,6 +1139,7 @@ def actions(request):
             result = {}
             result['chan_id'] = channel.chan_id
             result['short_chan_id'] = channel.short_chan_id
+            result['remote_pubkey'] = channel.remote_pubkey
             result['alias'] = channel.alias
             result['capacity'] = channel.capacity
             result['local_balance'] = channel.local_balance + channel.pending_outbound
