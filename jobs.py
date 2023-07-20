@@ -387,11 +387,20 @@ def update_peers(stub):
             peer.save()
 
 def update_onchain(stub):
+    #print(f"{datetime.now().strftime('%c')} : Processing OnChain Transactions ...")
     Onchain.objects.filter(block_height=0).delete()
-    last_block = 0 if Onchain.objects.aggregate(Max('block_height'))['block_height__max'] == None else Onchain.objects.aggregate(Max('block_height'))['block_height__max'] + 1
+    if LocalSettings.objects.filter(key='LND-ResetOnChain').exists():
+        if int(LocalSettings.objects.filter(key='LND-ResetOnChain')[0].value) > 0: #rescan onchain txn
+            print(f"{datetime.now().strftime('%c')} : Rescanning OnChain Transactions ...")
+            Onchain.objects.all().delete()
+    LocalSettings(key='LND-ResetOnChain', value='0').save() #Set with 0 value for future.
+
+    last_block = 0 if Onchain.objects.aggregate(Max('block_height'))['block_height__max'] == None else Onchain.objects.aggregate(Max('block_height'))['block_height__max']
+    Onchain.objects.filter(block_height=last_block).delete() #Delete last block to avoid any missed transactions.
     onchain_txs = stub.GetTransactions(ln.GetTransactionsRequest(start_height=last_block)).transactions
     for tx in onchain_txs:
         Onchain(tx_hash=tx.tx_hash, time_stamp=datetime.fromtimestamp(tx.time_stamp), amount=tx.amount, fee=tx.total_fees, block_hash=tx.block_hash, block_height=tx.block_height, label=tx.label[:100]).save()
+        #print(f"{datetime.now().strftime('%c')} : Processing OnChain Txn {tx.tx_hash=} {tx.amount=} {tx.block_height=}")
 
 def network_links():
     if LocalSettings.objects.filter(key='GUI-NetLinks').exists():
@@ -594,6 +603,5 @@ def main():
         agg_failed_htlcs()
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : Error processing background data: {str(e)}")
-
 if __name__ == '__main__':
     main()
