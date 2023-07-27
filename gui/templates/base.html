@@ -19,11 +19,13 @@
     }
     const routed_template = {
       "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
-      "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in}),
-      "amt_out": f => ({innerHTML: f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out}),
-      "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
-      "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
       "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_in}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+      "chan_in_alias": f => ({innerHTML: f.chan_in_alias.default(f.chan_id_in)}),
+      "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in, style: {paddingRight: "0px", width: "160px"} }),
+      "symbolIn": f => ({innerHTML: "●━━━", style: {paddingRight: "0px", paddingLeft: "0px", textAlign: 'right'} }),
+      "symbolOut": f => ({innerHTML: "━━━○", style: {paddingLeft: "0px", paddingRight: "0px", textAlign: 'left'} }),
+      "amt_out": f => ({innerHTML: (f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out) + ` <small class="w3-round w3-border-small w3-border-grey w3-tiny">+${f.fee.intcomma().toLocaleString()}</small>`, style: {paddingLeft: "0px", width: "160px"} }),
+      "chan_out_alias": f => ({innerHTML: f.chan_out_alias.default(f.chan_id_out)}),
       "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
       "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
       "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
