@@ -86,12 +86,13 @@ Alternatively, you may also make your own task for these files with your preferr
 2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths (or see commands below to set custom values) - default: `~/.lnd`
 3. `-net` or `--network` - Network LND will run over - default: `mainnet`
 4. `-server` or `--rpcserver` - Server address to use for rpc communications with LND - default: `localhost:10009`
-5. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
-6. `-sdu` or `--sduser` - Configure supervisord with a non-root user - default: `root`
-7. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
-8. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
-9. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
-10. `-u` or `--adminuser` Setup a custom admin username - default: `lndg-admin`
+5. `-maxmsg` or `--maxmessage` - Maximum message size for grpc communications (MB) - default: `30`
+6. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
+7. `-sdu` or `--sduser` - Configure supervisord with a non-root user - default: `root`
+8. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
+9. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
+10. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
+11. `-u` or `--adminuser` Setup a custom admin username - default: `lndg-admin`
 10. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
 10. `-csrf` or `--csrftrusted` Set trusted CSRF origins - default: `None`
 10. `-tls` or `--tlscert` Set a custom path to the tls cert - default: `--lnddir used`
@@ -164,15 +165,16 @@ You can customize some settings of AF by updating the following settings:
 `AF-Increment` - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value  
 `AF-MaxRate` - The maximum fee rate in which we can adjust to  
 `AF-MinRate` - The minimum fee rate in which we can adjust to  
-`AF-Multiplier` - Multiplier used against the flow pattern algorithm, the larger the multiplier, the larger the potential moves  
+`AF-Multiplier` - Multiplier to increase incremental movements, the larger the multiplier, the larger the incremental moves  
 `AF-UpdateHours` - Change the number of hours that must pass since the last fee rate change before AF may adjust the fee rate again  
+`AF-LowLiqLimit` - The liquidity (%) a channel must drop below before running the `Low Liquidity` fee algorithm  
+`AF-ExcessLimit` - The liquidity (%) a channel must go above before running the `Excess Liquidity` fee algorithm  
 
 AF Notes:
-1. AF changes only trigger after 24 hours (default) of no fee updates via LNDg
-2. Single step maximum increase set to 15% or 25 ppm (which ever is increase smaller)
-3. Single step maximum decrease set to 25% or 50 ppm (which ever is decrease smaller)
-4. Channels with less than 25% outbound liquidty will not have their fees decreased
-5. Channels with less than 25% inbound liquidty will not have their fees increased
+1. AF changes only trigger after `AF-UpdateHours` hours of no fee updates via LNDg
+2. Channels with less than `AF-LowLiqLimit` outbound liquidty will increase based on failed HTLC counts and incoming flow
+3. Channels with more than `AF-ExcessLimit` outbound liquidty will decrease based on no flows or assisted revenues
+4. Channels between the previous two groups will increase or decrease based on flow
 
 ## Auto-Rebalancer - [Quick Start Guide](https://github.com/cryptosharks131/lndg/blob/master/quickstart.md)
 ### Here are some additional notes to help you better understand the Auto-Rebalancer (AR).

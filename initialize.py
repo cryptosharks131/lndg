@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 BASE_DIR = Path(__file__).resolve().parent
 
-def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, whitenoise, debug, csrftrusted, nologinrequired):
+def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
@@ -61,6 +61,7 @@ LND_MACAROON_PATH = '%s'
 LND_DATABASE_PATH = '%s'
 LND_NETWORK = '%s'
 LND_RPC_SERVER = '%s'
+LND_MAX_MESSAGE = '%s'
 LOGIN_REQUIRED = %s
 
 # Application definition
@@ -170,7 +171,7 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, not nologinrequired, wnl, api_login)
+''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, not nologinrequired, wnl, api_login)
     try:
         f = open("lndg/settings.py", "x")
         f.close()
@@ -261,6 +262,7 @@ def main():
     parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default=None)
     parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
     parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
+    parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
     parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='root')
     parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
@@ -278,6 +280,7 @@ def main():
     lnd_dir_path = args.lnddir if args.lnddir else '~/.lnd'
     lnd_network = args.network
     lnd_rpc_server = args.rpcserver
+    lnd_max_message = args.maxmessage
     setup_supervisord = args.supervisord
     sduser = args.sduser
     whitenoise = args.whitenoise
@@ -293,7 +296,7 @@ def main():
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, whitenoise, debug, csrftrusted, nologinrequired)
+    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)

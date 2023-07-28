@@ -301,11 +301,11 @@
     <thead>
       <tr>
         <th>Timestamp</th>
-        <th>Amount In</th>
-        <th>Amount Out</th>
-        <th>Channel In Alias</th>
-        <th>Channel Out Alias</th>
         <th>Channel In Id</th>
+        <th >Channel In Alias</th>
+        <th colspan="2">Amount In</th>
+        <th colspan="2">Amount Out</th>
+        <th>Channel Out Alias</th>
         <th>Channel Out Id</th>
         <th>Fees Earned</th>
         <th>PPM Earned</th>
@@ -366,11 +366,11 @@
       <tr>
         <th>Timestamp</th>
         <th>Chan In ID</th>
-        <th>Chan Out ID</th>
         <th>Chan In Alias</th>
+        <th colspan="2">Forward Amount</th>
+        <th colspan="2">Actual Outbound</th>
         <th>Chan Out Alias</th>
-        <th>Forward Amount</th>
-        <th>Actual Outbound</th>
+        <th>Chan Out ID</th>
         <th>Potential Fee</th>
         <th>HTLC Failure</th>
         <th>Failure Detail</th>
@@ -502,7 +502,7 @@
     }, {ppm}, {
     "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
     "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
-    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out.default('---')}),
+    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out || '---' }),
     "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
     "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
     "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
@@ -728,7 +728,7 @@
       offChain.d7.amt += p.value
     }
     for(inv of (await inv_rev_task).results){
-      if(adjustTZ(p.creation_date) >= _1day_ago){
+      if(adjustTZ(inv.creation_date) >= _1day_ago){
         offChain.d1.inv_rev += inv.amt_paid
       }
       offChain.d7.inv_rev += inv.amt_paid
