@@ -87,13 +87,7 @@
       table.innerHTML = null
       res.results.forEach(rebalance => table.append(template.render(rebalance)));
 
-      async function auto_refresh(){
-        while(document.hidden) {
-          await sleep(500)
-        }
-        await buildTable()
-      }
-      setTimeout(auto_refresh, 21000)
+      await auto_refresh(buildTable)
     }
 
     document.addEventListener('DOMContentLoaded', buildTable);

@@ -906,8 +906,6 @@
     byId('confirmed').innerHTML = `Confirmed: ${node_info.balance.confirmed.intcomma()}`
     byId('unconfirmed').innerHTML = `Unconfirmed: ${node_info.balance.unconfirmed.intcomma()}`
     byId('limbo').innerHTML = `Limbo: ${node_info.balance.limbo.intcomma()}`
-    
-    return node_info
   }
   function build(id, template_arg, channels){
     if(!addTitle(id, channels)){
@@ -918,11 +916,12 @@
     channels.forEach(ch => table.append(template.render(ch)))
   }
   async function buildMain() {
+    const node_info = await GET('node_info', {data: {limit:1}})
     const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
-    const node_info = buildMainStats(await GET('node_info', {data: {}}))
+    buildMainStats(node_info)
     const closures_task = GET('closures', {data: {close_height__gte: (node_info.block.height - 1008) } })
 
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
@@ -951,13 +950,7 @@
     build('Pending Force Closed', pending_fclosed_template, node_info.pending_force_closed||[])
     build_routed(forwards7d)
     build_payments(payments7d)
-    async function auto_refresh(){
-      while(document.hidden) {
-        await sleep(500)
-      }
-      await buildMain()
-    }
-    setTimeout(auto_refresh, 21000)
+    await auto_refresh(buildMain)
   }
   document.addEventListener('DOMContentLoaded', async () => { 
     await buildMain()
