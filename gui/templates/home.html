@@ -953,11 +953,12 @@
     await auto_refresh(buildMain)
   }
   document.addEventListener('DOMContentLoaded', async () => { 
-    await buildMain()
+    const builder = buildMain()
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
     const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
     build_invoices((await invoices_task).results)
     build_failedHTLC((await failedHTLCs_task).results)
+    await builder
   })
 </script>
 {% endblock %}
