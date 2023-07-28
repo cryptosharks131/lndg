@@ -957,7 +957,7 @@
       }
       await buildMain()
     }
-    setTimeout(async () => await auto_refresh(), 21000)
+    setTimeout(auto_refresh, 21000)
   }
   document.addEventListener('DOMContentLoaded', async () => { 
     await buildMain()
