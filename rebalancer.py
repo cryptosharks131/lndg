@@ -194,10 +194,17 @@ def update_channels(stub, incoming_channel, outgoing_channel_htlcs):
             db_channel.save()
             print (f"{datetime.now().strftime('%c')} : Incoming Channel Update {channel.chan_id=} {int((channel.local_balance+pending_out)/channel.capacity*100)}% {channel.local_balance=} {pending_out=} {channel.remote_balance=} {pending_in=} {incoming_channel=}")
         # Outgoing channel update. It can be potentially MPP with multuple HTLCs (some success some failed) and multiple outgoing channels.
+        processed_channels = []
         for htlc_attempt in outgoing_channel_htlcs:
             if htlc_attempt.status == 1:
                 outgoing_channel = htlc_attempt.route.hops[0].pub_key
                 outgoing_chan_id = htlc_attempt.route.hops[0].chan_id
+                #MPP can pass via same outgoing channel at times, skip when already processed.
+                if outgoing_chan_id in processed_channels:
+                    #Already processed, continue
+                    #print (f"{datetime.now().strftime('%c')} : Skipping .... {channel.chan_id=} in {processed_channels=}")
+                    continue
+                processed_channels.append(outgoing_chan_id)
                 #Take care of multiple channels for same pub key
                 for channel in stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(outgoing_channel))).channels:
                     pending_in = 0
