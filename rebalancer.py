@@ -309,7 +309,7 @@ def auto_enable():
             apdays = 7
         if enabled == 1:
             lookup_channels=Channels.objects.filter(is_active=True, is_open=True, private=False)
-            #Channel balane is not considerred changed until settled (pending balance is added to respective side as if not pending). This is to avoid flip flops enable/disable.
+            #Channel balance is not considerred changed until settled (pending balance is added to respective side as if not pending). This is to avoid flip flops enable/disable.
             channels = lookup_channels.values('remote_pubkey').annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by()
             filter_day = datetime.now() - timedelta(days=apdays)
             forwards = Forwards.objects.filter(forward_date__gte=filter_day)
