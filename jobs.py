@@ -159,11 +159,45 @@ def update_forwards(stub):
         outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].remote_pubkey[:12] if outgoing_peer_alias == '' else outgoing_peer_alias
         Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=forward.amt_in_msat, amt_out_msat=forward.amt_out_msat, fee=round(forward.fee_msat/1000, 3)).save()
 
+def disconnecthtlcpeer(stub, htlc, peerpubkey):
+    #print(f"{datetime.now().strftime('%c')} : .. htlc expiring with risk of FC, disconnecting peer to resolve... {htlc.expiration_height=} {htlc.hash_lock.hex()=} {peerpubkey=}")
+    try:
+        if Peers.objects.filter(pubkey=peerpubkey).exists():
+            peer = Peers.objects.filter(pubkey=peerpubkey)[0]
+        else:
+            print(f"{datetime.now().strftime('%c')} : .... could not find peer ... {peerpubkey=}")
+            return
+        if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) > 10): #Reconnect appox every block height.
+            try:
+                response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=peerpubkey))
+                print(f"{datetime.now().strftime('%c')} : .... Disconnected peer with expiring htlc {peer.alias} {peer.pubkey=} {int((datetime.now() - peer.last_reconnected).total_seconds() / 60)=} {htlc.expiration_height=} {htlc.hash_lock.hex()=}")
+                peer.connected = False
+                peer.last_reconnected = datetime.now() #Reconnect will be done by lnd on its own (or by the reconnect function). Setting time to ensure next disconnect occurs after 1 block.
+                peer.save()
+            except Exception as e:
+                print(f"{datetime.now().strftime('%c')} : .... Error disconnecting peer {peer.alias} {peer.pubkey=} {str(e)=}")
+        #else:
+            #print(f"{datetime.now().strftime('%c')} : .... Skip Disconnected peer {peer.alias} {peer.pubkey=} {int((datetime.now() - peer.last_reconnected).total_seconds() / 60)=}")
+
+    except Exception as e:
+        print(f"{datetime.now().strftime('%c')} : .... Error disconnecting peer {peerpubkey=} {str(e)=}")
+
+    return
+
 def update_channels(stub):
     counter = 0
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
     PendingHTLCs.objects.all().delete()
+    block_height = 0
+    ReconnectExpiringHtlcPeers = 0
+
+    if LocalSettings.objects.filter(key='LND-ReconnectExpingHtlcPeers').exists():
+        ReconnectExpiringHtlcPeers = int(LocalSettings.objects.filter(key='LND-ReconnectExpingHtlcPeers')[0].value)
+        block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
+    else:
+        LocalSettings(key='LND-ReconnectExpingHtlcPeers', value='13').save() #Set with default value 13 block. Can be changed by the use
+
     for channel in channels:
         if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
@@ -220,6 +254,11 @@ def update_channels(stub):
                 else:
                     pending_out += htlc.amount
                 htlc_counter += 1
+                if htlc.expiration_height - block_height <= ReconnectExpiringHtlcPeers and ReconnectExpiringHtlcPeers > 0: #If htlc is expiring within 13 blocks, disconnect peer to help resolve the stuck htlc.
+                    print(f"{datetime.now().strftime('%c')} : htlc expiring within {ReconnectExpiringHtlcPeers} blocks, disconnecting peer to resolve... {(htlc.expiration_height - block_height)=} {htlc.hash_lock.hex()=} {channel.remote_pubkey=}")
+                    disconnecthtlcpeer(stub, htlc, channel.remote_pubkey)
+                #else:
+                    #print(f"{datetime.now().strftime('%c')} : skip disconnecting peer to resolve... {ReconnectExpiringHtlcPeers=} {(htlc.expiration_height-block_height)=} {htlc.hash_lock.hex()=} {channel.remote_pubkey=}")
         db_channel.pending_outbound = pending_out
         db_channel.pending_inbound = pending_in
         db_channel.htlc_count = htlc_counter
