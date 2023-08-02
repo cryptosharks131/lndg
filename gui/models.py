@@ -151,6 +151,13 @@ class Channels(models.Model):
     class Meta:
         app_label = 'gui'
 
+class Groups(models.Model):
+    name = models.CharField(max_length=12)
+    channels = models.ManyToManyField(Channels, related_name="channels_list",)
+
+    class Meta:
+        app_label = 'gui'
+
 class Peers(models.Model):
     pubkey = models.CharField(max_length=66, primary_key=True)
     alias = models.CharField(null=True, max_length=32)
@@ -178,6 +185,13 @@ class Rebalancer(models.Model):
     payment_hash = models.CharField(max_length=64, null=True, default=None)
     manual = models.BooleanField(default=False)
     fees_paid = models.FloatField(null=True, default=None)
+    class Meta:
+        app_label = 'gui'
+
+class Settings(models.Model):
+    key = models.CharField(max_length=20)
+    value = models.CharField(default=None, max_length=50)
+    group = models.ForeignKey(Groups, on_delete=models.CASCADE)
     class Meta:
         app_label = 'gui'
 
