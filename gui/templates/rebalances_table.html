@@ -75,17 +75,23 @@
         return {innerHTML: input}
       } 
     };
-    document.addEventListener('DOMContentLoaded', async () => {
+    async function buildTable(){
       const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:'{{last_hop_pubkey}}' }})
       if(res.errors) return
       if(res.results.length == 0){
-        document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any rebalances yet.</h1></center>`
+        document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any ${statuses['{{status}}'].toLowerCase()} rebalance request</h1></center>`
         return
       }
 
       const table = document.getElementById("rebalances_{{status}}"), template = use(transformations)
+      table.innerHTML = null
       res.results.forEach(rebalance => table.append(template.render(rebalance)));
-    });
+
+      await auto_refresh(buildTable)
+    }
+
+    document.addEventListener('DOMContentLoaded', buildTable);
+
     async function loadRebals_{{status}}(){
       const status = "{{ status }}"
       const rebalsTable = byId('rebalsTable_'+status)

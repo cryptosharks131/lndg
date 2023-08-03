@@ -85,5 +85,6 @@ urlpatterns = [
     path('api/chart/', views.chart, name='chart'),
     path('api/chanpolicy/', views.chan_policy, name='chan-policy'),
     path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
+    path('api/node_info/', views.node_info, name='node-info'),
     path('lndg-admin/', admin.site.urls),
 ]
