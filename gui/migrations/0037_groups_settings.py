@@ -7,17 +7,42 @@ from gui.models import Groups, Channels, Settings, LocalSettings
 
 def migrate_update_channels(apps, schema_editor):
     channels = Channels.objects.all()
-    lndg_default = Groups(id=1, name="") # default
+    lndg_default = Groups(name="", id=0) # default
     lndg_default.save()
     for ch in channels:
         lndg_default.channels.add(ch)
     lndg_default.save()
 
-    locSettings = LocalSettings.objects.all()
-    for sett in locSettings:
-        settings = Settings(key=sett.key, value=sett.value)
-        settings.group = lndg_default
-        settings.save()
+    print('\nInitializing default settings...')
+    Settings(key='AF-MaxRate', value='2500',group_id=0).save()
+    Settings(key='AF-MinRate', value='0',group_id=0).save()
+    Settings(key='AF-Increment', value='5',group_id=0).save()
+    Settings(key='AF-Multiplier', value='5',group_id=0).save()
+    Settings(key='AF-FailedHTLCs', value='25',group_id=0).save()
+    Settings(key='AF-UpdateHours', value='24',group_id=0).save()
+    Settings(key='AF-LowLiqLimit', value='5',group_id=0).save()
+    Settings(key='AF-ExcessLimit', value='95',group_id=0).save()
+    Settings(key='AF-Enabled', value='0',group_id=0).save()
+    Settings(key='GUI-GraphLinks', value='https://amboss.space',group_id=0).save()
+    Settings(key='GUI-NetLinks', value='https://mempool.space',group_id=0).save()
+    Settings(key='LND-CleanPayments', value='0',group_id=0).save()
+    Settings(key='LND-RetentionDays', value='30',group_id=0).save()
+    Settings(key='AR-Outbound%', value='75',group_id=0).save()
+    Settings(key='AR-Inbound%', value='100',group_id=0).save()
+    Settings(key='AR-Target%', value='5',group_id=0).save()
+    Settings(key='AR-MaxCost%', value='65',group_id=0).save()
+    Settings(key='AR-Enabled', value='0',group_id=0).save()
+    Settings(key='AR-MaxFeeRate', value='100',group_id=0).save()
+    Settings(key='AR-Variance', value='0',group_id=0).save()
+    Settings(key='AR-WaitPeriod', value='30',group_id=0).save()
+    Settings(key='AR-Time', value='5',group_id=0).save()
+    Settings(key='AR-Autopilot', value='0',group_id=0).save()
+    Settings(key='AR-APDays', value='7',group_id=0).save()
+    Settings(key='AR-Workers', value='1',group_id=0).save()
+
+    print('\nApplying custom settings if user has any...')
+    for sett in LocalSettings.objects.all():
+        Settings(key=sett.key, value=sett.value, group_id=0).save()
 
 def revert_update_channels():
     migrations.DeleteModel(
@@ -42,11 +67,16 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Settings',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('key', models.CharField(max_length=20)),
-                ('value', models.CharField(max_length=50)),
+                ('key', models.CharField(primary_key=True, max_length=20)),
+                ('value', models.CharField(max_length=50, default=None)),
                 ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='gui.groups')),
             ],
+            options={
+                'unique_together': {('key', 'group')},
+            },
         ),
         migrations.RunPython(migrate_update_channels, revert_update_channels),
+        migrations.DeleteModel(
+            name="LocalSettings",
+        )
     ]
