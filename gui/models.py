@@ -109,6 +109,7 @@ class Channels(models.Model):
     fees_updated = models.DateTimeField(default=timezone.now)
     auto_fees = models.BooleanField()
     notes = models.TextField(default='', blank=True)
+    groups = models.ManyToManyField('Groups', related_name="groups_list",)
 
     class Meta:
         app_label = 'gui'

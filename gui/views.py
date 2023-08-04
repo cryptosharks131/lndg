@@ -75,7 +75,7 @@ def home(request):
         return render(request, 'error.html', {'error': error})
     return render(request, 'home.html', {
         'node_info': {'color': node_info.color, 'alias': node_info.alias, 'version': node_info.version, 'identity_pubkey': node_info.identity_pubkey, 'uris': node_info.uris},
-        'local_settings': get_local_settings('AR-'),
+        'local_settings': get_local_settings('AR-', 0),
         'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
         'graph_links': graph_links(),
         'network_links': network_links(),
@@ -183,7 +183,7 @@ def fees(request):
         results_df = af.main(channels)
         context = {
             'channels': [] if results_df.empty else results_df.sort_values(by=['out_percent']).to_dict(orient='records'),
-            'local_settings': get_local_settings('AF-'),
+            'local_settings': get_local_settings('AF-', 0),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -207,7 +207,7 @@ def advanced(request):
             channels_df['local_max_htlc'] = channels_df['local_max_htlc_msat']/1000
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'local_settings': get_local_settings('AF-', 'AR-', 'GUI-', 'LND-'),
+            'local_settings': get_local_settings('AF-', 'AR-', 'GUI-', 'LND-', 0),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -1337,7 +1337,7 @@ def forwards(request):
 def rebalancing(request):
     if request.method == 'GET':
         context = {
-            'local_settings': get_local_settings('AR-'),
+            'local_settings': get_local_settings('AR-', 0),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -1582,7 +1582,7 @@ def rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-def get_local_settings(*prefixes):
+def get_local_settings(*prefixes, group_id: int):
     form = []
     if 'AR-' in prefixes:
         form.append({'unit': '', 'form_id': 'update_channels', 'id': 'update_channels'})
@@ -1616,7 +1616,7 @@ def get_local_settings(*prefixes):
         form.append({'unit': 'days', 'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':1000})
 
     for prefix in prefixes:
-        ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
+        ar_settings = Settings.objects.filter(group_id=group_id,key__contains=prefix).values('key', 'value').order_by('key')
         for field in form:
             for sett in ar_settings:
                 if field['id'] == sett['key']:
@@ -1666,11 +1666,7 @@ def update_settings(request):
                 value = form.cleaned_data[field['form_id']]
                 if value is not None:
                     value = field['parse'](value)
-                    try:
-                        db_value = LocalSettings.objects.get(key=field['id'])
-                    except:
-                        LocalSettings(key=field['id'], value=field['value']).save()
-                        db_value = LocalSettings.objects.get(key=field['id'])
+                    db_value = Settings.objects.get(key=field['id'], group_id= field['group_id'])
                     if db_value.value == str(value) or len(str(value)) == 0:
                         continue
                     db_value.value = value
@@ -1820,7 +1816,7 @@ def update_pending(request):
                 pending_channel.save()
                 messages.success(request, 'Auto rebalancer max cost for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(target) + '%')
             elif update_target == 8:
-                auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) if LocalSettings.objects.filter(key='AF-Enabled').exists() else 0
+                auto_fees = int(Settings.objects.order_by('-group_id').filter(key='AF-Enabled')[0].value)
                 pending_channel.auto_fees = True if pending_channel.auto_fees == False or (pending_channel.auto_fees == None and auto_fees == 0) else False
                 pending_channel.save()
                 messages.success(request, 'Auto fees status for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(pending_channel.auto_fees))
@@ -1915,7 +1911,7 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
-                db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
+                db_enabled = Settings.objects.get(group_id=0, key='AF-UpdateHours')
                 db_enabled.value = target
                 db_enabled.save()
                 messages.success(request, 'Updated autofees update hours setting to: ' + str(target))
@@ -2197,11 +2193,11 @@ def node_info(request):
         peers = Peers.objects.all()
         pending_changes = PendingChannels.objects.all()
         pending_open = []
-        inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
-        outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
-        amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
-        cost_setting = int(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
-        auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
+        inbound_setting = int(Settings.objects.filter(group_id=0, key='AR-Inbound%')[0].value)
+        outbound_setting = int(Settings.objects.filter(group_id=0, key='AR-Outbound%')[0].value)
+        amt_setting = float(Settings.objects.filter(group_id=0, key='AR-Target%')[0].value)
+        cost_setting = int(Settings.objects.filter(group_id=0, key='AR-MaxCost%')[0].value)
+        auto_fees = int(Settings.objects.filter(group_id=0, key='AF-Enabled')[0].value)
         for i in range(0,len(target_resp)):
             item = {}
             pending_open_balance += target_resp[i].channel.local_balance

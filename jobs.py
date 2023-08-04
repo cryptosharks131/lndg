@@ -13,7 +13,7 @@ from pandas import DataFrame
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, Settings, FailedHTLCs, Autofees, PendingChannels, HistFailedHTLC, PeerEvents
+from gui.models import Groups, Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, Settings, FailedHTLCs, Autofees, PendingChannels, HistFailedHTLC, PeerEvents
 from gui import af
 
 def update_payments(stub):
@@ -499,27 +499,26 @@ def clean_payments(stub):
                 payment.save()
 
 def auto_fees(stub):
-    if int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) == 0: #disabled
-        return
     try:
-        channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
-        results_df = af.main(channels)
-        if not results_df.empty: 
-            update_df = results_df[results_df['eligible'] == True]
-            update_df = update_df[update_df['adjustment']!=0]
-            if not update_df.empty:
-                for target_channel in update_df.to_dict(orient='records'):
-                    print(f"{datetime.now().strftime('%c')} : Updating fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
-                    channel = Channels.objects.filter(chan_id=target_channel['chan_id'])[0]
-                    channel_point = ln.ChannelPoint()
-                    channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
-                    channel_point.funding_txid_str = channel.funding_txid
-                    channel_point.output_index = channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
-                    channel.local_fee_rate = target_channel['new_rate']
-                    channel.fees_updated = datetime.now()
-                    channel.save()
-                    Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
+        groups = Groups.objects.filter(settings__key='AF-Enabled', settings__value='1').all()
+        for group in groups:
+            results_df = af.main(group)
+            if not results_df.empty: 
+                update_df = results_df[results_df['eligible'] == True]
+                update_df = update_df[update_df['adjustment']!=0]
+                if not update_df.empty:
+                    for target_channel in update_df.to_dict(orient='records'):
+                        print(f"{datetime.now().strftime('%c')} : Updating fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
+                        channel = Channels.objects.filter(chan_id=target_channel['chan_id'])[0]
+                        channel_point = ln.ChannelPoint()
+                        channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
+                        channel_point.funding_txid_str = channel.funding_txid
+                        channel_point.output_index = channel.output_index
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
+                        channel.local_fee_rate = target_channel['new_rate']
+                        channel.fees_updated = datetime.now()
+                        channel.save()
+                        Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : Error processing auto_fees: {str(e)}")
 

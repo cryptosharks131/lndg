@@ -63,7 +63,8 @@ class RebalancerForm(forms.ModelForm):
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
 
-class AutoRebalanceForm(forms.Form):	
+class AutoRebalanceForm(forms.Form):
+    group_id = forms.IntegerField(label='enabled', required=True)
     enabled = forms.IntegerField(label='enabled', required=False)	
     target_percent = forms.FloatField(label='target_percent', required=False)	
     target_time = forms.IntegerField(label='target_time', required=False)	
