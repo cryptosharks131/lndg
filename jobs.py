@@ -13,7 +13,7 @@ from pandas import DataFrame
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels, HistFailedHTLC, PeerEvents
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, Settings, FailedHTLCs, Autofees, PendingChannels, HistFailedHTLC, PeerEvents
 from gui import af
 
 def update_payments(stub):
@@ -394,11 +394,7 @@ def update_onchain(stub):
         Onchain(tx_hash=tx.tx_hash, time_stamp=datetime.fromtimestamp(tx.time_stamp), amount=tx.amount, fee=tx.total_fees, block_hash=tx.block_hash, block_height=tx.block_height, label=tx.label[:100]).save()
 
 def network_links():
-    if LocalSettings.objects.filter(key='GUI-NetLinks').exists():
-        network_links = str(LocalSettings.objects.filter(key='GUI-NetLinks')[0].value)
-    else:
-        LocalSettings(key='GUI-NetLinks', value='https://mempool.space').save()
-        network_links = 'https://mempool.space'
+    network_links = str(Settings.objects.filter(key='GUI-NetLinks', group_id=0)[0].value)
     return network_links
 
 def get_tx_fees(txid):
@@ -481,18 +477,10 @@ def reconnect_peers(stub):
                     peer.save()
 
 def clean_payments(stub):
-    if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
-        enabled = int(LocalSettings.objects.filter(key='LND-CleanPayments')[0].value)
-    else:
-        LocalSettings(key='LND-CleanPayments', value='0').save()
-        LocalSettings(key='LND-RetentionDays', value='30').save()
-        enabled = 0
+    enabled = int(Settings.objects.filter(key='LND-CleanPayments', group_id=0)[0].value)
+
     if enabled == 1:
-        if LocalSettings.objects.filter(key='LND-RetentionDays').exists():
-            retention_days = int(LocalSettings.objects.filter(key='LND-RetentionDays')[0].value)
-        else:
-            LocalSettings(key='LND-RetentionDays', value='30').save()
-            retention_days = 30
+        retention_days = int(Settings.objects.filter(key='LND-RetentionDays', group_id=0)[0].value)
         time_filter = datetime.now() - timedelta(days=retention_days)
         target_payments = Payments.objects.exclude(status=1).filter(cleaned=False).filter(creation_date__lte=time_filter).order_by('index')[:10]
         for payment in target_payments:
@@ -511,13 +499,8 @@ def clean_payments(stub):
                 payment.save()
 
 def auto_fees(stub):
-    if LocalSettings.objects.filter(key='AF-Enabled').exists():
-        if int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) == 0: #disabled
-            return
-    else:
-        LocalSettings(key='AF-Enabled', value='0').save()
+    if int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) == 0: #disabled
         return
-
     try:
         channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
         results_df = af.main(channels)

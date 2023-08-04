@@ -12,7 +12,7 @@ from typing import List
 
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Rebalancer, Channels, LocalSettings, Forwards, Autopilot
+from gui.models import Rebalancer, Channels, Settings, Forwards, Autopilot
 
 @sync_to_async
 def get_out_cans(rebalance, auto_rebalance_channels):
@@ -183,11 +183,8 @@ def auto_schedule() -> List[Rebalancer]:
     try:
         #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
         to_schedule = []
-        if LocalSettings.objects.filter(key='AR-Enabled').exists():
-            enabled = int(LocalSettings.objects.filter(key='AR-Enabled')[0].value)
-        else:
-            LocalSettings(key='AR-Enabled', value='0').save()
-            enabled = 0
+        enabled = int(LocalSettings.objects.filter(key='AR-Enabled')[0].value)
+
         if enabled == 0:
             return []
         
@@ -195,35 +192,16 @@ def auto_schedule() -> List[Rebalancer]:
         if len(auto_rebalance_channels) == 0:
             return []
         
-        if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
-            LocalSettings(key='AR-Outbound%', value='75').save()
-        if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
-            LocalSettings(key='AR-Inbound%', value='100').save()
         outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
         already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
         inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
         if len(inbound_cans) == 0 or len(outbound_cans) == 0:
             return []
         
-        if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
-            max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
-        else:
-            LocalSettings(key='AR-MaxFeeRate', value='100').save()
-            max_fee_rate = 100
-        if LocalSettings.objects.filter(key='AR-Variance').exists():
-            variance = int(LocalSettings.objects.filter(key='AR-Variance')[0].value)
-        else:
-            LocalSettings(key='AR-Variance', value='0').save()
-            variance = 0
-        if LocalSettings.objects.filter(key='AR-WaitPeriod').exists():
-            wait_period = int(LocalSettings.objects.filter(key='AR-WaitPeriod')[0].value)
-        else:
-            LocalSettings(key='AR-WaitPeriod', value='30').save()
-            wait_period = 30
-        if not LocalSettings.objects.filter(key='AR-Target%').exists():
-            LocalSettings(key='AR-Target%', value='5').save()
-        if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
-            LocalSettings(key='AR-MaxCost%', value='65').save()
+        max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
+        variance = int(LocalSettings.objects.filter(key='AR-Variance')[0].value)
+        wait_period = int(LocalSettings.objects.filter(key='AR-WaitPeriod')[0].value)
+        
         for target in inbound_cans:
             target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
             if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:

@@ -9,9 +9,9 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer, SignMessageSerializer
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, SettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Settings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, SettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer, SignMessageSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -28,19 +28,11 @@ from requests import get
 from . import af
 
 def graph_links():
-    if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
-        graph_links = str(LocalSettings.objects.filter(key='GUI-GraphLinks')[0].value)
-    else:
-        LocalSettings(key='GUI-GraphLinks', value='https://amboss.space').save()
-        graph_links = 'https://amboss.space'
+    graph_links = str(Settings.objects.filter(key='GUI-GraphLinks',group_id=0)[0].value)
     return graph_links
 
 def network_links():
-    if LocalSettings.objects.filter(key='GUI-NetLinks').exists():
-        network_links = str(LocalSettings.objects.filter(key='GUI-NetLinks')[0].value)
-    else:
-        LocalSettings(key='GUI-NetLinks', value='https://mempool.space').save()
-        network_links = 'https://mempool.space'
+    network_links = str(Settings.objects.filter(key='GUI-NetLinks',group_id=0)[0].value)
     return network_links
 
 def get_tx_fees(txid):
@@ -1665,7 +1657,7 @@ def update_settings(request):
                     {'form_id': 'lnd_retentionDays', 'value': 30, 'parse': lambda x: x, 'id': 'LND-RetentionDays'},
                     ]
 
-        form = LocalSettingsForm(request.POST)
+        form = SettingsForm(request.POST)
         if not form.is_valid():
             messages.error(request, 'Invalid Request. Please try again.')
         else:
@@ -1923,11 +1915,7 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
-                except:
-                    LocalSettings(key='AF-UpdateHours', value='24').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
+                db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
                 db_enabled.value = target
                 db_enabled.save()
                 messages.success(request, 'Updated autofees update hours setting to: ' + str(target))
@@ -2138,14 +2126,14 @@ class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = FailedHTLCSerializer
     filterset_class = FailedHTLCFilter
 
-class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
+class SettingsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = LocalSettings.objects.all()
-    serializer_class = LocalSettingsSerializer
+    queryset = Settings.objects.all()
+    serializer_class = SettingsSerializer
 
     def update(self, request, pk):
         setting = get_object_or_404(self.queryset, pk=pk)
-        serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
+        serializer = SettingsSerializer(setting, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -2209,11 +2197,11 @@ def node_info(request):
         peers = Peers.objects.all()
         pending_changes = PendingChannels.objects.all()
         pending_open = []
-        inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value) if LocalSettings.objects.filter(key='AR-Inbound%').exists() else 100
-        outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) if LocalSettings.objects.filter(key='AR-Outbound%').exists() else 75
-        amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value) if LocalSettings.objects.filter(key='AR-Target%').exists() else 5
-        cost_setting = int(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value) if LocalSettings.objects.filter(key='AR-MaxCost%').exists() else 65
-        auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) if LocalSettings.objects.filter(key='AF-Enabled').exists() else 0
+        inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
+        outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
+        amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
+        cost_setting = int(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
+        auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
         for i in range(0,len(target_resp)):
             item = {}
             pending_open_balance += target_resp[i].channel.local_balance

@@ -93,7 +93,7 @@ class GUIForm(AutoFeesForm):
     gui_graphLinks = forms.CharField(label='gui_graphLinks', required=False)	
     gui_netLinks = forms.CharField(label='gui_netLinks', required=False)	
 
-class LocalSettingsForm(GUIForm):	
+class SettingsForm(GUIForm):	
     lnd_cleanPayments = forms.IntegerField(label='lnd_cleanPayments', required=False)	
     lnd_retentionDays = forms.IntegerField(label='lnd_retentionDays', required=False)	
 
