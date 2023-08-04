@@ -304,7 +304,7 @@
       <tr>
         <th>Timestamp</th>
         <th>Channel In Id</th>
-        <th >Channel In Alias</th>
+        <th>Channel In Alias</th>
         <th colspan="2">Amount In</th>
         <th colspan="2">Amount Out</th>
         <th>Channel Out Alias</th>
@@ -448,7 +448,7 @@
 </div>
 <div class="w3-container w3-padding-small">
   <h2>Sign a Message</h2>
-  <div class="w3-container w3-padding-small">
+  <div id="sign" class="w3-container w3-padding-small">
     <input placeholder="Message" id="signmsg" style="min-width:800px" id="value" type="text" name="message">
     <input type="submit" value="OK" onclick="Sync.POST('sign_message/', {body: {message:byId('signmsg').value}}, r => {showBannerMsg('Signature:', r.data, true, r.data);qr_addr(r.data);})">
   </div>
