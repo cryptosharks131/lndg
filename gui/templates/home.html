@@ -36,7 +36,7 @@
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: <span id="updates">---</span></span>
     <span style="padding:1.5px 8px;margin-left:4px" class="w3-round w3-border w3-border-grey"><a href="#sign">Sign a message</a></span>
   </h6>
-  <h6 id="private_stats">
+  <h6 style="display: none" id="private_stats">
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: <span id="private_capacity">0</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: <span id="private_liquidity">0</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: <span id="private_active">0</span> / <span id="private_count">0</span></span>
@@ -693,6 +693,7 @@
     byId("private_liquidity").innerHTML = (act.outbound + ina.outbound).intcomma()
     byId("private_active").innerHTML = active_count
     byId("private_count").innerHTML = channels.length
+    byId("private_stats").style = {'display': 'block'}
 
     return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
   }
