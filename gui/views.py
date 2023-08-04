@@ -179,8 +179,8 @@ def channels(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def fees(request):
     if request.method == 'GET':
-        channels = Channels.objects.filter(is_open=True, private=False)
-        results_df = af.main(channels)
+        group = Groups.objects.prefetch_related('channels').get(id=0)
+        results_df = af.main(group)
         context = {
             'channels': [] if results_df.empty else results_df.sort_values(by=['out_percent']).to_dict(orient='records'),
             'local_settings': get_local_settings(0, 'AF-'),
@@ -677,7 +677,8 @@ def channel(request):
             else:
                 node_outbound = channels_df['local_balance'].sum()
                 node_capacity = channels_df['capacity'].sum()
-            channel = Channels.objects.filter(chan_id=chan_id)
+            group = Groups.objects.order_by('-id').filter(channels=chan_id)[0]
+            channel = group.channels.filter(chan_id=chan_id)
             channels_df = DataFrame.from_records(channel.values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())
@@ -973,7 +974,7 @@ def channel(request):
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-            results_df = af.main(channel)
+            results_df = af.main(group)
             channels_df['new_rate'] = results_df[results_df['chan_id']==chan_id]['new_rate']
             channels_df['adjustment'] = results_df[results_df['chan_id']==chan_id]['adjustment']
             channels_df['net_routed_7day'] = results_df[results_df['chan_id']==chan_id]['net_routed_7day']

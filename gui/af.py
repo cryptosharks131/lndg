@@ -8,7 +8,7 @@ django.setup()
 from gui.models import Forwards, Channels, Groups, Settings, FailedHTLCs
 
 def main(group: Groups):
-    channels_df = DataFrame.from_records(group.channels.values())
+    channels_df = DataFrame.from_records(group.channels.filter(is_open=True, private=False).values())
     filter_1day = datetime.now() - timedelta(days=1)
     filter_7day = datetime.now() - timedelta(days=7)
     if channels_df.shape[0] > 0:
