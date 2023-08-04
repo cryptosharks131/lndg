@@ -75,7 +75,7 @@ def home(request):
         return render(request, 'error.html', {'error': error})
     return render(request, 'home.html', {
         'node_info': {'color': node_info.color, 'alias': node_info.alias, 'version': node_info.version, 'identity_pubkey': node_info.identity_pubkey, 'uris': node_info.uris},
-        'local_settings': get_local_settings('AR-', 0),
+        'local_settings': get_local_settings(0, 'AR-'),
         'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
         'graph_links': graph_links(),
         'network_links': network_links(),
@@ -183,7 +183,7 @@ def fees(request):
         results_df = af.main(channels)
         context = {
             'channels': [] if results_df.empty else results_df.sort_values(by=['out_percent']).to_dict(orient='records'),
-            'local_settings': get_local_settings('AF-', 0),
+            'local_settings': get_local_settings(0, 'AF-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -207,7 +207,7 @@ def advanced(request):
             channels_df['local_max_htlc'] = channels_df['local_max_htlc_msat']/1000
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'local_settings': get_local_settings('AF-', 'AR-', 'GUI-', 'LND-', 0),
+            'local_settings': get_local_settings(0, 'AF-', 'AR-', 'GUI-', 'LND-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -1337,7 +1337,7 @@ def forwards(request):
 def rebalancing(request):
     if request.method == 'GET':
         context = {
-            'local_settings': get_local_settings('AR-', 0),
+            'local_settings': get_local_settings(0, 'AR-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -1582,7 +1582,7 @@ def rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-def get_local_settings(*prefixes, group_id: int):
+def get_local_settings(group_id: int, *prefixes):
     form = []
     if 'AR-' in prefixes:
         form.append({'unit': '', 'form_id': 'update_channels', 'id': 'update_channels'})
