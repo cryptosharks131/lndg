@@ -3,11 +3,9 @@
 {% block meta %}<meta http-equiv="refresh" content="1260">{% endblock %}
 {% block content %}
 {% load humanize %}
-<span style="position: absolute;top: 0;right: 0;">Dashboard Last Updated:  <span id='datetime'></span> ... refreshing every 21 minutes</span>
+<span style="position: absolute;top: 0;right: 0;">Dashboard Last Updated:  <span id='datetime'></span> ... refreshing every 21 seconds</span>
 <div class="w3-container w3-padding-small">
   <script language="Javascript">
-    var dt = new Date();
-    byId("datetime").innerHTML = dt.toLocaleTimeString();
     function qr_gen(addr){
       var qrcode = new QRCode(byId('qrcode'), {text:addr, width:256, height:256})
       byId('qrcode').style.display = 'block'
@@ -25,18 +23,22 @@
       <a style="margin-left:6px;" href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{{ node_info.alias }}</a> | {{ node_info.identity_pubkey }}
     </h3>
   <h6>
-    <span class="w3-tag w3-round w3-{% if node_info.synced_to_graph %}green{% else %}red{% endif %}" title="{{ node_info.version }}">LND</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-{% if node_info.synced_to_chain %}green{% else %}red{% endif %}" title="Chain {% if not node_info.synced_to_chain %}Not {% endif %}Synced">{% for info in node_info.chains %}{{ info }}{% endfor %} | {{ node_info.block_height }} #{{ node_info.block_hash }}</span>
+    <span id="lnd" class="w3-tag w3-round" title="{{ node_info.version }}">LND</span>
+    <span id="timechain" style="padding:1.5px 8px;" class="w3-round w3-border">---</span>
   </h6>
   <h6>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Public Capacity: <span id="public_capacity">0</span></span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="public_channels_count">{{node_info.num_active_channels}}</span> / <span id="total_channels">{{node_info.num_active_channels|add:node_info.num_inactive_channels}}</span></span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey"><a href="/peers" target="_blank">Peers</a>: {{ node_info.num_peers }}</span>
-    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">DB Size: {% if db_size > 0 %}{{ db_size }} GB{% else %}---{% endif %}</span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Channels: <span id="public_channels_count">0</span> / <span id="total_channels">0</span></span>
+    <span id="peers" style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">0</span>
+    <span id="dbSize" style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">---</span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Total States Updates: <span id="updates">---</span></span>
     <span style="padding:1.5px 8px;margin-left:4px" class="w3-round w3-border w3-border-grey"><a href="#sign">Sign a message</a></span>
   </h6>
-  <h6 id="private_stats"></h6>
+  <h6 style="display: none" id="private_stats">
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: <span id="private_capacity">0</span></span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: <span id="private_liquidity">0</span></span>
+    <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: <span id="private_active">0</span> / <span id="private_count">0</span></span>
+  </h6>
   Addresses: 
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
@@ -84,12 +86,12 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:1000px;width:75%">
     <thead>
       <tr>
-        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: <span id="total_balance">{{total_balance}}</span></th>
-        <th class="w3-border-bottom w3-border-right">Onchain: {{ balances.total_balance|intcomma }}</th>
-        <th colspan="2" class="w3-border-bottom w3-border-right">Confirmed: {{ balances.confirmed_balance|intcomma }}</th>
-        <th class="w3-border-bottom w3-border-right">Unconfirmed: {{ balances.unconfirmed_balance|intcomma }}</th>
-        <th class="w3-border-bottom w3-border-right">Limbo: {{ limbo_balance|intcomma }} </th>
-        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span>{{ pending_htlc_count }}</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/balances" target="_blank">Balance</a>: <span id="total_balance">0</span></th>
+        <th id="onChain" class="w3-border-bottom w3-border-right">Onchain: 0</th>
+        <th id="confirmed" colspan="2" class="w3-border-bottom w3-border-right">Confirmed: 0</th>
+        <th id="unconfirmed" class="w3-border-bottom w3-border-right">Unconfirmed: 0</th>
+        <th id="limbo" class="w3-border-bottom w3-border-right">Limbo: 0</th>
+        <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span></th>
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
             {% csrf_token %}
@@ -147,7 +149,7 @@
   <a class="w3-bar-item w3-hover-blue" href="/batch" target="_blank">Batching</a>
   <a class="w3-bar-item w3-hover-blue" href="/advanced" target="_blank">Advanced Settings</a>
 </div>
-<div id="active_channels_container" class="w3-container w3-padding-small">
+<div id="active_channels_container" style="display:none" class="w3-container w3-padding-small">
   <div class="w3-container w3-padding-small table" style="overflow:auto;max-height:1000px">
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
@@ -174,7 +176,7 @@
     </table>
   </div>
 </div>
-<div id="inactive_channels_container" class="w3-container w3-padding-small">
+<div id="inactive_channels_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -199,7 +201,7 @@
     <tbody id="inactive_channels"></tbody>
   </table>
 </div>
-<div id="private_channels_container" class="w3-container w3-padding-small">
+<div id="private_channels_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -222,210 +224,82 @@
     <tbody id="private_channels"></tbody>
   </table>
 </div>
-{% if pending_open %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Open Channels</h2>
+<div id="pending_open_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Peer Alias</th>
-      <th width=20%>Channel Point</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>AF</th>
-      <th>Fee Rate</th>
-      <th>Base Fee</th>
-      <th>CLTV</th>
-      <th>Amt</th>
-      <th>Max Cost%</th>
-      <th>oTarget%</th>
-      <th>iTarget%</th>
-      <th>AR</th>
-    </tr>
-    {% for channel in pending_open %}
-    <tr>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
-      <td title="Commit Fee: {{ channel.commit_fee }}">{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td {% if channel.auto_fees == False %}style="background-color: rgba(46,160,67,0.15);"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="{% if channel.auto_fees == True %}Disable{% else %}Enable{% endif %}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="8">
-          <input type="hidden" name="target" value="0">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_fee_rate }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="1">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="0">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="9">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100000000" name="target" value="{{ channel.ar_amt_target }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="2">
-        </form>
-      </td>
-      <td>
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_max_cost }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="6">
-        </form>
-      </td>
-      <td style="background-color: {% if channel.auto_rebalance == False %}rgba(248,81,73,0.15){% else %}rgba(46,160,67,0.15){% endif %}">
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_out_target }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="4">
-        </form>
-      </td>
-      <td style="background-color: {% if channel.auto_rebalance == True %}rgba(46,160,67,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="{{ channel.ar_in_target }}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="3">
-        </form>
-      </td>
-      <td style="background-color: {% if channel.auto_rebalance == True %}rgba(46,160,67,0.15){% else %}rgba(248,81,73,0.15){% endif %}">
-        <form action="/update_pending/" method="post">
-          {% csrf_token %}
-          <input type="submit" value="{% if channel.auto_rebalance == True %}Disable{% else %}Enable{% endif %}">
-          <input type="hidden" name="funding_txid" value="{{ channel.funding_txid }}">
-          <input type="hidden" name="output_index" value="{{ channel.output_index }}">
-          <input type="hidden" name="update_target" value="5">
-          <input type="hidden" name="target" value="0">
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Peer Alias</th>
+        <th width=20%>Channel Point</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>AF</th>
+        <th>Fee Rate</th>
+        <th>Base Fee</th>
+        <th>CLTV</th>
+        <th>Amt</th>
+        <th>Max Cost%</th>
+        <th>oTarget%</th>
+        <th>iTarget%</th>
+        <th>AR</th>
+      </tr>
+    </thead>
+    <tbody id="pending_open"></tbody>
   </table>
 </div>
-{% endif %}
-{% if pending_closed %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Close Channels</h2>
+<div id="pending_closed_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Local Commit Fee</th>
-      <th width=20%>Closing TX</th>
-    </tr>
-    {% for channel in pending_closed %}
-    <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.local_commit_fee_sat|intcomma }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>Balance In Limbo</th>
+        <th>Local Commit Fee</th>
+        <th width=20%>Closing TX</th>
+      </tr>
+    </thead>
+    <tbody id="pending_closed"></tbody>
   </table>
 </div>
-{% endif %}
-{% if pending_force_closed %}
-<div class="w3-container w3-padding-small">
-  <h2>Pending Force Close Channels</h2>
+<div id="pending_force_closed_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Maturity</th>
-      <th width=20%>Closing TX</th>
-    </tr>
-    {% for channel in pending_force_closed %}
-    <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>Balance In Limbo</th>
+        <th>Maturity</th>
+        <th width=20%>Closing TX</th>
+      </tr>
+    </thead>
+    <tbody id="pending_force_closed"></tbody>
   </table>
 </div>
-{% endif %}
-{% if waiting_for_close %}
-<div class="w3-container w3-padding-small">
-  <h2>Channels Waiting To Close</h2>
+<div id="waiting_for_close_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
-    <tr>
-      <th>Channel ID</th>
-      <th>Peer Alias</th>
-      <th>Capacity</th>
-      <th>Local Balance</th>
-      <th>Remote Balance</th>
-      <th>Balance In Limbo</th>
-      <th>Local Commit Fee</th>
-      <th width=20%>Closing TX</th>
-    </tr>
-    {% for channel in waiting_for_close %}
-    <tr>
-      <td title="{{ channel.channel_point }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
-      <td>{{ channel.capacity|intcomma }}</td>
-      <td>{{ channel.local_balance|intcomma }}</td>
-      <td>{{ channel.remote_balance|intcomma }}</td>
-      <td>{{ channel.limbo_balance|intcomma }}</td>
-      <td>{{ channel.local_commit_fee_sat|intcomma }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Peer Alias</th>
+        <th>Capacity</th>
+        <th>Local Balance</th>
+        <th>Remote Balance</th>
+        <th>Balance In Limbo</th>
+        <th>Local Commit Fee</th>
+        <th width=20%>Closing TX</th>
+      </tr>
+    </thead>
+    <tbody id="waiting_for_close"></tbody>
   </table>
 </div>
-{% endif %}
-<div id="routed_container" class="w3-container w3-padding-small">
-  <table  id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
+<div id="routed_container" style="display:none" class="w3-container w3-padding-small">
+  <table id="forwardsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
         <th>Timestamp</th>
@@ -451,7 +325,7 @@
   </table>
 </div>
 {% include 'rebalances_table.html' with count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-<div id="payments_container" class="w3-container w3-padding-small">
+<div id="payments_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -470,7 +344,7 @@
     <tbody id="payments"></tbody>
   </table>
 </div>
-<div id="invoices_container" class="w3-container w3-padding-small">
+<div id="invoices_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -488,7 +362,7 @@
     <tbody id="invoices"></tbody>
   </table>
 </div>
-<div id="failed_htlcs_container" class="w3-container w3-padding-small">
+<div id="failed_htlcs_container" style="display:none" class="w3-container w3-padding-small">
   <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
@@ -575,11 +449,8 @@
 <div class="w3-container w3-padding-small">
   <h2>Sign a Message</h2>
   <div class="w3-container w3-padding-small">
-    <form action="/sign_message/" method="post">
-      {% csrf_token %}
-      <input placeholder="Message" id="sign" style="min-width:800px" id="value" type="text" name="msg">
-      <input type="submit" value="OK">
-    </form>
+    <input placeholder="Message" id="signmsg" style="min-width:800px" id="value" type="text" name="message">
+    <input type="submit" value="OK" onclick="Sync.POST('sign_message/', {body: {message:byId('signmsg').value}}, r => {showBannerMsg('Signature:', r.data, true, r.data);qr_addr(r.data);})">
   </div>
 </div>
 <script>
@@ -648,12 +519,100 @@
     "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
     }
   )
+  const pending_open_template = {
+    "alias": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}),
+    "channel_point": ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.funding_txid}' target="_blank">${ch.channel_point}</a>`}),
+    "capacity": ch => ({innerHTML: ch.capacity.intcomma(), title: `Commit Fee: ${ch.commit_fee}`}),
+    "local_balance": ch => ({innerHTML: ch.local_balance.intcomma()}),
+    "remote_balance": ch => ({innerHTML: ch.remote_balance.intcomma()}),
+    "af": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input type="submit" value="${ch.auto_fees ? 'Dis' : 'En'}able">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="8">
+      <input type="hidden" name="target" value="0">
+    </form>`, style: {backgroundColor: ch.auto_fees? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
+    "fee_rate": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="${ch.local_fee_rate}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="1">
+    </form>`}),
+    "base_fee": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="${ch.local_base_fee}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="0">
+    </form>`}),
+    "cltv": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="${ch.local_cltv}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="9">
+    </form>`}),
+    "amt": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100000000" name="target" value="${ch.ar_amt_target}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="2">
+    </form>`}),
+    "max_cost": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_max_cost}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="6">
+    </form>`}),
+    "otarget": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_out_target}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="4">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
+    "itarget": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input style="text-align:center" id="target" type="number" min="1" max="100" name="target" value="${ch.ar_in_target}">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="3">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
+    "ar": ch => ({innerHTML: `<form action="/update_pending/" method="post">
+      {% csrf_token %}
+      <input type="submit" value="${ch.auto_rebalance ? 'Dis': 'En'}able">
+      <input type="hidden" name="funding_txid" value="${ch.funding_txid}">
+      <input type="hidden" name="output_index" value="${ch.output_index}">
+      <input type="hidden" name="update_target" value="5">
+      <input type="hidden" name="target" value="0">
+    </form>`, style: {backgroundColor: !ch.auto_rebalance ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)'} }),
+  }
+
+  let {capacity, local_balance, remote_balance} = pending_open_template
+  const pending_closed_template = Object.assign({}, {
+    "channel_id" : ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: ch.channel_point}),
+    "peer_alias" : ch => ({innerHTML: `<a href="{{ graph_links }}/{{ network }}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}) 
+  }, {capacity, local_balance, remote_balance },
+  {
+    "limbo_bal" : ch => ({innerHTML: ch.limbo_balance.intcomma() }),
+    "local_commit" : ch => ({innerHTML: ch.local_commit_fee_sat.intcomma() }),
+    "closing_tx" : ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.closing_txid}' target="_blank">${ch.closing_txid}</a>`}),
+  })
+  const pending_fclosed_template = Object.assign({}, pending_closed_template)
+  pending_fclosed_template["local_commit"] = ch => ({innerHTML: adjustTZ(ch.maturity_datetime), title: ch.blocks_til_maturity.intcomma() })
+
   function addTitle(id, results, title = null){
-    const container = byId(id.toLowerCase().replace(" ", "_") + '_container')
+    const container = byId(id.split(" ").join("_").toLowerCase() + '_container')
     if (results.length == 0) {
-      container.remove()
+      container.style.display = 'none'
       return false
     }
+    container.style.display = 'block'
+    if (container.querySelector('h2')) container.querySelector('h2').innerHTML = null
     container.insertAdjacentHTML('afterbegin', `<h2>${title || id}</h2>`)
     return true
   }
@@ -663,6 +622,7 @@
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
 
+    activeChannels.innerHTML = null
     channels.map(ch => { //derived properties
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
@@ -698,7 +658,7 @@
       .forEach(ch => activeChannels.append(template.render(ch)))
 
     byId('public_capacity').innerHTML = sum.capacity.intcomma()
-    return update_sum('active_', sum)
+    return update_liq('active_', sum)
   }
   function build_private(channels){
     let act = {outbound: 0, inbound: 0}, ina = {outbound: 0, inbound: 0} 
@@ -706,6 +666,7 @@
     if(!addTitle("Private Channels", channels)) return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
 
     let [capacity, active_count, table, template] = [0,0,byId('private_channels'),use(private_ch_template)]
+    table.innerHTML = null
     channels.forEach(ch => {
       capacity += ch.capacity
       if(ch.is_active) {
@@ -723,10 +684,11 @@
 
     byId("total_channels").innerHTML = (byId("total_channels").innerHTML.toInt() - channels.length)
     byId("public_channels_count").innerHTML = (byId("public_channels_count").innerHTML.toInt() - active_count)
-    byId("private_stats").insertAdjacentHTML('beforeend', `
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Private Capacity: ${capacity.intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: ${(act.outbound + ina.outbound).intcomma()}</span>
-      <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: ${active_count} / ${channels.length}</span>`)
+    byId("private_capacity").innerHTML = capacity.intcomma()
+    byId("private_liquidity").innerHTML = (act.outbound + ina.outbound).intcomma()
+    byId("private_active").innerHTML = active_count
+    byId("private_count").innerHTML = channels.length
+    byId("private_stats").style = {'display': 'block'}
 
     return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
   }
@@ -735,6 +697,7 @@
     if(!addTitle("Inactive Channels", channels)) return sum
 
     const table = byId('inactive_channels'), template = use(inactive_ch_template), public_capacity = byId('public_capacity')
+    table.innerHTML = null
     channels.forEach(ch => {
       sum.capacity += ch.capacity
       sum.inbound += ch.remote_balance
@@ -744,18 +707,17 @@
     })
 
     public_capacity.innerHTML = (public_capacity.innerHTML.toInt() + sum.capacity).intcomma()
-    return update_sum('inactive_', sum)
+    return update_liq('inactive_', sum)
   }
-  function update_sum(status, sum){
+  function update_liq(status, sum){
     for (id of ['inbound', 'outbound', 'unsettled']){
       const [value, total] = [sum[id], byId('total_'+id)]
 
       byId(status+id).innerHTML = value.intcomma()
-      total.innerHTML = (total.innerHTML.toInt() + value).intcomma()
     }
     return sum
   }
-  async function update_summary(payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary, inv_rev_task){
+  async function update_summary(node_info, payments7d, onchain_task, closures_task, active, inactive, private, forwards_summary, inv_rev_task){
     let offChain = {d1: {fee:0, amt:0, inv_rev:0}, d7: {fee:0, amt:0, inv_rev:0} }
     for(p of payments7d){
       if(adjustTZ(p.creation_date) >= _1day_ago){
@@ -779,7 +741,7 @@
       chainCosts.d7 += tx.fee
     }
     for(close of (await closures_task).results){
-      if(close.close_height >= ({{node_info.block_height}} - 144)){
+      if(close.close_height >= (node_info.block.height - 144)){
         chainCosts.d1 += close.closing_costs
       }
       chainCosts.d7 += close.closing_costs
@@ -794,6 +756,10 @@
       return result
     }
     
+    byId('total_inbound').innerHTML = (active.inbound + inactive.inbound).intcomma()
+    byId('total_outbound').innerHTML = (active.outbound + inactive.outbound).intcomma()
+    byId('total_unsettled').innerHTML = (active.unsettled + inactive.unsettled).intcomma()
+
     const public = merge(active, inactive), sum = merge(public, private)
     const [total_outbound, total_bal] = [sum.outbound || 1, byId('total_balance')]
     byId('liq_ratio').innerHTML = (public.inbound*100/public.outbound||1).intcomma()+'%'
@@ -837,6 +803,7 @@
 
     if(!addTitle('Routed', forwards, `Last <a href="/forwards" target="_blank">Payments Routed</a>`)) return
     const table = byId('routed')
+    table.innerHTML = null
     for(f of forwards.slice(0,20)){
       f.amt_in = f.amt_in_msat/1000
       f.amt_out = f.amt_out_msat/1000
@@ -850,6 +817,7 @@
 
     if(!addTitle('Payments', payments, `Last 10 <a href="/payments" target="_blank">Payments</a>`)) return
     const table = byId('payments')
+    table.innerHTML = null
     for(p of payments.slice(0,10)){
       p.ppm = p.fee*1000000/p.value
       table.append(template.render(p))
@@ -912,15 +880,50 @@
     }
     return [forwards_sum, forwards_summary]
   }
-  document.addEventListener('DOMContentLoaded', async () =>{
-    const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
+  
+  function buildMainStats(node_info) {
+    const lnd = byId('lnd')
+    lnd.classList.remove('w3-red')
+    lnd.classList.remove('w3-green')
+    lnd.classList.toggle('w3-red', !node_info.synced_to_graph)
+    lnd.classList.toggle('w3-green', node_info.synced_to_graph)
+    
+    const timechain = byId('timechain')
+    timechain.classList.remove('w3-border-red')
+    timechain.classList.remove('w3-border-green')
+    timechain.classList.toggle('w3-border-red', !node_info.synced_to_chain)
+    timechain.classList.toggle('w3-border-green', node_info.synced_to_chain)
+    timechain.title = `Chain ${!node_info.synced_to_chain ? 'Not' : ''} Synced`
+    timechain.innerHTML = node_info.chains.join(', ') + ` | ${node_info.block.height} #${node_info.block.hash}`
+
+    byId('public_channels_count').innerHTML = node_info.num_active_channels
+    byId('total_channels').innerHTML = node_info.num_active_channels + node_info.num_inactive_channels
+    byId('peers').innerHTML = `<a href="/peers" target="_blank">Peers</a>: ${node_info.num_peers}`
+    if(node_info.db_size > 0) byId('dbSize').innerHTML = `DB Size: ${node_info.db_size} GB`
+
+    byId('total_balance').innerHTML = node_info.balance.total.intcomma()
+    byId('onChain').innerHTML = `Onchain: ${node_info.balance.onchain.intcomma()}`
+    byId('confirmed').innerHTML = `Confirmed: ${node_info.balance.confirmed.intcomma()}`
+    byId('unconfirmed').innerHTML = `Unconfirmed: ${node_info.balance.unconfirmed.intcomma()}`
+    byId('limbo').innerHTML = `Limbo: ${node_info.balance.limbo.intcomma()}`
+  }
+  function build(id, template_arg, channels){
+    if(!addTitle(id, channels)){
+      return;
+    }
+    const table = byId(id.split(" ").join("_").toLowerCase()), template = use(template_arg)
+    table.innerHTML = null
+    channels.forEach(ch => table.append(template.render(ch)))
+  }
+  async function buildMain() {
+    const node_info = await GET('node_info', {data: {limit:1}})
     const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
-    const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
-    const closures_task = GET('closures', {data: {close_height__gte: ({{node_info.block_height}} - 1008) } })
-    
+    buildMainStats(node_info)
+    const closures_task = GET('closures', {data: {close_height__gte: (node_info.block.height - 1008) } })
+
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       updates += ch.num_updates
@@ -940,11 +943,23 @@
     let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
     let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
-    update_summary(payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
+    update_summary(node_info, payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
+    build('Pending Open', pending_open_template, node_info.pending_open||[])
+    build('Pending Closed', pending_closed_template, node_info.pending_closed||[])
+    build('Waiting For Close', pending_closed_template, node_info.waiting_for_close||[])
+    build('Pending Force Closed', pending_fclosed_template, node_info.pending_force_closed||[])
     build_routed(forwards7d)
     build_payments(payments7d)
+    byId("datetime").innerHTML = new Date().toLocaleTimeString();
+    await auto_refresh(buildMain)
+  }
+  document.addEventListener('DOMContentLoaded', async () => { 
+    const builder = buildMain()
+    const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
+    const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
     build_invoices((await invoices_task).results)
     build_failedHTLC((await failedHTLCs_task).results)
+    await builder
   })
 </script>
 {% endblock %}

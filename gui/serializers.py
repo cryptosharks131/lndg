@@ -119,6 +119,9 @@ class BumpFeeSerializer(serializers.Serializer):
 class BroadcastTXSerializer(serializers.Serializer):
     raw_tx = serializers.CharField(label='raw_tx')
 
+class SignMessageSerializer(serializers.Serializer):
+    message = serializers.CharField(label='message')
+
 class AddInvoiceSerializer(serializers.Serializer):
     value = serializers.IntegerField(label='value')
 
