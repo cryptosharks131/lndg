@@ -189,11 +189,12 @@ class Rebalancer(models.Model):
         app_label = 'gui'
 
 class Settings(models.Model):
-    key = models.CharField(max_length=20)
+    key = models.CharField(primary_key=True,max_length=20)
     value = models.CharField(default=None, max_length=50)
     group = models.ForeignKey(Groups, on_delete=models.CASCADE)
     class Meta:
         app_label = 'gui'
+        unique_together = (('key', 'group'),)
 
 class LocalSettings(models.Model):
     key = models.CharField(primary_key=True, default=None, max_length=20)
