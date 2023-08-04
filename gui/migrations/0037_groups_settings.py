@@ -3,7 +3,7 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
-from gui.models import Groups, Channels, Settings, LocalSettings
+from gui.models import Groups, Channels, Settings
 
 def migrate_update_channels(apps, schema_editor):
     channels = Channels.objects.all()
@@ -41,7 +41,7 @@ def migrate_update_channels(apps, schema_editor):
     Settings(key='AR-Workers', value='1',group_id=0).save()
 
     print('\nApplying custom settings if user has any...')
-    for sett in LocalSettings.objects.all():
+    for sett in apps.get_model('gui', 'localsettings').objects.all():
         Settings(key=sett.key, value=sett.value, group_id=0).save()
 
 def revert_update_channels():
@@ -64,10 +64,15 @@ class Migration(migrations.Migration):
                 ('channels', models.ManyToManyField(related_name='channels_list', to='gui.channels')),
             ],
         ),
+        migrations.AddField(
+            model_name='channels',
+            name='groups',
+            field=models.ManyToManyField(related_name='groups_list', to='gui.groups'),
+        ),
         migrations.CreateModel(
             name='Settings',
             fields=[
-                ('key', models.CharField(primary_key=True, max_length=20)),
+                ('key', models.CharField(primary_key=True, max_length=20, serialize=False)),
                 ('value', models.CharField(max_length=50, default=None)),
                 ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='gui.groups')),
             ],
