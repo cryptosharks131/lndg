@@ -66,7 +66,6 @@ urlpatterns = [
     path('autofees/', views.autofees, name='autofees'),
     path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
-    path('sign_message/', views.sign_message, name='sign-message'),
     path('addresses/', views.addresses, name='addresses'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
@@ -86,5 +85,6 @@ urlpatterns = [
     path('api/chanpolicy/', views.chan_policy, name='chan-policy'),
     path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
     path('api/node_info/', views.node_info, name='node-info'),
+    path('api/sign_message/', views.sign_message, name='sign-message'),
     path('lndg-admin/', admin.site.urls),
 ]
