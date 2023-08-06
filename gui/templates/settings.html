@@ -75,9 +75,8 @@
       }
       counter++
     }
-    header_descriptor["submit"] = _ => ({innerHTML: `Submit`})
-    console.log(lndg_settings)
-    tbody_descriptor['submit'] = sett => ({innerHTML: `<button type="submit" form="group_id:${sett[0].group_id}">Ok</button>`})
+    header_descriptor["submit"] = _ => ({innerHTML: `Actions`, style: {minWidth: '150px'} })
+    tbody_descriptor['submit'] = sett => ({innerHTML: `<button type="submit" title="Submit changes" style="margin:4px" form="group_id:${sett[0].group_id}">Ok</button><button style="margin:4px" title="Delete this group" ${sett[0].group_id == 0 ? 'disabled="disabled"' : ""} onclick="Sync.DELETE('groups/${sett[0].group_id}', {body:{}}, _ => location.reload())">🗑️</button>`})
     return [header_descriptor, tbody_descriptor]
   }
 </script>

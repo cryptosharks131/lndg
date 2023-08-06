@@ -2160,11 +2160,25 @@ class SettingsViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             return Response(serializer.errors)
 
-            
 class GroupsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Groups.objects.all()
     serializer_class = GroupsSerializer
+
+    def delete(self, request, pk):
+        if int(pk) == 0: return Response(status=403) #Forbidden
+        group = get_object_or_404(self.queryset, pk=pk)
+        try:
+            channels = group.channels.all()
+            lndg = Groups.objects.get(id=0)
+            [lndg.channels.add(ch) for ch in channels]
+            lndg.save()
+        except Exception as e:
+            print('Channels might have already been on LNDg group:' + str(e))
+
+        group.delete()
+        return Response(status=204) #no content
+
 
 class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

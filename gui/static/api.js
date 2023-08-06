@@ -24,6 +24,7 @@ async function call({url, method, data, body, headers = {'Content-Type':'applica
     if(!url.endsWith('/')) url += '/'
     if(method != 'GET') headers['X-CSRFToken'] = document.getElementById('api').dataset.token
     const result = await fetch(`${window.location.origin}/api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
+    if (result.status == 204) return
     return result.json()
 }
 
@@ -32,6 +33,9 @@ class Sync{
         call({url, method, body}).then(res => callback(res))
     }
     static POST(url, {method = 'POST', body}, callback){
+        call({url, method, body}).then(res => callback(res))
+    }
+    static DELETE(url, {method = 'DELETE', body}, callback){
         call({url, method, body}).then(res => callback(res))
     }
 }
