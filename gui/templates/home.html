@@ -154,20 +154,19 @@
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
         <tr>
-          <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
-          <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(event.target, 2, 'int')">Outbound Liquidity</th>
-          <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
-          <th onclick="sortTable(event.target, 5, 'int')">Unsettled</th>
-          <th width=3% onclick="sortTable(event.target, 6, 'int')">oRate</th>
-          <th width=3% onclick="sortTable(event.target, 7, 'int')">oBase</th>
-          <th onclick="sortTable(event.target, 8, 'm')">o1D</th>
-          <th onclick="sortTable(event.target, 9, 'm')">i1D</th>
-          <th onclick="sortTable(event.target, 10, 'm')">o7D</th>
-          <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
-          <th width=3% onclick="sortTable(event.target, 12, 'int')">iRate</th>
-          <th width=3% onclick="sortTable(event.target, 13, 'int')">iBase</th>
+          <th style="min-width:300px" onclick="sortTable(event.target, 0, 'String', 0, 'a')">Peer Alias</th>
+          <th onclick="sortTable(event.target, 1, 'int')">Outbound Liquidity</th>
+          <th onclick="sortTable(event.target, 2, 'int', 0, 'label')">Capacity</th>
+          <th onclick="sortTable(event.target, 3, 'int')">Inbound Liquidity</th>
+          <th onclick="sortTable(event.target, 4, 'int')">Unsettled</th>
+          <th width=3% onclick="sortTable(event.target, 5, 'int')">oRate</th>
+          <th width=3% onclick="sortTable(event.target, 6, 'int')">oBase</th>
+          <th onclick="sortTable(event.target, 7, 'm')">o1D</th>
+          <th onclick="sortTable(event.target, 8, 'm')">i1D</th>
+          <th onclick="sortTable(event.target, 9, 'm')">o7D</th>
+          <th onclick="sortTable(event.target, 10, 'm')">i7D</th>
+          <th width=3% onclick="sortTable(event.target, 11, 'int')">iRate</th>
+          <th width=3% onclick="sortTable(event.target, 12, 'int')">iBase</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
           <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
         </tr>
@@ -180,8 +179,8 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
-        <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
-        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 1, 'String')">Channel ID</th>
         <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
         <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
@@ -924,8 +923,15 @@
     buildMainStats(node_info)
     const closures_task = GET('closures', {data: {close_height__gte: (node_info.block.height - 1008) } })
 
+    const groups = (await GET('groups', {data: {} })).results
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
-    for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
+    for (ch of (await GET('channels', {data: {is_open: true} })).results){
+      ch.tags = []
+      for (group of groups.filter(g => g.id > 0)){
+        if(!group.channels.some(s => s.includes(ch.chan_id.toString()))) continue
+        ch.tags.push(group.name)
+      }
+
       updates += ch.num_updates
       pending_htlcs += ch.htlc_count
       ch.local_balance += ch.pending_outbound
