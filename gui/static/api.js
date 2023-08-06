@@ -21,9 +21,9 @@ async function DELETE(url, {method = 'DELETE'} = {}){
 }
 
 async function call({url, method, data, body, headers = {'Content-Type':'application/json'}}){
-    if(url.charAt(url.length-1) != '/') url += '/'
+    if(!url.endsWith('/')) url += '/'
     if(method != 'GET') headers['X-CSRFToken'] = document.getElementById('api').dataset.token
-    const result = await fetch(`api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
+    const result = await fetch(`${window.location.origin}/api/${url}${data ? '?': ''}${new URLSearchParams(data).toString()}`, {method, body: JSON.stringify(body), headers})
     return result.json()
 }
 

@@ -64,7 +64,8 @@ class RebalancerForm(forms.ModelForm):
     duration = forms.IntegerField(label='duration')
 
 class AutoRebalanceForm(forms.Form):
-    group_id = forms.IntegerField(label='enabled', required=True)
+    group_id = forms.IntegerField(label="group_id", required=True)
+    group_name = forms.CharField(label="group_name", min_length=1, max_length=20, required=False)
     enabled = forms.IntegerField(label='enabled', required=False)	
     target_percent = forms.FloatField(label='target_percent', required=False)	
     target_time = forms.IntegerField(label='target_time', required=False)	

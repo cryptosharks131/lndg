@@ -109,13 +109,12 @@ class Channels(models.Model):
     fees_updated = models.DateTimeField(default=timezone.now)
     auto_fees = models.BooleanField()
     notes = models.TextField(default='', blank=True)
-    groups = models.ManyToManyField('Groups', related_name="groups_list",)
 
     class Meta:
         app_label = 'gui'
 
 class Groups(models.Model):
-    name = models.CharField(max_length=12)
+    name = models.CharField(max_length=20, unique=True)
     channels = models.ManyToManyField(Channels, related_name="channels_list",)
 
     class Meta:
@@ -152,12 +151,11 @@ class Rebalancer(models.Model):
         app_label = 'gui'
 
 class Settings(models.Model):
-    key = models.CharField(primary_key=True,max_length=20)
+    key = models.CharField(max_length=20,default=None)
     value = models.CharField(default=None, max_length=50)
     group = models.ForeignKey(Groups, on_delete=models.CASCADE)
     class Meta:
         app_label = 'gui'
-        unique_together = (('key', 'group'),)
 
 class Onchain(models.Model):
     tx_hash = models.CharField(max_length=64, primary_key=True)

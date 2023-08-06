@@ -67,6 +67,7 @@ urlpatterns = [
     path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
     path('addresses/', views.addresses, name='addresses'),
+    path('new_group/', views.new_group, name='new-group'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
@@ -86,5 +87,6 @@ urlpatterns = [
     path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
     path('api/node_info/', views.node_info, name='node-info'),
     path('api/sign_message/', views.sign_message, name='sign-message'),
+    path('api/get_settings/', views.get_settings, name='get-group-settings'),
     path('lndg-admin/', admin.site.urls),
 ]

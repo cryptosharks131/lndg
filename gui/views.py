@@ -75,7 +75,6 @@ def home(request):
         return render(request, 'error.html', {'error': error})
     return render(request, 'home.html', {
         'node_info': {'color': node_info.color, 'alias': node_info.alias, 'version': node_info.version, 'identity_pubkey': node_info.identity_pubkey, 'uris': node_info.uris},
-        'local_settings': get_local_settings(0, 'AR-'),
         'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
         'graph_links': graph_links(),
         'network_links': network_links(),
@@ -179,11 +178,10 @@ def channels(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def fees(request):
     if request.method == 'GET':
-        group = Groups.objects.prefetch_related('channels').get(id=0)
+        group = Groups.objects.prefetch_related('channels').get(name="")
         results_df = af.main(group)
         context = {
             'channels': [] if results_df.empty else results_df.sort_values(by=['out_percent']).to_dict(orient='records'),
-            'local_settings': get_local_settings(0, 'AF-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -207,7 +205,6 @@ def advanced(request):
             channels_df['local_max_htlc'] = channels_df['local_max_htlc_msat']/1000
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'local_settings': get_local_settings(0, 'AF-', 'AR-', 'GUI-', 'LND-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -1338,7 +1335,6 @@ def forwards(request):
 def rebalancing(request):
     if request.method == 'GET':
         context = {
-            'local_settings': get_local_settings(0, 'AR-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -1583,48 +1579,63 @@ def rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-def get_local_settings(group_id: int, *prefixes):
+@api_view(['GET'])
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def get_settings(request):
     groups = Groups.objects.all()
-    fields = [[{'name': group.name, 'id': group.pk} for group in groups]]
-    if 'AR-' in prefixes:
-        fields.append({'unit': '', 'form_id': 'update_channels', 'id': 'update_channels'})
-        fields.append({'unit': '', 'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
-        fields.append({'unit': '%', 'form_id': 'target_percent', 'value': 5, 'label': 'AR Target Amount', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
-        fields.append({'unit': 'min', 'form_id': 'target_time', 'value': 5, 'label': 'AR Target Time', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
-        fields.append({'unit': 'ppm', 'form_id': 'fee_rate', 'value': 100, 'label': 'AR Max Fee Rate', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':1, 'max':5000})
-        fields.append({'unit': '%', 'form_id': 'outbound_percent', 'value': 75, 'label': 'AR Target Out Above', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':1, 'max':100})
-        fields.append({'unit': '%', 'form_id': 'inbound_percent', 'value': 100, 'label': 'AR Target In Above', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
-        fields.append({'unit': '%', 'form_id': 'max_cost', 'value': 65, 'label': 'AR Max Cost', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
-        fields.append({'unit': '%', 'form_id': 'variance', 'value': 0, 'label': 'AR Variance', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
-        fields.append({'unit': 'min', 'form_id': 'wait_period', 'value': 30, 'label': 'AR Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':10080})
-        fields.append({'unit': '', 'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
-        fields.append({'unit': 'days', 'form_id': 'autopilotdays', 'value': 7, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
-        fields.append({'unit': '', 'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
-    if 'AF-' in prefixes:
-        fields.append({'unit': '', 'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
-        fields.append({'unit': 'ppm', 'form_id': 'af_maxRate', 'value': 2500, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum Rate', 'min':0, 'max':5000})
-        fields.append({'unit': 'ppm', 'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
-        fields.append({'unit': 'ppm', 'form_id': 'af_increment', 'value': 5, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':1, 'max':100})
-        fields.append({'unit': 'x', 'form_id': 'af_multiplier', 'value': 5, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':1, 'max':100})
-        fields.append({'unit': '', 'form_id': 'af_failedHTLCs', 'value': 25, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':1, 'max':100})
-        fields.append({'unit': 'hours', 'form_id': 'af_updateHours', 'value': 24, 'label': 'AF Update', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':1, 'max':100})
-        fields.append({'unit': '%', 'form_id': 'af_lowliq', 'value': 15, 'label': 'AF LowLiq', 'id': 'AF-LowLiqLimit', 'title': 'Limit for low liq AF rules. Default 5', 'min':0, 'max':100})
-        fields.append({'unit': '%', 'form_id': 'af_excess', 'value': 90, 'label': 'AF Excess', 'id': 'AF-ExcessLimit', 'title': 'Limit for excess liq AF rules. Default 95', 'min':0, 'max':100})
-    if 'GUI-' in prefixes:
-        fields.append({'unit': '', 'form_id': 'gui_graphLinks', 'value': 'https://amboss.space', 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
-        fields.append({'unit': '', 'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
-    if 'LND-' in prefixes:
-        fields.append({'unit': '', 'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments', 'min':0, 'max':1})
-        fields.append({'unit': 'days', 'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':1000})
+    prefixes = request.GET.get('configs', 'AF-,AR-,GUI-,LND-').split(',')
+    response = []
+    for group in groups:
+        settings = group.settings_set.values("key", "value").order_by('key').all()
+        settings = {i['key']: i['value'] for i in settings}
+        fields = [{'unit': '', 'form_id': 'group_name', 'group_id': group.id, 'name': 'group_name', 'id': 'group_name', 'value': group.name, 'label': 'Group Name', 'title': 'Group Name' }]
+        for prefix in prefixes:
+            if 'AR-' == prefix:
+                fields.append({'group_id': group.id, 'unit': '', 'form_id': 'enabled', 'value': settings.get('AR-Enabled'), 'label': 'Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'target_percent', 'value': settings.get('AR-Target%'), 'label': 'Target Amount', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': 'min', 'form_id': 'target_time', 'value': settings.get('AR-Time'), 'label': 'Target Time', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
+                fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'fee_rate', 'value': settings.get('AR-MaxFeeRate'), 'label': 'Max Fee Rate', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':1, 'max':5000})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'outbound_percent', 'value': settings.get('AR-Outbound%'), 'label': 'Target Out Above', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'inbound_percent', 'value': settings.get('AR-Inbound%'), 'label': 'Target In Above', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'max_cost', 'value': settings.get('AR-MaxCost%'), 'label': 'Max Cost', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'variance', 'value': settings.get('AR-Variance'), 'label': 'Variance', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
+                fields.append({'group_id': group.id, 'unit': 'min', 'form_id': 'wait_period', 'value': settings.get('AR-WaitPeriod'), 'label': 'Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':10080})
+                fields.append({'group_id': group.id, 'unit': '', 'form_id': 'autopilot', 'value': settings.get('AR-Autopilot'), 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
+                fields.append({'group_id': group.id, 'unit': 'days', 'form_id': 'autopilotdays', 'value': settings.get('AR-APDays'), 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '', 'form_id': 'update_channels', 'value': 0, 'label': 'Update Channels', 'id': 'AR-update_channels', 'title': 'Also updates current (AR-Target%, AR-Outbound% , AR-Inbound%, AR-MaxCost%) for all channels in this group.'})
+                if group.name == 0: 
+                    fields.append({'group_id': 0, 'unit': '', 'form_id': 'workers', 'value': settings.get('AR-Workers'), 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
+            if 'AF-' == prefix:
+                fields.append({'group_id': group.id, 'unit': '', 'form_id': 'af_enabled', 'value': settings.get('AF-Enabled'), 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
+                fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'af_maxRate', 'value': settings.get('AF-MaxRate'), 'label': 'Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum Rate', 'min':0, 'max':5000})
+                fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'af_minRate', 'value': settings.get('AF-MinRate'), 'label': 'Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+                fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'af_increment', 'value': settings.get('AF-Increment'), 'label': 'Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': 'x', 'form_id': 'af_multiplier', 'value': settings.get('AF-Multiplier'), 'label': 'Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '', 'form_id': 'af_failedHTLCs', 'value': settings.get('AF-FailedHTLCs'), 'label': 'FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': 'hours', 'form_id': 'af_updateHours', 'value': settings.get('AF-UpdateHours'), 'label': 'Update', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':1, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'af_lowliq', 'value': settings.get('AF-LowLiqLimit'), 'label': 'LowLiq', 'id': 'AF-LowLiqLimit', 'title': 'Limit for low liq AF rules. Default 5', 'min':0, 'max':100})
+                fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'af_excess', 'value': settings.get('AF-ExcessLimit'), 'label': 'Excess', 'id': 'AF-ExcessLimit', 'title': 'Limit for excess liq AF rules. Default 95', 'min':0, 'max':100})
+            if group.pk == 0 and 'GUI-' == prefix:
+                fields.append({'group_id': 0, 'unit': '', 'form_id': 'gui_graphLinks', 'value': settings.get('GUI-GraphLinks'), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
+                fields.append({'group_id': 0, 'unit': '', 'form_id': 'gui_netLinks', 'value': settings.get('GUI-NetLinks'), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
+            if group.pk == 0 and 'LND-' == prefix:
+                fields.append({'group_id': 0, 'unit': '', 'form_id': 'lnd_cleanPayments', 'value': settings.get('LND-CleanPayments'), 'label': 'Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments', 'min':0, 'max':1})
+                fields.append({'group_id': 0, 'unit': 'days', 'form_id': 'lnd_retentionDays', 'value': settings.get('LND-RetentionDays'), 'label': 'Retention', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':1000})
 
-    for prefix in prefixes:
-        ar_settings = Settings.objects.filter(group_id=group_id,key__contains=prefix).values('key', 'value').order_by('key')
-        for field in fields[1:]:
-            for sett in ar_settings:
-                if field['id'] == sett['key']:
-                    field['value'] = sett['value']
-                    break
-    return fields
+        response.append(fields)
+    return Response({'groups': response})
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def new_group(request):
+    if request.method == 'POST':
+        try:
+            next = Groups.objects.order_by('-id')[0].id + 1
+            name = request.POST.get('name', "group_"+ str(next))
+            Groups(name=name).save()
+        except Exception as e:
+            messages.error(request, "ERROR: "+str(e))
+    return redirect(request.META.get('HTTP_REFERER'))
+        
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_settings(request):
@@ -1663,29 +1674,40 @@ def update_settings(request):
         if not form.is_valid():
             messages.error(request, 'Invalid Request. Please try again.')
         else:
+            group_id = form.cleaned_data['group_id']
             update_channels = form.cleaned_data['update_channels']
+            group = Groups.objects.prefetch_related('settings_set').get(id=group_id)
+            if group.name != form.cleaned_data['group_name']:
+                group.name = form.cleaned_data['group_name']
+                group.save()
+
             for field in template:
                 value = form.cleaned_data[field['form_id']]
                 if value is not None:
                     value = field['parse'](value)
-                    db_value = Settings.objects.get(key=field['id'], group_id= field['group_id'])
+                    try:
+                        db_value = group.settings_set.get(key=field['id'])
+                    except Exception:
+                        db_value = Settings(key=field['id'], group_id=group_id)
                     if db_value.value == str(value) or len(str(value)) == 0:
                         continue
+                    old_value = db_value.value
                     db_value.value = value
                     db_value.save()
 
                     if update_channels and field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
                         if field['id'] == 'AR-Target%':
-                            Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
+                            group.channels.update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
                         elif field['id'] == 'AR-Outbound%':
-                            Channels.objects.all().update(ar_out_target=value)
+                            group.channels.update(ar_out_target=value)
                         elif field['id'] == 'AR-Inbound%':
-                            Channels.objects.all().update(ar_in_target=value)
+                            group.channels.update(ar_in_target=value)
                         elif field['id'] == 'AR-MaxCost%':
-                            Channels.objects.all().update(ar_max_cost=value)
-                        messages.success(request, 'All channels ' + field['id'] + ' updated to: ' + str(value))
+                            group.channels.update(ar_max_cost=value)
+                        messages.success(request, '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span> for all channels in this group</small>')
                     else:
-                        messages.success(request, field['id'] + ' updated to: ' + str(value))
+                        text = '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span></small>'
+                        messages.success(request, text)
             
     return redirect(request.META.get('HTTP_REFERER'))
 

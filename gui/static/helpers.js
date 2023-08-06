@@ -46,15 +46,15 @@ async function toggle(button){
 }
 function use(template){
   return { 
-    render: function(object, id='id', row = null){
+    render: function(object, id='id', columnType = "td", row = undefined){
       const tr = row ?? document.createElement("tr")
       tr.objId = object[id]
       for (key in template){
-        const transforms = template[key](object)
-        const td = document.createElement("td")
-        td.setAttribute('name', key)
-        td.render(transforms)
-        tr.append(td)
+        const transforms = template[key](object, key)
+        const col = document.createElement(columnType)
+        col.setAttribute('name', key)
+        col.render(transforms)
+        tr.append(col)
       }
       return tr
     }

@@ -84,7 +84,5 @@
   <center><h1>You dont have any channels to analyze yet!</h1></center>
 </div>
 {% endif %}
-{% if local_settings %}
-{% include 'settings.html' with settings=local_settings title='Auto-Fees' postURL='update_setting' %}
-{% endif %}
+{% include 'settings.html' with configs="'AF-'" title='Auto-Fees' postURL='update_setting' %}
 {% endblock %}

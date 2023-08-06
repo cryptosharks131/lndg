@@ -1,39 +1,83 @@
 <div class="w3-container w3-padding-small">
-    <form action="/update_settings/" method="post">
-      {% csrf_token %}
-    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %}
-      <select style="height:10px;width:230px;font-size:15px" id="groups">
-        {% for group in settings.0 %}
-            <option style="font-size:15px" value="{{group.id}}">{{group.name|default:"LNDg"}}</option>
-        {% endfor %}
-      </select> Settings</h2>
-    <div class="w3-container">
-      <div class="w3-row-padding w3-container">
-        {% for sett in settings|slice:"1:" %}
-        {% if sett.form_id != 'update_channels' %}
-        <div class="w3-quarter w3-container w3-row">
-          <label for="{{sett.form_id}}" class="w3-col" title="{{ sett.title }}">{{ sett.label }}</label>
-          {% if sett.min == 0 and sett.max == 1 %}
-          <select style="height:27px" class="w3-col" name="{{sett.form_id}}" id="{{sett.form_id}}">
-            <option value="0" {% if sett.value == "0" %}selected="selected"{% endif %}>Off</option>
-            <option value="1" {% if sett.value == "1" %}selected="selected"{% endif %}>On</option>
-          </select>
-          {% else %}
-          <div class="w3-col input" data-unit="{{sett.unit}}">
-            <input class="w3-col" id="{{sett.form_id}}" name="{{sett.form_id}}" {% if sett.min %}min="{{sett.min}}" step="{{sett.min}}"{% endif %} {% if sett.max %}max="{{sett.max}}" type="number"{% endif %} value="{{sett.value}}"/>
-          </div>
-          {% endif %}        
-        </div>
-        {% endif %}
-        {% endfor %}
-        <div style="height:37px" class="w3-quarter w3-container w3-row w3-margin-top">
-          {% if 'update_channels' == settings.1.form_id %}
-          <label class="w3-validate" title="Also updates current (AR-Target%, AR-Outbound% , AR-Inbound%, AR-MaxCost%) channel values.">Update Channels</label>
-          <input class="w3-check" id="update_channels" type="checkbox" name="update_channels"/>
-          {% endif %}
-          <input style="margin-top:7px" type="submit" value="OK">
-        </div>
-      </div>
+  <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} Settings </h2>
+  <div id="settings_container" class="w3-container w3-padding-small">
+    <div class="w3-container w3-padding-small table" style="overflow:auto;max-height:1000px">
+      <table class="w3-table-all w3-centered w3-hoverable">
+        <thead id="settings_header"></thead>
+        <tbody id="settings_table"></tbody>
+      </table>
     </div>
-  </form>
+  </div>
 </div>
+  
+<script>
+  
+  const configs = {{configs}}
+  document.addEventListener('DOMContentLoaded', async () => {
+    const resp = await GET('get_settings', {data: { configs } })
+    const mappings = {'AR-': {label: 'Auto Rebalancer Settings', color: 'rgba(33,150,243,.1)'}, 'AF-': {label: 'Auto Fees Settings', color: 'rgba(46, 160, 67, 0.1)'}, 'GUI-': {label: 'User Interface Settings', color: 'rgba(225, 145, 50,.1)'}, 'LND-': {label: 'LND Settings', color: 'rgba(0,85,141,.1)' } }
+    
+    let [header_descriptor, tbody_descriptor] = build_descriptors(resp.groups[0], mappings)
+    build_header(resp.groups[0], header_descriptor, mappings)
+
+    const tabody = byId('settings_table'), tbody_template = use(tbody_descriptor)
+    resp.groups.forEach(settings => {
+      byId('settings_container').insertAdjacentHTML('afterbegin', `<form id="group_id:${settings[0].group_id}" action="/update_settings/" method="post">{% csrf_token %}`)
+      tabody.append(tbody_template.render(settings))
+    })
+  })
+
+  function build_header(lndg_settings, header_descriptor, mappings) {
+    const h_template = use(header_descriptor), header = byId('settings_header'), tr = document.createElement("tr")
+    for (const [i, config] of ['GUI-', ...configs.split(',')].entries()){
+      let th = document.createElement("th")
+      th.innerHTML = mappings[config].label
+      th.style.backgroundColor = mappings[config].color
+      th.colSpan = i == 0 ? 1 : lndg_settings.filter(set => set.id.toString().startsWith(config)).length
+      tr.append(th)
+    }
+    const th = document.createElement('th'), form = document.createElement('form'), new_group_btn = document.createElement('button')
+
+    form.action = '/new_group/'
+    form.method = 'post'
+    form.innerHTML = '{% csrf_token %}'
+    new_group_btn.innerHTML = '➕'
+    new_group_btn.title = 'Create new Group'
+    new_group_btn.type = 'submit'
+    form.append(new_group_btn)
+    th.append(form)
+    tr.append(th)
+    header.append(tr)
+    header.append(h_template.render(lndg_settings, id='id', columnType='th'))
+  }
+
+  function build_descriptors(lndg_settings, mappings) {
+    let header_descriptor = {}, tbody_descriptor = {}, counter = 0
+    for (setting of lndg_settings){
+      header_descriptor[`h_${setting.form_id}_${counter}`] = function(sett){
+        let i = arguments[1].split('_').pop()
+        let reg = /\w*-/g.exec(sett[i].id.toString())||[]
+        let color = mappings[reg.length > 0 ? reg[0] : "GUI-"].color
+        return {innerHTML: sett[i].label, title: sett[i].title, style: {backgroundColor: color} }
+      }
+      tbody_descriptor[`tb_${setting.form_id}_${counter}`] = function(sett) {
+        let i = arguments[1].split('_').pop()
+        if (i >= sett.length) return {innerHTML: '---'}
+        if (sett[i].form_id == "group_name" && sett[i].group_id == 0) {
+          return {innerHTML: '<label id="group_name" name="group_name" value="">LNDg</label>'}
+        }
+        if (sett[i].form_id == "update_channels")
+          return {innerHTML: `<input class="w3-check" id="update_channels" type="checkbox" name="update_channels" form="group_id:${sett[i].group_id}"/>`}
+        return {innerHTML: `<div class="w3-col input" data-unit="${sett[i].unit}">
+          <input hidden="hidden" id="group_id" name="group_id" form="group_id:${sett[i].group_id}" value="${sett[i].group_id}"/>
+          <input form="group_id:${sett[i].group_id}" style="min-width:100px" id="${sett[i].form_id}" name="${sett[i].form_id}" ${sett[i].min != undefined ? 'min="'+sett[i].min+'" step="'+sett[i].min+'"' : "" } ${sett[i].max ? "max='" + sett[i].max+ "' type='number'" : " type='text'"} value="${sett[i].value}"/>
+        </div>`}
+      }
+      counter++
+    }
+    header_descriptor["submit"] = _ => ({innerHTML: `Submit`})
+    console.log(lndg_settings)
+    tbody_descriptor['submit'] = sett => ({innerHTML: `<button type="submit" form="group_id:${sett[0].group_id}">Ok</button>`})
+    return [header_descriptor, tbody_descriptor]
+  }
+</script>
