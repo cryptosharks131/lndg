@@ -2175,6 +2175,13 @@ class GroupsViewSet(viewsets.ReadOnlyModelViewSet):
             [lndg.channels.remove(ch) for ch in adding]
             lndg.save()
 
+            adding = Channels.objects.prefetch_related('groups_set').exclude(chan_id__in=group.channels.all()).filter(chan_id__in=request.data.get('channels')).all()
+            for ch in adding:
+                current_settings = group.settings_set.values_list('key', flat=True).all()
+                dup_settings = ch.groups_set.filter(settings__key__in=current_settings).values_list('settings__key', flat=True).all()
+                if len(dup_settings) > 0:
+                    return Response(status=403, data={'status':403, 'message':"Cannot add <i>"+ch.alias+"</i> to <u><i>"+group.name+"</i></u> - duplicate settings: <small class='w3-text-red'>"+ ",".join(dup_settings) +"</small>"})
+
             removing = group.channels.exclude(chan_id__in=request.data.get('channels')).all()
             for ch in removing:
                 if ch.groups_set.count() == 1:
@@ -2189,14 +2196,15 @@ class GroupsViewSet(viewsets.ReadOnlyModelViewSet):
         if int(pk) == 0: return Response(status=403) #Forbidden
         group = get_object_or_404(self.queryset, pk=pk)
         try:
-            channels = group.channels.all()
-            lndg = Groups.objects.get(id=0)
-            [lndg.channels.add(ch) for ch in channels]
-            lndg.save()
+            mappings = Channels.objects.filter(chan_id__in=group.channels.all()).annotate(count=Count('groups_set')).filter(count=1).values('count','chan_id').all()
+            if len(mappings) > 0:
+                lndg = Groups.objects.get(id=0)
+                [lndg.channels.add(ch['chan_id']) for ch in mappings]
+                lndg.save()
+            group.delete()
         except Exception as e:
             print('Channels might have already been on LNDg group:' + str(e))
 
-        group.delete()
         return Response(status=204) #no content
 
 
