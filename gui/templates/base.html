@@ -65,6 +65,11 @@
       const option = el.options[el.selectedIndex], channels = option.dataset.channels.split(',').filter(Boolean)
       channels.push(el.dataset.chan_id)
       const resp = await PUT(`groups/${option.value}`, {body:{channels} })
+      if(resp.status == 403 && resp.message.length>0){
+        showBannerMsg(resp.message, "", generic=true)
+        el.selectedIndex = 0
+        return
+      }
       location.reload()
     }
   </script>
