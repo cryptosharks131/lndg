@@ -115,7 +115,7 @@ class Channels(models.Model):
 
 class Groups(models.Model):
     name = models.CharField(max_length=20, unique=True)
-    channels = models.ManyToManyField(Channels, related_name="channels_list",)
+    channels = models.ManyToManyField(Channels, related_name="groups_set",)
 
     class Meta:
         app_label = 'gui'

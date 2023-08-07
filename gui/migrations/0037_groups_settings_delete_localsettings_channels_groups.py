@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=20, unique=True)),
-                ('channels', models.ManyToManyField(related_name='channels_list', to='gui.channels')),
+                ('channels', models.ManyToManyField(related_name='groups_set', to='gui.channels')),
             ],
         ),
         migrations.CreateModel(

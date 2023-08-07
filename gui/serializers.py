@@ -88,6 +88,8 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     
 class GroupsSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
+    name = serializers.ReadOnlyField(required=False)
+    channels = serializers.PrimaryKeyRelatedField(many=True,queryset=Channels.objects.all(),default=[])
     class Meta:
         model = Groups
         exclude = []

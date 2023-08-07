@@ -154,7 +154,7 @@
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
         <tr>
-          <th style="min-width:300px" onclick="sortTable(event.target, 0, 'String', 0, 'a')">Peer Alias</th>
+          <th colspan="2" onclick="sortTable(event.target, 0, 'String', 0, 'a')">Peer Alias</th>
           <th onclick="sortTable(event.target, 1, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(event.target, 2, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(event.target, 3, 'int')">Inbound Liquidity</th>
@@ -927,11 +927,17 @@
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
     for (ch of (await GET('channels', {data: {is_open: true} })).results){
       ch.tags = []
-      for (group of groups.filter(g => g.id > 0)){
-        if(!group.channels.some(s => s.includes(ch.chan_id.toString()))) continue
-        ch.tags.push(group.name)
+      ch.groups = []
+      for (group of groups){
+        if(group.id > 0 && !group.channels.includes(ch.chan_id)) { //assignable groups
+          ch.groups.push(group)
+          continue
+        }
+        channels = group.channels.filter(c => c !== ch.chan_id)
+        if (group.id === 0) continue
+        ch.tags.push({id:group.id, name:group.name, channels:channels})
       }
-
+      
       updates += ch.num_updates
       pending_htlcs += ch.htlc_count
       ch.local_balance += ch.pending_outbound

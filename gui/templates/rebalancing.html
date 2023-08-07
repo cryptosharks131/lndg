@@ -9,7 +9,7 @@
         <tr>
           <th title="Select outgoing channels for a manual rebalance request"><input onclick="[...document.getElementsByClassName('chan_id')].forEach(el => {el.checked = this.checked; el.onclick()} )" class="w3-check" type="checkbox"/></th>
           <th title="Public Key">PK</th>
-          <th onclick="sortTable(this, 2, 'String', 0, 'a')">Peer Alias</th>
+          <th colspan="2" onclick="sortTable(this, 2, 'String', 0, 'a')">Peer</th>
           <th onclick="sortTable(this, 3, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 4, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(this, 5, 'int')">Inbound Liquidity</th>
@@ -157,9 +157,15 @@
     resp.results.forEach(ch => {
       extend(ch)
       ch.tags = []
-      for (group of groups.filter(g => g.id > 0)){
-        if(!group.channels.some(s => s.includes(ch.chan_id.toString()))) continue
-        ch.tags.push(group.name)
+      ch.groups = []
+      for (group of groups){
+        if(group.id > 0 && !group.channels.includes(ch.chan_id)) { //assignable groups
+          ch.groups.push(group)
+          continue
+        }
+        channels = group.channels.filter(c => c !== ch.chan_id)
+        if (group.id === 0) continue
+        ch.tags.push({id:group.id, name:group.name, channels:channels})
       }
       elegible += ch.elegible
       available += ch.available

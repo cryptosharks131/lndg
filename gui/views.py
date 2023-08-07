@@ -2165,6 +2165,26 @@ class GroupsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Groups.objects.all()
     serializer_class = GroupsSerializer
 
+    def update(self, request, pk):
+        if int(pk) == 0: return Response(status=403) #Forbidden
+        group = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.get_serializer(group, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            lndg = Groups.objects.prefetch_related('channels').get(id=0)
+            adding = lndg.channels.filter(chan_id__in=request.data.get('channels'))
+            [lndg.channels.remove(ch) for ch in adding]
+            lndg.save()
+
+            removing = group.channels.exclude(chan_id__in=request.data.get('channels')).all()
+            for ch in removing:
+                if ch.groups_set.count() == 1:
+                    lndg.channels.add(ch)
+
+            lndg.save()
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
     def delete(self, request, pk):
         if int(pk) == 0: return Response(status=403) #Forbidden
         group = get_object_or_404(self.queryset, pk=pk)
