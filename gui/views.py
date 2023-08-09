@@ -1603,7 +1603,7 @@ def get_settings(request):
                 fields.append({'group_id': group.id, 'unit': '', 'form_id': 'autopilot', 'value': settings.get('AR-Autopilot'), 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
                 fields.append({'group_id': group.id, 'unit': 'days', 'form_id': 'autopilotdays', 'value': settings.get('AR-APDays'), 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
                 fields.append({'group_id': group.id, 'unit': '', 'form_id': 'update_channels', 'value': 0, 'label': 'Update Channels', 'id': 'AR-update_channels', 'title': 'Also updates current (AR-Target%, AR-Outbound% , AR-Inbound%, AR-MaxCost%) for all channels in this group.'})
-                if group.name == 0: 
+                if group.id == 0: 
                     fields.append({'group_id': 0, 'unit': '', 'form_id': 'workers', 'value': settings.get('AR-Workers'), 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
             if 'AF-' == prefix:
                 fields.append({'group_id': group.id, 'unit': '', 'form_id': 'af_enabled', 'value': settings.get('AF-Enabled'), 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
@@ -1640,74 +1640,96 @@ def new_group(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_settings(request):
     if request.method == 'POST':
-        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
-                    {'form_id': 'target_percent', 'value': 5, 'parse': lambda x: float(x),'id': 'AR-Target%'},
-                    {'form_id': 'target_time', 'value': 5, 'parse': lambda x: x,'id': 'AR-Time'},
-                    {'form_id': 'fee_rate', 'value': 100, 'parse': lambda x: x,'id': 'AR-MaxFeeRate'},
-                    {'form_id': 'outbound_percent', 'value': 75, 'parse': lambda x: int(x),'id': 'AR-Outbound%'},
-                    {'form_id': 'inbound_percent', 'value': 100, 'parse': lambda x: int(x),'id': 'AR-Inbound%'},
-                    {'form_id': 'max_cost', 'value': 65, 'parse': lambda x: int(x),'id': 'AR-MaxCost%'},
-                    {'form_id': 'variance', 'value': 0, 'parse': lambda x: x,'id': 'AR-Variance'},
-                    {'form_id': 'wait_period', 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
-                    {'form_id': 'autopilot', 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
-                    {'form_id': 'autopilotdays', 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'},
-                    {'form_id': 'workers', 'value': 1, 'parse': lambda x: x,'id': 'AR-Workers'},
+        template = [{'form_id': 'enabled', 'value': 0, 'id': 'AR-Enabled'}, 
+                    {'form_id': 'target_percent', 'value': 5, 'id': 'AR-Target%'},
+                    {'form_id': 'target_time', 'value': 5, 'id': 'AR-Time'},
+                    {'form_id': 'fee_rate', 'value': 100, 'id': 'AR-MaxFeeRate'},
+                    {'form_id': 'outbound_percent', 'value': 75, 'id': 'AR-Outbound%'},
+                    {'form_id': 'inbound_percent', 'value': 100, 'id': 'AR-Inbound%'},
+                    {'form_id': 'max_cost', 'value': 65, 'id': 'AR-MaxCost%'},
+                    {'form_id': 'variance', 'value': 0, 'id': 'AR-Variance'},
+                    {'form_id': 'wait_period', 'value': 30, 'id': 'AR-WaitPeriod'},
+                    {'form_id': 'autopilot', 'value': 0, 'id': 'AR-Autopilot'},
+                    {'form_id': 'autopilotdays', 'value': 7, 'id': 'AR-APDays'},
                     #AF
-                    {'form_id': 'af_enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
-                    {'form_id': 'af_maxRate', 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
-                    {'form_id': 'af_minRate', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
-                    {'form_id': 'af_increment', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
-                    {'form_id': 'af_multiplier', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
-                    {'form_id': 'af_failedHTLCs', 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'},
-                    {'form_id': 'af_updateHours', 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'},
-                    {'form_id': 'af_lowliq', 'value': 15, 'parse': lambda x: int(x),'id': 'AF-LowLiqLimit'},
-                    {'form_id': 'af_excess', 'value': 90, 'parse': lambda x: int(x),'id': 'AF-ExcessLimit'},
-                    #GUI
-                    {'form_id': 'gui_graphLinks', 'value': 'https://amboss.space', 'parse': lambda x: x,'id': 'GUI-GraphLinks'},
-                    {'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'parse': lambda x: x,'id': 'GUI-NetLinks'},
-                    #LND
-                    {'form_id': 'lnd_cleanPayments', 'value': 0, 'parse': lambda x: x, 'id': 'LND-CleanPayments'},
-                    {'form_id': 'lnd_retentionDays', 'value': 30, 'parse': lambda x: x, 'id': 'LND-RetentionDays'},
-                    ]
-
+                    {'form_id': 'af_enabled', 'value': 0, 'id': 'AF-Enabled'},
+                    {'form_id': 'af_maxRate', 'value': 2500, 'id': 'AF-MaxRate'},
+                    {'form_id': 'af_minRate', 'value': 0, 'id': 'AF-MinRate'},
+                    {'form_id': 'af_increment', 'value': 5, 'id': 'AF-Increment'},
+                    {'form_id': 'af_multiplier', 'value': 5, 'id': 'AF-Multiplier'},
+                    {'form_id': 'af_failedHTLCs', 'value': 25, 'id': 'AF-FailedHTLCs'},
+                    {'form_id': 'af_updateHours', 'value': 24, 'id': 'AF-UpdateHours'},
+                    {'form_id': 'af_lowliq', 'value': 15, 'id': 'AF-LowLiqLimit'},
+                    {'form_id': 'af_excess', 'value': 90, 'id': 'AF-ExcessLimit'}]
+        
         form = SettingsForm(request.POST)
         if not form.is_valid():
             messages.error(request, 'Invalid Request. Please try again.')
-        else:
-            group_id = form.cleaned_data['group_id']
-            update_channels = form.cleaned_data['update_channels']
-            group = Groups.objects.prefetch_related('settings_set').get(id=group_id)
-            if group.name != form.cleaned_data['group_name']:
-                group.name = form.cleaned_data['group_name']
-                group.save()
+            return redirect(request.META.get('HTTP_REFERER'))
+        
+        group_id = form.cleaned_data['group_id']
+        update_channels = form.cleaned_data['update_channels']
 
-            for field in template:
-                value = form.cleaned_data[field['form_id']]
-                if value is not None:
-                    value = field['parse'](value)
-                    try:
-                        db_value = group.settings_set.get(key=field['id'])
-                    except Exception:
-                        db_value = Settings(key=field['id'], group_id=group_id)
-                    if db_value.value == str(value) or len(str(value)) == 0:
-                        continue
-                    old_value = db_value.value
-                    db_value.value = value
-                    db_value.save()
+        if group_id == 0:
+            template.extend([{'form_id': 'workers', 'value': 1, 'id': 'AR-Workers'},
+                             {'form_id': 'gui_graphLinks', 'value': 'https://amboss.space', 'id': 'GUI-GraphLinks'},
+                             {'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'id': 'GUI-NetLinks'},
+                             {'form_id': 'lnd_cleanPayments', 'value': 0, 'id': 'LND-CleanPayments'},
+                             {'form_id': 'lnd_retentionDays', 'value': 30, 'id': 'LND-RetentionDays'}])
+        error = False
+        group = Groups.objects.prefetch_related('settings_set').prefetch_related('channels').get(id=group_id)
+        changing = [f['id'] if not f['id'].endswith('Enabled') else None for f in template if form.cleaned_data[f['form_id']] or None]
+        if len(changing) > 0:
+            for ch in group.channels.all():
+                for g in ch.groups_set.exclude(id=group.id).all():
+                    dup = list(g.settings_set.filter(key__in=changing).values_list('key'))
+                    dup_setts = ",".join([v[0] for v in dup])
+                    if len(dup) > 0:
+                        error = True
+                        messages.error(request, "Cannot change <small class='w3-text-red'><i>("+dup_setts+")</i></small> on <u><i>"+group.name+"</i></u>: conflicting settings with <u><i>"+g.name+"</u></i>")
+        
+        if error:
+            return redirect(request.META.get('HTTP_REFERER'))
+                
+        if group.name != form.cleaned_data['group_name']:
+            group.name = form.cleaned_data['group_name']
+            group.save()
+        
+        for field in template:
+            value = form.cleaned_data[field['form_id']]
+            value = float(value) if value is not None and field['form_id'] == 'target_percent' else value
+            try:
+                db_value = group.settings_set.get(key=field['id'])
+            except Exception:
+                db_value = Settings(key=field['id'], group_id=group_id)
+            if db_value.value == str(value) or len(str(value)) == 0:
+                continue
+            if group.id == 0 and value is None and db_value.value is not None:
+                messages.error(request, "Cannot delete LNDg default settings")
+                return redirect(request.META.get('HTTP_REFERER'))
+            if value is None and db_value.value is not None:
+                old_value = db_value.value
+                db_value.delete()
+            elif value is not None:
+                old_value = db_value.value
+                db_value.value = value
+                db_value.save()
+            else: 
+                continue
 
-                    if update_channels and field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
-                        if field['id'] == 'AR-Target%':
-                            group.channels.update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
-                        elif field['id'] == 'AR-Outbound%':
-                            group.channels.update(ar_out_target=value)
-                        elif field['id'] == 'AR-Inbound%':
-                            group.channels.update(ar_in_target=value)
-                        elif field['id'] == 'AR-MaxCost%':
-                            group.channels.update(ar_max_cost=value)
-                        messages.success(request, '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span> for all channels in this group</small>')
-                    else:
-                        text = '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span></small>'
-                        messages.success(request, text)
+            if update_channels and field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
+                if field['id'] == 'AR-Target%':
+                    group.channels.update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
+                elif field['id'] == 'AR-Outbound%':
+                    group.channels.update(ar_out_target=value)
+                elif field['id'] == 'AR-Inbound%':
+                    group.channels.update(ar_in_target=value)
+                elif field['id'] == 'AR-MaxCost%':
+                    group.channels.update(ar_max_cost=value)
+                messages.success(request, '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span> for all channels in this group</small>')
+            else:
+                text = '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span></small>'
+                messages.success(request, text)
             
     return redirect(request.META.get('HTTP_REFERER'))
 
