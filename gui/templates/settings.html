@@ -56,9 +56,9 @@
     for (setting of lndg_settings){
       header_descriptor[`h_${setting.form_id}_${counter}`] = function(sett){
         let i = arguments[1].split('_').pop()
-        let reg = /\w*-/g.exec(sett[i].id.toString())||[]
-        let color = mappings[reg.length > 0 ? reg[0] : "GUI-"].color
-        return {innerHTML: sett[i].label, title: sett[i].title, style: {backgroundColor: color} }
+        let setting = /\w*-/g.exec(sett[i].id.toString())||[]
+        let color = mappings[setting.length > 0 ? setting[0] : "GUI-"].color
+        return {innerHTML: sett[i].label, title: sett[i].title, style: {backgroundColor: color, minWidth: i == 0 ? '200px' : '20px'} }
       }
       tbody_descriptor[`tb_${setting.form_id}_${counter}`] = function(sett) {
         let i = arguments[1].split('_').pop()
@@ -70,7 +70,7 @@
           return {innerHTML: `<input class="w3-check" id="update_channels" type="checkbox" name="update_channels" form="group_id:${sett[i].group_id}"/>`}
         return {innerHTML: `<div class="w3-col input" data-unit="${sett[i].unit}">
           <input hidden="hidden" id="group_id" name="group_id" form="group_id:${sett[i].group_id}" value="${sett[i].group_id}"/>
-          <input form="group_id:${sett[i].group_id}" style="min-width:100px" id="${sett[i].form_id}" name="${sett[i].form_id}" ${sett[i].min != undefined ? 'min="'+sett[i].min+'" step="'+sett[i].min+'"' : "" } ${sett[i].max ? "max='" + sett[i].max+ "' type='number'" : " type='text'"} value="${sett[i].value}"/>
+          <input form="group_id:${sett[i].group_id}" style="min-width:${sett[i].max == undefined ? '2' : '1'}00px;width:100%" id="${sett[i].form_id}" name="${sett[i].form_id}" ${sett[i].min != undefined ? 'min="'+sett[i].min+'" step="'+sett[i].min+'"' : "" } ${sett[i].max ? "max='" + sett[i].max+ "' type='number'" : " type='text'"} value="${sett[i].value}"/>
         </div>`}
       }
       counter++
