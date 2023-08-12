@@ -1705,7 +1705,6 @@ def update_settings(request):
             if db_value.value == str(value) or len(str(value)) == 0:
                 continue
             if group.id == 0 and value is None and db_value.value is not None:
-                messages.error(request, "Cannot delete LNDg default settings")
                 return redirect(request.META.get('HTTP_REFERER'))
             if value is None and db_value.value is not None:
                 old_value = db_value.value
