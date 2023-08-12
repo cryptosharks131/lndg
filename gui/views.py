@@ -1705,7 +1705,7 @@ def update_settings(request):
             if db_value.value == str(value) or len(str(value)) == 0:
                 continue
             if group.id == 0 and value is None and db_value.value is not None:
-                return redirect(request.META.get('HTTP_REFERER'))
+                continue
             if value is None and db_value.value is not None:
                 old_value = db_value.value
                 db_value.delete()
