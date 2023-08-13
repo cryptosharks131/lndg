@@ -1674,7 +1674,7 @@ def update_settings(request):
         changing = [f['id'] if not f['id'].endswith('Enabled') else None for f in template if form.cleaned_data[f['form_id']] or None]
         if len(changing) > 0:
             for ch in group.channels.all():
-                for g in ch.groups_set.exclude(id=group.id).all():
+                for g in ch.groups_set.exclude(id__in=[0,group.id]).all():
                     dup = list(g.settings_set.filter(key__in=changing).values_list('key'))
                     dup_setts = ",".join(["<a href='#"+str(g.id)+":"+s[0].lower().replace("-","_").replace("%", "_percent")+"'>"+s[0]+"</a>" for s in dup])
                     if len(dup) > 0:
