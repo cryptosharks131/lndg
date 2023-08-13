@@ -184,17 +184,14 @@ def auto_schedule() -> List[Rebalancer]:
         #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
         to_schedule = []
         groups = Groups.objects.filter(settings__key='AR-Enabled', settings__value='1').all()
-
+        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
+        outbound_cans = list(channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
+        
         for group in groups:
-            auto_rebalance_channels = group.channels.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
-            if len(auto_rebalance_channels) == 0:
-                return []
-            
-            outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
             already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
-            inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
+            inbound_cans = channels.filter(groups_set__id=group.id,auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
             if len(inbound_cans) == 0 or len(outbound_cans) == 0:
-                return []
+                continue
             
             max_fee_rate = int(group.settings_set.filter(key='AR-MaxFeeRate')[0].value if group.settings_set.filter(key='AR-MaxFeeRate').exists() else Settings.objects.filter(group_id=0,key='AR-MaxFeeRate')[0].value)
             variance = int(group.settings_set.filter(key='AR-Variance')[0].value if group.settings_set.filter(key='AR-Variance').exists() else Settings.objects.filter(group_id=0,key='AR-Variance')[0].value)
@@ -222,7 +219,7 @@ def auto_schedule() -> List[Rebalancer]:
                     new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
                     new_rebalance.save()
                     to_schedule.append(new_rebalance)
-            return to_schedule
+        return to_schedule
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : Error scheduling rebalances: {str(e)}")
         return to_schedule
@@ -232,10 +229,8 @@ def auto_enable():
     try:
         groups = Groups.objects.filter(settings__key='AR-Autopilot',settings__value='1').all()
         for group in groups:
-            channels = group.channels.filter(is_active=True, is_open=True, private=False)
             apdays = int(group.settings_set.filter(key='AR-APDays')[0].value if group.settings_set.filter(key='AR-APDays').exists() else Settings.objects.filter(group_id=0, key='AR-APDays')[0].value)
-
-            lookup_channels=Channels.objects.filter(is_active=True, is_open=True, private=False)
+            lookup_channels= group.channels.filter(is_active=True, is_open=True, private=False)
             channels = lookup_channels.values('remote_pubkey').annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by()
             filter_day = datetime.now() - timedelta(days=apdays)
             forwards = Forwards.objects.filter(forward_date__gte=filter_day)
