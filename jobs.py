@@ -338,6 +338,9 @@ def update_channels(stub):
             db_channel.fees_updated = datetime.now()
             Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
         db_channel.save()
+        LNDg = Groups.objects.get(id=0)
+        LNDg.channels.add(db_channel)
+        LNDg.save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()
