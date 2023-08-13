@@ -7,8 +7,12 @@ environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
 from gui.models import Forwards, Channels, Groups, Settings, FailedHTLCs
 
-def main(group: Groups):
-    channels_df = DataFrame.from_records(group.channels.filter(is_open=True, private=False).values())
+def main(group: Groups, chan_id=''):
+    if len(chan_id) > 0:
+        channels_df = DataFrame.from_records(group.channels.filter(chan_id=chan_id).values())
+    else:
+        channels_df = DataFrame.from_records(group.channels.filter(is_open=True, private=False).values())
+        
     filter_1day = datetime.now() - timedelta(days=1)
     filter_7day = datetime.now() - timedelta(days=7)
     if channels_df.shape[0] > 0:

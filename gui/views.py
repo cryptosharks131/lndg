@@ -23,7 +23,7 @@ from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
-from pandas import DataFrame, merge
+from pandas import DataFrame, merge, concat
 from requests import get
 from . import af
 
@@ -178,8 +178,8 @@ def channels(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def fees(request):
     if request.method == 'GET':
-        group = Groups.objects.prefetch_related('channels').get(name="")
-        results_df = af.main(group)
+        results_df = concat([af.main(g) for g in Groups.objects.prefetch_related('channels').all()])
+        results_df = results_df.groupby(['remote_pubkey','chan_id', 'short_chan_id']).agg(lambda x: (x.values.sum()/x.size).astype(int) if x.dtype in ['int64','float64'] else x.values.any()).reset_index()
         context = {
             'channels': [] if results_df.empty else results_df.sort_values(by=['out_percent']).to_dict(orient='records'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
@@ -971,7 +971,7 @@ def channel(request):
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-            results_df = af.main(group)
+            results_df = af.main(group, chan_id)
             channels_df['new_rate'] = results_df[results_df['chan_id']==chan_id]['new_rate']
             channels_df['adjustment'] = results_df[results_df['chan_id']==chan_id]['adjustment']
             channels_df['net_routed_7day'] = results_df[results_df['chan_id']==chan_id]['net_routed_7day']
@@ -1676,7 +1676,7 @@ def update_settings(request):
                              {'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'id': 'GUI-NetLinks'},
                              {'form_id': 'lnd_cleanPayments', 'value': 0, 'id': 'LND-CleanPayments'},
                              {'form_id': 'lnd_retentionDays', 'value': 30, 'id': 'LND-RetentionDays'}])
-        error = False
+ 
         group = Groups.objects.prefetch_related('settings_set').prefetch_related('channels').get(id=group_id)
         changing = [f['id'] if not f['id'].endswith('Enabled') else None for f in template if form.cleaned_data[f['form_id']] or None]
         if len(changing) > 0:
@@ -1685,12 +1685,9 @@ def update_settings(request):
                     dup = list(g.settings_set.filter(key__in=changing).values_list('key'))
                     dup_setts = ",".join([v[0] for v in dup])
                     if len(dup) > 0:
-                        error = True
                         messages.error(request, "Cannot change <small class='w3-text-red'><i>("+dup_setts+")</i></small> on <u><i>"+group.name+"</i></u>: conflicting settings with <u><i>"+g.name+"</u></i>")
+                        return redirect(request.META.get('HTTP_REFERER'))
         
-        if error:
-            return redirect(request.META.get('HTTP_REFERER'))
-                
         if group.name != form.cleaned_data['group_name']:
             group.name = form.cleaned_data['group_name']
             group.save()
