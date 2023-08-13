@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, HistFailedHTLC
 from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer, SignMessageSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -1173,6 +1173,36 @@ def batch(request):
             'balances': stub.WalletBalance(ln.WalletBalanceRequest())
         }
         return render(request, 'batch.html', context)
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def reset(request):
+    if request.method == 'GET':
+        context = {
+            'tables':[
+                {'name':'Forwards', 'count': Forwards.objects.count()},
+                {'name':'Payments', 'count': Payments.objects.count()},
+                {'name':'PaymentHops', 'count': PaymentHops.objects.count()},
+                {'name':'Invoices', 'count': Invoices.objects.count()},
+                {'name':'Rebalancer', 'count': Rebalancer.objects.count()},
+                {'name':'Closures', 'count': Closures.objects.count()},
+                {'name':'Resolutions', 'count': Resolutions.objects.count()},
+                {'name':'Peers', 'count': Peers.objects.count()},
+                {'name':'Channels', 'count': Channels.objects.count()},
+                {'name':'PendingChannels', 'count': PendingChannels.objects.count()},
+                {'name':'Onchain', 'count': Onchain.objects.count()},
+                {'name':'PendingHTLCs', 'count': FailedHTLCs.objects.count()},
+                {'name':'FailedHTLCs', 'count': FailedHTLCs.objects.count()},
+                {'name':'HistFailedHTLC', 'count': HistFailedHTLC.objects.count()},
+                {'name':'Autopilot', 'count': Autopilot.objects.count()},
+                {'name':'Autofees', 'count': Autofees.objects.count()},
+                {'name':'AvoidNodes', 'count': AvoidNodes.objects.count()},
+                {'name':'PeerEvents', 'count': PeerEvents.objects.count()},
+                {'name':'LocalSettings', 'count': LocalSettings.objects.count()}
+            ]
+        }
+        return render(request, 'reset.html', context)
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
