@@ -674,7 +674,7 @@ def channel(request):
             else:
                 node_outbound = channels_df['local_balance'].sum()
                 node_capacity = channels_df['capacity'].sum()
-            group = Groups.objects.order_by('-id').filter(channels=chan_id)[0]
+            group = Groups.objects.filter(channels=chan_id,settings__key__contains="AF")[0]
             channel = group.channels.filter(chan_id=chan_id)
             channels_df = DataFrame.from_records(channel.values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
@@ -1851,7 +1851,7 @@ def update_pending(request):
                 pending_channel.save()
                 messages.success(request, 'Auto rebalancer max cost for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(target) + '%')
             elif update_target == 8:
-                auto_fees = int(Settings.objects.order_by('-group_id').filter(key='AF-Enabled')[0].value)
+                auto_fees = int(Groups.objects.filter(channels=pending_channel.id,settings__key__contains="AF")[0].settings_set.get('AF-Enabled').value)
                 pending_channel.auto_fees = True if pending_channel.auto_fees == False or (pending_channel.auto_fees == None and auto_fees == 0) else False
                 pending_channel.save()
                 messages.success(request, 'Auto fees status for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(pending_channel.auto_fees))
@@ -1946,9 +1946,7 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
-                db_enabled = Settings.objects.get(group_id=0, key='AF-UpdateHours')
-                db_enabled.value = target
-                db_enabled.save()
+                Settings.objects.filter(group_id=0, key='AF-UpdateHours').update(value=target)
                 messages.success(request, 'Updated autofees update hours setting to: ' + str(target))
             else:
                 messages.error(request, 'Invalid Request. Please try again. [' + key +']')
