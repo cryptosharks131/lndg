@@ -996,8 +996,6 @@ def channel(request):
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
-            'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
-            'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
             'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
