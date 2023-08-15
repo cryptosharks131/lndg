@@ -317,7 +317,7 @@
     </tbody>
     <tfoot id="loadMoreForwards">
       <tr style="background-color:transparent;cursor:pointer;">
-        <td colspan="9">
+        <td colspan="11">
           <a onclick="loadForwards()">Load More</a>
         </td>
       </tr>
@@ -326,7 +326,7 @@
 </div>
 {% include 'rebalances_table.html' with count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 <div id="payments_container" style="display:none" class="w3-container w3-padding-small">
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="paymentsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
         <th>Timestamp</th>
@@ -342,10 +342,17 @@
       </tr>
     </thead>
     <tbody id="payments"></tbody>
+    <tfoot id="loadMorePayments">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="10">
+          <a onclick="loadPayments()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 <div id="invoices_container" style="display:none" class="w3-container w3-padding-small">
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="invoicesTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
         <th>Created</th>
@@ -360,6 +367,13 @@
       </tr>
     </thead>
     <tbody id="invoices"></tbody>
+    <tfoot id="loadMoreInvoices">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a onclick="loadInvoices()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 <div id="failed_htlcs_container" style="display:none" class="w3-container w3-padding-small">
@@ -381,7 +395,7 @@
     <tbody id="failed_htlcs"></tbody>
     <tfoot id="loadMoreFailedHTLCs">
       <tr style="background-color:transparent;cursor:pointer;">
-        <td colspan="9">
+        <td colspan="12">
           <a onclick="loadFailedHTLCs()">Load More</a>
         </td>
       </tr>
@@ -492,33 +506,6 @@
   }, {local_commit, local_chan_reserve, initiator}, {
     "is_active": ch => ({innerHTML: ch.is_active, title: (ch.is_active ? 'Up' : 'Down') + 'time: ' + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
-
-  let {fee, ppm} = routed_template
-  const payments_template = Object.assign({}, {
-    "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
-    "value": p => ({innerHTML: p.value.intcomma()}),
-    "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
-    }, {ppm}, {
-    "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
-    "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
-    "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out || '---' }),
-    "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
-    "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
-    "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
-    }
-  )
-  let {creation_date, value, keysend_preimage} = payments_template
-  const invoices_template = Object.assign({}, {creation_date}, {
-    "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: adjustTZ(i.settle_date)})
-    }, {value}, {
-    "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
-    "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
-    "chan_in_alias": i => ({innerHTML: i.chan_in_alias||'---'}),
-    "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
-    "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash.substring(0,7)}</a>`}),
-    "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
-    }
-  )
   const pending_open_template = {
     "alias": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}),
     "channel_point": ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.funding_txid}' target="_blank">${ch.channel_point}</a>`}),
@@ -811,6 +798,23 @@
       table.append(template.render(f))
     }
   }
+  async function loadPayments(){
+    const lastId = paymentsTable.tBodies[0].lastChild.objId
+    const payments_task = GET('payments', {data: {status__lt: 3, index__lt: lastId, limit: 10} })
+    let next_payments = (await payments_task).results
+    if(next_payments.length==0){
+      byId("loadMorePayments").style.display = "none"
+      return
+    }
+    build_next_payments(next_payments)
+  }
+  async function build_next_payments(next_payments){
+    const tableBody = paymentsTable.querySelector("tbody")
+    for (p of next_payments){
+      p.ppm = p.fee*1000000/p.value
+      tableBody.appendChild(use(payments_template).render(p))
+    }
+  }
   async function build_payments(payments7d){
     let remaining = 10-payments7d.length, template = use(payments_template), payments = payments7d
     if(remaining > 0) payments = [...payments, ...(await GET('payments', {data: {creation_date__lt: _7days_ago, status__lt:3, limit: remaining} })).results]
@@ -821,6 +825,22 @@
     for(p of payments.slice(0,10)){
       p.ppm = p.fee*1000000/p.value
       table.append(template.render(p))
+    }
+  }
+  async function loadInvoices(){
+    const lastId = invoicesTable.tBodies[0].lastChild.objId
+    const invoices_task = GET('invoices', {data: {state__lt: 2, index__lt: lastId, limit: 10} })
+    let next_invoices = (await invoices_task).results
+    if(next_invoices.length==0){
+      byId("loadMoreInvoices").style.display = "none"
+      return
+    }
+    build_next_invoices(next_invoices)
+  }
+  async function build_next_invoices(next_invoices){
+    const tableBody = invoicesTable.querySelector("tbody")
+    for (inv of next_invoices){
+      tableBody.appendChild(use(invoices_template).render(inv))
     }
   }
   function build_invoices(invoices){
@@ -917,10 +937,10 @@
   }
   async function buildMain() {
     const node_info = await GET('node_info', {data: {limit:1}})
-    const inv_rev_task = GET('invoices', {data: {state: 1, is_revenue: true, settle_date__gte: _7days_ago}})
+    const inv_rev_task = GET('invoices', {data: {state__lt: 2, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
     const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
-    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status: 2} })
+    const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status__lt: 3} })
     buildMainStats(node_info)
     const closures_task = GET('closures', {data: {close_height__gte: (node_info.block.height - 1008) } })
 
