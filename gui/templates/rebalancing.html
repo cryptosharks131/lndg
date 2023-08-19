@@ -11,9 +11,9 @@
           <th title="Public Key">PK</th>
           <th onclick="sortTable(this, 2, 'String')">Channel ID</th>
           <th onclick="sortTable(this, 3, 'String', 0, 'a')">Peer Alias</th>
-          <th onclick="sortTable(this, 4, 'int')">Outbound Liquidity</th>
-          <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
-          <th onclick="sortTable(this, 6, 'int')">Inbound Liquidity</th>
+          <th colspan="2" onclick="sortTable(event.target, 4, 'int')">Outbound Liquidity</th>
+          <th onclick="sortTable(event.target, 3, 'int', 5, 'label')">Capacity</th>
+          <th colspan="2" onclick="sortTable(event.target, 6, 'int')">Inbound Liquidity</th>
           <th>Rebalance</th>
           <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
