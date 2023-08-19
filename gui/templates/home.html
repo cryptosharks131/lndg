@@ -747,9 +747,9 @@
     byId('total_outbound').innerHTML = (active.outbound + inactive.outbound).intcomma()
     byId('total_unsettled').innerHTML = (active.unsettled + inactive.unsettled).intcomma()
 
-    const public = merge(active, inactive), sum = merge(public, private)
+    const public = merge(active, inactive), sum = merge(active, private)
     const [total_outbound, total_bal] = [sum.outbound || 1, byId('total_balance')]
-    byId('liq_ratio').innerHTML = (public.inbound*100/public.outbound||1).intcomma()+'%'
+    byId('liq_ratio').innerHTML = (active.inbound*100/active.outbound||1).intcomma()+'%'
     total_bal.innerHTML = (total_bal.innerHTML.toInt() + sum.outbound).intcomma()
 
     for(d of [1,7]){ //build 1 & 7 days table statistics
