@@ -3,7 +3,7 @@
 {% block meta %}<meta http-equiv="refresh" content="1260">{% endblock %}
 {% block content %}
 {% load humanize %}
-<span style="position: absolute;top: 0;right: 0;">Dashboard Last Updated:  <span id='datetime'></span> ... refreshing every 21 seconds</span>
+<span style="position: absolute;top: 0;right: 0;padding: 5px;">Dashboard Last Updated: <span id='datetime'></span> <label title="Auto Page Refresh" class="switch"><input type="checkbox" {% if request.COOKIES.refresh == 'true' %}checked="true"{% endif %}><span onclick="toggleAutoRefresh()" class="slider round"></span></label></span>
 <div class="w3-container w3-padding-small">
   <script language="Javascript">
     function qr_gen(addr){
@@ -16,6 +16,13 @@
     }
     function qr_addr(addr){
       var qrcode = new QRCode(byId(addr), {text:addr, width:256, height:256})
+    }
+    function toggleAutoRefresh() {
+      if(document.cookie.includes('refresh=false')){
+        document.cookie = `refresh=true;max-age=34560000`
+      }else{
+        document.cookie = `refresh=false;max-age=34560000`
+      }
     }
   </script>
     <h3>
