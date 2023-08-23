@@ -166,6 +166,7 @@
           <th onclick="sortTable(event.target, 11, 'm')">i7D</th>
           <th width=3% onclick="sortTable(event.target, 12, 'int')">iRate</th>
           <th width=3% onclick="sortTable(event.target, 13, 'int')">iBase</th>
+          <th title="When AR is DISABLED for the channel, keep pushing OUT of the channel until its outbound liquidity falls below the oTarget%." width=4%>oTarget%</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%." width=4%>iTarget%</th>
           <th title="When AR is ENABLED it will refill the channel with outbound liquidity." width=4%>AR</th>
         </tr>
@@ -599,7 +600,8 @@
     "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</small>`, style: {color: ch.routed_in_7day > 0 ? `` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
-    "ar_in_target": ch => ({innerHTML: !ch.auto_rebalance ? '---' : `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),
+    "ar_out_target": ch => ({innerHTML: `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_out_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target)});">`,  style: !ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),   
+    "ar_in_target": ch => ({innerHTML: `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="Sync.PUT('channels/${ch.chan_id}', {body:{auto_rebalance: ${!ch.auto_rebalance} }}, ch => this.parentElement.changed(ch))">`, style: {backgroundColor: ch.auto_rebalance ? green : null},
       changed: function(newVal) {
         ['ar_in_target', 'auto_rebalance'].forEach(col => this.parentElement.cells[col].render(detailed_ch_template[col](newVal)))
