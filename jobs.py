@@ -172,8 +172,6 @@ def disconnecthtlcpeer(stub, htlc, peerpubkey):
                 response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=peerpubkey))
                 print(f"{datetime.now().strftime('%c')} : .... Disconnected peer with expiring htlc {peer.alias} {peer.pubkey=} {int((datetime.now() - peer.last_reconnected).total_seconds() / 60)=} {htlc.expiration_height=} {htlc.hash_lock.hex()=}")
                 peer.connected = False
-                peer.last_reconnected = datetime.now() #Reconnect will be done by lnd on its own (or by the reconnect function). Setting time to ensure next disconnect occurs after 1 block.
-                peer.save()
             except Exception as e:
                 print(f"{datetime.now().strftime('%c')} : .... Error disconnecting peer {peer.alias} {peer.pubkey=} {str(e)=}")
             peer.last_reconnected = datetime.now() #Reconnect will be done by lnd on its own (or by the reconnect function). Setting time to ensure next disconnect occurs after 1 block.
