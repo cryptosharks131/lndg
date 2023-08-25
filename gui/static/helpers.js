@@ -31,7 +31,7 @@ function adjustTZ(datetime){
 }
 async function toggle(button){
   try{
-    button.children[0].style.visibility = 'collapse';
+    button.children[0].style.visibility = 'hidden';
     button.children[1].style.visibility = 'visible';
     navigator.clipboard.writeText(button.getAttribute('data-value'))
     await sleep(1000)
@@ -41,7 +41,7 @@ async function toggle(button){
   }
   finally{
     button.children[0].style.visibility = 'visible';
-    button.children[1].style.visibility = 'collapse'
+    button.children[1].style.visibility = 'hidden'
   }
 }
 function use(template){
