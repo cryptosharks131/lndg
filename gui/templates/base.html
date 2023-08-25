@@ -35,6 +35,32 @@
       "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
       "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
     }
+    let {fee, ppm} = routed_template
+    const payments_template = Object.assign({}, {
+      "creation_date": p => ({innerHTML: formatDate(p.creation_date), title: adjustTZ(p.creation_date) }),
+      "value": p => ({innerHTML: p.value.intcomma()}),
+      "fee": p => ({innerHTML: parseFloat(p.fee.toFixed(3)).toLocaleString()})
+      }, {ppm}, {
+      "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
+      "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
+      "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out || '---' }),
+      "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
+      "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
+      "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
+      }
+    )
+    let {creation_date, value, keysend_preimage} = payments_template
+    const invoices_template = Object.assign({}, {creation_date}, {
+      "settle_date": i => ({innerHTML: formatDate(i.settle_date), title: adjustTZ(i.settle_date)})
+      }, {value}, {
+      "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
+      "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
+      "chan_in_alias": i => ({innerHTML: i.chan_in_alias||'---'}),
+      "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
+      "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash.substring(0,7)}</a>`}),
+      "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
+      }
+    )
     const wire_failures = "0|1|2|3|4|5|6|Expiry Too Soon|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
     const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
     const failedHTLCs_template = {
@@ -146,7 +172,7 @@
 
     async function auto_refresh(async_callback) {
       await sleep(21000)
-      while(document.hidden) {
+      while(document.hidden || document.cookie.includes('refresh=false')) {
         await sleep(100)
       }
       await async_callback()

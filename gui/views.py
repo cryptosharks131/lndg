@@ -986,8 +986,6 @@ def channel(request):
             'channel': [] if channels_df.empty else channels_df.to_dict(orient='records')[0],
             'incoming_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=True).order_by('hash_lock'),
             'outgoing_htlcs': PendingHTLCs.objects.filter(chan_id=chan_id).filter(incoming=False).order_by('hash_lock'),
-            'payments': [] if payments_df.empty else payments_df.sort_values(by=['creation_date'], ascending=False).to_dict(orient='records')[:5],
-            'invoices': [] if invoices_df.empty else invoices_df.sort_values(by=['settle_date'], ascending=False).to_dict(orient='records')[:5],
             'peer_info': [] if peer_info_df.empty else peer_info_df.to_dict(orient='records')[0],
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
@@ -1014,7 +1012,7 @@ def opens(request):
         exlcude_list = AvoidNodes.objects.values_list('pubkey')
         filter_60day = datetime.now() - timedelta(days=60)
         payments_60day = Payments.objects.filter(creation_date__gte=filter_60day, status=2).values_list('payment_hash')
-        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).exclude(node_pubkey__in=exlcude_list).values('node_pubkey').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000, score=Round((Round(Count('id')/5, output_field=IntegerField())+Round(Sum('amt')/500000, output_field=IntegerField()))/10, output_field=IntegerField()), count=Count('id'), amount=Sum('amt'), fees=Sum('fee'), sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000), alias=Max('alias')).exclude(score=0).order_by('-score', 'ppm')[:21]
+        open_list = PaymentHops.objects.filter(payment_hash__in=payments_60day).exclude(node_pubkey=self_pubkey).exclude(node_pubkey__in=current_peers).exclude(node_pubkey__in=exlcude_list).values('node_pubkey').annotate(ppm=(Sum('fee')/Sum('amt'))*1000000, score=Round((Round(Count('id')/1, output_field=IntegerField())+Round(Sum('amt')/100000, output_field=IntegerField()))/10, output_field=IntegerField()), count=Count('id'), amount=Sum('amt'), fees=Sum('fee'), sum_cost_to=Sum('cost_to')/(Sum('amt')/1000000), alias=Max('alias')).exclude(score=0).order_by('-score', 'ppm')[:21]
         context = {
             'open_list': open_list,
             'avoid_list': AvoidNodes.objects.all(),
@@ -2054,7 +2052,7 @@ class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Payments.objects.all().order_by('-creation_date')
     serializer_class = PaymentSerializer
-    filterset_fields = {'status':['exact','lt','gt'], 'creation_date':['lte','gte']}
+    filterset_fields = {'status':['exact','lt','gt'], 'creation_date':['lte','gte'], 'chan_out': ['exact'], 'index': ['lt']}
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2065,7 +2063,7 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Invoices.objects.all().order_by('-creation_date')
     serializer_class = InvoiceSerializer
-    filterset_fields = {'state': ['exact','lt', 'gt'], 'is_revenue': ['exact'], 'settle_date': ['gte']}
+    filterset_fields = {'state': ['exact','lt', 'gt'], 'is_revenue': ['exact'], 'settle_date': ['gte'], 'chan_in': ['exact'], 'index': ['lt']}
 
     def update(self, request, pk=None):
         setting = get_object_or_404(Invoices.objects.all(), pk=pk)

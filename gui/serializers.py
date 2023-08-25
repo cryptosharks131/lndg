@@ -5,12 +5,14 @@ from .models import Settings, Payments, PaymentHops, Invoices, Forwards, Channel
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
 class PaymentSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.IntegerField(source='index')
     payment_hash = serializers.ReadOnlyField()
     class Meta:
         model = Payments
         exclude = []
 
 class InvoiceSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.IntegerField(source='index')
     r_hash = serializers.ReadOnlyField()
     creation_date = serializers.ReadOnlyField()
     settle_date = serializers.ReadOnlyField()
