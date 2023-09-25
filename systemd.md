@@ -10,6 +10,7 @@ Create a service file for `controller.py`, copying the contents below to the fil
 [Unit]
 Description=Backend Controller For Lndg
 [Service]
+Environment=PYTHONUNBUFFERED=1
 User=<run_as_user>
 Group=<run_as_user>
 ExecStart=/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/controller.py

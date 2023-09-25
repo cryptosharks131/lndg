@@ -11,6 +11,7 @@ from gui.models import Channels, FailedHTLCs
 
 def main():
     try:
+        print(f"{datetime.now().strftime('%c')} : [HTLC] : Starting failed HTLC stream...")
         connection = lnd_connect()
         routerstub = lnrouter.RouterStub(connection)
         all_forwards = {}

@@ -31,6 +31,7 @@ function configure_controller() {
 [Unit]
 Description=Run Backend Controller For Lndg
 [Service]
+Environment=PYTHONUNBUFFERED=1
 User=$INSTALL_USER
 Group=$INSTALL_USER
 ExecStart=$LNDG_DIR/.venv/bin/python $LNDG_DIR/controller.py
