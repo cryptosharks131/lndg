@@ -92,7 +92,7 @@ def main(channels):
         # Balanced Liquidity
         balanced_df = channels_df[(channels_df['out_percent'] > lowliq_limit) & (channels_df['out_percent'] < excess_limit)].copy()
         # IF NO FLOW THEN DECREASE FEE AND IF HIGH FLOW THEN SLOWLY INCREASE FEE
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > row['capacity'] else row['local_fee_rate'], axis=1)
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > 1 else row['local_fee_rate'], axis=1)
         balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']-(3*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['local_fee_rate'], axis=1)
 
         # Excess Liquidity

@@ -320,9 +320,6 @@ def get_pending_rebals():
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error getting pending rebalances: {str(e)}")
 
-shutdown_rebalancer = False
-scheduled_rebalances = []
-active_rebalances = []
 async def async_queue_manager(rebalancer_queue):
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is starting...")
@@ -357,8 +354,8 @@ async def async_queue_manager(rebalancer_queue):
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager has shut down...")
 
 async def async_run_rebalancer(worker, rebalancer_queue):
+    global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     while True:
-        global scheduled_rebalances, active_rebalances, shutdown_rebalancer
         if not rebalancer_queue.empty():
             rebalance = await rebalancer_queue.get()
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} is starting a new request...")
@@ -385,7 +382,11 @@ async def start_queue(worker_count=1):
     print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Manager and workers have stopped...")
 
 def main():
+    global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     while True:
+        shutdown_rebalancer = False
+        scheduled_rebalances = []
+        active_rebalances = []
         if Rebalancer.objects.filter(status=1).exists():
             unknown_errors = Rebalancer.objects.filter(status=1)
             for unknown_error in unknown_errors:
