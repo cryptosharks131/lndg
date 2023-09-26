@@ -80,7 +80,7 @@
     }),
     "ar_in_target": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target')"/></span>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
       changed: function(new_value){
-        updateCols(['ar_in_target'], this, new_value)
+        updateCols(['rebalance', 'ar_in_target'], this, new_value)
         update_title(ch, new_value)
       }
     }),
