@@ -70,6 +70,19 @@ def main(channels):
             forwards_df_in_1d_sum = DataFrame()
             forwards_df_in_7d_sum = DataFrame()
             forwards_df_out_7d_sum = DataFrame()
+
+        filter_hours = datetime.now() - timedelta(hours=update_hours)
+        forwards_hours = Forwards.objects.filter(forward_date__gte=filter_hours, amt_out_msat__gte=1000000)
+        if forwards_hours.exists():
+            forwards_df_in_hours_sum = DataFrame.from_records(forwards_hours.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
+            forwards_df_out_hours_sum = DataFrame.from_records(forwards_hours.values('chan_id_out').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_out')
+        else:
+            forwards_df_in_hours_sum = DataFrame()
+            forwards_df_out_hours_sum = DataFrame()
+        channels_df['amt_routed_in_hours'] = channels_df.apply(lambda row: int(forwards_df_in_hours_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_hours_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['amt_routed_out_hours'] = channels_df.apply(lambda row: int(forwards_df_out_hours_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_hours_sum.index == row.chan_id).any() else 0, axis=1)
+        channels_df['net_routed_hours'] = channels_df.apply(lambda row: round((row['amt_routed_out_hours']-row['amt_routed_in_hours'])/row['capacity'], 2), axis=1)
+
         channels_df['amt_routed_in_1day'] = channels_df.apply(lambda row: int(forwards_df_in_1d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_1d_sum.index == row.chan_id).any() else 0, axis=1)
         channels_df['amt_routed_in_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
         channels_df['amt_routed_out_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
@@ -82,18 +95,19 @@ def main(channels):
 
         # Low Liquidity
         lowliq_df = channels_df[channels_df['out_percent'] <= lowliq_limit].copy()
-        failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(timestamp__gte=filter_1day).order_by('-id').values())
+        failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(timestamp__gte=filter_hours).order_by('-id').values())
         if failed_htlc_df.shape[0] > 0:
             failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
-        lowliq_df['failed_out_1day'] = 0 if failed_htlc_df.empty else lowliq_df.apply(lambda row: len(failed_htlc_df[failed_htlc_df['chan_id_out']==row.chan_id]), axis=1)
-        # INCREASE IF (failed htlc > threshhold) && (flow in == 0)
-        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_1day']>failed_htlc_limit and row['amt_routed_in_1day'] == 0 else row['local_fee_rate'], axis=1)
+        lowliq_df['failed_out_hours'] = 0 if failed_htlc_df.empty else lowliq_df.apply(lambda row: len(failed_htlc_df[failed_htlc_df['chan_id_out']==row.chan_id]), axis=1)
+        # INCREASE IF (failed htlc >= threshhold during update hours)
+        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate'] + (5 * multiplier) if row['failed_out_hours'] >= failed_htlc_limit else row['local_fee_rate'], axis=1)        # Balanced Liquidity
 
         # Balanced Liquidity
         balanced_df = channels_df[(channels_df['out_percent'] > lowliq_limit) & (channels_df['out_percent'] < excess_limit)].copy()
-        # IF NO FLOW THEN DECREASE FEE AND IF HIGH FLOW THEN SLOWLY INCREASE FEE
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > 1 else row['local_fee_rate'], axis=1)
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']-(3*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['new_rate'], axis=1)
+        # IF NO OUTBOUND FLOW FOR 7 DAYS THEN DECREASE FEE 
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate'] - (3 * multiplier) if row['amt_routed_out_7day'] < 1000 else row['local_fee_rate'], axis=1)
+        # IF NET FLOW POSITIVE DURING THE UPDATE HOURS THEN INCREASE FEE PROPORTIONALLY TO OUTFLOW AND INBOUND CAPACITY
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate'] + (1 if row['local_fee_rate'] < 100 else row['local_fee_rate'] / 100) * multiplier * row['net_routed_hours'] * row['in_percent'] if row['net_routed_hours'] > 0 else row['local_fee_rate'], axis=1)
 
         # Excess Liquidity
         excess_df = channels_df[channels_df['out_percent'] >= excess_limit].copy()
