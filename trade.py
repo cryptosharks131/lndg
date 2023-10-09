@@ -648,8 +648,10 @@ def decode_final_trade(network, request, details):
     return decode_records_as_request(request['value'], network), auth['value'], encrypted_data['value']
 
 def serve_trades(stub):
-    print('Generic Trade:', create_trade_details(stub))
+    print('Generic Trade Link:', create_trade_details(stub))
     print('Serving trades...')
+    for trade in get_trades(stub):
+        print('Serving trade:', trade['id'])
     for response in stub.SubscribeCustomMessages(ln.SubscribeCustomMessagesRequest()):
         if response.type == 32768:
             from_peer = response.peer
