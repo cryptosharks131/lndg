@@ -1,5 +1,6 @@
-import base64, secrets, re
-from bech32 import bech32_decode
+import base64, secrets, re, asyncio
+from time import time
+from bech32 import bech32_decode, bech32_encode, convertbits
 from datetime import datetime, timedelta
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
@@ -9,7 +10,9 @@ from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import signer_pb2 as lns
 from gui.lnd_deps import signer_pb2_grpc as lnsigner
-from gui.lnd_deps.lnd_connect import lnd_connect
+from gui.lnd_deps import router_pb2 as lnr
+from gui.lnd_deps import router_pb2_grpc as lnrouter
+from gui.lnd_deps.lnd_connect import lnd_connect, async_lnd_connect
 
 def is_hex(n):
     return len(n) % 2 == 0 and all(c in '0123456789ABCDEFabcdef' for c in n)
@@ -66,6 +69,30 @@ def encode_as_bigsize(number: int):
         return tag_as_uint32(number)
     else:
         return tag_as_uint64(number)
+
+def decode_as_bigsize(encoded_string: str):
+    def read_uint8(encoded_string):
+        return int(encoded_string[:2], 16), encoded_string[2:]
+
+    def read_uint16(encoded_string):
+        return int(encoded_string[2:6], 16), encoded_string[6:]
+
+    def read_uint32(encoded_string):
+        return int(encoded_string[2:10], 16), encoded_string[10:]
+
+    def read_uint64(encoded_string):
+        return int(encoded_string[2:18], 16), encoded_string[18:]
+
+    if encoded_string.startswith('fd'):
+        value, remaining = read_uint16(encoded_string)
+    elif encoded_string.startswith('fe'):
+        value, remaining = read_uint32(encoded_string)
+    elif encoded_string.startswith('ff'):
+        value, remaining = read_uint64(encoded_string)
+    else:
+        value, remaining = read_uint8(encoded_string)
+
+    return value
 
 def decode_big_size(encoded):
     max_8bit_number = 0xfc
@@ -158,14 +185,13 @@ def decode_tlv_record(data):
         'value': read(value_start, encoded, hex_len(int(bytes_record['decoded'])))
     }
 
-def decode_tlv_stream(data):
-    encoded = data['encoded']
+def decode_tlv_stream(encoded):
 
     if not is_hex(encoded):
         raise ValueError('ExpectedHexEncodedTlvStreamToDecode')
 
     if not encoded:
-        return {'records': []}
+        return []
 
     total_bytes = len(encoded) // 2
     stream = {'offset': 0, 'records': []}
@@ -176,7 +202,7 @@ def decode_tlv_stream(data):
         stream['offset'] += stream['record']['length']
         stream['records'].append(stream['record'])
 
-    return {'records': stream['records']}
+    return stream['records']
 
 def parse_response_code(data):
     encoded = data['encoded']
@@ -184,8 +210,8 @@ def parse_response_code(data):
     if not encoded:
         raise ValueError('ExpectedResponseCodeValueToParseResponseCode')
 
-    records = decode_tlv_stream({'encoded': encoded})
-    code_record = next((record for record in records['records'] if record['type'] == '0'), None)
+    records = decode_tlv_stream(encoded)
+    code_record = next((record for record in records if record['type'] == '0'), None)
 
     if not code_record:
         raise ValueError('ExpectedCodeRecordToParseResponseCode')
@@ -205,7 +231,7 @@ def parse_response_code(data):
     return {'failure': [code, hex_as_utf8(message_record['value'])]}
 
 def parse_peer_request_message(message):
-    records = decode_tlv_stream({'encoded': message[len('626f73ff'):]})['records']
+    records = decode_tlv_stream(message[len('626f73ff'):])
     version = next((record for record in records if record['type'] == '0'), None)
 
     if version is not None:
@@ -232,14 +258,14 @@ def parse_peer_request_message(message):
             'response': {
                 'failure': failure,
                 'id': id_record['value'],
-                'records': [{'type': record['type'], 'value': record['value']} for record in decode_tlv_stream({'encoded': records_record['value']})['records']],
+                'records': [{'type': record['type'], 'value': record['value']} for record in decode_tlv_stream(records_record['value'])],
             },
         }
     else:
         return {
             'request': {
                 'id': id_record['value'],
-                'records': [{'type': record['type'], 'value': record['value']} for record in decode_tlv_stream({'encoded': records_record['value']})['records']],
+                'records': [{'type': record['type'], 'value': record['value']} for record in decode_tlv_stream(records_record['value'])],
                 'type': decode_big_size(type_record['value'])['decoded'],
             },
         }
@@ -272,11 +298,11 @@ def decode_anchored_trade_data(encoded):
     encoded_data = encoded[len(anchor_prefix):]
 
     try:
-        decoded_data = decode_tlv_stream({'encoded': base64.b64decode(encoded_data).hex()})
+        decoded_data = decode_tlv_stream(base64.b64decode(encoded_data).hex())
     except Exception as e:
         return {}
 
-    records = decoded_data['records']
+    records = decoded_data
     channel_record = next((record for record in records if record['type'] == '3'), None)
     description_record = next((record for record in records if record['type'] == '1'), None)
     secret_record = next((record for record in records if record['type'] == '0'), None)
@@ -447,6 +473,33 @@ def hrpAsMtokens(amount, units):
 
     return str(int(val * Decimal(1e11) / div))
 
+def mtokensAsHrp(mtokens):
+    amount = int(mtokens)
+    hrp = None
+
+    multipliers = {
+        'n': 100,
+        'u': 100000,
+        'm': 100000000,
+        '': 100000000000,
+    }
+
+    for letter, value in multipliers.items():
+        value = int(value)
+        if amount % value == 0:
+            if letter == 'u':
+                hrp = f"{amount // value}u"
+            elif letter == 'm':
+                hrp = f"{amount // value}m"
+            elif letter == 'n':
+                hrp = f"{amount // value}n"
+            elif letter == '':
+                hrp = f"{amount // value}"
+
+    if not hrp:
+        return str(amount * 10) + 'p'
+    return hrp
+
 def decodeBech32Words(words):
     inBits = 5
     outBits = 8
@@ -485,6 +538,29 @@ def byteEncodeRequest(request):
 
     return {'encoded': encoded, 'network': network, 'mtokens': mtokens, 'words': len(words)}
 
+def byteDecodeRequest(encoded, mtokens, network, words):
+    if not is_hex(encoded):
+        raise ValueError('ExpectedHexEncodedPaymentRequestDataToDecodeRequest')
+    if not network:
+        raise ValueError('ExpectedNetworkToDecodeByteEncodedRequest')
+    if not words:
+        raise ValueError('ExpectedWordsCountToDecodeByteEncodedRequest')
+
+    if network == 'bitcoin':
+        prefix = 'bc'
+    elif network == 'testnet':
+        prefix = 'tb'
+    elif network == 'regtest':
+        prefix = 'bcrt'
+    elif network == 'signet':
+        prefix = 'tbs'
+    else:
+        raise ValueError('ExpectedKnownNetworkToDecodeByteEncodedRequest')
+
+    prefix = 'ln' + prefix + mtokensAsHrp(mtokens)
+    five_bit = convertbits(bytes.fromhex(encoded), 8, 5)[:words]      
+    return bech32_encode(prefix, five_bit)
+
 def encode_request_as_records(request):
     if not request:
         raise ValueError('ExpectedRequestToEncodeAsRequestRecords')
@@ -504,6 +580,38 @@ def encode_request_as_records(request):
 
     return ''.join([encode_tlv_record(record) for record in records]), result['network']
 
+def decode_records_as_request(encoded, network):
+    if not encoded:
+        raise ValueError('ExpectectedEncodedPaymentRequestRecordsToDecode')
+    
+    if not network:
+        raise ValueError('ExpectedNetworkNameToDeriveRequestFromRequestRecords')
+
+    records = decode_tlv_stream(encoded)
+    word_count = next((record for record in records if record['type'] == '0'), None)
+    if not word_count:
+        raise ValueError('ExpectedWordCountRecordInPaymentTlvRecord')
+    try:
+        words = int(decode_as_bigsize(word_count['value']))
+    except:
+        raise ValueError('ExpectedPaymentRequestWordCountInRequestRecords')
+    
+    details = next((record for record in records if record['type'] == '1'), None)
+    if not details:
+        raise ValueError('ExpectedEncodedPaymentDetailsInPaymentTlvRecord')
+    
+    amount = next((record for record in records if record['type'] == '2'), None)
+    if not amount:
+        raise ValueError('ExpectedPaymentRequestTokensInPaymentRecords')
+    mtokens = decode_as_bigsize(amount['value'])
+
+    try:
+        request = byteDecodeRequest(details['value'], mtokens, network, words)
+    except:
+        raise ValueError('ExpectedValidPaymentRequestDetailsToDecodeRecords')
+    
+    return request
+
 def encode_final_trade(auth, payload, request):
     if not request:
         raise ValueError('ExpectedPaymentRequestToDeriveNetworkRecord')
@@ -521,7 +629,25 @@ def encode_final_trade(auth, payload, request):
 
     return '626f73ff' + ''.join([encode_tlv_record(record) for record in trade_records])
 
-def listen_for_trades(stub):
+def decode_final_trade(network, request, details):
+    details = decode_tlv_stream(details['value'])
+
+    encrypted = next((record for record in details if record['type'] == '0'), None)
+    if not encrypted:
+        raise ValueError('ExpectedEncryptedRecordToDecodeTrade')
+    encrypted_records = decode_tlv_stream(encrypted['value'])
+
+    encrypted_data = next((record for record in encrypted_records if record['type'] == '0'), None)
+    if not encrypted_data:
+        raise ValueError('ExpectedEncryptedDataRecordToDecodeTrade')
+    
+    auth = next((record for record in encrypted_records if record['type'] == '1'), None)
+    if not auth:
+        raise ValueError('ExpectedAuthDataRecordToDecodeTrade')
+
+    return decode_records_as_request(request['value'], network), auth['value'], encrypted_data['value']
+
+def serve_trades(stub):
     print('Generic Trade:', create_trade_details(stub))
     print('Serving trades...')
     for response in stub.SubscribeCustomMessages(ln.SubscribeCustomMessagesRequest()):
@@ -568,9 +694,6 @@ def listen_for_trades(stub):
                                         final_invoice = stub.AddInvoice(ln.Invoice(memo=trade_details['description'], value=trade_details['price'], expiry=inv_expiry, r_preimage=preimage))
                                         trade_data = encode_peer_response({'failure': None, 'id':request['id'], 'records': [{'type':'1', 'value':encode_final_trade(auth_tag, ciphertext, final_invoice.payment_request)}]})
                                         stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(trade_data)))
-                        if req_type == '8050006': # request a buyer to select the trade provided
-                            # select a trade from the records (not implemented)
-                            print('BUYER ACTION', '|', 'ID:', request['id'], '|', 'Trade:', decode_basic_trade(request['records']))
                     else:
                         raise ValueError('ExpectedRequestTypeInRequestMessage')
                 if 'response' in msg_response:
@@ -582,9 +705,44 @@ def listen_for_trades(stub):
                         if len(request['records']) == 0:
                             # message acknowledgements
                             print('ACK', '|', 'ID:', request['id'])
+
+async def get_open_trades(astub, results):
+    try:
+        async for response in astub.SubscribeCustomMessages(ln.SubscribeCustomMessagesRequest()):
+            if response.type == 32768:
+                # from_peer = response.peer
+                msg_type = response.type
+                message = response.data.hex()
+                if msg_type == 32768 and message.lower().startswith('626f73ff'):
+                    msg_response = parse_peer_request_message(message)
+                    if 'request' in msg_response:
+                        request = msg_response['request']
+                        if 'type' in request:
+                            req_type = request['type']
+                            if req_type == '8050006': # request a buyer to select the trade provided
+                                # select a trade from the records
+                                trade = decode_basic_trade(request['records'])
+                                print('BUYER ACTION', '|', 'ID:', request['id'], '|', 'Trade:', trade)
+                                results.append({'id': request['id'], 'trade': trade})
                         else:
-                            # buyer to pay invoice and get secret their secret from preimage (not implemented)
-                            print('BUYER FINALIZE', '|', 'ID:', request['id'], '|', 'Records:', request['records'])
+                            raise ValueError('ExpectedRequestTypeInRequestMessage')
+                    if 'response' in msg_response:
+                        request = msg_response['response']
+                        if 'failure' in request and request['failure'] != None:
+                            # failure message returned
+                            print('Failure:', request['failure'])
+                        else:
+                            if len(request['records']) == 0:
+                                # message acknowledgements
+                                print('ACK', '|', 'ID:', request['id'])
+                            else:
+                                # buyer to pay invoice and get secret their secret from preimage
+                                print('BUYER FINALIZE', '|', 'ID:', request['id'], '|', 'Records:', request['records'])
+                                return request['records']
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print('Error runnig task:', str(e))
 
 def encode_nodes_data(data, network_value):
     records = [{'type': '0', 'value': '01'}]
@@ -599,6 +757,98 @@ def encode_nodes_data(data, network_value):
     records.append({'type': '4', 'value': ''.join([encode_tlv_record(record) for record in node_records])})
     nodes_encoded = '626f73ff' + ''.join([encode_tlv_record(record) for record in records])
     return nodes_encoded
+
+def decode_node_record(encoded):
+    channel_hex_length = 16
+    if not encoded:
+        raise ValueError('ExpectedEncodedNodeRecordToGetNodePointer')
+
+    records = decode_tlv_stream(encoded['value'])
+    high_key_record = next((n for n in records if n['type'] == '1'), None)
+
+    if high_key_record and len(high_key_record['value']) != channel_hex_length:
+        raise ValueError('ExpectedChannelIdInHighKeyRecord')
+    if high_key_record:
+        return {'high_channel': high_key_record['value']}
+
+    low_key_record = next((n for n in records if n['type'] == '0'), None)
+    if low_key_record and len(low_key_record['value']) != channel_hex_length:
+        raise ValueError('ExpectedChannelIdInLowKeyRecord')
+    if low_key_record:
+        return {'low_channel': low_key_record['value']}
+
+    id_record = next((n for n in records if n['type'] == '2'), None)
+    if not id_record:
+        raise ValueError('ExpectedNodeIdRecordToMapNodeRecordToNodePointer')
+
+    if not (bool(id_record['value']) and re.match(r'^0[2-3][0-9A-F]{64}$', id_record['value'], re.I)):
+        raise ValueError('ExpectedNodeIdPublicKeyToMapNodeRecordToNodePointer')
+
+    return {'node': {'id': id_record['value']}}
+
+def decode_open_trade(network, records):
+    if not network:
+        raise ValueError('ExpectedNetworkNameToDecodeOpenTrade')
+    if not isinstance(records, list):
+        raise ValueError('ExpectedArrayOfRecordsToDecodeOpenTrade')
+
+    nodes_record = next((n for n in records if n['type'] == '4'), None)
+    id_record = next((n for n in records if n['type'] == '5'), None)
+    if not nodes_record:
+        raise ValueError('ExpectedNodesRecordToDecodeOpenTradeDetails')
+
+    try:
+        decode_tlv_stream(nodes_record['value'])
+    except:
+        raise ValueError('ExpectedValidNodesTlvStreamToDecodeOpenTradeDetails')
+
+    node_records = decode_tlv_stream(nodes_record['value'])
+    if not node_records:
+        raise ValueError('ExpectedNodeRecordsForOpenTrade')
+
+    return network, id_record['value'] if id_record else None, [decode_node_record(value) for value in node_records]
+
+def decode_trade_data(encoded):
+    if not encoded.lower().startswith('626f73ff'):
+        raise ValueError('UnexpectedFormatOfTradeToDecode')
+    try:
+        decoded_trade = decode_tlv_stream(encoded[8:])
+    except:
+        raise ValueError('ExpectedValidTlvStreamForTradeData')
+    records = decoded_trade
+   
+    network_value = next((record for record in records if record['type'] == '1'), None)
+    if network_value:
+        if network_value['value'] == '01':
+            if settings.LND_NETWORK == 'testnet':
+                network = 'testnet'
+            else:
+                raise ValueError('TradeRequestForAnotherNetwork')
+        elif network_value['value'] =='02':
+            if settings.LND_NETWORK == 'regtest':
+                network = 'regtest'
+            else:
+                raise ValueError('TradeRequestForAnotherNetwork')
+        else:
+            raise ValueError('UnknownNetworkNameToDeriveNetworkRecordFor')
+    else:
+        if settings.LND_NETWORK == 'mainnet':
+            network = 'bitcoin'
+        else:
+            raise ValueError('TradeRequestForAnotherNetwork')
+
+    request = next((record for record in records if record['type'] == '2'), None)
+    details = next((record for record in records if record['type'] == '3'), None)
+    swap = next((record for record in records if record['type'] == '6'), None)
+
+    if request and details:
+        return {'secret': decode_final_trade(network, request, details)}
+    elif request:
+        pass # just a payment
+    elif swap:
+        pass # swap offer
+    else:
+        return {'connect': decode_open_trade(network, records)}
 
 def encode_trade(description, price, secret):
     anchorPrefix = 'anchor-trade-secret:'
@@ -638,13 +888,76 @@ def create_trade_anchor(stub, description, price, secret, expiry):
         print('Error creating trade:', str(e))
     print('Trade Anchor:', encoded_trade)
 
+async def request_trades(to_peer):
+    results = []
+    start_time = time()
+    astub = lnrpc.LightningStub(async_lnd_connect())
+    task = asyncio.create_task(get_open_trades(astub, results))
+    asyncio.gather(task)
+    trade_data = encode_peer_request({'id':secrets.token_bytes(32).hex(), 'type':'8050005', 'records':[{'type': '1', 'value': secrets.token_bytes(32).hex()}]})
+    astub.SendCustomMessage(ln.SendCustomMessageRequest(peer=bytes.fromhex(to_peer), type=32768, data=bytes.fromhex(trade_data)))
+    while len(results) == 0:
+        if (time() - start_time) < 30:
+            await asyncio.sleep(1)
+        else:
+            print('Timeout waiting for trade records from peer.')
+            task.cancel()
+            return None
+    await asyncio.sleep(1)
+    if len(results) == 1:
+        ack_data = encode_peer_response({'failure':None, 'id': results[0]['id'], 'records':[]})
+        astub.SendCustomMessage(ln.SendCustomMessageRequest(peer=bytes.fromhex(to_peer), type=32768, data=bytes.fromhex(ack_data)))
+        choice = 1
+    else:
+        print('Select a trade to buy:')
+        for idx, trade in enumerate(results, start=1):
+            ack_data = encode_peer_response({'failure':None, 'id': trade['id'], 'records':[]})
+            astub.SendCustomMessage(ln.SendCustomMessageRequest(peer=bytes.fromhex(to_peer), type=32768, data=bytes.fromhex(ack_data)))
+            print(f"{idx}. {trade['trade']['description']}")
+        while True:
+            try:
+                choice = int(input("Enter the number of your choice: "))
+                if 1 <= choice <= len(results):
+                    break
+                else:
+                    print("Invalid input. Please enter a valid option.")
+            except ValueError:
+                print("Invalid input. Please enter a number for your selection.")
+    selected_trade = results[choice - 1]
+    trade_data = encode_peer_request({'id':secrets.token_bytes(32).hex(), 'type':'8050005', 'records':[{'type': '0', 'value': selected_trade['trade']['id']}]})
+    astub.SendCustomMessage(ln.SendCustomMessageRequest(peer=bytes.fromhex(to_peer), type=32768, data=bytes.fromhex(trade_data)))
+    return await task
+
+def decrypt_secret(stub, decoded_trade):
+    invoice, auth, payload = decoded_trade['secret']
+    decoded_invoice = stub.DecodePayReq(ln.PayReqString(pay_req=invoice))
+    print('Invoice for secret decoded.')
+    print('Destination:', decoded_invoice.destination)
+    print('Amount:', decoded_invoice.num_satoshis)
+    print('Description:', decoded_invoice.description)
+    ask_pay = input('Pay the invoice and decrypt the secret? [y/N]: ')
+    if ask_pay.lower() == 'y':
+        routerstub = lnrouter.RouterStub(lnd_connect())
+        for response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=invoice, timeout_seconds=60)):
+            if response.status == 2:
+                print('Payment paid!')
+                preimage =  bytes.fromhex(response.payment_preimage)
+            if response.status > 2:
+                print('Payment failed. Please try again.')
+                return
+        signerstub = lnsigner.SignerStub(lnd_connect())
+        shared_key = signerstub.DeriveSharedKey(lns.SharedKeyRequest(ephemeral_pubkey=bytes.fromhex(decoded_invoice.destination))).shared_key
+        shared_secret = bytes(x ^ y for x, y in zip(shared_key, preimage))
+        cipher = Cipher(algorithms.AES(shared_secret), modes.GCM(bytes(16), bytes.fromhex(auth)), backend=default_backend())
+        decryptor = cipher.decryptor()
+        decrypted = decryptor.update(bytes.fromhex(payload)) + decryptor.finalize()
+        print('Successfully decrypted the secret:', decrypted.decode('utf-8'))
+
 def main():
-    options = ["Setup A Sale", "Serve Trades"]
-
+    options = ["Buy A Trade", "Setup A Sale", "Serve Trades"]
     print("Select an option:")
-    for i, option in enumerate(options, start=1):
-        print(f"{i}. {option}")
-
+    for idx, option in enumerate(options, start=1):
+        print(f"{idx}. {option}")
     while True:
         try:
             choice = int(input("Enter the number of your choice: "))
@@ -664,9 +977,24 @@ def main():
         create_trade_anchor(stub, description, price, secret, expiry)
         ask_serve = input('Start serving trades? y/N: ')
         if ask_serve.lower() == 'y':
-            listen_for_trades(stub)
+            serve_trades(stub)
     if selected_option == 'Serve Trades':
-        listen_for_trades(stub)
+        serve_trades(stub)
+    if selected_option == 'Buy A Trade':
+        trade = input('Enter an encoded trade: ')
+        decoded_trade = decode_trade_data(trade)
+        if 'secret' in decoded_trade:
+            decrypt_secret(stub, decoded_trade)
+        if 'connect' in decoded_trade:
+            network, id, connection = decoded_trade['connect']
+            if 'node' in connection[0]:
+                to_peer = connection[0]['node']['id']
+            trade = asyncio.run(request_trades(to_peer))
+            if trade:
+                trade_data = next((record for record in trade if record['type'] == '1'), None)
+                if trade_data:
+                    decoded_trade = decode_trade_data(trade_data['value'])
+                    decrypt_secret(stub, decoded_trade)
 
 if __name__ == '__main__':
     main()
