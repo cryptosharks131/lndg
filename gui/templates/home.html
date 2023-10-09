@@ -888,18 +888,18 @@
       
       if(forwards_sum[chan_id] === undefined){ forwards_sum[chan_id]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
       
-      forwards_sum[chan_id].o1d = f.sum_outgoing_1day/1000
-      forwards_sum[chan_id].o1dc = f.count_outgoing_1day
-      forwards_sum[chan_id].i1d = f.sum_incoming_1day/1000
-      forwards_sum[chan_id].i1dc = f.count_incoming_1day
+      forwards_sum[chan_id].o1d += f.sum_outgoing_1day/1000
+      forwards_sum[chan_id].o1dc += f.count_outgoing_1day
+      forwards_sum[chan_id].i1d += f.sum_incoming_1day/1000
+      forwards_sum[chan_id].i1dc += f.count_incoming_1day
       forwards_summary.o1d += f.sum_outgoing_1day/1000
       forwards_summary.o1dc += f.count_outgoing_1day
       forwards_summary.earned1d += f.sum_fees_1day
 
-      forwards_sum[chan_id].o7d = f.sum_outgoing_7day/1000
-      forwards_sum[chan_id].o7dc = f.count_outgoing_7day
-      forwards_sum[chan_id].i7d = f.sum_incoming_7day/1000
-      forwards_sum[chan_id].i7dc = f.count_incoming_7day
+      forwards_sum[chan_id].o7d += f.sum_outgoing_7day/1000
+      forwards_sum[chan_id].o7dc += f.count_outgoing_7day
+      forwards_sum[chan_id].i7d += f.sum_incoming_7day/1000
+      forwards_sum[chan_id].i7dc += f.count_incoming_7day
       forwards_summary.o7d += f.sum_outgoing_7day/1000
       forwards_summary.o7dc += f.count_outgoing_7day
       forwards_summary.earned7d += f.sum_fees_7day
