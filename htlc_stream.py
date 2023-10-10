@@ -1,4 +1,5 @@
 import django
+from datetime import datetime
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect
@@ -10,6 +11,7 @@ from gui.models import Channels, FailedHTLCs
 
 def main():
     try:
+        print(f"{datetime.now().strftime('%c')} : [HTLC] : Starting failed HTLC stream...")
         connection = lnd_connect()
         routerstub = lnrouter.RouterStub(connection)
         all_forwards = {}
@@ -56,7 +58,7 @@ def main():
                     FailedHTLCs(amount=amount, chan_id_in=in_chan_id, chan_id_out=out_chan_id, chan_in_alias=in_chan_alias, chan_out_alias=out_chan_alias, chan_out_liq=out_chan_liq, chan_out_pending=out_chan_pending, wire_failure=wire_failure, failure_detail=failure_detail, missed_fee=missed_fee).save()
                     del all_forwards[key]
     except Exception as e:
-        print('Error while running failed HTLC stream: ' + str(e))
+        print(f"{datetime.now().strftime('%c')} : [HTLC] : Error while running failed HTLC stream: {str(e)}")
         sleep(20)
 
 if __name__ == '__main__':
