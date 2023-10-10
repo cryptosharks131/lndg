@@ -65,8 +65,8 @@ def main(group: Groups, chan_id=''):
         # Balanced Liquidity
         balanced_df = channels_df[(channels_df['out_percent'] > lowliq_limit) & (channels_df['out_percent'] < excess_limit)].copy()
         # IF NO FLOW THEN DECREASE FEE AND IF HIGH FLOW THEN SLOWLY INCREASE FEE
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > row['capacity'] else row['local_fee_rate'], axis=1)
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']-(3*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['local_fee_rate'], axis=1)
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > 1 else row['local_fee_rate'], axis=1)
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']-(3*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['new_rate'], axis=1)
 
         # Excess Liquidity
         excess_df = channels_df[channels_df['out_percent'] >= excess_limit].copy()
@@ -74,7 +74,7 @@ def main(group: Groups, chan_id=''):
         excess_df['revenue_assist_7day'] = excess_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
         # DECREASE IF (assisting channel or stagnant liq)
         excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if row['net_routed_7day'] < 0 and row['revenue_assist_7day'] > (row['revenue_7day']*10) else row['local_fee_rate'], axis=1)
-        excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['local_fee_rate'], axis=1)
+        excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['new_rate'], axis=1)
 
         #Merge back results
         result_df = concat([lowliq_df, balanced_df, excess_df])
