@@ -164,6 +164,7 @@ def update_channels(stub):
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
     PendingHTLCs.objects.all().delete()
+    LNDg = 0
     for channel in channels:
         if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
@@ -190,6 +191,8 @@ def update_channels(stub):
             db_channel.push_amt = channel.push_amount_sat
             db_channel.close_address = channel.close_address
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
+            LNDg = Groups.objects.get(id=0)
+            LNDg.channels.add(db_channel)
         # Update basic channel data
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
@@ -338,9 +341,8 @@ def update_channels(stub):
             db_channel.fees_updated = datetime.now()
             Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
         db_channel.save()
-        LNDg = Groups.objects.get(id=0)
-        LNDg.channels.add(db_channel)
-        LNDg.save()
+        if LNDg: 
+            LNDg.save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()
