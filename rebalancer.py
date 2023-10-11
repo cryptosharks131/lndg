@@ -348,16 +348,16 @@ def main():
         shutdown_rebalancer = False
         scheduled_rebalances = []
         active_rebalances = []
-    if Rebalancer.objects.filter(status=1).exists():
-        unknown_errors = Rebalancer.objects.filter(status=1)
-        for unknown_error in unknown_errors:
-            unknown_error.status = 400
-            unknown_error.stop = datetime.now()
-            unknown_error.save()
-    worker_count = int(Settings.objects.filter(key='AR-Workers', group_id=0)[0].value)
-    asyncio.run(start_queue(worker_count))
-    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
-    sleep(20)
+        if Rebalancer.objects.filter(status=1).exists():
+            unknown_errors = Rebalancer.objects.filter(status=1)
+            for unknown_error in unknown_errors:
+                unknown_error.status = 400
+                unknown_error.stop = datetime.now()
+                unknown_error.save()
+        worker_count = int(Settings.objects.filter(key='AR-Workers', group_id=0)[0].value)
+        asyncio.run(start_queue(worker_count))
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
+        sleep(20)
 
 if __name__ == '__main__':
     main()
