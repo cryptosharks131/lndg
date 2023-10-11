@@ -194,9 +194,9 @@ def update_channels(stub):
             db_channel.ar_out_target = 75
             db_channel.ar_in_target = 100
             db_channel.ar_amt_target = 5
+            db_channel.is_active = False
             db_channel.ar_max_cost = 65 #end default settings
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
-            db_channel.is_active = pending_channel == None
         # Update basic channel data
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
