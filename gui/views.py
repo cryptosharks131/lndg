@@ -674,8 +674,8 @@ def channel(request):
             else:
                 node_outbound = channels_df['local_balance'].sum()
                 node_capacity = channels_df['capacity'].sum()
-            group = Groups.objects.filter(channels=chan_id,settings__key__contains="AF")[0]
-            channel = group.channels.filter(chan_id=chan_id)
+            group = Groups.objects.filter(channels=chan_id,settings__key__contains="AF")[0] if Groups.objects.filter(channels=chan_id,settings__key__contains="AF").exists() else Groups.objects.filter(id=0)[0]
+            channel = Channels.objects.filter(chan_id=chan_id)
             channels_df = DataFrame.from_records(channel.values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
             failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(Q(chan_id_in=chan_id) | Q(chan_id_out=chan_id)).order_by('-id').values())

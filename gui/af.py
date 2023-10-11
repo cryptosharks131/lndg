@@ -9,7 +9,7 @@ from gui.models import Forwards, Channels, Groups, Settings, FailedHTLCs
 
 def main(group: Groups, chan_id=''):
     if len(chan_id) > 0:
-        channels_df = DataFrame.from_records(group.channels.filter(chan_id=chan_id).values())
+        channels_df = DataFrame.from_records(group.channels.filter(chan_id=chan_id).values() if group.channels.filter(chan_id=chan_id).exists() else Channels.objects.filter(chan_id=chan_id).values())
     else:
         channels_df = DataFrame.from_records(group.channels.filter(is_open=True, private=False).values())
         
@@ -88,4 +88,6 @@ def main(group: Groups, chan_id=''):
 
 
 if __name__ == '__main__':
-    print(main(Channels.objects.filter(is_open=True)))
+    for g in Groups.objects.prefetch_related('channels').all():
+        print(f"{datetime.now().strftime('%c')} : [AF] : Running on group: {g.name}")
+        main(g)
