@@ -165,7 +165,7 @@ def update_channels(stub):
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
     PendingHTLCs.objects.all().delete()
-    LNDg = 0
+    LNDg = Groups.objects.get(id=0)
     for channel in channels:
         if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
@@ -181,7 +181,6 @@ def update_channels(stub):
             txid, index = channel_point.split(':')
             db_channel = Channels()
             db_channel.remote_pubkey = channel.remote_pubkey
-            db_channel.chan_id = channel.chan_id
             db_channel.short_chan_id = str(channel.chan_id >> 40) + 'x' + str(channel.chan_id >> 16 & 0xFFFFFF) + 'x' + str(channel.chan_id & 0xFFFF)
             db_channel.initiator = channel.initiator
             db_channel.alias = alias
@@ -191,9 +190,13 @@ def update_channels(stub):
             db_channel.private = channel.private
             db_channel.push_amt = channel.push_amount_sat
             db_channel.close_address = channel.close_address
+            db_channel.auto_fees = 0 #init default settings
+            db_channel.ar_out_target = 75
+            db_channel.ar_in_target = 100
+            db_channel.ar_amt_target = 5
+            db_channel.ar_max_cost = 65 #end default settings
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
-            LNDg = Groups.objects.get(id=0)
-            LNDg.channels.add(db_channel)
+            db_channel.is_active = pending_channel == None
         # Update basic channel data
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
@@ -341,9 +344,13 @@ def update_channels(stub):
             #External Fee change detected, update auto fee log
             db_channel.fees_updated = datetime.now()
             Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Ext"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
-        db_channel.save()
-        if LNDg: 
+        if not db_channel.chan_id:
+            db_channel.chan_id = channel.chan_id
+            db_channel.save()
+            LNDg.channels.add(db_channel)
             LNDg.save()
+        else: 
+            db_channel.save()
         counter += 1
         chan_list.append(channel.chan_id)
     records = Channels.objects.filter(is_open=True).count()
