@@ -326,3 +326,12 @@ class HistFailedHTLC(models.Model):
     class Meta:
         app_label = 'gui'
         unique_together = (('date', 'chan_id_in', 'chan_id_out'),)
+
+class TradeSales(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    creation_date = models.DateField(default=timezone.now)
+    expiry = models.DateField(null=True)
+    description = models.CharField(max_length=100)
+    price = models.BigIntegerField()
+    sale_type = models.IntegerField()
+    secret = models.CharField(null=True, max_length=1000)

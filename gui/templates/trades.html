@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Trade Sales{% endblock %}
+{% block content %}
+{% load humanize %}
+<div class="w3-container w3-padding-small">
+  <h2>Create A Trade</h2>
+
+  <form id="createTrade">
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required><br>
+
+    <label for="price">Price:</label>
+    <input type="number" id="price" name="price" required><br>
+
+    <label for="secret">Secret:</label>
+    <textarea id="secret" name="secret" rows="1" required></textarea><br>
+
+    <label for="expiry">Optional Expiration:</label>
+    <input type="datetime-local" id="expiry" name="expiry"><br>
+
+    <input type="submit" value="Submit">
+  </form>
+</div>
+<div id="trade_sales_container" class="w3-container w3-padding-small">
+  <table id="tradeSalesTable" class="w3-table-all w3-centered w3-hoverable">
+    <thead>
+      <tr>
+        <th>Trade ID</th>
+        <th>Created</th>
+        <th>Expiry</th>
+        <th>Description</th>
+        <th>Price</th>
+        <th>Type</th>
+        <th>Secret</th>
+      </tr>
+    </thead>
+    <tbody id="trade_sales"></tbody>
+  </table>
+</div>
+<script>
+  const base_trade_template = {
+    "id": t => ({innerHTML: `${t.id.substring(0,7)}`}),
+    "created": t => ({innerHTML: formatDate(t.creation_date), title: adjustTZ(t.creation_date) }),
+    "expiry": t => ({innerHTML: formatDate(t.expiry), title: adjustTZ(t.expiry) }),
+    "description": t => ({innerHTML: `${t.description}`}),
+    "price": t => ({innerHTML: `${t.price.intcomma()}`}),
+    "type": t => ({innerHTML: `${t.sale_type}`}),
+    "secret": t => ({innerHTML: `${t.secret}`})
+  }
+  document.addEventListener('DOMContentLoaded', async () =>{
+    const tradeSalesTable = byId('tradeSalesTable')
+    const tradeSales_task = GET('trades', {data: {}})
+    let trade_sales = (await tradeSales_task).results
+    if(trade_sales.length == 0){
+      document.getElementById("tradeSalesDiv").innerHTML = `<center><h1>You dont have any trade sales setup yet.</h1></center>`
+      return
+    }
+    build_tradeSales(trade_sales)
+  })
+  document.getElementById("createTrade").addEventListener("submit", function(event) {
+      event.preventDefault()
+      const formData = new FormData(this);
+      const formDataObject = {};
+
+      formData.forEach(function(value, key) {
+        if (value) {
+                formDataObject[key] = value;
+            }
+      });
+      POST('createtrade', {body: formDataObject})
+  });
+
+  async function build_tradeSales(trade_sales){
+    const tableBody = tradeSalesTable.querySelector("tbody")
+    for (ts of trade_sales){
+      tableBody.appendChild(use(base_trade_template).render(ts))
+    }
+  }
+</script>
+{% endblock %}
