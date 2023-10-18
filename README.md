@@ -34,7 +34,7 @@ services:
     command:
       - sh
       - -c
-      - python initialize.py -net 'mainnet' -server '127.0.0.1:10009' -d && supervisord && python manage.py runserver 0.0.0.0:88889
+      - python initialize.py -net 'mainnet' -server '127.0.0.1:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8889
     network_mode: "host"
 ```
 ### Build and Deploy
