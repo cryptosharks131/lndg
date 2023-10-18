@@ -346,8 +346,8 @@ async def start_queue(worker_count=1):
 
 @sync_to_async
 def get_worker_count():
-    if LocalSettings.objects.filter(key='AR-Workers').exists():
-        return int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    if Settings.objects.filter(key='AR-Workers').exists():
+        return int(Settings.objects.filter(key='AR-Workers')[0].value)
     else:
         return 1
 
@@ -363,10 +363,10 @@ async def update_worker_count():
 
 def main():
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer, worker_count
-    if LocalSettings.objects.filter(key='AR-Workers').exists():
-        worker_count = int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    if Settings.objects.filter(key='AR-Workers').exists():
+        worker_count = int(Settings.objects.filter(key='AR-Workers')[0].value)
     else:
-        LocalSettings(key='AR-Workers', value='1').save()
+        Settings(key='AR-Workers', value='1').save()
         worker_count = 1
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
