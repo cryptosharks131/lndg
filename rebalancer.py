@@ -358,7 +358,7 @@ async def async_queue_manager(rebalancer_queue):
 async def async_run_rebalancer(worker, rebalancer_queue):
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     while True:
-        if not rebalancer_queue.empty():
+        if not rebalancer_queue.empty() and not shutdown_rebalancer:
             rebalance = await rebalancer_queue.get()
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} is starting a new request...")
             active_rebalance_id = None
