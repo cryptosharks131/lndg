@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField
-from django.db.models.functions import Round, TruncDay
+from django.db.models.functions import Round, TruncDay, Coalesce
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
 from datetime import datetime, timedelta
@@ -2251,6 +2251,50 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors)
 
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def forwards_summary(request):
+    filter_1day = datetime.now() - timedelta(days=1)
+    filter_7day = datetime.now() - timedelta(days=7)
+    summary_out = Forwards.objects.values(chan_id=F('chan_id_out')).annotate(
+        count_outgoing_1day=Count('id', filter=Q(forward_date__gte=filter_1day)),
+        sum_outgoing_1day=Coalesce(Sum('amt_out_msat', filter=Q(forward_date__gte=filter_1day)), 0),
+        count_outgoing_7day=Count('id', filter=Q(forward_date__gte=filter_7day)),
+        sum_outgoing_7day=Coalesce(Sum('amt_out_msat', filter=Q(forward_date__gte=filter_7day)), 0),
+        sum_fees_1day=Coalesce(Sum('fee', filter=Q(forward_date__gte=filter_1day)), 0.0),
+        sum_fees_7day=Coalesce(Sum('fee', filter=Q(forward_date__gte=filter_7day)), 0.0),
+        count_incoming_1day=Value(0),
+        sum_incoming_1day=Value(0),
+        count_incoming_7day=Value(0),
+        sum_incoming_7day=Value(0)
+    ).filter(
+        Q(count_outgoing_1day__gt=0) |
+        Q(sum_outgoing_1day__gt=0) |
+        Q(count_outgoing_7day__gt=0) |
+        Q(sum_outgoing_7day__gt=0) |
+        Q(sum_fees_1day__gt=0) |
+        Q(sum_fees_7day__gt=0)
+    )
+
+    summary_in = Forwards.objects.values(chan_id=F('chan_id_in')).annotate(
+        count_outgoing_1day=Value(0),
+        sum_outgoing_1day=Value(0),
+        count_outgoing_7day=Value(0),
+        sum_outgoing_7day=Value(0),
+        sum_fees_1day=Value(0),
+        sum_fees_7day=Value(0),
+        count_incoming_1day=Count('id', filter=Q(forward_date__gte=filter_1day)),
+        sum_incoming_1day=Coalesce(Sum('amt_in_msat', filter=Q(forward_date__gte=filter_1day)), 0),
+        count_incoming_7day=Count('id', filter=Q(forward_date__gte=filter_7day)),
+        sum_incoming_7day=Coalesce(Sum('amt_in_msat', filter=Q(forward_date__gte=filter_7day)), 0)
+    ).filter(
+        Q(count_incoming_1day__gt=0) |
+        Q(sum_incoming_1day__gt=0) |
+        Q(count_incoming_7day__gt=0) |
+        Q(sum_incoming_7day__gt=0)
+    )
+
+    return Response({'results': summary_out.union(summary_in)})
 
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)

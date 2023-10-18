@@ -789,10 +789,8 @@
       tableBody.appendChild(use(routed_template).render(f))
     }
   }
-  async function build_routed(forwards7d){
-    let remaining = 20-forwards7d.length, template = use(routed_template), forwards = forwards7d
-    if(remaining > 0)
-      forwards = [...forwards, ...(await GET('forwards', {data: {forward_date__lt: _7days_ago, limit: remaining} })).results]
+  async function build_routed(forwards){
+    let template = use(routed_template)
 
     if(!addTitle('Routed', forwards, `Last <a href="/forwards" target="_blank">Payments Routed</a>`)) return
     const table = byId('routed')
@@ -881,30 +879,29 @@
       table.append(template.render(htlc))
     } 
   }
-  function process_forwards(forwards7d){
+  function process_forwards(forwards){
     let forwards_sum = {}
     let forwards_summary = { o1d: 0, o1dc: 0, o7d: 0, o7dc: 0, earned1d: 0, earned7d: 0 }
-    for(f of forwards7d){
-      chan_out = f.chan_id_out
-      chan_in = f.chan_id_in
-      if(forwards_sum[chan_out] === undefined){ forwards_sum[chan_out]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
-      if(forwards_sum[chan_in] === undefined){ forwards_sum[chan_in]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
-      if(adjustTZ(f.forward_date) >= _1day_ago){
-        forwards_sum[chan_out].o1d += f.amt_out_msat/1000
-        forwards_sum[chan_out].o1dc += 1
-        forwards_sum[chan_in].i1d += f.amt_in_msat/1000
-        forwards_sum[chan_in].i1dc += 1
-        forwards_summary.o1d += f.amt_out_msat/1000
-        forwards_summary.o1dc += 1
-        forwards_summary.earned1d += f.fee
-      }
-      forwards_sum[chan_out].o7d += f.amt_out_msat/1000
-      forwards_sum[chan_out].o7dc += 1
-      forwards_sum[chan_in].i7d += f.amt_in_msat/1000
-      forwards_sum[chan_in].i7dc += 1
-      forwards_summary.o7d += f.amt_out_msat/1000
-      forwards_summary.o7dc += 1
-      forwards_summary.earned7d += f.fee
+    for(f of forwards){
+      chan_id = f.chan_id
+      
+      if(forwards_sum[chan_id] === undefined){ forwards_sum[chan_id]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
+      
+      forwards_sum[chan_id].o1d += f.sum_outgoing_1day/1000
+      forwards_sum[chan_id].o1dc += f.count_outgoing_1day
+      forwards_sum[chan_id].i1d += f.sum_incoming_1day/1000
+      forwards_sum[chan_id].i1dc += f.count_incoming_1day
+      forwards_summary.o1d += f.sum_outgoing_1day/1000
+      forwards_summary.o1dc += f.count_outgoing_1day
+      forwards_summary.earned1d += f.sum_fees_1day
+
+      forwards_sum[chan_id].o7d += f.sum_outgoing_7day/1000
+      forwards_sum[chan_id].o7dc += f.count_outgoing_7day
+      forwards_sum[chan_id].i7d += f.sum_incoming_7day/1000
+      forwards_sum[chan_id].i7dc += f.count_incoming_7day
+      forwards_summary.o7d += f.sum_outgoing_7day/1000
+      forwards_summary.o7dc += f.count_outgoing_7day
+      forwards_summary.earned7d += f.sum_fees_7day
     }
     return [forwards_sum, forwards_summary]
   }
@@ -948,7 +945,8 @@
     buildMainStats(node_info)
     const inv_rev_task = GET('invoices', {data: {state__lt: 2, is_revenue: true, settle_date__gte: _7days_ago}})
     const onchain_task = GET('onchain', {data: {time_stamp__gte: _7days_ago} })
-    const forwards7d_task = GET('forwards', {data: {forward_date__gte: _7days_ago} })
+    const forwardsSummary_task = GET('forwards_summary', {data: {} })
+    const forwardsList_task = GET('forwards', {data: {limit: 20} })
     const payments_task = GET('payments', {data: {creation_date__gte: _7days_ago, status__lt: 3} })
     const closures_task = GET('closures', {data: {close_height__gte: (node_info.block.height - 1008) } })
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
@@ -983,15 +981,15 @@
     byId("updates").innerHTML = updates.intcomma()
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
 
-    let [forwards7d, payments7d] = [(await forwards7d_task).results, (await payments_task).results]
-    let [forwards_sum, forwards_summary] = process_forwards(forwards7d)
+    let [forwardsSummary, payments7d] = [(await forwardsSummary_task).results, (await payments_task).results]
+    let [forwards_sum, forwards_summary] = process_forwards(forwardsSummary)
     let [activeSum, privateSum, inactiveSum] = [build_active(active, forwards_sum), build_private(private), build_inactive(inactive)]
     update_summary(node_info, payments7d, onchain_task, closures_task, activeSum, inactiveSum, privateSum, forwards_summary, inv_rev_task)
     build('Pending Open', pending_open_template, node_info.pending_open||[])
     build('Pending Closed', pending_closed_template, node_info.pending_closed||[])
     build('Waiting For Close', pending_closed_template, node_info.waiting_for_close||[])
     build('Pending Force Closed', pending_fclosed_template, node_info.pending_force_closed||[])
-    build_routed(forwards7d)
+    build_routed((await forwardsList_task).results)
     build_payments(payments7d)
     build_invoices((await invoices_task).results)
     build_failedHTLC((await failedHTLCs_task).results)

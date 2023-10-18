@@ -286,6 +286,8 @@ async def async_queue_manager(rebalancer_queue):
     print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is starting...")
     try:
         while True:
+            if shutdown_rebalancer == True:
+                return
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue currently has {rebalancer_queue.qsize()} items...")
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : There are currently {len(active_rebalances)} tasks in progress...")
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is checking for more work...")
@@ -317,7 +319,7 @@ async def async_queue_manager(rebalancer_queue):
 async def async_run_rebalancer(worker, rebalancer_queue):
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     while True:
-        if not rebalancer_queue.empty():
+        if not rebalancer_queue.empty() and not shutdown_rebalancer:
             rebalance = await rebalancer_queue.get()
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} is starting a new request...")
             active_rebalance_id = None
@@ -342,8 +344,33 @@ async def start_queue(worker_count=1):
     await asyncio.gather(manager, *workers)
     print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Manager and workers have stopped...")
 
+@sync_to_async
+def get_worker_count():
+    if LocalSettings.objects.filter(key='AR-Workers').exists():
+        return int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    else:
+        return 1
+
+async def update_worker_count():
+    global worker_count, shutdown_rebalancer
+    while True:
+        updated_worker_count = await get_worker_count()
+        if updated_worker_count != worker_count:
+            worker_count = updated_worker_count
+            shutdown_rebalancer = True
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : New worker count detected...restarting rebalancer")
+        await asyncio.sleep(20)
+
 def main():
-    global scheduled_rebalances, active_rebalances, shutdown_rebalancer
+    global scheduled_rebalances, active_rebalances, shutdown_rebalancer, worker_count
+    if LocalSettings.objects.filter(key='AR-Workers').exists():
+        worker_count = int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    else:
+        LocalSettings(key='AR-Workers', value='1').save()
+        worker_count = 1
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.create_task(update_worker_count())
     while True:
         shutdown_rebalancer = False
         scheduled_rebalances = []
@@ -355,7 +382,8 @@ def main():
                 unknown_error.stop = datetime.now()
                 unknown_error.save()
         worker_count = int(Settings.objects.filter(key='AR-Workers', group_id=0)[0].value)
-        asyncio.run(start_queue(worker_count))
+        loop.run_until_complete(start_queue(worker_count))
+
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
         sleep(20)
 
