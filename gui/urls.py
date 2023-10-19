@@ -66,6 +66,7 @@ urlpatterns = [
     path('autofees/', views.autofees, name='autofees'),
     path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
+    path('logs/', views.logs, name='logs'),
     path('addresses/', views.addresses, name='addresses'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),

@@ -225,6 +225,19 @@ def advanced(request):
         return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def logs(request):
+    if request.method == 'GET':
+        try:
+            count = request.GET.get('tail', 20)
+            with open("data/lndg-controller.log", "rb") as reader:
+                reader.seek(-(64*int(count)), 2) #read 64*lines_count bytes from the end (each line has ~64 bytes)
+                logs = [line.decode('utf-8') for line in reader.readlines()]
+            return render(request, 'logs.html', {'logs': logs})
+        except Exception as e:
+            return render(request, 'error.html', {'error': str(e)})
+    return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def route(request):
     if request.method == 'GET':
         try:
