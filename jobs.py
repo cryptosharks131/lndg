@@ -192,6 +192,7 @@ def update_channels(stub):
             db_channel.close_address = channel.close_address
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
         # Update basic channel data
+        db_channel.alias = channel.peer_alias
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
