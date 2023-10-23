@@ -229,7 +229,8 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
-            with open("data/lndg-controller.log", "rb") as reader:
+            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            with open(logfile, "rb") as reader:
                 reader.seek(-(64*int(count)), 2) #read 64*lines_count bytes from the end (each line has ~64 bytes)
                 logs = [line.decode('utf-8') for line in reader.readlines()]
             return render(request, 'logs.html', {'logs': logs})
