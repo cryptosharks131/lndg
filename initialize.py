@@ -15,7 +15,7 @@ def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, 
         wnl = ''
     if csrftrusted:
         csrf = """
-CSRF_TRUSTED_ORIGINS = [%s]
+CSRF_TRUSTED_ORIGINS = ['%s']
     """ % (csrftrusted)
     else:
         csrf = ''
