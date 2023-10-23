@@ -5,53 +5,26 @@ from os import environ
 from pandas import DataFrame, concat
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Forwards, Channels, LocalSettings, FailedHTLCs
+from gui.models import Forwards, Channels, Groups, Settings, FailedHTLCs
 
-def main(channels):
-    channels_df = DataFrame.from_records(channels.values())
+def main(group: Groups, chan_id=''):
+    if len(chan_id) > 0:
+        channels_df = DataFrame.from_records(group.channels.filter(chan_id=chan_id).values() if group.channels.filter(chan_id=chan_id).exists() else Channels.objects.filter(chan_id=chan_id).values())
+    else:
+        channels_df = DataFrame.from_records(group.channels.filter(is_open=True, private=False).values())
+        
     filter_1day = datetime.now() - timedelta(days=1)
     filter_7day = datetime.now() - timedelta(days=7)
     if channels_df.shape[0] > 0:
-        if LocalSettings.objects.filter(key='AF-MaxRate').exists():
-            max_rate = int(LocalSettings.objects.filter(key='AF-MaxRate')[0].value)
-        else:
-            LocalSettings(key='AF-MaxRate', value='2500').save()
-            max_rate = 2500
-        if LocalSettings.objects.filter(key='AF-MinRate').exists():
-            min_rate = int(LocalSettings.objects.filter(key='AF-MinRate')[0].value)
-        else:
-            LocalSettings(key='AF-MinRate', value='0').save()
-            min_rate = 0
-        if LocalSettings.objects.filter(key='AF-Increment').exists():
-            increment = int(LocalSettings.objects.filter(key='AF-Increment')[0].value)
-        else:
-            LocalSettings(key='AF-Increment', value='5').save()
-            increment = 5
-        if LocalSettings.objects.filter(key='AF-Multiplier').exists():
-            multiplier = int(LocalSettings.objects.filter(key='AF-Multiplier')[0].value)
-        else:
-            LocalSettings(key='AF-Multiplier', value='5').save()
-            multiplier = 5
-        if LocalSettings.objects.filter(key='AF-FailedHTLCs').exists():
-            failed_htlc_limit = int(LocalSettings.objects.filter(key='AF-FailedHTLCs')[0].value)
-        else:
-            LocalSettings(key='AF-FailedHTLCs', value='25').save()
-            failed_htlc_limit = 25
-        if LocalSettings.objects.filter(key='AF-UpdateHours').exists():
-            update_hours = int(LocalSettings.objects.filter(key='AF-UpdateHours').get().value)
-        else:
-            LocalSettings(key='AF-UpdateHours', value='24').save()
-            update_hours = 24
-        if LocalSettings.objects.filter(key='AF-LowLiqLimit').exists():
-            lowliq_limit = int(LocalSettings.objects.filter(key='AF-LowLiqLimit').get().value)
-        else:
-            LocalSettings(key='AF-LowLiqLimit', value='5').save()
-            lowliq_limit = 5
-        if LocalSettings.objects.filter(key='AF-ExcessLimit').exists():
-            excess_limit = int(LocalSettings.objects.filter(key='AF-ExcessLimit').get().value)
-        else:
-            LocalSettings(key='AF-ExcessLimit', value='95').save()
-            excess_limit = 95
+        max_rate = int(group.settings_set.filter(key='AF-MaxRate')[0].value if group.settings_set.filter(key='AF-MaxRate').exists() else Settings.objects.filter(group_id=0,key='AF-MaxRate')[0].value)
+        min_rate = int(group.settings_set.filter(key='AF-MinRate')[0].value if group.settings_set.filter(key='AF-MinRate').exists() else Settings.objects.filter(group_id=0,key='AF-MinRate')[0].value)
+        increment = int(group.settings_set.filter(key='AF-Increment')[0].value if group.settings_set.filter(key='AF-Increment').exists() else Settings.objects.filter(group_id=0,key='AF-Increment')[0].value)
+        multiplier = int(group.settings_set.filter(key='AF-Multiplier')[0].value if group.settings_set.filter(key='AF-Multiplier').exists() else Settings.objects.filter(group_id=0,key='AF-Multiplier')[0].value)
+        failed_htlc_limit = int(group.settings_set.filter(key='AF-FailedHTLCs')[0].value if group.settings_set.filter(key='AF-FailedHTLCs').exists() else Settings.objects.filter(group_id=0,key='AF-FailedHTLCs')[0].value)
+        update_hours = int(group.settings_set.filter(key='AF-UpdateHours').get().value if group.settings_set.filter(key='AF-UpdateHours').exists() else Settings.objects.filter(group_id=0,key='AF-UpdateHours')[0].value)
+        lowliq_limit = int(group.settings_set.filter(key='AF-LowLiqLimit').get().value if group.settings_set.filter(key='AF-LowLiqLimit').exists() else Settings.objects.filter(group_id=0,key='AF-LowLiqLimit')[0].value)
+        excess_limit = int(group.settings_set.filter(key='AF-ExcessLimit').get().value if group.settings_set.filter(key='AF-ExcessLimit').exists() else Settings.objects.filter(group_id=0,key='AF-ExcessLimit')[0].value)
+
         if lowliq_limit >= excess_limit:
             print('Invalid thresholds detected, using defaults...')
             lowliq_limit = 5
@@ -115,4 +88,6 @@ def main(channels):
 
 
 if __name__ == '__main__':
-    print(main(Channels.objects.filter(is_open=True)))
+    for g in Groups.objects.prefetch_related('channels').all():
+        print(f"{datetime.now().strftime('%c')} : [AF] : Running on group: {g.name}")
+        main(g)

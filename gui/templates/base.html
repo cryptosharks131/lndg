@@ -8,14 +8,19 @@
   <script src="{% static 'helpers.js' %}"></script>
   <script>
     const base_ch_template = {
-      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>${ch.notes.length > 0 ? ` <sup href class="w3-round w3-border-small w3-border-grey" title="${ch.notes}">i</sup>` : ''}`, title: ch.remote_pubkey}),
+      "chan_id": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${(ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias).padEnd('&nbsp', 40)}</a> <a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank"><sup href class="w3-round w3-border-small w3-border-grey" title="Open in {{graph_links}}">↗</sup></a> ${ch.notes.length > 0 ? `<sup href class="w3-round w3-border-small w3-border-grey" title="${ch.notes}">i</sup>` : ''}`, title: ch.remote_pubkey, style: {paddingRight: '0px', minWidth:'150px'} }),
+      "tags": ch => ({ innerHTML: 
+        ch.tags.map(t => `<small style="padding:0px 0px 0px 2px" class="w3-tag w3-transparent w3-text-black w3-round w3-border-small w3-border-grey">${t.name} 
+          <span onclick="Sync.PUT('groups/${t.id}', {body: {channels: ${t.channels.length > 0 ? "['"+t.channels.join("','")+"']" : "[]"}} }, _ => location.reload())" <span class="close btn w3-round w3-border-left w3-border-small w3-border-grey">&times;</span></small>`).join(" ")
+        + (ch.groups.length > 0 ? ` <select class="btn" onchange="addGroup(this)" data-chan_id="${ch.chan_id}" style="max-width:20px;max-height:20px;min-height:20px;font-size:10px"><option disabled selected style="font-size:10px">➕</option>
+          ${ch.groups.map(g => `<option style="font-size:15px" value="${g.id}" data-channels="${g.channels.join(",")}" >${g.name}</option>`)}
+        </select>` : ""), style:{textAlign: 'left', minWidth: ch.tags.length > 0 ? '150px' : '0px', paddingLeft: '0px', paddingRight: '0px'} }),
       "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_outbound}%</small>`}),
       "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
       <div class="progress w3-round w3-grey">
         <span class="value w3-round w3-blue" style="width:${ch.percent_outbound}%"></span>
       </div>`}),
-      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</small>`})
+      "remote_balance": ch => ({innerHTML: `${ch.remote_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_inbound}%</small>` })
     }
     const routed_template = {
       "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
@@ -82,6 +87,17 @@
       "change": p => ({innerHTML: p.event == 'Connection' | p.event == 'Disabled' | p.old_value == null ? '---' : p.old_value != 0 ? (p.new_value-p.old_value)*100/p.old_value+'%' : '0%', style: {backgroundColor: p.event == 'Connection' | p.event == 'Disabled' | p.old_value == null ? '' : p.new_value > p.old_value ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),
       "chan_liq": p => ({innerHTML: '<span class="w3-round w3-border-small w3-border-grey">'+p.out_liq_percent+'%</span> <span class="w3-round w3-border-small w3-border-grey">'+(100-p.out_liq_percent)+'%</span>', title: 'Outbound Liquidity: ' + p.out_liq.intcomma()}),
     }
+    async function addGroup(el){
+      const option = el.options[el.selectedIndex], channels = option.dataset.channels.split(',').filter(Boolean)
+      channels.push(el.dataset.chan_id)
+      const resp = await PUT(`groups/${option.value}`, {body:{channels} })
+      if(resp.status == 403 && resp.message.length>0){
+        showBannerMsg(resp.message, "", generic=true)
+        el.selectedIndex = 0
+        return
+      }
+      location.reload()
+    }
   </script>
   <script src="{% static 'qrcode.js' %}"></script>
   <head>
@@ -98,7 +114,7 @@
         {% for message in messages %}
         <div class="w3-panel w3-orange w3-display-container w3-padding">
           <span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span>
-          <h1 style="word-wrap:break-word">{{ message.message }}</h1>
+          <h1 style="word-wrap:break-word">{{ message.message |safe }}</h1>
           {% with sliced_msg=message.message|slice:":17" %}
             {% if sliced_msg == "Deposit Address: " or sliced_msg == "Invoice created! " %}
               {% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}

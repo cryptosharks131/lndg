@@ -9,20 +9,19 @@
         <tr>
           <th title="Select outgoing channels for a manual rebalance request"><input onclick="[...document.getElementsByClassName('chan_id')].forEach(el => {el.checked = this.checked; el.onclick()} )" class="w3-check" type="checkbox"/></th>
           <th title="Public Key">PK</th>
-          <th onclick="sortTable(this, 2, 'String')">Channel ID</th>
-          <th onclick="sortTable(this, 3, 'String', 0, 'a')">Peer Alias</th>
+          <th colspan="2" onclick="sortTable(this, 2, 'String', 0, 'a')">Peer</th>
           <th onclick="sortTable(this, 4, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(this, 5, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(this, 6, 'int')">Inbound Liquidity</th>
           <th>Rebalance</th>
-          <th onclick="sortTable(this, 8, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
+          <th onclick="sortTable(this, 7, '%')" title="This ratio must be below the channel's Max Cost %.">Fee Ratio</th>
           <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
           <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost</th>
           <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">Out Target</th>
           <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">In Target</th>
           <th><a href="/rebalancing?is_open=true&private=false&is_active=true&auto_rebalance=true">AR</a></th>
           <th title="The rate of successful rebalances on this channel.">7-Day Rate</th>
-          <th onclick="sortTable(this, 15, 'String')">Active</th>
+          <th onclick="sortTable(this, 14, 'String')">Active</th>
         </tr>
       </thead>
       <tbody id="rebalancingTable">
@@ -153,9 +152,21 @@
       return
     }
 
+    const groups = (await GET('groups', {data: {} })).results
     let [enabled, elegible, available, rebal_table] = [0,0,0,byId("rebalancingTable")]
     resp.results.forEach(ch => {
       extend(ch)
+      ch.tags = []
+      ch.groups = []
+      for (group of groups){
+        if(group.id > 0 && !group.channels.includes(ch.chan_id)) { //assignable groups
+          ch.groups.push(group)
+          continue
+        }
+        channels = group.channels.filter(c => c !== ch.chan_id)
+        if (group.id === 0) continue
+        ch.tags.push({id:group.id, name:group.name, channels:channels})
+      }
       elegible += ch.elegible
       available += ch.available
       enabled += ch.auto_rebalance
@@ -182,5 +193,5 @@
   }
 </script>
 {% include 'rebalances_table.html' with count=20 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
-{% include 'local_settings.html' with settings=local_settings title='Auto-Rebalancer' %}
+{% include 'settings.html' with configs="'AR-'" title='Auto-Rebalancer' %}
 {% endblock %}

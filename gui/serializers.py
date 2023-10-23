@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, Autofees
+from .models import Settings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, Groups, Autofees
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -88,6 +88,14 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
     def get_opened_in(self, obj):
         return int(obj.short_chan_id.split('x')[0])
 
+class GroupsSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    name = serializers.ReadOnlyField(required=False)
+    channels = serializers.PrimaryKeyRelatedField(many=True,queryset=Channels.objects.all(),default=[])
+    class Meta:
+        model = Groups
+        exclude = []
+
 class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
     requested = serializers.ReadOnlyField()
@@ -172,10 +180,10 @@ class PaymentHopsSerializer(serializers.HyperlinkedModelSerializer):
         model = PaymentHops
         exclude = []
 
-class LocalSettingsSerializer(serializers.HyperlinkedModelSerializer):
+class SettingsSerializer(serializers.HyperlinkedModelSerializer):
     key = serializers.ReadOnlyField()
     class Meta:
-        model = LocalSettings
+        model = Settings
         exclude = []
 
 class PendingHTLCSerializer(serializers.HyperlinkedModelSerializer):

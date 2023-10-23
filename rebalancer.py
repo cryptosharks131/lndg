@@ -13,7 +13,7 @@ from typing import List
 
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Rebalancer, Channels, LocalSettings, Forwards, Autopilot
+from gui.models import Groups, Rebalancer, Channels, Settings, Forwards, Autopilot
 
 @sync_to_async
 def get_out_cans(rebalance, auto_rebalance_channels):
@@ -184,73 +184,42 @@ def auto_schedule() -> List[Rebalancer]:
     try:
         #No rebalancer jobs have been scheduled, lets look for any channels with an auto_rebalance flag and make the best request if we find one
         to_schedule = []
-        if LocalSettings.objects.filter(key='AR-Enabled').exists():
-            enabled = int(LocalSettings.objects.filter(key='AR-Enabled')[0].value)
-        else:
-            LocalSettings(key='AR-Enabled', value='0').save()
-            enabled = 0
-        if enabled == 0:
-            return []
+        groups = Groups.objects.filter(settings__key='AR-Enabled', settings__value='1').all()
+        channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
+        outbound_cans = list(channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
         
-        auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
-        if len(auto_rebalance_channels) == 0:
-            return []
-        
-        if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
-            LocalSettings(key='AR-Outbound%', value='75').save()
-        if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
-            LocalSettings(key='AR-Inbound%', value='100').save()
-        outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
-        already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
-        inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
-        if len(inbound_cans) == 0 or len(outbound_cans) == 0:
-            return []
-        
-        if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
-            max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
-        else:
-            LocalSettings(key='AR-MaxFeeRate', value='100').save()
-            max_fee_rate = 100
-        if LocalSettings.objects.filter(key='AR-Variance').exists():
-            variance = int(LocalSettings.objects.filter(key='AR-Variance')[0].value)
-        else:
-            LocalSettings(key='AR-Variance', value='0').save()
-            variance = 0
-        if LocalSettings.objects.filter(key='AR-WaitPeriod').exists():
-            wait_period = int(LocalSettings.objects.filter(key='AR-WaitPeriod')[0].value)
-        else:
-            LocalSettings(key='AR-WaitPeriod', value='30').save()
-            wait_period = 30
-        if not LocalSettings.objects.filter(key='AR-Target%').exists():
-            LocalSettings(key='AR-Target%', value='5').save()
-        if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
-            LocalSettings(key='AR-MaxCost%', value='65').save()
-        for target in inbound_cans:
-            target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
-            if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
-                target_value = int(target.ar_amt_target+(target.ar_amt_target*((secrets.choice(range(-1000,1001))/1000)*variance/100)))
-                target_fee = round(target_fee_rate*target_value*0.000001, 3) if target_fee_rate <= max_fee_rate else round(max_fee_rate*target_value*0.000001, 3)
-                if target_fee == 0:
-                    continue
+        for group in groups:
+            already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
+            inbound_cans = channels.filter(groups_set__id=group.id,auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
+            if len(inbound_cans) == 0 or len(outbound_cans) == 0:
+                continue
             
-                if LocalSettings.objects.filter(key='AR-Time').exists():
-                    target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
-                else:
-                    LocalSettings(key='AR-Time', value='5').save()
-                    target_time = 5
-                # TLDR: willing to pay 1 sat for every value_per_fee sats moved
-                if Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).exists():
-                    last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
-                    if not (last_rebalance.status == 2 or (last_rebalance.status > 2 and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > wait_period)) or (last_rebalance.status == 1 and ((int((datetime.now() - last_rebalance.start).total_seconds() / 60) - last_rebalance.duration) > wait_period))):
+            max_fee_rate = int(group.settings_set.filter(key='AR-MaxFeeRate')[0].value if group.settings_set.filter(key='AR-MaxFeeRate').exists() else Settings.objects.filter(group_id=0,key='AR-MaxFeeRate')[0].value)
+            variance = int(group.settings_set.filter(key='AR-Variance')[0].value if group.settings_set.filter(key='AR-Variance').exists() else Settings.objects.filter(group_id=0,key='AR-Variance')[0].value)
+            wait_period = int(group.settings_set.filter(key='AR-WaitPeriod')[0].value if group.settings_set.filter(key='AR-WaitPeriod').exists() else Settings.objects.filter(group_id=0,key='AR-WaitPeriod')[0].value)
+            
+            for target in inbound_cans:
+                target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
+                if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
+                    target_value = int(target.ar_amt_target+(target.ar_amt_target*((secrets.choice(range(-1000,1001))/1000)*variance/100)))
+                    target_fee = round(target_fee_rate*target_value*0.000001, 3) if target_fee_rate <= max_fee_rate else round(max_fee_rate*target_value*0.000001, 3)
+                    if target_fee == 0:
                         continue
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Creating Auto Rebalance Request for: {target.chan_id}")
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Request routing through: {outbound_cans}")
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {target_value} / {target.ar_amt_target}")
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {target_fee}")
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {target_time}")
-                new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
-                new_rebalance.save()
-                to_schedule.append(new_rebalance)
+                
+                    target_time = int(group.settings_set.filter(key='AR-Time')[0].value if group.settings_set.filter(key='AR-Time').exists() else Settings.objects.filter(key='AR-Time')[0].value)
+                    # TLDR: willing to pay 1 sat for every value_per_fee sats moved
+                    if Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).exists():
+                        last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
+                        if not (last_rebalance.status == 2 or (last_rebalance.status > 2 and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > wait_period)) or (last_rebalance.status == 1 and ((int((datetime.now() - last_rebalance.start).total_seconds() / 60) - last_rebalance.duration) > wait_period))):
+                            continue
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Creating Auto Rebalance Request for: {target.chan_id}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Request routing through: {outbound_cans}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {target_value} / {target.ar_amt_target}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {target_fee}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {target_time}")
+                    new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
+                    new_rebalance.save()
+                    to_schedule.append(new_rebalance)
         return to_schedule
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error scheduling rebalances: {str(e)}")
@@ -259,18 +228,10 @@ def auto_schedule() -> List[Rebalancer]:
 @sync_to_async
 def auto_enable():
     try:
-        if LocalSettings.objects.filter(key='AR-Autopilot').exists():
-            enabled = int(LocalSettings.objects.filter(key='AR-Autopilot')[0].value)
-        else:
-            LocalSettings(key='AR-Autopilot', value='0').save()
-            enabled = 0
-        if LocalSettings.objects.filter(key='AR-APDays').exists():
-            apdays = int(LocalSettings.objects.filter(key='AR-APDays')[0].value)
-        else:
-            LocalSettings(key='AR-APDays', value='7').save()
-            apdays = 7
-        if enabled == 1:
-            lookup_channels=Channels.objects.filter(is_active=True, is_open=True, private=False)
+        groups = Groups.objects.filter(settings__key='AR-Autopilot',settings__value='1').all()
+        for group in groups:
+            apdays = int(group.settings_set.filter(key='AR-APDays')[0].value if group.settings_set.filter(key='AR-APDays').exists() else Settings.objects.filter(group_id=0, key='AR-APDays')[0].value)
+            lookup_channels= group.channels.filter(is_active=True, is_open=True, private=False)
             channels = lookup_channels.values('remote_pubkey').annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity')).annotate(inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity')).order_by()
             filter_day = datetime.now() - timedelta(days=apdays)
             forwards = Forwards.objects.filter(forward_date__gte=filter_day)
@@ -283,7 +244,7 @@ def auto_enable():
                 iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in__in=chan_list).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
                 oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out__in=chan_list).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
                 for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
-                    #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
+                #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
                     if peer_channel.ar_out_target == 100 and peer_channel.auto_rebalance == True:
                         #Special Case for LOOP, Wos, etc. Always Auto Rebalance if enabled to keep outbound full.
                         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Skipping AR enabled and 100% oTarget channel... {peer_channel.alias=} {peer_channel.chan_id=}")
@@ -385,8 +346,8 @@ async def start_queue(worker_count=1):
 
 @sync_to_async
 def get_worker_count():
-    if LocalSettings.objects.filter(key='AR-Workers').exists():
-        return int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    if Settings.objects.filter(key='AR-Workers').exists():
+        return int(Settings.objects.filter(key='AR-Workers')[0].value)
     else:
         return 1
 
@@ -402,10 +363,10 @@ async def update_worker_count():
 
 def main():
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer, worker_count
-    if LocalSettings.objects.filter(key='AR-Workers').exists():
-        worker_count = int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    if Settings.objects.filter(key='AR-Workers').exists():
+        worker_count = int(Settings.objects.filter(key='AR-Workers')[0].value)
     else:
-        LocalSettings(key='AR-Workers', value='1').save()
+        Settings(key='AR-Workers', value='1').save()
         worker_count = 1
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -420,7 +381,9 @@ def main():
                 unknown_error.status = 400
                 unknown_error.stop = datetime.now()
                 unknown_error.save()
+        worker_count = int(Settings.objects.filter(key='AR-Workers', group_id=0)[0].value)
         loop.run_until_complete(start_queue(worker_count))
+
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
         sleep(20)
 

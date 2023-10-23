@@ -14,10 +14,11 @@ router.register(r'resolutions', views.ResolutionsViewSet)
 router.register(r'peers', views.PeersViewSet)
 router.register(r'channels', views.ChannelsViewSet)
 router.register(r'rebalancer', views.RebalancerViewSet)
-router.register(r'settings', views.LocalSettingsViewSet)
+router.register(r'settings', views.SettingsViewSet)
 router.register(r'pendinghtlcs', views.PendingHTLCViewSet)
 router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 router.register(r'peerevents', views.PeerEventsViewSet)
+router.register(r'groups', views.GroupsViewSet)
 router.register(r'feelog', views.FeeLogViewSet)
 
 urlpatterns = [
@@ -69,6 +70,7 @@ urlpatterns = [
     path('advanced/', views.advanced, name='advanced'),
     path('logs/', views.logs, name='logs'),
     path('addresses/', views.addresses, name='addresses'),
+    path('new_group/', views.new_group, name='new-group'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
@@ -89,5 +91,6 @@ urlpatterns = [
     path('api/node_info/', views.node_info, name='node-info'),
     path('api/forwards_summary/', views.forwards_summary, name='forwards-summary'),
     path('api/sign_message/', views.sign_message, name='sign-message'),
+    path('api/get_settings/', views.get_settings, name='get-group-settings'),
     path('lndg-admin/', admin.site.urls),
 ]

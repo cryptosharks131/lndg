@@ -209,13 +209,10 @@
     </table>
   </div>
 </div>
-{% endif %}
-{% if not channels %}
+{% else %}
 <div class="w3-container w3-padding-small">
   <center><h1>You dont have any channels to setup yet!</h1></center>
 </div>
 {% endif %}
-{% if local_settings %}
-{% include 'local_settings.html' with settings=local_settings title='Update Local' %}
-{% endif %}
+{% include 'settings.html' with configs="'AR-,AF-,GUI-,LND-'" title='Update' %}
 {% endblock %}

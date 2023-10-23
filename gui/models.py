@@ -110,43 +110,12 @@ class Channels(models.Model):
     auto_fees = models.BooleanField()
     notes = models.TextField(default='', blank=True)
 
-    def save(self, *args, **kwargs):
-        if self.auto_fees is None:
-            if LocalSettings.objects.filter(key='AF-Enabled').exists():
-                enabled = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value)
-            else:
-                LocalSettings(key='AF-Enabled', value='0').save()
-                enabled = 0
-            self.auto_fees = False if enabled == 0 else True
-        if not self.ar_out_target:
-            if LocalSettings.objects.filter(key='AR-Outbound%').exists():
-                outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value)
-            else:
-                LocalSettings(key='AR-Outbound%', value='75').save()
-                outbound_setting = 75
-            self.ar_out_target = outbound_setting
-        if not self.ar_in_target:
-            if LocalSettings.objects.filter(key='AR-Inbound%').exists():
-                inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
-            else:
-                LocalSettings(key='AR-Inbound%', value='100').save()
-                inbound_setting = 100
-            self.ar_in_target = inbound_setting
-        if not self.ar_amt_target:
-            if LocalSettings.objects.filter(key='AR-Target%').exists():
-                amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
-            else:
-                LocalSettings(key='AR-Target%', value='5').save()
-                amt_setting = 5
-            self.ar_amt_target = int((amt_setting/100) * self.capacity)
-        if not self.ar_max_cost:
-            if LocalSettings.objects.filter(key='AR-MaxCost%').exists():
-                cost_setting = int(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value)
-            else:
-                LocalSettings(key='AR-MaxCost%', value='65').save()
-                cost_setting = 65
-            self.ar_max_cost = cost_setting
-        super(Channels, self).save(*args, **kwargs)
+    class Meta:
+        app_label = 'gui'
+
+class Groups(models.Model):
+    name = models.CharField(max_length=20, unique=True)
+    channels = models.ManyToManyField(Channels, related_name="groups_set",)
 
     class Meta:
         app_label = 'gui'
@@ -181,9 +150,10 @@ class Rebalancer(models.Model):
     class Meta:
         app_label = 'gui'
 
-class LocalSettings(models.Model):
-    key = models.CharField(primary_key=True, default=None, max_length=20)
+class Settings(models.Model):
+    key = models.CharField(max_length=20,default=None)
     value = models.CharField(default=None, max_length=50)
+    group = models.ForeignKey(Groups, on_delete=models.CASCADE)
     class Meta:
         app_label = 'gui'
 

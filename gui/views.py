@@ -9,9 +9,9 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer, SignMessageSerializer, FeeLogSerializer
+from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, SettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Settings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, Groups
+from .serializers import ConnectPeerSerializer, FailedHTLCSerializer, SettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer, SignMessageSerializer, GroupsSerializer, FeeLogSerializer
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -23,24 +23,16 @@ from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
-from pandas import DataFrame, merge
+from pandas import DataFrame, merge, concat
 from requests import get
 from . import af
 
 def graph_links():
-    if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
-        graph_links = str(LocalSettings.objects.filter(key='GUI-GraphLinks')[0].value)
-    else:
-        LocalSettings(key='GUI-GraphLinks', value='https://amboss.space').save()
-        graph_links = 'https://amboss.space'
+    graph_links = str(Settings.objects.filter(key='GUI-GraphLinks',group_id=0)[0].value)
     return graph_links
 
 def network_links():
-    if LocalSettings.objects.filter(key='GUI-NetLinks').exists():
-        network_links = str(LocalSettings.objects.filter(key='GUI-NetLinks')[0].value)
-    else:
-        LocalSettings(key='GUI-NetLinks', value='https://mempool.space').save()
-        network_links = 'https://mempool.space'
+    network_links = str(Settings.objects.filter(key='GUI-NetLinks',group_id=0)[0].value)
     return network_links
 
 def get_tx_fees(txid):
@@ -83,7 +75,6 @@ def home(request):
         return render(request, 'error.html', {'error': error})
     return render(request, 'home.html', {
         'node_info': {'color': node_info.color, 'alias': node_info.alias, 'version': node_info.version, 'identity_pubkey': node_info.identity_pubkey, 'uris': node_info.uris},
-        'local_settings': get_local_settings('AR-'),
         'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
         'graph_links': graph_links(),
         'network_links': network_links(),
@@ -187,11 +178,10 @@ def channels(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def fees(request):
     if request.method == 'GET':
-        channels = Channels.objects.filter(is_open=True, private=False)
-        results_df = af.main(channels)
+        results_df = concat([af.main(g) for g in Groups.objects.prefetch_related('channels').all()])
+        results_df = results_df.groupby(['remote_pubkey','chan_id', 'short_chan_id']).agg(lambda x: (x.values.sum()/x.size).astype(int) if x.dtype in ['int64','float64'] else x.values.any()).reset_index()
         context = {
             'channels': [] if results_df.empty else results_df.sort_values(by=['out_percent']).to_dict(orient='records'),
-            'local_settings': get_local_settings('AF-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -215,7 +205,6 @@ def advanced(request):
             channels_df['local_max_htlc'] = channels_df['local_max_htlc_msat']/1000
         context = {
             'channels': channels_df.to_dict(orient='records'),
-            'local_settings': get_local_settings('AF-', 'AR-', 'GUI-', 'LND-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links(),
             'network_links': network_links()
@@ -705,6 +694,7 @@ def channel(request):
             else:
                 node_outbound = channels_df['local_balance'].sum()
                 node_capacity = channels_df['capacity'].sum()
+            group = Groups.objects.filter(channels=chan_id,settings__key__contains="AF")[0] if Groups.objects.filter(channels=chan_id,settings__key__contains="AF").exists() else Groups.objects.filter(id=0)[0]
             channel = Channels.objects.filter(chan_id=chan_id)
             channels_df = DataFrame.from_records(channel.values())
             rebalancer_df = DataFrame.from_records(Rebalancer.objects.filter(last_hop_pubkey=channels_df['remote_pubkey'][0]).annotate(ppm=Round((Sum('fee_limit')*1000000)/Sum('value'), output_field=IntegerField())).order_by('-id').values())
@@ -1001,7 +991,7 @@ def channel(request):
             autofees_df = DataFrame.from_records(Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_30day).order_by('-id').values())
             if autofees_df.shape[0]> 0:
                 autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
-            results_df = af.main(channel)
+            results_df = af.main(group, chan_id)
             channels_df['new_rate'] = results_df[results_df['chan_id']==chan_id]['new_rate']
             channels_df['adjustment'] = results_df[results_df['chan_id']==chan_id]['adjustment']
             channels_df['net_routed_7day'] = results_df[results_df['chan_id']==chan_id]['net_routed_7day']
@@ -1363,7 +1353,6 @@ def forwards(request):
 def rebalancing(request):
     if request.method == 'GET':
         context = {
-            'local_settings': get_local_settings('AR-'),
             'network': 'testnet/' if settings.LND_NETWORK == 'testnet' else '',
             'graph_links': graph_links()
         }
@@ -1608,112 +1597,146 @@ def rebalance(request):
             messages.error(request, 'Invalid Request. Please try again.')
     return redirect(request.META.get('HTTP_REFERER'))
 
-def get_local_settings(*prefixes):
-    form = []
-    if 'AR-' in prefixes:
-        form.append({'unit': '', 'form_id': 'update_channels', 'id': 'update_channels'})
-        form.append({'unit': '', 'form_id': 'enabled', 'value': 0, 'label': 'AR Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1},)
-        form.append({'unit': '%', 'form_id': 'target_percent', 'value': 5, 'label': 'AR Target Amount', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
-        form.append({'unit': 'min', 'form_id': 'target_time', 'value': 5, 'label': 'AR Target Time', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
-        form.append({'unit': 'ppm', 'form_id': 'fee_rate', 'value': 100, 'label': 'AR Max Fee Rate', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':1, 'max':5000})
-        form.append({'unit': '%', 'form_id': 'outbound_percent', 'value': 75, 'label': 'AR Target Out Above', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'inbound_percent', 'value': 100, 'label': 'AR Target In Above', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'max_cost', 'value': 65, 'label': 'AR Max Cost', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'variance', 'value': 0, 'label': 'AR Variance', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
-        form.append({'unit': 'min', 'form_id': 'wait_period', 'value': 30, 'label': 'AR Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':10080})
-        form.append({'unit': '', 'form_id': 'autopilot', 'value': 0, 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
-        form.append({'unit': 'days', 'form_id': 'autopilotdays', 'value': 7, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
-        form.append({'unit': '', 'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
-    if 'AF-' in prefixes:
-        form.append({'unit': '', 'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
-        form.append({'unit': 'ppm', 'form_id': 'af_maxRate', 'value': 2500, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum Rate', 'min':0, 'max':5000})
-        form.append({'unit': 'ppm', 'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
-        form.append({'unit': 'ppm', 'form_id': 'af_increment', 'value': 5, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':1, 'max':100})
-        form.append({'unit': 'x', 'form_id': 'af_multiplier', 'value': 5, 'label': 'AF Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':1, 'max':100})
-        form.append({'unit': '', 'form_id': 'af_failedHTLCs', 'value': 25, 'label': 'AF FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':1, 'max':100})
-        form.append({'unit': 'hours', 'form_id': 'af_updateHours', 'value': 24, 'label': 'AF Update', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':1, 'max':100})
-        form.append({'unit': '%', 'form_id': 'af_lowliq', 'value': 15, 'label': 'AF LowLiq', 'id': 'AF-LowLiqLimit', 'title': 'Limit for low liq AF rules. Default 5', 'min':0, 'max':100})
-        form.append({'unit': '%', 'form_id': 'af_excess', 'value': 90, 'label': 'AF Excess', 'id': 'AF-ExcessLimit', 'title': 'Limit for excess liq AF rules. Default 95', 'min':0, 'max':100})
-    if 'GUI-' in prefixes:
-        form.append({'unit': '', 'form_id': 'gui_graphLinks', 'value': 'https://amboss.space', 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
-        form.append({'unit': '', 'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
-    if 'LND-' in prefixes:
-        form.append({'unit': '', 'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments', 'min':0, 'max':1})
-        form.append({'unit': 'days', 'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':1000})
+@api_view(['GET'])
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def get_settings(request):
+    groups = Groups.objects.all()
+    response = []
+    for group in groups:
+        settings = group.settings_set.values("key", "value").order_by('key').all()
+        settings = {i['key']: i['value'] for i in settings}
+        fields = [{'unit': '', 'form_id': 'group_name', 'group_id': group.id, 'name': 'group_name', 'id': 'group_name', 'value': group.name, 'label': 'Group Name', 'title': 'Group Name' }]
+        fields.append({'group_id': group.id, 'unit': '', 'form_id': 'ar_enabled', 'value': settings.get('AR-Enabled'), 'label': 'Enabled', 'id': 'AR-Enabled', 'title':'This enables or disables the auto-scheduling function', 'min':0, 'max':1})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'ar_target_percent', 'value': settings.get('AR-Target%'), 'label': 'Target Amount', 'id': 'AR-Target%', 'title': 'The percentage of the total capacity to target as the rebalance amount', 'min':0.1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': 'min', 'form_id': 'ar_time', 'value': settings.get('AR-Time'), 'label': 'Target Time', 'id': 'AR-Time', 'title': 'The time spent per individual rebalance attempt', 'min':1, 'max':60})
+        fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'ar_maxfeerate', 'value': settings.get('AR-MaxFeeRate'), 'label': 'Max Fee Rate', 'id': 'AR-MaxFeeRate', 'title': 'The max rate we can ever use to refill a channel with outbound', 'min':1, 'max':5000})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'ar_outbound_percent', 'value': settings.get('AR-Outbound%'), 'label': 'Target Out Above', 'id': 'AR-Outbound%', 'title': 'When a channel is not enabled for targeting; the minimum outbound a channel must have to be a source for refilling another channel', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'ar_inbound_percent', 'value': settings.get('AR-Inbound%'), 'label': 'Target In Above', 'id': 'AR-Inbound%', 'title': 'When a channel is enabled for targeting; the maximum inbound a channel can have before selected for auto rebalance', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'ar_maxcost_percent', 'value': settings.get('AR-MaxCost%'), 'label': 'Max Cost', 'id': 'AR-MaxCost%', 'title': 'The ppm to target which is the percentage of the outbound fee rate for the channel being refilled', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'ar_variance', 'value': settings.get('AR-Variance'), 'label': 'Variance', 'id': 'AR-Variance', 'title': 'The percentage of the target amount to be randomly varied with every rebalance attempt', 'min':0, 'max':100})
+        fields.append({'group_id': group.id, 'unit': 'min', 'form_id': 'ar_waitperiod', 'value': settings.get('AR-WaitPeriod'), 'label': 'Wait Period', 'id': 'AR-WaitPeriod', 'title': 'The minutes we should wait after a failed attempt before trying again', 'min':1, 'max':10080})
+        fields.append({'group_id': group.id, 'unit': '', 'form_id': 'ar_autopilot', 'value': settings.get('AR-Autopilot'), 'label': 'Autopilot', 'id': 'AR-Autopilot', 'title': 'This enables or disables the Autopilot function which automatically acts upon suggestions on this page: /actions', 'min':0, 'max':1})
+        fields.append({'group_id': group.id, 'unit': 'days', 'form_id': 'ar_apdays', 'value': settings.get('AR-APDays'), 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot. Default 7', 'min':0, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '', 'form_id': 'ar_update_channels', 'value': 0, 'label': 'Update Channels', 'id': 'AR-update_channels', 'title': 'Also updates current (AR-Target%, AR-Outbound% , AR-Inbound%, AR-MaxCost%) for all channels in this group.'})
+        fields.append({'group_id': 0, 'unit': '', 'form_id': 'ar_workers', 'value': settings.get('AR-Workers'), 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of workers', 'min':1, 'max':12})
+        fields.append({'group_id': group.id, 'unit': '', 'form_id': 'af_enabled', 'value': settings.get('AF-Enabled'), 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
+        fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'af_maxrate', 'value': settings.get('AF-MaxRate'), 'label': 'Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum Rate', 'min':0, 'max':5000})
+        fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'af_minrate', 'value': settings.get('AF-MinRate'), 'label': 'Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate', 'min':0, 'max':5000})
+        fields.append({'group_id': group.id, 'unit': 'ppm', 'form_id': 'af_increment', 'value': settings.get('AF-Increment'), 'label': 'Increment', 'id': 'AF-Increment', 'title': 'Amount to increment on each interaction', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': 'x', 'form_id': 'af_multiplier', 'value': settings.get('AF-Multiplier'), 'label': 'Multiplier', 'id': 'AF-Multiplier', 'title': 'Multiplier to be applied to Auto-Fee', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '', 'form_id': 'af_failedhtlcs', 'value': settings.get('AF-FailedHTLCs'), 'label': 'FailedHTLCs', 'id': 'AF-FailedHTLCs', 'title': 'Failed HTLCs', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': 'hours', 'form_id': 'af_updatehours', 'value': settings.get('AF-UpdateHours'), 'label': 'Update', 'id': 'AF-UpdateHours', 'title': 'Number of hours to consider to update fees. Default 24', 'min':1, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'af_lowliqlimit', 'value': settings.get('AF-LowLiqLimit'), 'label': 'LowLiq', 'id': 'AF-LowLiqLimit', 'title': 'Limit for low liq AF rules. Default 5', 'min':0, 'max':100})
+        fields.append({'group_id': group.id, 'unit': '%', 'form_id': 'af_excesslimit', 'value': settings.get('AF-ExcessLimit'), 'label': 'Excess', 'id': 'AF-ExcessLimit', 'title': 'Limit for excess liq AF rules. Default 95', 'min':0, 'max':100})
+        fields.append({'group_id': 0, 'unit': '', 'form_id': 'gui_graphlinks', 'value': settings.get('GUI-GraphLinks'), 'label': 'Graph URL', 'id': 'GUI-GraphLinks', 'title': 'Preferred Graph URL'})
+        fields.append({'group_id': 0, 'unit': '', 'form_id': 'gui_netlinks', 'value': settings.get('GUI-NetLinks'), 'label': 'NET URL', 'id': 'GUI-NetLinks', 'title': 'Preferred NET URL'})
+        fields.append({'group_id': 0, 'unit': '', 'form_id': 'lnd_cleanpayments', 'value': settings.get('LND-CleanPayments'), 'label': 'Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments', 'min':0, 'max':1})
+        fields.append({'group_id': 0, 'unit': 'days', 'form_id': 'lnd_retentiondays', 'value': settings.get('LND-RetentionDays'), 'label': 'Retention', 'id': 'LND-RetentionDays', 'title': 'LND Retention days', 'min':1, 'max':1000})
 
-    for prefix in prefixes:
-        ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
-        for field in form:
-            for sett in ar_settings:
-                if field['id'] == sett['key']:
-                    field['value'] = sett['value']
-                    break
-    return form
+        response.append(fields)
+    return Response({'groups': response})
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def new_group(request):
+    if request.method == 'POST':
+        try:
+            next = Groups.objects.order_by('-id')[0].id + 1
+            name = request.POST.get('name', "group_"+ str(next))
+            Groups(name=name).save()
+        except Exception as e:
+            messages.error(request, "ERROR: "+str(e))
+    return redirect(request.META.get('HTTP_REFERER'))
+        
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_settings(request):
     if request.method == 'POST':
-        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
-                    {'form_id': 'target_percent', 'value': 5, 'parse': lambda x: float(x),'id': 'AR-Target%'},
-                    {'form_id': 'target_time', 'value': 5, 'parse': lambda x: x,'id': 'AR-Time'},
-                    {'form_id': 'fee_rate', 'value': 100, 'parse': lambda x: x,'id': 'AR-MaxFeeRate'},
-                    {'form_id': 'outbound_percent', 'value': 75, 'parse': lambda x: int(x),'id': 'AR-Outbound%'},
-                    {'form_id': 'inbound_percent', 'value': 100, 'parse': lambda x: int(x),'id': 'AR-Inbound%'},
-                    {'form_id': 'max_cost', 'value': 65, 'parse': lambda x: int(x),'id': 'AR-MaxCost%'},
-                    {'form_id': 'variance', 'value': 0, 'parse': lambda x: x,'id': 'AR-Variance'},
-                    {'form_id': 'wait_period', 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
-                    {'form_id': 'autopilot', 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
-                    {'form_id': 'autopilotdays', 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'},
-                    {'form_id': 'workers', 'value': 1, 'parse': lambda x: x,'id': 'AR-Workers'},
+        template = [{'form_id': 'ar_enabled', 'value': 0, 'id': 'AR-Enabled'}, 
+                    {'form_id': 'ar_target_percent', 'value': 5, 'id': 'AR-Target%'},
+                    {'form_id': 'ar_time', 'value': 5, 'id': 'AR-Time'},
+                    {'form_id': 'ar_maxfeerate', 'value': 100, 'id': 'AR-MaxFeeRate'},
+                    {'form_id': 'ar_outbound_percent', 'value': 75, 'id': 'AR-Outbound%'},
+                    {'form_id': 'ar_inbound_percent', 'value': 100, 'id': 'AR-Inbound%'},
+                    {'form_id': 'ar_maxcost_percent', 'value': 65, 'id': 'AR-MaxCost%'},
+                    {'form_id': 'ar_variance', 'value': 0, 'id': 'AR-Variance'},
+                    {'form_id': 'ar_waitperiod', 'value': 30, 'id': 'AR-WaitPeriod'},
+                    {'form_id': 'ar_autopilot', 'value': 0, 'id': 'AR-Autopilot'},
+                    {'form_id': 'ar_apdays', 'value': 7, 'id': 'AR-APDays'},
                     #AF
-                    {'form_id': 'af_enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
-                    {'form_id': 'af_maxRate', 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
-                    {'form_id': 'af_minRate', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
-                    {'form_id': 'af_increment', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
-                    {'form_id': 'af_multiplier', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Multiplier'},
-                    {'form_id': 'af_failedHTLCs', 'value': 25, 'parse': lambda x: int(x),'id': 'AF-FailedHTLCs'},
-                    {'form_id': 'af_updateHours', 'value': 24, 'parse': lambda x: int(x),'id': 'AF-UpdateHours'},
-                    {'form_id': 'af_lowliq', 'value': 15, 'parse': lambda x: int(x),'id': 'AF-LowLiqLimit'},
-                    {'form_id': 'af_excess', 'value': 90, 'parse': lambda x: int(x),'id': 'AF-ExcessLimit'},
-                    #GUI
-                    {'form_id': 'gui_graphLinks', 'value': 'https://amboss.space', 'parse': lambda x: x,'id': 'GUI-GraphLinks'},
-                    {'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'parse': lambda x: x,'id': 'GUI-NetLinks'},
-                    #LND
-                    {'form_id': 'lnd_cleanPayments', 'value': 0, 'parse': lambda x: x, 'id': 'LND-CleanPayments'},
-                    {'form_id': 'lnd_retentionDays', 'value': 30, 'parse': lambda x: x, 'id': 'LND-RetentionDays'},
-                    ]
-
-        form = LocalSettingsForm(request.POST)
+                    {'form_id': 'af_enabled', 'value': 0, 'id': 'AF-Enabled'},
+                    {'form_id': 'af_maxrate', 'value': 2500, 'id': 'AF-MaxRate'},
+                    {'form_id': 'af_minrate', 'value': 0, 'id': 'AF-MinRate'},
+                    {'form_id': 'af_increment', 'value': 5, 'id': 'AF-Increment'},
+                    {'form_id': 'af_multiplier', 'value': 5, 'id': 'AF-Multiplier'},
+                    {'form_id': 'af_failedhtlcs', 'value': 25, 'id': 'AF-FailedHTLCs'},
+                    {'form_id': 'af_updatehours', 'value': 24, 'id': 'AF-UpdateHours'},
+                    {'form_id': 'af_lowliqlimit', 'value': 15, 'id': 'AF-LowLiqLimit'},
+                    {'form_id': 'af_excesslimit', 'value': 90, 'id': 'AF-ExcessLimit'}]
+        
+        form = SettingsForm(request.POST)
         if not form.is_valid():
             messages.error(request, 'Invalid Request. Please try again.')
-        else:
-            update_channels = form.cleaned_data['update_channels']
-            for field in template:
-                value = form.cleaned_data[field['form_id']]
-                if value is not None:
-                    value = field['parse'](value)
-                    try:
-                        db_value = LocalSettings.objects.get(key=field['id'])
-                    except:
-                        LocalSettings(key=field['id'], value=field['value']).save()
-                        db_value = LocalSettings.objects.get(key=field['id'])
-                    if db_value.value == str(value) or len(str(value)) == 0:
-                        continue
-                    db_value.value = value
-                    db_value.save()
+            return redirect(request.META.get('HTTP_REFERER'))
+        
+        group_id = form.cleaned_data['group_id']
+        update_channels = form.cleaned_data['ar_update_channels']
 
-                    if update_channels and field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
-                        if field['id'] == 'AR-Target%':
-                            Channels.objects.all().update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
-                        elif field['id'] == 'AR-Outbound%':
-                            Channels.objects.all().update(ar_out_target=value)
-                        elif field['id'] == 'AR-Inbound%':
-                            Channels.objects.all().update(ar_in_target=value)
-                        elif field['id'] == 'AR-MaxCost%':
-                            Channels.objects.all().update(ar_max_cost=value)
-                        messages.success(request, 'All channels ' + field['id'] + ' updated to: ' + str(value))
-                    else:
-                        messages.success(request, field['id'] + ' updated to: ' + str(value))
+        if group_id == 0:
+            template.extend([{'form_id': 'ar_workers', 'value': 1, 'id': 'AR-Workers'},
+                             {'form_id': 'gui_graphlinks', 'value': 'https://amboss.space', 'id': 'GUI-GraphLinks'},
+                             {'form_id': 'gui_netlinks', 'value': 'https://mempool.space', 'id': 'GUI-NetLinks'},
+                             {'form_id': 'lnd_cleanpayments', 'value': 0, 'id': 'LND-CleanPayments'},
+                             {'form_id': 'lnd_retentiondays', 'value': 30, 'id': 'LND-RetentionDays'}])
+ 
+        group = Groups.objects.prefetch_related('settings_set').prefetch_related('channels').get(id=group_id)
+        changing = [f['id'] if not f['id'].endswith('Enabled') else None for f in template if form.cleaned_data[f['form_id']] or None]
+        if len(changing) > 0:
+            for ch in group.channels.all():
+                for g in ch.groups_set.exclude(id__in=[0,group.id]).all():
+                    dup = list(g.settings_set.filter(key__in=changing).values_list('key'))
+                    dup_setts = ",".join(["<a href='#"+str(g.id)+":"+s[0].lower().replace("-","_").replace("%", "_percent")+"'>"+s[0]+"</a>" for s in dup])
+                    if len(dup) > 0:
+                        messages.error(request, "Conflicting value(s) between <u><i>"+group.name+"</i></u> and <u><i>"+g.name+"</u></i><small><i>("+dup_setts+")</i></small>")
+                        return redirect(request.META.get('HTTP_REFERER'))
+        
+        if group.name != form.cleaned_data['group_name']:
+            group.name = form.cleaned_data['group_name']
+            group.save()
+        
+        for field in template:
+            value = form.cleaned_data[field['form_id']]
+            value = float(value) if value is not None and field['form_id'] == 'ar_target_percent' else value
+            try:
+                db_value = group.settings_set.get(key=field['id'])
+            except Exception:
+                db_value = Settings(key=field['id'], group_id=group_id)
+            if db_value.value == str(value) or len(str(value)) == 0:
+                continue
+            if group.id == 0 and value is None and db_value.value is not None:
+                continue
+            if value is None and db_value.value is not None:
+                old_value = db_value.value
+                db_value.delete()
+            elif value is not None:
+                old_value = db_value.value
+                db_value.value = value
+                db_value.save()
+            else: 
+                continue
+
+            if update_channels and field['id'] in ['AR-Target%', 'AR-Outbound%','AR-Inbound%','AR-MaxCost%']:
+                if field['id'] == 'AR-Target%':
+                    group.channels.update(ar_amt_target=Round(F('capacity')*(value/100), output_field=IntegerField()))
+                elif field['id'] == 'AR-Outbound%':
+                    group.channels.update(ar_out_target=value)
+                elif field['id'] == 'AR-Inbound%':
+                    group.channels.update(ar_in_target=value)
+                elif field['id'] == 'AR-MaxCost%':
+                    group.channels.update(ar_max_cost=value)
+                messages.success(request, '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span> for all channels in this group</small>')
+            else:
+                text = '<u><strong>'+ (group.name or 'LNDg') +'</strong>::' + field['id'] + ' </u><small>changed from <strike class="w3-text-red">'+ str(old_value) +'</strike> to <span class="w3-text-teal">' + str(value) + '</span></small>'
+                messages.success(request, text)
             
     return redirect(request.META.get('HTTP_REFERER'))
 
@@ -1846,7 +1869,7 @@ def update_pending(request):
                 pending_channel.save()
                 messages.success(request, 'Auto rebalancer max cost for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(target) + '%')
             elif update_target == 8:
-                auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) if LocalSettings.objects.filter(key='AF-Enabled').exists() else 0
+                auto_fees = int(Groups.objects.filter(channels=pending_channel.id,settings__key__contains="AF")[0].settings_set.get('AF-Enabled').value)
                 pending_channel.auto_fees = True if pending_channel.auto_fees == False or (pending_channel.auto_fees == None and auto_fees == 0) else False
                 pending_channel.save()
                 messages.success(request, 'Auto fees status for pending channel (' + str(funding_txid) + ') updated to a value of: ' + str(pending_channel.auto_fees))
@@ -1941,13 +1964,7 @@ def update_setting(request):
                 target = int(value)
                 channels = Channels.objects.filter(is_open=True, private=False).update(auto_fees=target)
                 messages.success(request, 'Auto Fees setting for all channels updated to a value of: ' + str(target))
-                try:
-                    db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
-                except:
-                    LocalSettings(key='AF-UpdateHours', value='24').save()
-                    db_enabled = LocalSettings.objects.get(key='AF-UpdateHours')
-                db_enabled.value = target
-                db_enabled.save()
+                Settings.objects.filter(group_id=0, key='AF-UpdateHours').update(value=target)
                 messages.success(request, 'Updated autofees update hours setting to: ' + str(target))
             else:
                 messages.error(request, 'Invalid Request. Please try again. [' + key +']')
@@ -2162,19 +2179,67 @@ class FailedHTLCViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = FailedHTLCSerializer
     filterset_class = FailedHTLCFilter
 
-class LocalSettingsViewSet(viewsets.ReadOnlyModelViewSet):
+class SettingsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
-    queryset = LocalSettings.objects.all()
-    serializer_class = LocalSettingsSerializer
+    queryset = Settings.objects.all()
+    serializer_class = SettingsSerializer
 
     def update(self, request, pk):
         setting = get_object_or_404(self.queryset, pk=pk)
-        serializer = LocalSettingsSerializer(setting, data=request.data, context={'request': request})
+        serializer = SettingsSerializer(setting, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         else:
             return Response(serializer.errors)
+
+class GroupsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = Groups.objects.all()
+    serializer_class = GroupsSerializer
+
+    def update(self, request, pk):
+        if int(pk) == 0: return Response(status=403) #Forbidden
+        group = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.get_serializer(group, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            lndg = Groups.objects.prefetch_related('channels').get(id=0)
+            adding = lndg.channels.filter(chan_id__in=request.data.get('channels'))
+            [lndg.channels.remove(ch) for ch in adding]
+            lndg.save()
+
+            adding = Channels.objects.prefetch_related('groups_set').exclude(chan_id__in=group.channels.all()).filter(chan_id__in=request.data.get('channels')).all()
+            for ch in adding:
+                current_settings = group.settings_set.values_list('key', flat=True).all()
+                dup_settings = ch.groups_set.filter(settings__key__in=current_settings).values_list('settings__key', flat=True).all()
+                if len(dup_settings) > 0:
+                    return Response(status=403, data={'status':403, 'message':"Cannot add <i>"+ch.alias+"</i> to <u><i>"+group.name+"</i></u> - duplicate settings: <small class='w3-text-red'>"+ ",".join(dup_settings) +"</small>"})
+
+            removing = group.channels.exclude(chan_id__in=request.data.get('channels')).all()
+            for ch in removing:
+                if ch.groups_set.count() == 1:
+                    lndg.channels.add(ch)
+
+            lndg.save()
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
+    def delete(self, request, pk):
+        if int(pk) == 0: return Response(status=403) #Forbidden
+        group = get_object_or_404(self.queryset, pk=pk)
+        try:
+            mappings = Channels.objects.filter(chan_id__in=group.channels.all()).annotate(count=Count('groups_set')).filter(count=1).values('count','chan_id').all()
+            if len(mappings) > 0:
+                lndg = Groups.objects.get(id=0)
+                [lndg.channels.add(ch['chan_id']) for ch in mappings]
+                lndg.save()
+            group.delete()
+        except Exception as e:
+            print('Channels might have already been on LNDg group:' + str(e))
+
+        return Response(status=204) #no content
+
 
 class ChannelsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
@@ -2277,11 +2342,11 @@ def node_info(request):
         peers = Peers.objects.all()
         pending_changes = PendingChannels.objects.all()
         pending_open = []
-        inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value) if LocalSettings.objects.filter(key='AR-Inbound%').exists() else 100
-        outbound_setting = int(LocalSettings.objects.filter(key='AR-Outbound%')[0].value) if LocalSettings.objects.filter(key='AR-Outbound%').exists() else 75
-        amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value) if LocalSettings.objects.filter(key='AR-Target%').exists() else 5
-        cost_setting = int(LocalSettings.objects.filter(key='AR-MaxCost%')[0].value) if LocalSettings.objects.filter(key='AR-MaxCost%').exists() else 65
-        auto_fees = int(LocalSettings.objects.filter(key='AF-Enabled')[0].value) if LocalSettings.objects.filter(key='AF-Enabled').exists() else 0
+        inbound_setting = int(Settings.objects.filter(group_id=0, key='AR-Inbound%')[0].value)
+        outbound_setting = int(Settings.objects.filter(group_id=0, key='AR-Outbound%')[0].value)
+        amt_setting = float(Settings.objects.filter(group_id=0, key='AR-Target%')[0].value)
+        cost_setting = int(Settings.objects.filter(group_id=0, key='AR-MaxCost%')[0].value)
+        auto_fees = int(Settings.objects.filter(group_id=0, key='AF-Enabled')[0].value)
         for i in range(0,len(target_resp)):
             item = {}
             pending_open_balance += target_resp[i].channel.local_balance

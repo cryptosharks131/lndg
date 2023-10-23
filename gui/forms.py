@@ -63,39 +63,41 @@ class RebalancerForm(forms.ModelForm):
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
 
-class AutoRebalanceForm(forms.Form):	
-    enabled = forms.IntegerField(label='enabled', required=False)	
-    target_percent = forms.FloatField(label='target_percent', required=False)	
-    target_time = forms.IntegerField(label='target_time', required=False)	
-    fee_rate = forms.IntegerField(label='fee_rate', required=False)	
-    outbound_percent = forms.FloatField(label='outbound_percent', required=False)	
-    inbound_percent = forms.FloatField(label='inbound_percent', required=False)	
-    max_cost = forms.FloatField(label='max_cost', required=False)	
-    variance = forms.IntegerField(label='variance', required=False)	
-    wait_period = forms.IntegerField(label='wait_period', required=False)	
-    autopilot = forms.IntegerField(label='autopilot', required=False)	
-    autopilotdays = forms.IntegerField(label='autopilotdays', required=False)
-    workers = forms.IntegerField(label='workers', required=False)
-    update_channels = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
+class AutoRebalanceForm(forms.Form):
+    group_id = forms.IntegerField(label="group_id", required=True)
+    group_name = forms.CharField(label="group_name", min_length=1, max_length=20, required=False)
+    ar_enabled = forms.IntegerField(label='ar_enabled', required=False)	
+    ar_target_percent = forms.FloatField(label='ar_target_percent', required=False)	
+    ar_time = forms.IntegerField(label='ar_time', required=False)	
+    ar_maxfeerate = forms.IntegerField(label='ar_maxfeerate', required=False)	
+    ar_outbound_percent = forms.FloatField(label='ar_outbound_percent', required=False)	
+    ar_inbound_percent = forms.FloatField(label='ar_inbound_percent', required=False)	
+    ar_maxcost_percent = forms.FloatField(label='ar_maxcost_percent', required=False)	
+    ar_variance = forms.IntegerField(label='ar_variance', required=False)	
+    ar_waitperiod = forms.IntegerField(label='ar_waitperiod', required=False)	
+    ar_autopilot = forms.IntegerField(label='ar_autopilot', required=False)	
+    ar_apdays = forms.IntegerField(label='ar_apdays', required=False)
+    ar_workers = forms.IntegerField(label='ar_workers', required=False)
+    ar_update_channels = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class AutoFeesForm(AutoRebalanceForm):	
     af_enabled = forms.IntegerField(label='af_enabled', required=False)	
-    af_maxRate = forms.IntegerField(label='af_maxRate', required=False)	
-    af_minRate = forms.IntegerField(label='af_minRate', required=False)	
+    af_maxrate = forms.IntegerField(label='af_maxrate', required=False)	
+    af_minrate = forms.IntegerField(label='af_minrate', required=False)	
     af_increment = forms.IntegerField(label='af_increment', required=False)	
     af_multiplier = forms.IntegerField(label='af_multiplier', required=False)	
-    af_failedHTLCs = forms.IntegerField(label='af_failedHTLCs', required=False)	
-    af_updateHours = forms.IntegerField(label='af_updateHours', required=False)
-    af_lowliq = forms.IntegerField(label='af_lowliq', required=False)
-    af_excess = forms.IntegerField(label='af_excess', required=False)
+    af_failedhtlcs = forms.IntegerField(label='af_failedhtlcs', required=False)	
+    af_updatehours = forms.IntegerField(label='af_updatehours', required=False)
+    af_lowliqlimit = forms.IntegerField(label='af_lowliqlimit', required=False)
+    af_excesslimit = forms.IntegerField(label='af_excesslimit', required=False)
 
 class GUIForm(AutoFeesForm):	
-    gui_graphLinks = forms.CharField(label='gui_graphLinks', required=False)	
-    gui_netLinks = forms.CharField(label='gui_netLinks', required=False)	
+    gui_graphlinks = forms.CharField(label='gui_graphlinks', required=False)	
+    gui_netlinks = forms.CharField(label='gui_netlinks', required=False)	
 
-class LocalSettingsForm(GUIForm):	
-    lnd_cleanPayments = forms.IntegerField(label='lnd_cleanPayments', required=False)	
-    lnd_retentionDays = forms.IntegerField(label='lnd_retentionDays', required=False)	
+class SettingsForm(GUIForm):	
+    lnd_cleanpayments = forms.IntegerField(label='lnd_cleanpayments', required=False)	
+    lnd_retentiondays = forms.IntegerField(label='lnd_retentiondays', required=False)	
 
 updates_channel_codes = [
     (0, 'base_fee'),

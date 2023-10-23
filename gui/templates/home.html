@@ -162,8 +162,7 @@
     <table class="w3-table-all w3-centered w3-hoverable">
       <thead>
         <tr>
-          <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Channel ID</th>
-          <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+          <th colspan="2" onclick="sortTable(event.target, 0, 'String', 0, 'a')">Peer Alias</th>
           <th onclick="sortTable(event.target, 2, 'int')">Outbound Liquidity</th>
           <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
           <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
@@ -188,8 +187,8 @@
   <table class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
-        <th onclick="sortTable(event.target, 0, 'String')">Channel ID</th>
-        <th onclick="sortTable(event.target, 1, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 0, 'String', 0, 'a')">Peer Alias</th>
+        <th onclick="sortTable(event.target, 1, 'String')">Channel ID</th>
         <th onclick="sortTable(event.target, 2, ' (')" width=9%>Outbound Liquidity</th>
         <th onclick="sortTable(event.target, 3, 'int', 0, 'label')">Capacity</th>
         <th onclick="sortTable(event.target, 4, ' (')" width=9%>Inbound Liquidity</th>
@@ -410,7 +409,7 @@
     </tfoot>
   </table>
 </div>
-{% include 'local_settings.html' with settings=local_settings title="Auto-Rebalancer" url='rebalancing' %}
+{% include 'settings.html' with configs="'AR-'" title="Auto-Rebalancer" url='rebalancing' %}
 <div class="w3-container w3-padding-small">
   <h2>Connect to a Peer</h2>
   <div class="w3-container w3-padding-small">
@@ -954,8 +953,21 @@
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
     const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
 
+    const groups = (await GET('groups', {data: {} })).results
     let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
-    for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
+    for (ch of (await GET('channels', {data: {is_open: true} })).results){
+      ch.tags = []
+      ch.groups = []
+      for (group of groups){
+        if(group.id > 0 && !group.channels.includes(ch.chan_id)) { //assignable groups
+          ch.groups.push(group)
+          continue
+        }
+        channels = group.channels.filter(c => c !== ch.chan_id)
+        if (group.id === 0) continue
+        ch.tags.push({id:group.id, name:group.name, channels:channels})
+      }
+      
       updates += ch.num_updates
       pending_htlcs += ch.htlc_count
       ch.local_balance += ch.pending_outbound

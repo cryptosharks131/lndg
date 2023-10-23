@@ -260,6 +260,8 @@ input:not([type=submit]):not([type=checkbox]):focus, select:focus {outline: none
 .input {position:relative;float:left;padding:0px 4px}.input::after{position:absolute;right: 25px;top:2px;opacity:.8;content:attr(data-unit);color:#555599}
 .encrypted td:not(th){-webkit-text-security:circle;}.encrypted thead th:not(a){-webkit-text-security:circle;}
 .soft-encrypted table td, .soft-encrypted table thead{color: transparent;text-shadow: 0 0 5px rgba(0,0,0,0.1);}
+.btn {cursor: pointer;} .close:hover {color:red;}
+.dark-mode .w3-text-black{color:white!important}
 .switch{position:relative;display:inline-block;width:45px;height:25.5px}
 .switch input {opacity:0;width:0;height:0}
 .slider {position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#ccc;-webkit-transition:.4s;transition:.4s}
