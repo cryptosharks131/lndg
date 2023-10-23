@@ -271,3 +271,4 @@ input:focus + .slider {box-shadow:0 0 1px #2196F3}
 input:checked + .slider:before {-webkit-transform:translateX(19.5px);-ms-transform:translateX(19.5px);transform:translateX(19.5px)}
 .slider.round {border-radius:25.5px}
 .slider.round:before {border-radius:50%}
+pre {background-color: #f0f0f5;} .dark-mode pre{ background-color: #30363d; color:white }

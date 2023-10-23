@@ -214,6 +214,26 @@ def advanced(request):
         return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def logs(request):
+    if request.method == 'GET':
+        try:
+            count = request.GET.get('tail', 20)
+            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            file_size = path.getsize(logfile)
+            if file_size == 0:
+                logs = ['Logs are empty....']
+            else:
+                with open(logfile, "rb") as reader:
+                    target_size = 64*int(count) # read 64*lines_count bytes from the end (each line has ~64 bytes)
+                    read_size = target_size if target_size < file_size else file_size
+                    reader.seek(-(read_size), 2)
+                    logs = [line.decode('utf-8') for line in reader.readlines()]
+            return render(request, 'logs.html', {'logs': logs})
+        except Exception as e:
+            return render(request, 'error.html', {'error': str(e)})
+    return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def route(request):
     if request.method == 'GET':
         try:

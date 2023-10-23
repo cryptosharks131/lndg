@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Logs{% endblock %}
+{% block content %}
+<div class="w3-container w3-padding-small">
+  <h2>Logs</h2>
+  <div class="w3-container w3-padding-small">
+    <pre class="w3-container w3-border" style="white-space: pre-wrap">{% for line in logs %}{{line}}{%endfor%}</pre>
+  </div>
+</div>
+{% endblock %}

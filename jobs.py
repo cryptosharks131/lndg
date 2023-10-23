@@ -10,7 +10,6 @@ from gui.lnd_deps import signer_pb2_grpc as lnsigner
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import environ
-from pandas import DataFrame
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()

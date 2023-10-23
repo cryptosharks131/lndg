@@ -68,6 +68,7 @@ urlpatterns = [
     path('autofees/', views.autofees, name='autofees'),
     path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
+    path('logs/', views.logs, name='logs'),
     path('addresses/', views.addresses, name='addresses'),
     path('new_group/', views.new_group, name='new-group'),
     path('api/', include(router.urls), name='api-root'),
