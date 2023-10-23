@@ -230,14 +230,14 @@ def logs(request):
         try:
             count = request.GET.get('tail', 20)
             logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
-            file_size = path.getsize(logfile)
+            file_size = path.getsize(logfile)-2
             if file_size == 0:
                 logs = ['Logs are empty....']
             else:
+                target_size = 128*int(count)
+                read_size = min(target_size, file_size)
                 with open(logfile, "rb") as reader:
-                    target_size = 64*int(count) # read 64*lines_count bytes from the end (each line has ~64 bytes)
-                    read_size = target_size if target_size < file_size else file_size
-                    reader.seek(-(read_size), 2)
+                    reader.seek(-read_size, 2)
                     logs = [line.decode('utf-8') for line in reader.readlines()]
             return render(request, 'logs.html', {'logs': logs})
         except Exception as e:
