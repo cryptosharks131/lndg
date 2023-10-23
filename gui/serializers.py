@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import Settings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, Groups
+from .models import Settings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, Groups, Autofees
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -87,7 +87,7 @@ class ChannelSerializer(serializers.HyperlinkedModelSerializer):
 
     def get_opened_in(self, obj):
         return int(obj.short_chan_id.split('x')[0])
-    
+
 class GroupsSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
     name = serializers.ReadOnlyField(required=False)
@@ -202,6 +202,12 @@ class PeerEventsSerializer(serializers.HyperlinkedModelSerializer):
     def get_out_liq_percent(self, obj):
         capacity = Channels.objects.filter(chan_id=obj.chan_id).get().capacity
         return int(round((obj.out_liq/capacity)*100, 1))
+
+class FeeLogSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    class Meta:
+        model = Autofees
+        exclude = []
 
 class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
