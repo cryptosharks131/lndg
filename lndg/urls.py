@@ -16,8 +16,10 @@ Including another URLconf
 from django.urls import path, include
 from django.views.generic.base import RedirectView
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url("favicon.ico"))),
+    path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
     path('', include('gui.urls')),
 ]

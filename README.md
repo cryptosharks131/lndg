@@ -1,16 +1,30 @@
-# LNDg
-Lite GUI web interface to analyze lnd data and manage your node with automation.
+# LNDg - GUI for LND Data Analysis and Node Management
 
-Start by choosing one of the following installation methods: [Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed) | [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation)
+Welcome to LNDg, an advanced web interface designed for analyzing LND data and automating node management tasks.
 
-LNDg can also be found directly on popular apps like Umbrel and Citadel with a 1-click install from the GUI.
+Choose your preferred installation method:
 
-## Docker Installation (requires docker and docker-compose be installed)
-### Build and deploy
-1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-2. Change directory into the repo `cd lndg`
-3. Copy and replace the contents (adjust custom volume paths to LND and LNDg folders) of the `docker-compose.yaml` with the below: `nano docker-compose.yaml`
+- **1-Click Installation**: Easily install LNDg directly from popular platforms like Umbrel, Citadel, Start9 and RaspiBlitz.
+- [Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed): Ideal for users familiar with Docker and Docker Compose.
+- [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation): If you prefer a hands-on approach to set up LNDg.
+
+
+## Docker Installation (requires Docker and Docker Compose)
+
+### Prepare Install
+
+```bash
+# Clone the repository
+git clone https://github.com/cryptosharks131/lndg.git
+
+# Change directory to the repository
+cd lndg
+
+# Customize the docker-compose.yaml file
+nano docker-compose.yaml
 ```
+**Replace the contents of `docker-compose.yaml` with your desired volume paths and settings. An example configuration is shown below.**
+```yaml
 services:
   lndg:
     build: .
@@ -23,13 +37,19 @@ services:
       - python initialize.py -net 'mainnet' -server '127.0.0.1:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8889
     network_mode: "host"
 ```
-4. Deploy your docker image: `docker-compose up -d`
-5. LNDg should now be available on port `http://localhost:8889`
-6. Open and copy the password from output file: `nano data/lndg-admin.txt`
-7. Use the password from the output file and the username `lndg-admin` to login
+### Build and Deploy
+```bash
+# Deploy the Docker image
+docker-compose up -d
+
+# Retrieve the admin password for login
+nano data/lndg-admin.txt
+```
+- **This example configuration will host LNDg at http://0.0.0.0:8889. Use the machine IP to reach the LNDg instance.**  
+- **Log in to LNDg using the provided password and the username `lndg-admin`.**
 
 ### Updating
-```
+```bash
 docker-compose down
 docker-compose build --no-cache
 docker-compose up -d
@@ -37,49 +57,55 @@ docker-compose up -d
 # OPTIONAL: remove unused builds and objects
 docker system prune -f
 ```
-
 ## Manual Installation
-### Step 1 - Install lndg
-1. Clone respository `git clone https://github.com/cryptosharks131/lndg.git`
-2. Change directory into the repo `cd lndg`
-3. Make sure you have python virtualenv installed `sudo apt install virtualenv`
-4. Setup a python3 virtual environment `virtualenv -p python3 .venv`
-5. Install required dependencies `.venv/bin/pip install -r requirements.txt`
-6. Initialize some settings for your django site (see notes below) `.venv/bin/python initialize.py`
-7. The initial login user is `lndg-admin` and the password is output here: `data/lndg-admin.txt`
-8. Generate some initial data for your dashboard `.venv/bin/python jobs.py`
-9. Run the server via a python development server `.venv/bin/python manage.py runserver 0.0.0.0:8889`  
-Tip: If you plan to only use the development server, you will need to setup whitenoise (see note below).  
 
-### Step 2 - Setup Backend Data, Automated Rebalancing and HTLC Stream Data
-The files `jobs.py`, `rebalancer.py` and `htlc_stream.py` inside lndg/gui/ serve to update the backend database with the most up to date information, rebalance any channels based on your lndg dashboard settings and to listen for any failure events in your htlc stream. A refresh interval of at least 10-20 seconds is recommended for the `jobs.py` and `rebalancer.py` files for the best user experience.
+### Step 1 - Install LNDg
 
-Recommend Setup With Supervisord (least setup) or Systemd (most compatible)
-1. Supervisord  
-  a) Setup supervisord config `.venv/bin/python initialize.py -sd`  
-  b) Install Supervisord `.venv/bin/pip install supervisor`  
-  c) Start Supervisord `supervisord`  
+1. Clone the repository: `git clone https://github.com/cryptosharks131/lndg.git`
+2. Change the directory into the repository: `cd lndg`
+3. Ensure you have Python virtualenv installed: `sudo apt install virtualenv`
+4. Set up a Python 3 virtual environment: `virtualenv -p python3 .venv`
+5. Install the required dependencies: `.venv/bin/pip install -r requirements.txt`
+6. Initialize necessary settings for your Django site (refer to notes below): `.venv/bin/python initialize.py`
+7. The initial login user is `lndg-admin`, and the password can be found here: `data/lndg-admin.txt`
+8. Generate initial data for your dashboard: `.venv/bin/python jobs.py`
+9. Run the server using a Python development server: `.venv/bin/python manage.py runserver 0.0.0.0:8889`
 
-2. Systemd (2 options)  
-  Option 1 - Bash script install (requires install at ~/lndg) `sudo bash systemd.sh`  
-  Option 2 - [Manual Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)  
-  
-Alternatively, you may also make your own task for these files with your preferred tool (task scheduler/cronjob/etc).  
+*Note: If you plan to use the development server exclusively, you will need to set up whitenoise (see note below).*
+
+### Step 2 - Setup Backend Controller For Data, Automated Rebalancing, and HTLC Stream Data
+
+The file `controller.py` inside the `lndg/gui/` directory orchastrates the services needed to update the backend database with the most up-to-date information, rebalance any channels based on your LNDg dashboard settings, and listen for any failure events in your HTLC stream.
+
+**Recommended Setup with Supervisord (least setup) or Systemd (most compatible):**
+
+1. **Systemd (2 options)**
+   - Option 1 - Bash script install: `sudo bash systemd.sh`
+   - Option 2 - [Manual Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)
+
+2. **Supervisord**
+   - Configure Supervisord by running: `.venv/bin/python initialize.py -sd`
+   - Install Supervisord: `.venv/bin/pip install supervisor`
+   - Start Supervisord: `supervisord`
+
+
+Alternatively, you may create your own task for these files using your preferred tool (task scheduler, cron job, etc).
 
 ### Updating
-1. Make sure you are in the lndg folder `cd lndg`
-2. Pull the new files `git pull`
-3. Migrate any database changes `.venv/bin/python manage.py migrate`
+
+1. Make sure you are in the LNDg folder: `cd lndg`
+2. Pull the new files from the repository: `git pull`
+3. Migrate any database changes: `.venv/bin/python manage.py migrate`
 
 ### Notes
-1. If you are not using the default settings for LND or you would like to run a LND instance on a network other than `mainnet` you can use the correct flags in step 6 (see `initialize.py --help`) or you can edit the variables directly in `lndg/lndg/settings.py`.  
-2. Some systems have a hard time serving static files (docker/macOs) and installing whitenoise and configuring it can help solve this issue.
-   You can use the following to install and setup whitenoise:  
-   `.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn`   
-4. If you want to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun. `initialize.py`  
-5. If you plan to run this site continuously, consider setting up a proper web server to host it (see Nginx below). 
-6. You can manage your login credentials from the admin page. Example: `lndg.local/lndg-admin` 
-7. If you have issues reaching the site, verify the firewall is open on port 8889 where LNDg is running
+
+1. If not using default settings for LND or would like to run on a network other than `mainnet`, use the correct flags in step 6 (see `initialize.py --help`) or edit the variables directly in `lndg/lndg/settings.py`.
+2. You can not run the development server outside of DEBUG mode due to static file issues. To address this, install and configure Whitenoise by running the following command:  
+```.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn```
+3. If you need to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun `initialize.py`.
+4. If you plan to run this site continuously, it's advisable to set up a proper web server to host it (see Nginx below).
+5. You can manage your login credentials from the admin page, accessible at `/lndg-admin`.
+6. If you encounter issues accessing the site, ensure that any firewall is open on port 8889, where LNDg is running.
 
 ### Setup lndg initialize.py options
 1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
@@ -93,37 +119,50 @@ Alternatively, you may also make your own task for these files with your preferr
 9. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
 10. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
 11. `-u` or `--adminuser` Setup a custom admin username - default: `lndg-admin`
-10. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
-10. `-csrf` or `--csrftrusted` Set trusted CSRF origins - default: `None`
-10. `-tls` or `--tlscert` Set a custom path to the tls cert - default: `--lnddir used`
-10. `-mcrn` or `--macaroon` Set a custom path to the macroon file - default: `--lnddir used`
-10. `-lnddb` or `--lnddatabase` Set a custom path to the channel.db for monitoring - default: `--lnddir used`
-10. `-nologin` or `--nologinrequired` Remove authentication requirements from LNDg - default: `False`
+12. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
+13. `-csrf` or `--csrftrusted` Set trusted CSRF origins - default: `None`
+14. `-tls` or `--tlscert` Set a custom path to the tls cert - default: `--lnddir used`
+15. `-mcrn` or `--macaroon` Set a custom path to the macroon file - default: `--lnddir used`
+16. `-lnddb` or `--lnddatabase` Set a custom path to the channel.db for monitoring - default: `--lnddir used`
+17. `-nologin` or `--nologinrequired` Remove authentication requirements from LNDg - default: `False`
+18. `-f` or `--force` Force the replacement of an existing settings file - default: `False`
 
 ### Using A Webserver
-You can serve the dashboard at all times using a webserver instead of the development server.  Using a webserver will serve your static files and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aide in the setup of a nginx webserver.  
-`sudo bash nginx.sh`  
+You can serve the dashboard at all times using a webserver instead of the development server. Using a webserver will serve your static files, and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aid in the setup of an nginx webserver.
 
-When updating, follow the same steps as above. You will also need to restart the uwsgi service for changes to take affect on the UI.  
-`sudo systemctl restart uwsgi.service`  
+To set up the nginx webserver, run the following command:
+
+```bash
+sudo bash nginx.sh
+```
+### When updating
+When updating your LNDg installation, follow the same steps as described above. However, after updating, you will also need to restart the uWSGI service to apply the changes to the user interface (UI).
+
+To restart the uWSGI service, use the following command:
+
+```bash
+sudo systemctl restart uwsgi.service
+``` 
 
 ## Key Features
+
 ### Track Peer Events
 LNDg will track the changes your peers make to channel policies you have in open channels and any connection events that may happen with those channels.
 
 ### Batch Opens
-You can use LNDg to batch open up to 10 channels at a time with a single transaction. This can help to signicantly reduce the channel open fees incurred when opening multiple channels.
+You can use LNDg to batch open up to 10 channels at a time with a single transaction. This can help to significantly reduce the channel open fees incurred when opening multiple channels.
 
 ### Watch Tower Management
-You can use LNDg to add, monitor or remove watch towers from the lnd node.
+You can use LNDg to add, monitor, or remove watch towers from the LND node.
 
 ### Suggests Fee Rates
 LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions. You can use the Auto-Fees feature in order to automatically act upon the suggestions given.
 
-You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal and you should wait ~24 hours before changing the fee rate again on any given channel.
+You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal, and you should wait ~24 hours before changing the fee rate again on any given channel.
 
 ### Suggests New Peers
-LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.  
+LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
+
 #### There are two unique values in LNDg:
 1. Volume Score - A score based upon both the count of transactions and the volume of transactions routed through the peer
 2. Savings By Volume (ppm) - The amount of sats you could have saved during rebalances if you were peered directly with this node over the total amount routed through the peer
@@ -131,7 +170,7 @@ LNDg will make suggestions for new peers to open channels to based on your node'
 ### Channel Performance Metrics
 #### LNDg will aggregate your payment and forwarding data to provide the following metrics:
 1. Outbound Flow Details - This shows the amount routed outbound next to the amount rebalanced in
-2. Revenue Details - This shows the revenue earned on the left, the profit (revenue - cost) in the middle and the assisted revenue (amount earned due to this channel's inbound flow) on the right
+2. Revenue Details - This shows the revenue earned on the left, the profit (revenue - cost) in the middle, and the assisted revenue (amount earned due to this channel's inbound flow) on the right
 3. Inbound Flow Details - This shows the amount routed inbound next to the amount rebalanced out
 4. Updates - This is the number of updates the channel has had and is directly correlated to the space it takes up in channel.db
 

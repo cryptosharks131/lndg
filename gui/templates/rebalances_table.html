@@ -1,6 +1,6 @@
 {% load humanize %}
 <div id="rebalances_div_{{status}}" class="w3-container w3-padding-small">
-    <h2>{% if status %}Successful{% else %}Last{% endif %} {{title}}</h2>
+    <h2>{% if status == 2 %}Successful{% elif  status == 0 %}Pending{% elif status == 1 %}In-Flight{% else %}Last{% endif %} {{title}}</h2>
     <table id="rebalsTable_{{status}}" class="w3-table-all w3-centered w3-hoverable">
       <tr>
         <th>Requested</th>
@@ -75,17 +75,23 @@
         return {innerHTML: input}
       } 
     };
-    document.addEventListener('DOMContentLoaded', async () => {
+    async function buildTable(){
       const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:'{{last_hop_pubkey}}' }})
       if(res.errors) return
       if(res.results.length == 0){
-        document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any rebalances yet.</h1></center>`
+        document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any ${'{{status}}'=='' ? '' : statuses['{{status}}'].toLowerCase()} rebalance request</h1></center>`
         return
       }
 
       const table = document.getElementById("rebalances_{{status}}"), template = use(transformations)
+      table.innerHTML = null
       res.results.forEach(rebalance => table.append(template.render(rebalance)));
-    });
+
+      await auto_refresh(buildTable)
+    }
+
+    document.addEventListener('DOMContentLoaded', buildTable);
+
     async function loadRebals_{{status}}(){
       const status = "{{ status }}"
       const rebalsTable = byId('rebalsTable_'+status)
