@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField
-from django.db.models.functions import Round, TruncDay
+from django.db.models.functions import Round, TruncDay, Coalesce
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
 from datetime import datetime, timedelta
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import *
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, TradeSales
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, TradeSales, FeeLogSerializer
 from .serializers import *
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
@@ -225,6 +225,26 @@ def advanced(request):
         return render(request, 'advanced.html', context)
     else:
         return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def logs(request):
+    if request.method == 'GET':
+        try:
+            count = request.GET.get('tail', 20)
+            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            file_size = path.getsize(logfile)-2
+            if file_size == 0:
+                logs = ['Logs are empty....']
+            else:
+                target_size = 128*int(count)
+                read_size = min(target_size, file_size)
+                with open(logfile, "rb") as reader:
+                    reader.seek(-read_size, 2)
+                    logs = [line.decode('utf-8') for line in reader.readlines()]
+            return render(request, 'logs.html', {'logs': logs})
+        except Exception as e:
+            return render(request, 'error.html', {'error': str(e)})
+    return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def route(request):
@@ -2130,6 +2150,12 @@ class TradeSalesViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = TradeSales.objects.all()
     serializer_class = TradeSalesSerializer
 
+class FeeLogViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = Autofees.objects.all().order_by('-id')
+    serializer_class = FeeLogSerializer
+    filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
+
 class FailedHTLCFilter(FilterSet):
     chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')
     chan_id_in = CharFilter(field_name='chan_id_in', lookup_expr='exact')
@@ -2203,6 +2229,50 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors)
 
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def forwards_summary(request):
+    filter_1day = datetime.now() - timedelta(days=1)
+    filter_7day = datetime.now() - timedelta(days=7)
+    summary_out = Forwards.objects.values(chan_id=F('chan_id_out')).annotate(
+        count_outgoing_1day=Count('id', filter=Q(forward_date__gte=filter_1day)),
+        sum_outgoing_1day=Coalesce(Sum('amt_out_msat', filter=Q(forward_date__gte=filter_1day)), 0),
+        count_outgoing_7day=Count('id', filter=Q(forward_date__gte=filter_7day)),
+        sum_outgoing_7day=Coalesce(Sum('amt_out_msat', filter=Q(forward_date__gte=filter_7day)), 0),
+        sum_fees_1day=Coalesce(Sum('fee', filter=Q(forward_date__gte=filter_1day)), 0.0),
+        sum_fees_7day=Coalesce(Sum('fee', filter=Q(forward_date__gte=filter_7day)), 0.0),
+        count_incoming_1day=Value(0),
+        sum_incoming_1day=Value(0),
+        count_incoming_7day=Value(0),
+        sum_incoming_7day=Value(0)
+    ).filter(
+        Q(count_outgoing_1day__gt=0) |
+        Q(sum_outgoing_1day__gt=0) |
+        Q(count_outgoing_7day__gt=0) |
+        Q(sum_outgoing_7day__gt=0) |
+        Q(sum_fees_1day__gt=0) |
+        Q(sum_fees_7day__gt=0)
+    )
+
+    summary_in = Forwards.objects.values(chan_id=F('chan_id_in')).annotate(
+        count_outgoing_1day=Value(0),
+        sum_outgoing_1day=Value(0),
+        count_outgoing_7day=Value(0),
+        sum_outgoing_7day=Value(0),
+        sum_fees_1day=Value(0),
+        sum_fees_7day=Value(0),
+        count_incoming_1day=Count('id', filter=Q(forward_date__gte=filter_1day)),
+        sum_incoming_1day=Coalesce(Sum('amt_in_msat', filter=Q(forward_date__gte=filter_1day)), 0),
+        count_incoming_7day=Count('id', filter=Q(forward_date__gte=filter_7day)),
+        sum_incoming_7day=Coalesce(Sum('amt_in_msat', filter=Q(forward_date__gte=filter_7day)), 0)
+    ).filter(
+        Q(count_incoming_1day__gt=0) |
+        Q(sum_incoming_1day__gt=0) |
+        Q(count_incoming_7day__gt=0) |
+        Q(sum_incoming_7day__gt=0)
+    )
+
+    return Response({'results': summary_out.union(summary_in)})
 
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
