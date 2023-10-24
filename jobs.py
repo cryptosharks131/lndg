@@ -159,45 +159,21 @@ def update_forwards(stub):
         outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].remote_pubkey[:12] if outgoing_peer_alias == '' else outgoing_peer_alias
         Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=forward.amt_in_msat, amt_out_msat=forward.amt_out_msat, fee=round(forward.fee_msat/1000, 3)).save()
 
-def disconnecthtlcpeer(stub, htlc, peerpubkey):
-    #print(f"{datetime.now().strftime('%c')} : .. htlc expiring with risk of FC, disconnecting peer to resolve... {htlc.expiration_height=} {htlc.hash_lock.hex()=} {peerpubkey=}")
+def disconnectpeer(stub, peer):
     try:
-        if Peers.objects.filter(pubkey=peerpubkey).exists():
-            peer = Peers.objects.filter(pubkey=peerpubkey)[0]
-        else:
-            print(f"{datetime.now().strftime('%c')} : .... could not find peer ... {peerpubkey=}")
-            return
-        if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) > 10): #Reconnect appox every block height.
-            try:
-                response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=peerpubkey))
-                print(f"{datetime.now().strftime('%c')} : .... Disconnected peer with expiring htlc {peer.alias} {peer.pubkey=} {int((datetime.now() - peer.last_reconnected).total_seconds() / 60)=} {htlc.expiration_height=} {htlc.hash_lock.hex()=}")
-                peer.connected = False
-            except Exception as e:
-                print(f"{datetime.now().strftime('%c')} : .... Error disconnecting peer {peer.alias} {peer.pubkey=} {str(e)=}")
-            peer.last_reconnected = datetime.now() #Reconnect will be done by lnd on its own (or by the reconnect function). Setting time to ensure next disconnect occurs after 1 block.
-            peer.save()
-        #else:
-            #print(f"{datetime.now().strftime('%c')} : .... Skip Disconnected peer {peer.alias} {peer.pubkey=} {int((datetime.now() - peer.last_reconnected).total_seconds() / 60)=}")
-
+        stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=peer.pubkey))
+        print(f"{datetime.now().strftime('%c')} : [Data] : Disconnected peer {peer.alias} {peer.pubkey}")
+        peer.connected = False
+        peer.save()
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : .... Error disconnecting peer {peerpubkey=} {str(e)=}")
-
-    return
+        print(f"{datetime.now().strftime('%c')} : [Data] : Error disconnecting peer {peer.alias} {peer.pubkey}: {str(e)}")
 
 def update_channels(stub):
     counter = 0
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
     PendingHTLCs.objects.all().delete()
-    block_height = 0
-    ReconnectExpiringHtlcPeers = 0
-
-    if LocalSettings.objects.filter(key='LND-ReconnectExpingHtlcPeers').exists():
-        ReconnectExpiringHtlcPeers = int(LocalSettings.objects.filter(key='LND-ReconnectExpingHtlcPeers')[0].value)
-        block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
-    else:
-        LocalSettings(key='LND-ReconnectExpingHtlcPeers', value='13').save() #Set with default value 13 block. Can be changed by the use
-
+    block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
     for channel in channels:
         if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
@@ -254,11 +230,15 @@ def update_channels(stub):
                 else:
                     pending_out += htlc.amount
                 htlc_counter += 1
-                if htlc.expiration_height - block_height <= ReconnectExpiringHtlcPeers and ReconnectExpiringHtlcPeers > 0: #If htlc is expiring within 13 blocks, disconnect peer to help resolve the stuck htlc.
-                    print(f"{datetime.now().strftime('%c')} : htlc expiring within {ReconnectExpiringHtlcPeers} blocks, disconnecting peer to resolve... {(htlc.expiration_height - block_height)=} {htlc.hash_lock.hex()=} {channel.remote_pubkey=}")
-                    disconnecthtlcpeer(stub, htlc, channel.remote_pubkey)
-                #else:
-                    #print(f"{datetime.now().strftime('%c')} : skip disconnecting peer to resolve... {ReconnectExpiringHtlcPeers=} {(htlc.expiration_height-block_height)=} {htlc.hash_lock.hex()=} {channel.remote_pubkey=}")
+                if htlc.expiration_height - block_height <= 13: # If htlc is expiring within 13 blocks, disconnect peer to help resolve the stuck htlc
+                    peer = Peers.objects.filter(pubkey=channel.remote_pubkey)[0] if Peers.objects.filter(pubkey=channel.remote_pubkey).exists() else None
+                    if peer and (not peer.last_reconnected or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) > 10)):
+                        print(f"{datetime.now().strftime('%c')} : [Data] : HTLC expiring at {htlc.expiration_height} and within 13 blocks of {block_height}, disconnecting peer {channel.remote_pubkey} to resolve HTLC: {htlc.hash_lock.hex()} ")
+                        disconnectpeer(stub, peer)
+                        peer.last_reconnected = datetime.now()
+                        peer.save()
+                    else:
+                        print(f"{datetime.now().strftime('%c')} : [Data] : Could not find peer {channel.remote_pubkey} with expiring HTLC: {htlc.hash_lock.hex()}")
         db_channel.pending_outbound = pending_out
         db_channel.pending_inbound = pending_in
         db_channel.htlc_count = htlc_counter
@@ -489,21 +469,13 @@ def reconnect_peers(stub):
                     print(f"{datetime.now().strftime('%c')} : Reconnecting peer {peer.alias} {peer.pubkey=} {peer.last_reconnected=}")
                     if peer.connected == True:
                         print(f"{datetime.now().strftime('%c')} : ... Inactive channel is still connected to peer, disconnecting peer. {peer.alias=} {inactive_peer=}")
-                        try:
-                            response = stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=inactive_peer))
-                            print(f"{datetime.now().strftime('%c')} : .... Disconnected peer {peer.alias} {inactive_peer=} {response=}")
-                            peer.connected = False
-                            peer.save()
-                        except Exception as e:
-                            print(f"{datetime.now().strftime('%c')} : .... Error disconnecting peer {peer.alias} {inactive_peer=} {str(e)=}")
-
+                        disconnectpeer(stub, peer)
                     try:
                         node = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=inactive_peer, include_channels=False)).node
                         host = node.addresses[0].addr
                     except Exception as e:
                         print(f"{datetime.now().strftime('%c')} : ... Unable to find node info on graph, using last known value for {peer.alias} {peer.pubkey=} {peer.address=} {str(e)=}")
                         host = peer.address
-                    #address = ln.LightningAddress(pubkey=inactive_peer, host=host)
                     print(f"{datetime.now().strftime('%c')} : ... Attempting connection to {peer.alias} {inactive_peer=} {host=}")
                     try:
                         #try both the graph value and last know value
