@@ -1,4 +1,5 @@
 import django, json, secrets, asyncio
+from time import sleep
 from asgiref.sync import sync_to_async
 from django.db.models import Sum, F
 from datetime import datetime, timedelta
@@ -19,21 +20,21 @@ def get_out_cans(rebalance, auto_rebalance_channels):
     try:
         return list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error getting outbound cands: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error getting outbound cands: {str(e)}")
 
 @sync_to_async
 def save_record(record):
     try:
         record.save()
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error saving database record: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error saving database record: {str(e)}")
 
 @sync_to_async
 def inbound_cans_len(inbound_cans):
     try:
         return len(inbound_cans)
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error getting inbound cands: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error getting inbound cands: {str(e)}")
 
 async def run_rebalancer(rebalance, worker):
     try:
@@ -41,7 +42,7 @@ async def run_rebalancer(rebalance, worker):
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound')-rebalance.value)*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
         outbound_cans = await get_out_cans(rebalance, auto_rebalance_channels)
         if len(outbound_cans) == 0 and rebalance.manual == False:
-            print(f"{datetime.now().strftime('%c')} : No outbound_cans")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : No outbound_cans")
             rebalance.status = 406
             rebalance.start = datetime.now()
             rebalance.stop = datetime.now()
@@ -57,9 +58,8 @@ async def run_rebalancer(rebalance, worker):
             chan_ids = json.loads(rebalance.outgoing_chan_ids)
             timeout = rebalance.duration * 60
             invoice_response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
-            print(f"{datetime.now().strftime('%c')} : {worker} starting rebalance for: {rebalance.target_alias} {rebalance.last_hop_pubkey=} {rebalance.value=} {rebalance.duration=} {chan_ids=}")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} starting rebalance for {rebalance.target_alias} {rebalance.last_hop_pubkey} for {rebalance.value} sats and duration {rebalance.duration}, using {len(chan_ids)} outbound channels")
             async for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
-                #print(f"{datetime.now().strftime('%c')} : DEBUG {worker} got a payment response: {payment_response.status=} {payment_response.failure_reason=} {payment_response.payment_hash=}")
                 if payment_response.status == 1 and rebalance.status == 0:
                     #IN-FLIGHT
                     rebalance.payment_hash = payment_response.payment_hash
@@ -94,11 +94,11 @@ async def run_rebalancer(rebalance, worker):
                 rebalance.status = 408
             else:
                 rebalance.status = 400
-                print(f"{datetime.now().strftime('%c')} : Error while sending payment: {str(e)}")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error while sending payment: {str(e)}")
         finally:
             rebalance.stop = datetime.now()
             await save_record(rebalance)
-            print(f"{datetime.now().strftime('%c')} : {worker} completed payment attempts for: {rebalance.payment_hash=}")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} completed payment attempts for: {rebalance.payment_hash}")
             original_alias = rebalance.target_alias
             inc=1.21
             dec=2
@@ -111,7 +111,7 @@ async def run_rebalancer(rebalance, worker):
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
-                    print(f"{datetime.now().strftime('%c')} : RapidFire up {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire increase for {next_rebalance.target_alias} from {next_rebalance.value} to {rebalance.value}")
                 else:
                     next_rebalance = None
             # For failed rebalances, try in rapid fire with reduced balances until give up.
@@ -129,14 +129,14 @@ async def run_rebalancer(rebalance, worker):
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     next_rebalance = Rebalancer(value=int(next_value), fee_limit=round(rebalance.fee_limit/(rebalance.value/next_value), 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
-                    print(f"{datetime.now().strftime('%c')} : RapidFire Down {next_rebalance.target_alias=} {next_rebalance.value=} {rebalance.value=}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire decrease for {next_rebalance.target_alias} from {next_rebalance.value} to {rebalance.value}")
                 else:
                     next_rebalance = None
             else:
                 next_rebalance = None
             return next_rebalance
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error running rebalance attempt: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error running rebalance attempt: {str(e)}")
 
 @sync_to_async
 def estimate_liquidity( payment ):
@@ -146,16 +146,12 @@ def estimate_liquidity( payment ):
             attempt = None
             for attempt in payment.htlcs:
                 total_hops=len(attempt.route.hops)
-                #Failure Codes https://github.com/lightningnetwork/lnd/blob/9f013f5058a7780075bca393acfa97aa0daec6a0/lnrpc/lightning.proto#L4200
-                #print(f"{datetime.now().strftime('%c')} : DEBUG Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {attempt.failure.failure_source_index=} {total_hops=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
                 if attempt.failure.failure_source_index == total_hops:
                     #Failure from last hop indicating liquidity available
                     estimated_liquidity = attempt.route.total_amt if attempt.route.total_amt > estimated_liquidity else estimated_liquidity
-                    chan_id=attempt.route.hops[len(attempt.route.hops)-1].chan_id
-                    #print(f"{datetime.now().strftime('%c')} : DEBUG Liquidity Estimation {attempt.attempt_id=} {attempt.status=} {attempt.failure.code=} {chan_id=} {attempt.route.total_amt=} {payment.value_msat/1000=} {estimated_liquidity=} {payment.payment_hash=}")
-        print(f"{datetime.now().strftime('%c')} : Estimated Liquidity {estimated_liquidity=} {payment.payment_hash=} {payment.status=} {payment.failure_reason=}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Estimated Liquidity {estimated_liquidity} for payment {payment.payment_hash} with status {payment.status} and reason {payment.failure_reason}")
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error estimating liquidity: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error estimating liquidity: {str(e)}")
         estimated_liquidity = 0
 
     return estimated_liquidity
@@ -176,7 +172,7 @@ def update_channels(stub, incoming_channel, outgoing_channel):
         db_channel.remote_balance = channel.remote_balance
         db_channel.save()
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error updating channel balances: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error updating channel balances: {str(e)}")
 
 @sync_to_async
 def auto_schedule() -> List[Rebalancer]:
@@ -242,17 +238,15 @@ def auto_schedule() -> List[Rebalancer]:
                     last_rebalance = Rebalancer.objects.filter(last_hop_pubkey=target.remote_pubkey).exclude(status=0).order_by('-id')[0]
                     if not (last_rebalance.status == 2 or (last_rebalance.status > 2 and (int((datetime.now() - last_rebalance.stop).total_seconds() / 60) > wait_period)) or (last_rebalance.status == 1 and ((int((datetime.now() - last_rebalance.start).total_seconds() / 60) - last_rebalance.duration) > wait_period))):
                         continue
-                print(f"{datetime.now().strftime('%c')} : Creating Auto Rebalance Request for: {target.chan_id}")
-                print(f"{datetime.now().strftime('%c')} : Request routing through: {outbound_cans}")
-                print(f"{datetime.now().strftime('%c')} : {target_value} / {target.ar_amt_target}")
-                print(f"{datetime.now().strftime('%c')} : {target_fee}")
-                print(f"{datetime.now().strftime('%c')} : {target_time}")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Creating Auto Rebalance Request for: {target.chan_id}")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Value: {target_value} / {target.ar_amt_target} | Fee: {target_fee} | Duration: {target_time}")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Request routing outbound via: {outbound_cans}")
                 new_rebalance = Rebalancer(value=target_value, fee_limit=target_fee, outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=target.remote_pubkey, target_alias=target.alias, duration=target_time)
                 new_rebalance.save()
                 to_schedule.append(new_rebalance)
         return to_schedule
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error scheduling rebalances: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error scheduling rebalances: {str(e)}")
         return to_schedule
 
 @sync_to_async
@@ -282,10 +276,9 @@ def auto_enable():
                 iapD = 0 if routed_in_apday == 0 else int(forwards.filter(chan_id_in__in=chan_list).aggregate(Sum('amt_in_msat'))['amt_in_msat__sum']/10000000)/100
                 oapD = 0 if routed_out_apday == 0 else int(forwards.filter(chan_id_out__in=chan_list).aggregate(Sum('amt_out_msat'))['amt_out_msat__sum']/10000000)/100
                 for peer_channel in lookup_channels.filter(chan_id__in=chan_list):
-                    #print('Processing: ', peer_channel.alias, ' : ', peer_channel.chan_id, ' : ', oapD, " : ", iapD, ' : ', outbound_percent, ' : ', inbound_percent)
                     if peer_channel.ar_out_target == 100 and peer_channel.auto_rebalance == True:
                         #Special Case for LOOP, Wos, etc. Always Auto Rebalance if enabled to keep outbound full.
-                        print(f"{datetime.now().strftime('%c')} : Skipping AR enabled and 100% oTarget channel... {peer_channel.alias=} {peer_channel.chan_id=}")
+                        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Skipping AR enabled and 100% oTarget channel: {peer_channel.alias} {peer_channel.chan_id}")
                         pass
                     elif oapD > (iapD*1.10) and outbound_percent > 75:
                         #print('Case 1: Pass')
@@ -295,13 +288,13 @@ def auto_enable():
                         peer_channel.auto_rebalance = True
                         peer_channel.save()
                         Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=0, new_value=1).save()
-                        print(f"{datetime.now().strftime('%c')} : Auto Pilot Enabled: {peer_channel.alias=} {peer_channel.chan_id=} {oapD=} {iapD=}")
+                        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Auto Pilot Enabled for {peer_channel.alias} {peer_channel.chan_id}: {oapD} {iapD}")
                     elif oapD < (iapD*1.10) and outbound_percent > 75 and peer_channel.auto_rebalance == True:
                         #print('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
                         peer_channel.auto_rebalance = False
                         peer_channel.save()
                         Autopilot(chan_id=peer_channel.chan_id, peer_alias=peer_channel.alias, setting='Enabled', old_value=1, new_value=0).save()
-                        print(f"{datetime.now().strftime('%c')} : Auto Pilot Disabled (3): {peer_channel.alias=} {peer_channel.chan_id=} {oapD=} {iapD=}" )
+                        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Auto Pilot Disabled for {peer_channel.alias} {peer_channel.chan_id}: {oapD} {iapD}" )
                     elif oapD < (iapD*1.10) and inbound_percent > 75:
                         #print('Case 4: Pass')
                         pass
@@ -309,7 +302,7 @@ def auto_enable():
                         #print('Case 5: Pass')
                         pass
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error during auto channel enabling: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error during auto channel enabling: {str(e)}")
 
 @sync_to_async
 def get_pending_rebals():
@@ -317,50 +310,49 @@ def get_pending_rebals():
         rebalances = Rebalancer.objects.filter(status=0).order_by('id')
         return rebalances, len(rebalances)
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Error getting pending rebalances: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error getting pending rebalances: {str(e)}")
 
-shutdown_rebalancer = False
-scheduled_rebalances = []
-active_rebalances = []
 async def async_queue_manager(rebalancer_queue):
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer
-    print(f"{datetime.now().strftime('%c')} : Queue manager is starting...")
+    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is starting...")
     try:
         while True:
-            print(f"{datetime.now().strftime('%c')} : Queue currently has {rebalancer_queue.qsize()} items...")
-            print(f"{datetime.now().strftime('%c')} : There are currently {len(active_rebalances)} tasks in progress...")
-            print(f"{datetime.now().strftime('%c')} : Queue manager is checking for more work...")
+            if shutdown_rebalancer == True:
+                return
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue currently has {rebalancer_queue.qsize()} items...")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : There are currently {len(active_rebalances)} tasks in progress...")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is checking for more work...")
             pending_rebalances, rebal_count = await get_pending_rebals()
             if rebal_count > 0:
                 for rebalance in pending_rebalances:
                     if rebalance.id not in (scheduled_rebalances + active_rebalances):
-                        print(f"{datetime.now().strftime('%c')} : Found a pending job to schedule with id: {rebalance.id}")
+                        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Found a pending job to schedule with id: {rebalance.id}")
                         scheduled_rebalances.append(rebalance.id)
                         await rebalancer_queue.put(rebalance)
             await auto_enable()
             scheduled = await auto_schedule()
             if len(scheduled) > 0:
-                print(f"{datetime.now().strftime('%c')} : Scheduling {len(scheduled)} more jobs...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Scheduling {len(scheduled)} more jobs...")
                 for rebalance in scheduled:
                     scheduled_rebalances.append(rebalance.id)
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
-                print(f"{datetime.now().strftime('%c')} : Queue is still empty, stoping the rebalancer...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stoping the rebalancer...")
                 shutdown_rebalancer = True
                 return
             await asyncio.sleep(30)
     except Exception as e:
-        print(f"{datetime.now().strftime('%c')} : Queue manager exception: {str(e)}")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager exception: {str(e)}")
         shutdown_rebalancer = True
     finally:
-        print(f"{datetime.now().strftime('%c')} : Queue manager has shut down...")
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager has shut down...")
 
 async def async_run_rebalancer(worker, rebalancer_queue):
+    global scheduled_rebalances, active_rebalances, shutdown_rebalancer
     while True:
-        global scheduled_rebalances, active_rebalances, shutdown_rebalancer
-        if not rebalancer_queue.empty():
+        if not rebalancer_queue.empty() and not shutdown_rebalancer:
             rebalance = await rebalancer_queue.get()
-            print(f"{datetime.now().strftime('%c')} : {worker} is starting a new request...")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} is starting a new request...")
             active_rebalance_id = None
             if rebalance != None:
                 active_rebalance_id = rebalance.id
@@ -370,7 +362,7 @@ async def async_run_rebalancer(worker, rebalancer_queue):
                 rebalance = await run_rebalancer(rebalance, worker)
             if active_rebalance_id != None:
                 active_rebalances.remove(active_rebalance_id)
-            print(f"{datetime.now().strftime('%c')} : {worker} completed its request...")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} completed its request...")
         else:
             if shutdown_rebalancer == True:
                 return
@@ -381,22 +373,48 @@ async def start_queue(worker_count=1):
     manager = asyncio.create_task(async_queue_manager(rebalancer_queue))
     workers = [asyncio.create_task(async_run_rebalancer("Worker " + str(worker_num+1), rebalancer_queue)) for worker_num in range(worker_count)]
     await asyncio.gather(manager, *workers)
-    print(f"{datetime.now().strftime('%c')} : Manager and workers have stopped...")
+    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Manager and workers have stopped...")
+
+@sync_to_async
+def get_worker_count():
+    if LocalSettings.objects.filter(key='AR-Workers').exists():
+        return int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
+    else:
+        return 1
+
+async def update_worker_count():
+    global worker_count, shutdown_rebalancer
+    while True:
+        updated_worker_count = await get_worker_count()
+        if updated_worker_count != worker_count:
+            worker_count = updated_worker_count
+            shutdown_rebalancer = True
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : New worker count detected...restarting rebalancer")
+        await asyncio.sleep(20)
 
 def main():
-    if Rebalancer.objects.filter(status=1).exists():
-        unknown_errors = Rebalancer.objects.filter(status=1)
-        for unknown_error in unknown_errors:
-            unknown_error.status = 400
-            unknown_error.stop = datetime.now()
-            unknown_error.save()
+    global scheduled_rebalances, active_rebalances, shutdown_rebalancer, worker_count
     if LocalSettings.objects.filter(key='AR-Workers').exists():
         worker_count = int(LocalSettings.objects.filter(key='AR-Workers')[0].value)
     else:
         LocalSettings(key='AR-Workers', value='1').save()
         worker_count = 1
-    asyncio.run(start_queue(worker_count))
-    print(f"{datetime.now().strftime('%c')} : Rebalancer successfully shutdown...")
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.create_task(update_worker_count())
+    while True:
+        shutdown_rebalancer = False
+        scheduled_rebalances = []
+        active_rebalances = []
+        if Rebalancer.objects.filter(status=1).exists():
+            unknown_errors = Rebalancer.objects.filter(status=1)
+            for unknown_error in unknown_errors:
+                unknown_error.status = 400
+                unknown_error.stop = datetime.now()
+                unknown_error.save()
+        loop.run_until_complete(start_queue(worker_count))
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
+        sleep(20)
 
 if __name__ == '__main__':
     main()
