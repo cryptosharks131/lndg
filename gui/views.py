@@ -229,7 +229,7 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
-            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            logfile = '/var/log/controller-lndg.log' if path.isfile('/var/log/controller-lndg.log') else 'data/lndg-controller.log'
             file_size = path.getsize(logfile)-2
             if file_size == 0:
                 logs = ['Logs are empty....']
