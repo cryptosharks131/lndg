@@ -36,7 +36,7 @@ User=$INSTALL_USER
 Group=$INSTALL_USER
 ExecStart=$LNDG_DIR/.venv/bin/python $LNDG_DIR/controller.py
 StandardOutput=append:/var/log/controller-lndg.log
-StandardError=append:/var/log/controller-lndg-error.log
+StandardError=append:/var/log/controller-lndg.log
 Restart=always
 RestartSec=60s
 [Install]
