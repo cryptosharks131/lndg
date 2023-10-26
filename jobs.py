@@ -163,13 +163,12 @@ def update_forwards(stub):
 def update_channels(stub):
     counter = 0
     chan_list = []
-    channels = stub.ListChannels(ln.ListChannelsRequest()).channels
+    channels = stub.ListChannels(ln.ListChannelsRequest(peer_alias_lookup=True)).channels
     PendingHTLCs.objects.all().delete()
     for channel in channels:
         if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
             db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
-            db_channel.alias = channel.peer_alias
             pending_channel = None
         else:
             #Create a record for this new channel
@@ -193,6 +192,7 @@ def update_channels(stub):
             db_channel.close_address = channel.close_address
             pending_channel = PendingChannels.objects.filter(funding_txid=txid, output_index=index)[0] if PendingChannels.objects.filter(funding_txid=txid, output_index=index).exists() else None
         # Update basic channel data
+        db_channel.alias = channel.peer_alias
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.unsettled_balance = channel.unsettled_balance
