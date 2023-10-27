@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'gui',
     'rest_framework',
     'django_filters',
-    'qr_code',
 ]
 
 MIDDLEWARE = [
