@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 BASE_DIR = Path(__file__).resolve().parent
 
-def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new):
+def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
@@ -170,7 +170,8 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, not nologinrequired, wnl, api_login)
+SESSION_COOKIE_AGE = %s
+''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, not nologinrequired, wnl, api_login, cookie_age)
     if not force_new and Path("lndg/settings.py").exists():
         print('A settings file already exist, skipping creation...')
         return
@@ -300,6 +301,7 @@ def main():
     parser.add_argument('-mcrn', '--macaroon', help = 'Set the path to a custom macroon file', default=None)
     parser.add_argument('-lnddb', '--lnddatabase', help = 'Set the path to the channel.db for monitoring', default=None)
     parser.add_argument('-nologin', '--nologinrequired', help = 'By default, force all connections to be authenticated', action='store_true')
+    parser.add_argument('-sessionage', '--sessioncookieage', help = 'Number of seconds before the login session expires', default='1209600')
     parser.add_argument('-f', '--force', help = 'Force a new settings file to be created', action='store_true')
     args = parser.parse_args()
     node_ip = args.nodeip
@@ -320,10 +322,11 @@ def main():
     lnd_tls_path = args.tlscert if args.tlscert else lnd_dir_path + '/tls.cert'
     lnd_macaroon_path = args.macaroon if args.macaroon else lnd_dir_path + '/data/chain/bitcoin/' + lnd_network + '/admin.macaroon'
     lnd_database_path = args.lnddatabase if args.lnddatabase else lnd_dir_path + '/data/graph/' + lnd_network + '/channel.db'
+    cookie_age = int(args.sessioncookieage)
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new)
+    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)
