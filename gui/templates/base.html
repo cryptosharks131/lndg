@@ -88,7 +88,6 @@
     <meta charset="utf-8">
     {% block meta %}{% endblock %}
     <title>{% block title %}LNDg{% endblock %}</title>
-    {% load qr_code %}
     <link href="{% static 'w3style.css' %}" rel="stylesheet" type="text/css">
   </head>
   <body {% if request.COOKIES.darkmode == 'true' %}class="dark-mode"{% endif %}>
@@ -99,11 +98,6 @@
         <div class="w3-panel w3-orange w3-display-container w3-padding">
           <span onclick="this.parentElement.style.display='none'" class="w3-button w3-hover-red w3-display-topright">X</span>
           <h1 style="word-wrap:break-word">{{ message.message }}</h1>
-          {% with sliced_msg=message.message|slice:":17" %}
-            {% if sliced_msg == "Deposit Address: " or sliced_msg == "Invoice created! " %}
-              {% qr_from_text message.message|slice:"17:" size="s" image_format="png" error_correction="L" %}
-            {% endif %}
-          {% endwith %}
         </div>
         {% endfor %}
       </div>

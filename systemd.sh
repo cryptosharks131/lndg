@@ -27,7 +27,7 @@ function check_path() {
 }
 
 function configure_controller() {
-    cat << EOF > /etc/systemd/system/controller-lndg.service
+    cat << EOF > /etc/systemd/system/lndg-controller.service
 [Unit]
 Description=Run Backend Controller For Lndg
 [Service]
@@ -35,8 +35,8 @@ Environment=PYTHONUNBUFFERED=1
 User=$INSTALL_USER
 Group=$INSTALL_USER
 ExecStart=$LNDG_DIR/.venv/bin/python $LNDG_DIR/controller.py
-StandardOutput=append:/var/log/controller-lndg.log
-StandardError=append:/var/log/controller-lndg-error.log
+StandardOutput=append:/var/log/lndg-controller.log
+StandardError=append:/var/log/lndg-controller.log
 Restart=always
 RestartSec=60s
 [Install]
@@ -47,8 +47,8 @@ EOF
 function enable_services() {
     systemctl daemon-reload
     sleep 3
-    systemctl start controller-lndg.service
-    systemctl enable controller-lndg.service >/dev/null 2>&1
+    systemctl start lndg-controller.service
+    systemctl enable lndg-controller.service >/dev/null 2>&1
 }
 
 function report_information() {
@@ -56,11 +56,11 @@ function report_information() {
     echo -e "================================================================================================================================"
     echo -e "Backend services and rebalancer setup for LNDg via systemd using user account $INSTALL_USER and a refresh interval of $REFRESH seconds."
     echo -e ""
-    echo -e "Backend Controller Status: ${RED}sudo systemctl status controller-lndg.service${NC}"
+    echo -e "Backend Controller Status: ${RED}sudo systemctl status lndg-controller.service${NC}"
     echo -e ""
     echo -e "To disable your backend services, use the following commands."
-    echo -e "Disable Backend Controller: ${RED}sudo systemctl disable controller-lndg.service${NC}"
-    echo -e "Stop Backend Controller: ${RED}sudo systemctl stop controller-lndg.service${NC}"
+    echo -e "Disable Backend Controller: ${RED}sudo systemctl disable lndg-controller.service${NC}"
+    echo -e "Stop Backend Controller: ${RED}sudo systemctl stop lndg-controller.service${NC}"
     echo -e ""
     echo -e "To re-enable these services, simply replace the disable/stop commands with enable/start."
     echo -e "================================================================================================================================"

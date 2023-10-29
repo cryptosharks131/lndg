@@ -461,13 +461,10 @@
 <div class="w3-container w3-padding-small">
   <h2>Create Invoice</h2>
   <div class="w3-container w3-padding-small">
-    <form action="/createinvoice/" method="post">
-      {% csrf_token %}
-      <span class="input" data-unit="sats">
-        <input placeholder="0" id="value" type="number" name="value">
-      </span>
-      <input type="submit" value="OK">
-    </form>
+    <span class="input" data-unit="sats">
+      <input placeholder="0" id="invoice_value" type="number" name="value">
+    </span>
+    <input type="submit" value="OK" onclick="Sync.POST('createinvoice/', {body:{value: document.getElementById('invoice_value').value }}, r => {showBannerMsg('Invoice:', r.data, true, r.data);qr_addr(r.data);})">
   </div>
 </div>
 <div class="w3-container w3-padding-small">
