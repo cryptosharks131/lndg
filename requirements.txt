@@ -8,3 +8,5 @@ pytz
 pandas
 requests
 asyncio
+bech32
+cryptography
