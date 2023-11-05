@@ -43,7 +43,7 @@ def decode_basic_trade(records):
     }
 
 def encode_as_bigsize(number: int):
-    max_8_bit_number = 255
+    max_8_bit_number = 252
     max_16_bit_number = 65535
     max_32_bit_number = 4294967295
     
@@ -83,12 +83,12 @@ def decode_as_bigsize(encoded_string: str):
     def read_uint64(encoded_string):
         return int(encoded_string[2:18], 16), encoded_string[18:]
 
-    if encoded_string.startswith('fd'):
-        value, remaining = read_uint16(encoded_string)
+    if encoded_string.startswith('ff'):
+        value, remaining = read_uint64(encoded_string)
     elif encoded_string.startswith('fe'):
         value, remaining = read_uint32(encoded_string)
-    elif encoded_string.startswith('ff'):
-        value, remaining = read_uint64(encoded_string)
+    elif encoded_string.startswith('fd'):
+        value, remaining = read_uint16(encoded_string)
     else:
         value, remaining = read_uint8(encoded_string)
 
@@ -648,10 +648,9 @@ def decode_final_trade(network, request, details):
     return decode_records_as_request(request['value'], network), auth['value'], encrypted_data['value']
 
 def serve_trades(stub):
-    print('Generic Trade Link:', create_trade_details(stub))
-    print('Serving trades...')
+    print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trades...")
     for trade in get_trades(stub):
-        print('Serving trade:', trade['id'])
+        print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trade: {trade['id']}")
     for response in stub.SubscribeCustomMessages(ln.SubscribeCustomMessagesRequest()):
         if response.type == 32768:
             from_peer = response.peer
@@ -664,7 +663,7 @@ def serve_trades(stub):
                     if 'type' in request:
                         req_type = request['type']
                         if req_type == '8050005': # request a seller to finalize a trade or give all open trades
-                            print('SELLER ACTION', '|', 'ID:', request['id'], '|', 'Records:', request['records'])
+                            print(f"{datetime.now().strftime('%c')} : [P2P] : SELLER ACTION", '|', 'ID:', request['id'], '|', 'Records:', request['records'])
                             select_trade = next((record for record in request['records'] if record['type'] == '0'), None)
                             request_trade = next((record for record in request['records'] if record['type'] == '1'), None)
                             if request_trade:
@@ -702,11 +701,11 @@ def serve_trades(stub):
                     request = msg_response['response']
                     if 'failure' in request and request['failure'] != None:
                         # failure message returned
-                        print('Failure:', request['failure'])
+                        print(f"{datetime.now().strftime('%c')} : [P2P] : Failure:", request['failure'])
                     else:
                         if len(request['records']) == 0:
                             # message acknowledgements
-                            print('ACK', '|', 'ID:', request['id'])
+                            print(f"{datetime.now().strftime('%c')} : [P2P] : ACK", '|', 'ID:', request['id'])
 
 async def get_open_trades(astub, results):
     try:
@@ -733,6 +732,7 @@ async def get_open_trades(astub, results):
                         if 'failure' in request and request['failure'] != None:
                             # failure message returned
                             print('Failure:', request['failure'])
+                            return
                         else:
                             if len(request['records']) == 0:
                                 # message acknowledgements
@@ -979,8 +979,10 @@ def main():
         create_trade_anchor(stub, description, price, secret, expiry)
         ask_serve = input('Start serving trades? y/N: ')
         if ask_serve.lower() == 'y':
+            print('Generic Trade Link:', create_trade_details(stub))
             serve_trades(stub)
     if selected_option == 'Serve Trades':
+        print('Generic Trade Link:', create_trade_details(stub))
         serve_trades(stub)
     if selected_option == 'Buy A Trade':
         trade = input('Enter an encoded trade: ')

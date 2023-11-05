@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %} {{ block.super }} - Trade Sales{% endblock %}
 {% block content %}
-{% load humanize %}
+<span style="position: absolute;top: 0;right: 0;padding: 5px;">Serve Active Trades: <label title="Start Serving Open Trades" class="switch"><input id="tradeServiceSwitch" type="checkbox"><span onclick="toggleTradeService()" class="slider round"></span></label></span>
 <div class="w3-container w3-padding-small">
   <h2>Create A Trade</h2>
 
@@ -51,11 +51,13 @@
   document.addEventListener('DOMContentLoaded', async () =>{
     const tradeSalesTable = byId('tradeSalesTable')
     const tradeSales_task = GET('trades', {data: {}})
+    const tradeService_task = GET('settings/LND-ServeTrades', {data: {}})
     let trade_sales = (await tradeSales_task).results
     if(trade_sales.length == 0){
       document.getElementById("tradeSalesDiv").innerHTML = `<center><h1>You dont have any trade sales setup yet.</h1></center>`
       return
     }
+    byId('tradeServiceSwitch').checked = (await tradeService_task).value == 1 ? true : false
     build_tradeSales(trade_sales)
   })
   document.getElementById("createTrade").addEventListener("submit", function(event) {
@@ -76,6 +78,9 @@
     for (ts of trade_sales){
       tableBody.appendChild(use(base_trade_template).render(ts))
     }
+  }
+  async function toggleTradeService(){
+    PUT('settings/LND-ServeTrades', {body: {'value': byId('tradeServiceSwitch').checked == true ? 0 : 1}})
   }
 </script>
 {% endblock %}
