@@ -11,7 +11,7 @@
     <input type="text" id="description" name="description" required><br>
 
     <label for="price">Price:</label>
-    <input type="number" id="price" name="price" required><br>
+    <input type="number" min="0" id="price" name="price" required><br>
 
     <label for="secret">Secret:</label>
     <textarea id="secret" name="secret" rows="1" required></textarea><br>
@@ -19,11 +19,28 @@
     <label for="expiry">Optional Expiration:</label>
     <input type="datetime-local" id="expiry" name="expiry"><br>
 
+    <label for="sale_limit">Optional Sale Limit:</label>
+    <input type="number" min="0" id="sale_limit" name="sale_limit"><br>
+  
     <input type="submit" value="Submit">
   </form>
 </div>
 <div id="trade_sales_container" class="w3-container w3-padding-small">
-  <table id="tradeSalesTable" class="w3-table-all w3-centered w3-hoverable">
+  <div id="trade_sales_div" style="display:none">
+    <div class="w3-container" style="height:40px">
+      <text readonly style="word-wrap: break-word;vertical-align:top;">Trade Link: {{ trade_link }}</text>
+      <a style="display: inline-block;position:relative;width:15px;height:15px" href="#." data-value="{{ trade_link }}" onclick="toggle(this)" onmouseleave="qr_clear()" onmouseenter="qr_gen('{{ trade_link }}');">
+        <svg style="position:absolute;top:0;left:0;width:15px;height:15px" version="1.1" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+          <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+        </svg>
+        <svg style="position:absolute;top:0;left:0;width:15px;height:15px;visibility:hidden" version="1.1" viewBox="0 0 16 16">
+          <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
+        </svg>
+      </a>
+      <div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background:white" id="qrcode"></div>
+    </div>
+    <table id="tradeSalesTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
       <tr>
         <th>Trade ID</th>
@@ -33,44 +50,67 @@
         <th>Price</th>
         <th>Type</th>
         <th>Secret</th>
+        <th>Sales</th>
+        <th>Limit</th>
       </tr>
     </thead>
     <tbody id="trade_sales"></tbody>
-  </table>
+    </table>
+  </div>
+  <div id="no_trade_sales_div" style="display:none">
+    <center><h1>You dont have any trade sales setup yet.</h1></center>
+  </div>
 </div>
 <script>
+  function qr_gen(addr){
+    var qrcode = new QRCode(byId('qrcode'), {text:addr, width:256, height:256})
+    byId('qrcode').style.display = 'block'
+  }
+  function qr_clear(){
+    byId('qrcode').replaceChildren()
+    byId('qrcode').style.display = 'none'
+  }
   const base_trade_template = {
-    "id": t => ({innerHTML: `${t.id.substring(0,7)}`}),
-    "created": t => ({innerHTML: formatDate(t.creation_date), title: adjustTZ(t.creation_date) }),
-    "expiry": t => ({innerHTML: formatDate(t.expiry), title: adjustTZ(t.expiry) }),
-    "description": t => ({innerHTML: `${t.description}`}),
-    "price": t => ({innerHTML: `${t.price.intcomma()}`}),
-    "type": t => ({innerHTML: `${t.sale_type}`}),
-    "secret": t => ({innerHTML: `${t.secret}`})
+    "id": ts => ({innerHTML: `${ts.id}`}),
+    "created": ts => ({innerHTML: formatDate(ts.creation_date), title: adjustTZ(ts.creation_date) }),
+    "expiry": ts => (ts.expiry ? {innerHTML: formatDate(ts.expiry), title: adjustTZ(ts.expiry) } : {innerHTML: '---' }),
+    "description": ts => ({innerHTML: `${ts.description}`}),
+    "price": ts => ({innerHTML: `${ts.price.intcomma()}`}),
+    "type": ts => ({innerHTML: `${ts.sale_type}`}),
+    "secret": ts => ({innerHTML: `${ts.secret}`}),
+    "sale_count": ts => ({innerHTML: `${ts.sale_count.intcomma()}`}),
+    "sale_limit": ts => ({innerHTML: `${ts.sale_limit ? ts.sale_limits.intcomma() : '---'}`})
   }
   document.addEventListener('DOMContentLoaded', async () =>{
+    byId('expiry').min = new Date().toISOString().slice(0, 16)
     const tradeSalesTable = byId('tradeSalesTable')
     const tradeSales_task = GET('trades', {data: {}})
     const tradeService_task = GET('settings/LND-ServeTrades', {data: {}})
+    byId('tradeServiceSwitch').checked = (await tradeService_task).value == 1 ? true : false
     let trade_sales = (await tradeSales_task).results
     if(trade_sales.length == 0){
-      document.getElementById("tradeSalesDiv").innerHTML = `<center><h1>You dont have any trade sales setup yet.</h1></center>`
+      byId('no_trade_sales_div').style = {display:'block'}
       return
     }
-    byId('tradeServiceSwitch').checked = (await tradeService_task).value == 1 ? true : false
+    byId('trade_sales_div').style = {display:'block'}
     build_tradeSales(trade_sales)
   })
   document.getElementById("createTrade").addEventListener("submit", function(event) {
       event.preventDefault()
-      const formData = new FormData(this);
-      const formDataObject = {};
+      const formData = new FormData(this)
+      const formDataObject = {}
+      const tableBody = byId('tradeSalesTable').querySelector("tbody")
 
       formData.forEach(function(value, key) {
         if (value) {
                 formDataObject[key] = value;
             }
       });
-      POST('createtrade', {body: formDataObject})
+      if (window.getComputedStyle(byId('trade_sales_div')).display=='none'){
+        byId('no_trade_sales_div').style = {display:'none'}
+        byId('trade_sales_div').style = {display:'block'}
+      }
+      Sync.POST('createtrade', {body: formDataObject}, ts => tableBody.appendChild(use(base_trade_template).render(ts)))
   });
 
   async function build_tradeSales(trade_sales){

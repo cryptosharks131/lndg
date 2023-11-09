@@ -126,6 +126,7 @@ class CreateTradeSerializer(serializers.Serializer):
     price = serializers.IntegerField(required=False)
     secret = serializers.CharField(max_length=100, required=False)
     expiry = serializers.DateTimeField(required=False, default=None)
+    sale_limit = serializers.IntegerField(required=False, default=None)
 
 class TradeSalesSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()

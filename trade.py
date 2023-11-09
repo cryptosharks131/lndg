@@ -1,4 +1,5 @@
-import base64, secrets, re, asyncio
+import django, base64, secrets, re, asyncio
+from django.db.models import F, Q
 from time import time
 from bech32 import bech32_decode, bech32_encode, convertbits
 from datetime import datetime, timedelta
@@ -13,6 +14,10 @@ from gui.lnd_deps import signer_pb2_grpc as lnsigner
 from gui.lnd_deps import router_pb2 as lnr
 from gui.lnd_deps import router_pb2_grpc as lnrouter
 from gui.lnd_deps.lnd_connect import lnd_connect, async_lnd_connect
+from os import environ
+environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
+django.setup()
+from gui.models import TradeSales
 
 def is_hex(n):
     return len(n) % 2 == 0 and all(c in '0123456789ABCDEFabcdef' for c in n)
@@ -397,7 +402,7 @@ def encode_peer_response(data):
     
     return '626f73ff' + ''.join([encode_tlv_record(record) for record in peer_response])
 
-def get_trades(stub):
+def get_legacy_trades(stub):
     trades = []
     for invoice in stub.ListInvoices(ln.ListInvoiceRequest(pending_only=True)).invoices:
         if invoice.is_keysend == False:
@@ -408,6 +413,12 @@ def get_trades(stub):
                 trade['expiry'] = invoice.expiry
                 trade['creation_date'] = invoice.creation_date
                 trades.append(trade)
+    return trades
+
+def get_trades(trade_id=None):
+    trades = TradeSales.objects.filter(Q(expiry__isnull=True) | Q(expiry__gt=datetime.now())).filter(Q(sale_limit__isnull=True) | Q(sale_count__lt=F('sale_limit')))
+    if trade_id:
+        trades = trades.filter(id=trade_id)
     return trades
 
 def decodePrefix(prefix):
@@ -649,8 +660,8 @@ def decode_final_trade(network, request, details):
 
 def serve_trades(stub):
     print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trades...")
-    for trade in get_trades(stub):
-        print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trade: {trade['id']}")
+    for trade in get_trades():
+        print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trade: {trade.id}")
     for response in stub.SubscribeCustomMessages(ln.SubscribeCustomMessagesRequest()):
         if response.type == 32768:
             from_peer = response.peer
@@ -667,33 +678,33 @@ def serve_trades(stub):
                             select_trade = next((record for record in request['records'] if record['type'] == '0'), None)
                             request_trade = next((record for record in request['records'] if record['type'] == '1'), None)
                             if request_trade:
-                                trades = get_trades(stub)
+                                trades = get_trades()
                                 for trade in trades:
-                                    trade_description = trade['description'] if 'description' in trade else trade['channel']
-                                    trade_data = encode_peer_request({'id':secrets.token_bytes(32).hex(), 'type':'8050006', 'records':[{'type': '1', 'value': trade['id']}, {'type': '2', 'value': utf8_as_hex(trade_description)}, {'type': '0', 'value': request_trade['value']}]})
+                                    trade_data = encode_peer_request({'id':secrets.token_bytes(32).hex(), 'type':'8050006', 'records':[{'type': '1', 'value': trade.id}, {'type': '2', 'value': utf8_as_hex(trade.description)}, {'type': '0', 'value': request_trade['value']}]})
                                     stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(trade_data)))
                                 ack_data = encode_peer_response({'failure':None, 'id':request['id'], 'records':[]})
                                 for trade in trades:
                                     stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(ack_data)))
                             if select_trade:
-                                trades = get_trades(stub)
-                                find_trade = [trade for trade in trades if trade['id'] == select_trade['value']]
-                                if find_trade:
-                                    trade_details = find_trade[0]
+                                selected_trade = get_trades(trade_id=trade.id)
+                                if selected_trade:
+                                    trade_details = selected_trade[0]
                                     signerstub = lnsigner.SignerStub(lnd_connect())
                                     shared_key = signerstub.DeriveSharedKey(lns.SharedKeyRequest(ephemeral_pubkey=from_peer)).shared_key
                                     preimage = secrets.token_bytes(32)
                                     shared_secret = bytes(x ^ y for x, y in zip(shared_key, preimage))
                                     cipher = Cipher(algorithms.AES(shared_secret), modes.GCM(bytes(16)), backend=default_backend())
                                     encryptor = cipher.encryptor()
-                                    ciphertext = (encryptor.update(trade_details['secret'].encode('utf-8')) + encryptor.finalize()).hex()
+                                    ciphertext = (encryptor.update(trade_details.secret.encode('utf-8')) + encryptor.finalize()).hex()
                                     auth_tag = encryptor.tag.hex()
-                                    time_to_expiry = (datetime.fromtimestamp(trade_details['creation_date']) + timedelta(seconds=trade_details['expiry'])-datetime.now()).seconds
+                                    time_to_expiry = (trade_details.creation_date + timedelta(seconds=trade_details.expiry)-datetime.now()).seconds if trade_details.expiry else None
                                     default_expiry = 30*60
-                                    inv_expiry = default_expiry if time_to_expiry > default_expiry else time_to_expiry
+                                    inv_expiry = default_expiry if time_to_expiry is None or time_to_expiry > default_expiry else time_to_expiry
                                     if inv_expiry > 0:
-                                        final_invoice = stub.AddInvoice(ln.Invoice(memo=trade_details['description'], value=trade_details['price'], expiry=inv_expiry, r_preimage=preimage))
+                                        final_invoice = stub.AddInvoice(ln.Invoice(memo=trade_details.description, value=trade_details.price, expiry=inv_expiry, r_preimage=preimage))
                                         trade_data = encode_peer_response({'failure': None, 'id':request['id'], 'records': [{'type':'1', 'value':encode_final_trade(auth_tag, ciphertext, final_invoice.payment_request)}]})
+                                        trade_details.sale_count = F('sale_count') + 1
+                                        trade_details.save()
                                         stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(trade_data)))
                     else:
                         raise ValueError('ExpectedRequestTypeInRequestMessage')

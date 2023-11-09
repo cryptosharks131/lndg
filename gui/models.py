@@ -335,3 +335,5 @@ class TradeSales(models.Model):
     price = models.BigIntegerField()
     sale_type = models.IntegerField()
     secret = models.CharField(null=True, max_length=1000)
+    sale_limit = models.IntegerField(null=True)
+    sale_count = models.IntegerField(default=0)

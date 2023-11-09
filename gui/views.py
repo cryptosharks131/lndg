@@ -1199,8 +1199,9 @@ def batch(request):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def trades(request):
     if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect())
         context = {
-            'balances': 0
+            'trade_link': trade.create_trade_details(stub)
         }
         return render(request, 'trades.html', context)
     else:
@@ -2826,10 +2827,12 @@ def create_trade(request):
         price = serializer.validated_data['price']
         secret = serializer.validated_data['secret']
         expiry = serializer.validated_data['expiry']
+        sale_limit = serializer.validated_data['sale_limit']
         trade_id = secrets.token_bytes(32).hex()
         try:
-            TradeSales(id=trade_id, description=description, price=price, secret=secret, expiry=expiry, sale_type=0).save()
-            return Response({'message': f'Created trade: {description}', 'id':trade_id})
+            new_trade = TradeSales(id=trade_id, description=description, price=price, secret=secret, expiry=expiry, sale_type=0, sale_limit=sale_limit)
+            new_trade.save()
+            return Response({'message': f'Created trade: {description}', 'id': new_trade.id, 'description': new_trade.description, 'price': new_trade.price, 'expiry': new_trade.expiry, 'sale_type': new_trade.sale_type, 'secret': new_trade.secret, 'sale_count': new_trade.sale_count, 'sale_limit': new_trade.sale_limit})
         except Exception as e:
             error = str(e)
             return Response({'error': f'Error creating trade: {error}'})
