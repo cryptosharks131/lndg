@@ -32,7 +32,7 @@ def main():
                             p2p_thread = multiprocessing.Process(target=trade)
                             p2p_thread.start()
                         else:
-                            if 'p2p_thread' in locals():
+                            if 'p2p_thread' in locals() and p2p_thread.is_alive():
                                 print(f"{datetime.now().strftime('%c')} : [P2P] : Stopping the p2p service...")
                                 p2p_thread.terminate()
                     current_value = db_value

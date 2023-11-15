@@ -93,14 +93,14 @@
   }
   const base_trade_template = {
     "id": ts => ({innerHTML: `${ts.id}`}),
-    "created": ts => ({innerHTML: formatDate(ts.creation_date), title: adjustTZ(ts.creation_date) }),
+    "created": ts => (ts.creation_date ? {innerHTML: formatDate(ts.creation_date), title: adjustTZ(ts.creation_date) } : {innerHTML: 'now'}),
     "expiry": ts => (ts.expiry ? {innerHTML: formatDate(ts.expiry), title: adjustTZ(ts.expiry) } : {innerHTML: '---' }),
     "description": ts => ({innerHTML: `${ts.description}`}),
     "price": ts => ({innerHTML: `${ts.price.intcomma()}`}),
     "type": ts => ({innerHTML: `${trade_types[ts.sale_type]}`}),
     "secret": ts => ({innerHTML: `${ts.secret ? ts.secret : '---'}`}),
     "sale_count": ts => ({innerHTML: `${ts.sale_count.intcomma()}`}),
-    "sale_limit": ts => ({innerHTML: `${ts.sale_limit ? ts.sale_limits.intcomma() : '---'}`})
+    "sale_limit": ts => ({innerHTML: `${ts.sale_limit ? ts.sale_limit : '---'}`})
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     byId('expiry').min = new Date().toISOString().slice(0, 16)

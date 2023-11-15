@@ -736,7 +736,7 @@ def serve_trades(stub):
                                     encryptor = cipher.encryptor()
                                     ciphertext = (encryptor.update(secret.encode('utf-8')) + encryptor.finalize()).hex()
                                     auth_tag = encryptor.tag.hex()
-                                    time_to_expiry = (trade_details.creation_date + timedelta(seconds=trade_details.expiry)-datetime.now()).seconds if trade_details.expiry else None
+                                    time_to_expiry = (trade_details.expiry-datetime.now()).seconds if trade_details.expiry else None
                                     default_expiry = 30*60
                                     inv_expiry = default_expiry if time_to_expiry is None or time_to_expiry > default_expiry else time_to_expiry
                                     if inv_expiry > 0:
