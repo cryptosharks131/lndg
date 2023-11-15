@@ -1,5 +1,6 @@
-import django, base64, secrets, re, asyncio
-from django.db.models import F, Q
+import django, base64, secrets, re, asyncio, json
+from django.db.models import Sum, IntegerField, Count, F, Q
+from django.db.models.functions import Round
 from time import time
 from bech32 import bech32_decode, bech32_encode, convertbits
 from datetime import datetime, timedelta
@@ -17,7 +18,7 @@ from gui.lnd_deps.lnd_connect import lnd_connect, async_lnd_connect
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import TradeSales
+from gui.models import TradeSales, Payments, PaymentHops, Forwards
 
 def is_hex(n):
     return len(n) % 2 == 0 and all(c in '0123456789ABCDEFabcdef' for c in n)
@@ -658,6 +659,37 @@ def decode_final_trade(network, request, details):
 
     return decode_records_as_request(request['value'], network), auth['value'], encrypted_data['value']
 
+def getSecret(stub, sale_type):
+    print(sale_type)
+    print(sale_type == 1)
+    print(sale_type == 2)
+    if sale_type == 1: # routing data
+        try:
+            filter_30day = datetime.now() - timedelta(days=30)
+            incoming_nodes = Forwards.objects.filter(forward_date__gte=filter_30day).values('chan_id_in').annotate(ppm=Round((Sum('fee')/Sum('amt_in_msat'))*1000000000, output_field=IntegerField()), score=Round((Round(Count('id')/1, output_field=IntegerField())+Round(Sum('amt_in_msat')/100000, output_field=IntegerField()))/10, output_field=IntegerField())).exclude(score=0).order_by('-score', '-ppm')[:5]
+            outgoing_nodes = Forwards.objects.filter(forward_date__gte=filter_30day).values('chan_id_out').annotate(ppm=Round((Sum('fee')/Sum('amt_out_msat'))*1000000000, output_field=IntegerField()), score=Round((Round(Count('id')/1, output_field=IntegerField())+Round(Sum('amt_out_msat')/100000, output_field=IntegerField()))/10, output_field=IntegerField())).exclude(score=0).order_by('-score', '-ppm')[:5]
+            secret = json.dumps({"incoming_nodes":list(incoming_nodes.values('chan_id_in', 'score', 'ppm')), "outgoing_nodes":list(outgoing_nodes.values('chan_id_out', 'score', 'ppm'))})
+        except Exception as e:
+            print(f"{datetime.now().strftime('%c')} : [P2P] : Error getting secret: {str(e)}")
+            secret = None
+        finally:
+            return secret
+    elif sale_type == 2: # payment data
+        try:
+            self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+            filter_30day = datetime.now() - timedelta(days=30)
+            # exlcude_list = AvoidNodes.objects.values_list('pubkey')
+            payments_30day = Payments.objects.filter(creation_date__gte=filter_30day, status=2).values_list('payment_hash')
+            payment_nodes = PaymentHops.objects.filter(payment_hash__in=payments_30day).exclude(node_pubkey=self_pubkey).values('node_pubkey').annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()), score=Round((Round(Count('id')/1, output_field=IntegerField())+Round(Sum('amt')/100000, output_field=IntegerField()))/10, output_field=IntegerField())).exclude(score=0).order_by('-score', 'ppm')[:10]
+            secret = json.dumps({"payment_nodes": list(payment_nodes.values('node_pubkey', 'score', 'ppm'))})
+        except Exception as e:
+            print(f"{datetime.now().strftime('%c')} : [P2P] : Error getting secret: {str(e)}")
+            secret = None
+        finally:
+            return secret
+    else:
+        return None
+
 def serve_trades(stub):
     print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trades...")
     for trade in get_trades():
@@ -689,13 +721,20 @@ def serve_trades(stub):
                                 selected_trade = get_trades(trade_id=trade.id)
                                 if selected_trade:
                                     trade_details = selected_trade[0]
+                                    if not trade_details.secret:
+                                        secret = getSecret(stub, trade_details.sale_type)
+                                    else:
+                                        secret = trade_details.secret
+                                    if not secret:
+                                        print(f"{datetime.now().strftime('%c')} : [P2P] : Failed to get secret for:", trade_details.id)
+                                        continue
                                     signerstub = lnsigner.SignerStub(lnd_connect())
                                     shared_key = signerstub.DeriveSharedKey(lns.SharedKeyRequest(ephemeral_pubkey=from_peer)).shared_key
                                     preimage = secrets.token_bytes(32)
                                     shared_secret = bytes(x ^ y for x, y in zip(shared_key, preimage))
                                     cipher = Cipher(algorithms.AES(shared_secret), modes.GCM(bytes(16)), backend=default_backend())
                                     encryptor = cipher.encryptor()
-                                    ciphertext = (encryptor.update(trade_details.secret.encode('utf-8')) + encryptor.finalize()).hex()
+                                    ciphertext = (encryptor.update(secret.encode('utf-8')) + encryptor.finalize()).hex()
                                     auth_tag = encryptor.tag.hex()
                                     time_to_expiry = (trade_details.creation_date + timedelta(seconds=trade_details.expiry)-datetime.now()).seconds if trade_details.expiry else None
                                     default_expiry = 30*60
@@ -707,7 +746,7 @@ def serve_trades(stub):
                                         trade_details.save()
                                         stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(trade_data)))
                     else:
-                        raise ValueError('ExpectedRequestTypeInRequestMessage')
+                        print(f"{datetime.now().strftime('%c')} : [P2P] : Expected request type in message:", request['id'])
                 if 'response' in msg_response:
                     request = msg_response['response']
                     if 'failure' in request and request['failure'] != None:

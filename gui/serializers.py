@@ -122,9 +122,10 @@ class BroadcastTXSerializer(serializers.Serializer):
     raw_tx = serializers.CharField(label='raw_tx')
 
 class CreateTradeSerializer(serializers.Serializer):
-    description = serializers.CharField(max_length=100, required=False)
-    price = serializers.IntegerField(required=False)
-    secret = serializers.CharField(max_length=100, required=False)
+    description = serializers.CharField(max_length=100)
+    price = serializers.IntegerField()
+    type = serializers.IntegerField()
+    secret = serializers.CharField(max_length=100, required=False, default=None)
     expiry = serializers.DateTimeField(required=False, default=None)
     sale_limit = serializers.IntegerField(required=False, default=None)
 

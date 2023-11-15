@@ -2825,12 +2825,13 @@ def create_trade(request):
     if serializer.is_valid():
         description = serializer.validated_data['description']
         price = serializer.validated_data['price']
+        sale_type = serializer.validated_data['type']
         secret = serializer.validated_data['secret']
         expiry = serializer.validated_data['expiry']
         sale_limit = serializer.validated_data['sale_limit']
         trade_id = secrets.token_bytes(32).hex()
         try:
-            new_trade = TradeSales(id=trade_id, description=description, price=price, secret=secret, expiry=expiry, sale_type=0, sale_limit=sale_limit)
+            new_trade = TradeSales(id=trade_id, description=description, price=price, secret=secret, expiry=expiry, sale_type=sale_type, sale_limit=sale_limit)
             new_trade.save()
             return Response({'message': f'Created trade: {description}', 'id': new_trade.id, 'description': new_trade.description, 'price': new_trade.price, 'expiry': new_trade.expiry, 'sale_type': new_trade.sale_type, 'secret': new_trade.secret, 'sale_count': new_trade.sale_count, 'sale_limit': new_trade.sale_limit})
         except Exception as e:

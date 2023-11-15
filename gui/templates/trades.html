@@ -6,6 +6,12 @@
   <h2>Create A Trade</h2>
 
   <form id="createTrade">
+    <label for="type">Trade Type:</label>
+    <select id="type" name="type" onchange="changeType()" required>
+      <option value="0">Custom</option>
+      <option value="1">Routing</option>
+      <option value="2">Payment</option>
+    </select><br>
 
     <label for="description">Description:</label>
     <input type="text" id="description" name="description" required><br>
@@ -13,8 +19,10 @@
     <label for="price">Price:</label>
     <input type="number" min="0" id="price" name="price" required><br>
 
-    <label for="secret">Secret:</label>
-    <textarea id="secret" name="secret" rows="1" required></textarea><br>
+    <div id="secretDiv">
+      <label for="secret">Secret:</label>
+      <textarea id="secret" name="secret" rows="1" required></textarea><br>
+    </div>
 
     <label for="expiry">Optional Expiration:</label>
     <input type="datetime-local" id="expiry" name="expiry"><br>
@@ -62,6 +70,7 @@
   </div>
 </div>
 <script>
+  trade_types = {0: 'Custom', 1: 'Routing', 2: 'Payment'}
   function qr_gen(addr){
     var qrcode = new QRCode(byId('qrcode'), {text:addr, width:256, height:256})
     byId('qrcode').style.display = 'block'
@@ -70,14 +79,26 @@
     byId('qrcode').replaceChildren()
     byId('qrcode').style.display = 'none'
   }
+  function changeType(){
+    tradeType = byId('type')
+    secretDiv = byId('secretDiv')
+    secretField = byId('secret')
+    if (tradeType.value == 0){
+      secretField.setAttribute('required', 'required')
+      secretDiv.style.display = 'block'
+    }else{
+      secretField.removeAttribute('required')
+      secretDiv.style.display = 'none'
+    }
+  }
   const base_trade_template = {
     "id": ts => ({innerHTML: `${ts.id}`}),
     "created": ts => ({innerHTML: formatDate(ts.creation_date), title: adjustTZ(ts.creation_date) }),
     "expiry": ts => (ts.expiry ? {innerHTML: formatDate(ts.expiry), title: adjustTZ(ts.expiry) } : {innerHTML: '---' }),
     "description": ts => ({innerHTML: `${ts.description}`}),
     "price": ts => ({innerHTML: `${ts.price.intcomma()}`}),
-    "type": ts => ({innerHTML: `${ts.sale_type}`}),
-    "secret": ts => ({innerHTML: `${ts.secret}`}),
+    "type": ts => ({innerHTML: `${trade_types[ts.sale_type]}`}),
+    "secret": ts => ({innerHTML: `${ts.secret ? ts.secret : '---'}`}),
     "sale_count": ts => ({innerHTML: `${ts.sale_count.intcomma()}`}),
     "sale_limit": ts => ({innerHTML: `${ts.sale_limit ? ts.sale_limits.intcomma() : '---'}`})
   }
