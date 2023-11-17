@@ -70,7 +70,7 @@
         {% if utxo.confirmations == 0 %}
           <form onsubmit="bumpFee(this,'{{ utxo.outpoint.txid_str }}','{{ utxo.outpoint.output_index }}'); return false">
             <span style="float:none" class="input" data-unit="sats/vbyte" title="Fee bump an unconfirmed tx">
-              <input style="width:225px" id="target_fee" type="number" min="1" max="100" placeholder="New Fee Rate" name="target_fee">
+              <input style="width:225px" id="target_fee" type="number" min="1" max="1000" placeholder="New Fee Rate" name="target_fee">
             </span>
           </form>
         {% else %}
