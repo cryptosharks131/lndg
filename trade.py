@@ -660,9 +660,6 @@ def decode_final_trade(network, request, details):
     return decode_records_as_request(request['value'], network), auth['value'], encrypted_data['value']
 
 def getSecret(stub, sale_type):
-    print(sale_type)
-    print(sale_type == 1)
-    print(sale_type == 2)
     if sale_type == 1: # routing data
         try:
             filter_30day = datetime.now() - timedelta(days=30)
@@ -718,7 +715,7 @@ def serve_trades(stub):
                                 for trade in trades:
                                     stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(ack_data)))
                             if select_trade:
-                                selected_trade = get_trades(trade_id=trade.id)
+                                selected_trade = get_trades(trade.id)
                                 if selected_trade:
                                     trade_details = selected_trade[0]
                                     if not trade_details.secret:

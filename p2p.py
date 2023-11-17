@@ -29,6 +29,7 @@ def main():
                     if current_value != db_value:
                         if db_value == 1:
                             print(f"{datetime.now().strftime('%c')} : [P2P] : Starting the p2p service...")
+                            django.db.connections.close_all()
                             p2p_thread = multiprocessing.Process(target=trade)
                             p2p_thread.start()
                         else:
