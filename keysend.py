@@ -63,8 +63,8 @@ def main(msg, pubkey, fee, amount, sign):
 if __name__ == '__main__':
     argParser = argparse.ArgumentParser(prog="python keysend.py")
     argParser.add_argument("-pk", "--pubkey", help='Target public key', required=True)
-    argParser.add_argument("-a", "--amount", help='Amount in sats (default: 1)', default=1)
-    argParser.add_argument("-f", "--fee", help='Max fee to send this keysend (default: 1)', default=1)
+    argParser.add_argument("-a", "--amount", help='Amount in sats (default: 1)', default=1, action=argparse.BooleanOptionalAction)
+    argParser.add_argument("-f", "--fee", help='Max fee to send this keysend (default: 1)', default=1, action=argparse.BooleanOptionalAction)
     argParser.add_argument("-m", "--msg", help='Message to be sent', default='')
     argParser.add_argument("--sign", help='Sign this message (default: send anonymously) - if [MSG] is provided', action='store_true', default=False)
     args = vars(argParser.parse_args())
