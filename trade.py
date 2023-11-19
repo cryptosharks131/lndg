@@ -18,7 +18,7 @@ from gui.lnd_deps.lnd_connect import lnd_connect, async_lnd_connect
 from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import TradeSales, Payments, PaymentHops, Forwards
+from gui.models import TradeSales, Payments, PaymentHops, Forwards, Peers
 
 def is_hex(n):
     return len(n) % 2 == 0 and all(c in '0123456789ABCDEFabcdef' for c in n)
@@ -631,7 +631,7 @@ def encode_final_trade(auth, payload, request):
     encoded_request, network = encode_request_as_records(request)
     trade_records = [{'type': '2', 'value': encoded_request}]
 
-    if network != 'mainnet':
+    if settings.LND_NETWORK != 'mainnet':
         network_value = '02' if network == 'regtest' else '01'
         trade_records.append({'type': '1','value': network_value})
 
@@ -1039,7 +1039,15 @@ def main():
         if 'connect' in decoded_trade:
             network, id, connection = decoded_trade['connect']
             if 'node' in connection[0]:
-                to_peer = connection[0]['node']['id']
+                try:
+                    to_peer = connection[0]['node']['id']
+                    if not (Peers.objects.filter(pubkey=to_peer).exists() and Peers.objects.filter(pubkey=to_peer)[0].connected == True):
+                        host = stub.GetNodeInfo(ln.NodeInfoRequest(pub_key=to_peer, include_channels=False)).node.addresses[0].addr
+                        stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln.LightningAddress(pubkey=to_peer, host=host), timeout=60))
+                except:
+                    raise ValueError('PeerConnectionError')
+            else:
+                raise ValueError('NoPeerFoundInConnectionData')
             trade = asyncio.run(request_trades(to_peer))
             if trade:
                 trade_data = next((record for record in trade if record['type'] == '1'), None)
