@@ -74,6 +74,7 @@ urlpatterns = [
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
+    path('api/disconnectpeer/', views.disconnect_peer, name='disconnect-peer'),
     path('api/rebalance_stats/', views.rebalance_stats, name='rebalance-stats'),
     path('api/openchannel/', views.open_channel, name='open-channel'),
     path('api/closechannel/', views.close_channel, name='close-channel'),

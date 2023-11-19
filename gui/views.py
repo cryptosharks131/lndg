@@ -2399,10 +2399,37 @@ def connect_peer(request):
             elif peer_id.count('@') == 1 and len(peer_id.split('@')[0]) == 66:
                 peer_pubkey, host = peer_id.split('@')
             else:
-                raise Exception('Invalid peer pubkey or connection string.')
+                return Response({'error': 'Invalid peer pubkey or connection string.'})
             ln_addr = ln.LightningAddress(pubkey=peer_pubkey, host=host)
-            response = stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
-            return Response({'message': 'Connection successful!' + str(response)})
+            stub.ConnectPeer(ln.ConnectPeerRequest(addr=ln_addr))
+            return Response({'message': 'Connection successful!'})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Connection request failed! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'})
+
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def disconnect_peer(request):
+    serializer = DisconnectPeerSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            peer_id = serializer.validated_data['peer_id']
+            if len(peer_id) == 66:
+                peer_pubkey = peer_id
+            else:
+                return Response({'error': 'Invalid peer pubkey.'})
+            stub.DisconnectPeer(ln.DisconnectPeerRequest(pub_key=peer_pubkey))
+            if Peers.objects.filter(pubkey=peer_id).exists():
+                db_peer = Peers.objects.filter(pubkey=peer_id)[0]
+                db_peer.connected = False
+                db_peer.save()
+            return Response({'message': 'Disconnection successful!'})
         except Exception as e:
             error = str(e)
             details_index = error.find('details =') + 11
