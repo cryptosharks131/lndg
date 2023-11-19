@@ -1,3 +1,4 @@
+import argparse
 import secrets, time, struct
 from hashlib import sha256
 from gui.lnd_deps import lightning_pb2 as ln
@@ -52,25 +53,19 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout, sign):
         error_msg = error[details_index:debug_error_index]
         print('Error while sending keysend payment! Error: ' + error_msg)
 
-def main():
-    #Ask user for variables
-    try:
-        target_pubkey = input('Enter the pubkey of the node you want to send a keysend payment to: ')
-        amount = int(input('Enter an amount in sats to be sent with the keysend payment (defaults to 1 sat): ') or '1')
-        fee_limit = int(input('Enter an amount in sats to be used as a max fee limit for sending (defaults to 1 sat): ') or '1')
-        msg = input('Enter an optional message to be included (leave this blank for no message): ')
-        if len(msg) > 0:
-            sign = input('Self sign the message? (defaults to sending anonymously) [y/N]: ')
-            sign = True if sign.lower() == 'yes' or sign.lower() == 'y' else False
-        else:
-            sign = False        
-    except:
-        print('Invalid data entered, please try again.')
-    timeout = 10
-    print('Sending keysend payment of %s to: %s' % (amount, target_pubkey))
+def main(msg, pubkey, fee, amount, sign):
+    print('Sending a %s sats payment to: %s with %s sats max-fee' % (amount, pubkey, fee))
     if len(msg) > 0:
-        print('Attaching this message to the keysend payment:', msg)
-    keysend(target_pubkey, msg, amount, fee_limit, timeout, sign)
+        print('MESSAGE: %s' % msg) 
+    timeout = 10
+    keysend(pubkey, msg, amount, fee, timeout, sign)
 
 if __name__ == '__main__':
-    main()
+    argParser = argparse.ArgumentParser(prog="python keysend.py")
+    argParser.add_argument("-pk", "--pubkey", help='Target public key', required=True)
+    argParser.add_argument("-a", "--amount", help='Amount in sats (default: 1)', default=1)
+    argParser.add_argument("-f", "--fee", help='Max fee to send this keysend (default: 1)', default=1)
+    argParser.add_argument("-m", "--msg", help='Message to be sent', default='')
+    argParser.add_argument("--sign", help='Sign this message (default: send anonymously) - if [MSG] is provided', action='store_true', default=False)
+    args = vars(argParser.parse_args())
+    main(**args)
