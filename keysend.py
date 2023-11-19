@@ -53,7 +53,7 @@ def keysend(target_pubkey, msg, amount, fee_limit, timeout, sign):
         error_msg = error[details_index:debug_error_index]
         print('Error while sending keysend payment! Error: ' + error_msg)
 
-def main(msg, pubkey, fee, amount, sign):
+def main(pubkey, amount, fee, msg, sign):
     print('Sending a %s sats payment to: %s with %s sats max-fee' % (amount, pubkey, fee))
     if len(msg) > 0:
         print('MESSAGE: %s' % msg) 
@@ -63,9 +63,9 @@ def main(msg, pubkey, fee, amount, sign):
 if __name__ == '__main__':
     argParser = argparse.ArgumentParser(prog="python keysend.py")
     argParser.add_argument("-pk", "--pubkey", help='Target public key', required=True)
-    argParser.add_argument("-a", "--amount", help='Amount in sats (default: 1)', default=1, action=argparse.BooleanOptionalAction)
-    argParser.add_argument("-f", "--fee", help='Max fee to send this keysend (default: 1)', default=1, action=argparse.BooleanOptionalAction)
-    argParser.add_argument("-m", "--msg", help='Message to be sent', default='')
-    argParser.add_argument("--sign", help='Sign this message (default: send anonymously) - if [MSG] is provided', action='store_true', default=False)
+    argParser.add_argument("-a", "--amount", help='Amount in sats (default: 1)', nargs='?', default=1, type=int) 
+    argParser.add_argument("-f", "--fee", help='Max fee to send this keysend (default: 1)', nargs='?', default=1, type=int)
+    argParser.add_argument("-m", "--msg", help='Message to be sent (default: "")', nargs='?', default='', type=str)
+    argParser.add_argument("--sign", help='Sign this message (default: send anonymously) - if [MSG] is provided', action='store_true')
     args = vars(argParser.parse_args())
     main(**args)
