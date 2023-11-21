@@ -612,7 +612,7 @@
     return true
   }
   function build_active(channels, forwards_sum){
-    let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
+    let sum = {inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Active Channels", channels)) return sum
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
@@ -623,7 +623,6 @@
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
       ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
       
-      sum.capacity += ch.capacity
       sum.inbound += ch.remote_balance
       sum.outbound += ch.local_balance
       sum.unsettled += ch.unsettled_balance
@@ -652,7 +651,6 @@
     }).sort((ch1, ch2) => ch1.percent_outbound - ch2.percent_outbound)
       .forEach(ch => activeChannels.append(template.render(ch)))
 
-    byId('public_capacity').innerHTML = sum.capacity.intcomma()
     return update_liq('active_', sum)
   }
   function build_private(channels){
@@ -688,20 +686,18 @@
     return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
   }
   function build_inactive(channels){
-    let sum = {capacity: 0, inbound: 0, outbound: 0, unsettled: 0}
+    let sum = {inbound: 0, outbound: 0, unsettled: 0}
     if(!addTitle("Inactive Channels", channels)) return sum
 
-    const table = byId('inactive_channels'), template = use(inactive_ch_template), public_capacity = byId('public_capacity')
+    const table = byId('inactive_channels'), template = use(inactive_ch_template)
     table.innerHTML = null
     channels.forEach(ch => {
-      sum.capacity += ch.capacity
       sum.inbound += ch.remote_balance
       sum.outbound += ch.local_balance
       sum.unsettled += ch.unsettled_balance
       table.append(template.render(ch))
     })
 
-    public_capacity.innerHTML = (public_capacity.innerHTML.toInt() + sum.capacity).intcomma()
     return update_liq('inactive_', sum)
   }
   function update_liq(status, sum){
@@ -954,7 +950,7 @@
     const invoices_task = GET('invoices', {data: {state__lt: 2, limit: 10} })
     const failedHTLCs_task = GET('failedhtlcs', {data: {wire_failure__lt: 99, limit:10} })
 
-    let [updates, pending_htlcs, active, inactive, private] = [0,0,[],[],[]]
+    let [updates, pending_htlcs, active, inactive, private, public_capacity] = [0,0,[],[],[],0]
     for (ch of (await GET('channels', {data: {is_open:true} })).results){ //basic setup
       updates += ch.num_updates
       pending_htlcs += ch.htlc_count
@@ -964,11 +960,15 @@
       ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
 
       if(ch.private) private.push(ch)
-      else (ch.is_active ? active : inactive).push(ch)
+      else {
+        (ch.is_active ? active : inactive).push(ch)
+        public_capacity += ch.capacity
+      }
     }
 
     byId("updates").innerHTML = updates.intcomma()
     byId("pending_htlcs").innerHTML = pending_htlcs.intcomma()
+    byId('public_capacity').innerHTML = public_capacity.intcomma()
 
     let [forwardsSummary, payments7d] = [(await forwardsSummary_task).results, (await payments_task).results]
     let [forwards_sum, forwards_summary] = process_forwards(forwardsSummary)
