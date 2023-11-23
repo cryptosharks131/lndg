@@ -234,27 +234,29 @@
   </table>
 </div>
 <div id="pending_open_container" style="display:none" class="w3-container w3-padding-small">
-  <table class="w3-table-all w3-centered w3-hoverable">
-    <thead>
-      <tr>
-        <th>Peer Alias</th>
-        <th width=20%>Channel Point</th>
-        <th>Capacity</th>
-        <th>Local Balance</th>
-        <th>Remote Balance</th>
-        <th>AF</th>
-        <th>Fee Rate</th>
-        <th>Base Fee</th>
-        <th>CLTV</th>
-        <th>Amt</th>
-        <th>Max Cost%</th>
-        <th>oTarget%</th>
-        <th>iTarget%</th>
-        <th>AR</th>
-      </tr>
-    </thead>
-    <tbody id="pending_open"></tbody>
-  </table>
+  <div class="w3-container w3-padding-small table" style="overflow:auto;max-height:1000px">
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <thead>
+        <tr>
+          <th>Peer Alias</th>
+          <th width=20%>Channel Point</th>
+          <th>Capacity</th>
+          <th>Local Balance</th>
+          <th>Remote Balance</th>
+          <th>AF</th>
+          <th>Fee Rate</th>
+          <th>Base Fee</th>
+          <th>CLTV</th>
+          <th>Amt</th>
+          <th>Max Cost%</th>
+          <th>oTarget%</th>
+          <th>iTarget%</th>
+          <th>AR</th>
+        </tr>
+      </thead>
+      <tbody id="pending_open"></tbody>
+    </table>
+  </div>
 </div>
 <div id="pending_closed_container" style="display:none" class="w3-container w3-padding-small">
   <table class="w3-table-all w3-centered w3-hoverable">
