@@ -179,7 +179,7 @@ AF Notes:
 ## Auto-Rebalancer - [Quick Start Guide](https://github.com/cryptosharks131/lndg/blob/master/quickstart.md)
 ### Here are some additional notes to help you better understand the Auto-Rebalancer (AR).
 
-The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucarative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
+The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucrative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
 
 1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities. (default=0)
 2. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts. Example: If a channel size is 1M Sats and AR-Target% = 0.05 LNDg will select an amount of 5% of 1M = 50K for rebalancing. (default=5)
