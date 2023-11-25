@@ -19,7 +19,7 @@
         <td title="Update all channel outgoing base fees">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="value" type="number" min="0" max="100000" name="value" value="">
+            <input style="text-align:center" id="value" type="number" min="0" name="value" value="">
             <input type="hidden" name="key" value="ALL-oBase">
           </form>
         </td>
