@@ -19,7 +19,7 @@
         <td title="Update all channel outgoing base fees">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="value" type="number" min="0" max="100000" name="value" value="">
+            <input style="text-align:center" id="value" type="number" min="0" name="value" value="">
             <input type="hidden" name="key" value="ALL-oBase">
           </form>
         </td>
@@ -131,7 +131,7 @@
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
-            <input style="text-align:center" id="target" type="number" min="0" max="100000" name="target" value="{{ channel.local_base_fee }}">
+            <input style="text-align:center" id="target" type="number" min="0" name="target" value="{{ channel.local_base_fee }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="0">
           </form>
