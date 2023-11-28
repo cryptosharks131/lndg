@@ -221,8 +221,8 @@ def auto_schedule() -> List[Rebalancer]:
         if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
             LocalSettings(key='AR-MaxCost%', value='65').save()
         for target in inbound_cans:
-            target_fee_rate = int(target.local_fee_rate * (target.ar_max_cost/100))
-            if target_fee_rate > 0 and target_fee_rate > target.remote_fee_rate:
+            target_fee_rate = int(target.ar_max_cost/100 * (target.local_fee_rate + target.local_base_fee/1000))
+            if target_fee_rate > 0 and target_fee_rate > (target.remote_fee_rate + target.remote_base_fee/1000):
                 target_value = int(target.ar_amt_target+(target.ar_amt_target*((secrets.choice(range(-1000,1001))/1000)*variance/100)))
                 target_fee = round(target_fee_rate*target_value*0.000001, 3) if target_fee_rate <= max_fee_rate else round(max_fee_rate*target_value*0.000001, 3)
                 if target_fee == 0:

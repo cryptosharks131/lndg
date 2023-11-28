@@ -65,7 +65,7 @@
       let _in = ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance
       return {innerHTML: out ? 'Out' : _in ? `In <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : '---', style: {backgroundColor: out ? 'rgba(100,100,100,.15)' : _in ? 'rgba(56,139,253,0.15)' : red} }
     },
-    "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, title: `Out: ${ch.local_fee_rate}ₚₚₘ\nIn: ${ch.remote_fee_rate}ₚₚₘ`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
+    "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, title: `Cost: ${ch.cost.intcomma()}ₚₚₘ (given ~${ch.steps} rebalances of ${ch.ar_amt_target.intcomma()})\nExpected profit: ${ch.profit.intcomma()}ₚₚₘ (given ~${ch.expectedRountingCount.intcomma()} routings of ${ch.ar_amt_target.intcomma()})`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
     "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
     "ar_max_cost": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/></span>`, 
       changed: function(new_value){
@@ -135,9 +135,13 @@
     ch.percent_inbound = parseInt(ch.remote_balance*100/ch.capacity)
     ch.percent_outbound = parseInt(ch.local_balance*100/ch.capacity)
     ch.inbound_can = ch.percent_inbound / ch.ar_in_target
-    ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
+    ch.steps = parseInt(ch.inbound_can < 1 ? 0 :((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
+    ch.expectedRountingCount = ch.steps + ch.local_balance/ch.ar_amt_target
+
+    ch.cost = ch.remote_fee_rate + ch.steps*ch.remote_base_fee/1000 
+    ch.profit = ch.local_fee_rate + ch.expectedRountingCount*ch.local_base_fee/1000  
+    ch.fee_ratio = ch.profit > 0 ? parseInt(ch.cost*100/ch.profit) : "∞"
     ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
-    ch.steps = parseInt(ch.inbound_can < 1 ? 0 : ((ch.percent_inbound - ch.ar_in_target)/(ch.ar_amt_target*100/ch.capacity)+0.999))
 
     ch.elegible = ch.inbound_can >= 1 && ch.fee_check < 100 && ch.auto_rebalance, 
     ch.available = ch.is_active && !ch.auto_rebalance && ch.percent_outbound / ch.ar_out_target >=1
