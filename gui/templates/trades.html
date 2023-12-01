@@ -91,16 +91,43 @@
       secretDiv.style.display = 'none'
     }
   }
+  function setExpiry(obj){
+    const trade_row = obj.parentElement.parentElement
+    const trade_id = trade_row.cells[0].id
+    if (confirm(`Set new expiry for trade ${trade_id.substring(0,7)} to ${obj.value}?`)){
+      Sync.PUT(`trades/${trade_id}`, {"body": {"expiry": obj.value}}, ts => trade_row.outerHTML=use(base_trade_template).render(ts).outerHTML)
+    }
+  }
+  function removeExpiry(obj){
+    const trade_row = obj.parentElement.parentElement
+    const trade_id = trade_row.cells[0].id
+    if (confirm(`Remove expiry for trade ${trade_id.substring(0,7)}?`)){
+      Sync.PUT(`trades/${trade_id}`, {"body": {"expiry": null}}, ts => trade_row.outerHTML=use(base_trade_template).render(ts).outerHTML)
+    }
+  }
+  function setSaleLimit(obj){
+    const trade_row = obj.parentElement.parentElement
+    const trade_id = trade_row.cells[0].id
+    const newSaleLimit = prompt("Enter a sale limit to apply:");
+    Sync.PUT(`trades/${trade_id}`, {"body": {"sale_limit": newSaleLimit}}, ts => trade_row.outerHTML=use(base_trade_template).render(ts).outerHTML)
+  }
+  function removeSaleLimit(obj){
+    const trade_row = obj.parentElement.parentElement
+    const trade_id = trade_row.cells[0].id
+    if (confirm(`Remove sale limit for trade ${trade_id.substring(0,7)}?`)){
+      Sync.PUT(`trades/${trade_id}`, {"body": {"sale_limit": null}}, ts => trade_row.outerHTML=use(base_trade_template).render(ts).outerHTML)
+    }
+  }
   const base_trade_template = {
-    "id": ts => ({innerHTML: `${ts.id}`}),
+    "id": ts => ({innerHTML: ts.id.substring(0,7), id: ts.id}),
     "created": ts => (ts.creation_date ? {innerHTML: formatDate(ts.creation_date), title: adjustTZ(ts.creation_date) } : {innerHTML: 'now'}),
-    "expiry": ts => (ts.expiry ? {innerHTML: formatDate(ts.expiry), title: adjustTZ(ts.expiry) } : {innerHTML: '---' }),
+    "expiry": ts => (ts.expiry ? {innerHTML: `${formatDate(ts.expiry)} <input onchange="setExpiry(this)" style="width:25px" type="datetime-local" title="Update Expiry"> <a title="Remove Expiry" style="cursor: pointer" onclick="removeExpiry(this)">❌</a>`, title: adjustTZ(ts.expiry) } : {innerHTML: `--- <input onchange="setExpiry(this)" style="width:25px" type="datetime-local" title="Update Expiry">` }),
     "description": ts => ({innerHTML: `${ts.description}`}),
     "price": ts => ({innerHTML: `${ts.price.intcomma()}`}),
     "type": ts => ({innerHTML: `${trade_types[ts.sale_type]}`}),
     "secret": ts => ({innerHTML: `${ts.secret ? ts.secret : '---'}`}),
     "sale_count": ts => ({innerHTML: `${ts.sale_count.intcomma()}`}),
-    "sale_limit": ts => ({innerHTML: `${ts.sale_limit ? ts.sale_limit : '---'}`})
+    "sale_limit": ts => (ts.sale_limit ? {innerHTML: `${ts.sale_limit} <a title="Set Sale Limit" style="cursor: pointer" onclick="setSaleLimit(this)">✏️</a> <a title="Remove Sale Limit" style="cursor: pointer" onclick="removeSaleLimit(this)">❌</a>` } : {innerHTML: `--- <a title="Set Sale Limit" style="cursor: pointer" onclick="setSaleLimit(this)">✏️</a>` }),
   }
   document.addEventListener('DOMContentLoaded', async () =>{
     byId('expiry').min = new Date().toISOString().slice(0, 16)

@@ -2150,6 +2150,14 @@ class TradeSalesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = TradeSales.objects.all()
     serializer_class = TradeSalesSerializer
+      
+    def update(self, request, pk):
+        rebalance = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.get_serializer(rebalance, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 class FeeLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

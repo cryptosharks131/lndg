@@ -134,6 +134,10 @@ class CreateTradeSerializer(serializers.Serializer):
 
 class TradeSalesSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
+    creation_date = serializers.ReadOnlyField()
+    sale_type = serializers.ReadOnlyField()
+    secret = serializers.ReadOnlyField()
+    sale_count = serializers.ReadOnlyField()
     class Meta:
         model = TradeSales
         exclude = []

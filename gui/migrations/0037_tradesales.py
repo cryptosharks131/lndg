@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             name='TradeSales',
             fields=[
                 ('id', models.CharField(max_length=64, primary_key=True, serialize=False)),
-                ('creation_date', models.DateField(default=django.utils.timezone.now)),
+                ('creation_date', models.DateTimeField(default=django.utils.timezone.now)),
                 ('expiry', models.DateTimeField(null=True)),
                 ('description', models.CharField(max_length=100)),
                 ('price', models.BigIntegerField()),
