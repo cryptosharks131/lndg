@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import *
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, TradeSales
 from .serializers import *
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, TradeSales
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -25,9 +25,9 @@ from lndg import settings
 from os import path
 from pandas import DataFrame, merge
 from requests import get
-from . import af
-import secrets
-import trade
+from secrets import token_bytes
+from trade import create_trade_details
+import af
 
 def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
@@ -1201,7 +1201,7 @@ def trades(request):
     if request.method == 'GET':
         stub = lnrpc.LightningStub(lnd_connect())
         context = {
-            'trade_link': trade.create_trade_details(stub)
+            'trade_link': create_trade_details(stub)
         }
         return render(request, 'trades.html', context)
     else:
@@ -2864,7 +2864,7 @@ def create_trade(request):
         secret = serializer.validated_data['secret']
         expiry = serializer.validated_data['expiry']
         sale_limit = serializer.validated_data['sale_limit']
-        trade_id = secrets.token_bytes(32).hex()
+        trade_id = token_bytes(32).hex()
         try:
             new_trade = TradeSales(id=trade_id, description=description, price=price, secret=secret, expiry=expiry, sale_type=sale_type, sale_limit=sale_limit)
             new_trade.save()
