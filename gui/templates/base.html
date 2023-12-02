@@ -120,11 +120,13 @@
     </div>
   </footer>
   <script>
+    var darkMode = {% if request.COOKIES.darkmode == 'true' %}true{%else%}false{% endif %}
     //BASE CONFIG
     function toggleTheme() {
       var element = document.body;
       element.classList.toggle("dark-mode")
-      document.cookie = `darkmode=${element.classList.contains("dark-mode")};max-age=34560000`
+      darkMode = element.classList.contains("dark-mode")
+      document.cookie = `darkmode=${darkMode};max-age=34560000`
     }
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
