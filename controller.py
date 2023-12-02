@@ -1,11 +1,11 @@
 import multiprocessing
-import jobs, rebalancer, htlc_stream
+import jobs, rebalancer, htlc_stream, p2p
 
 def run_task(task):
     task()
 
 def main():
-    tasks = [jobs.main, rebalancer.main, htlc_stream.main]
+    tasks = [jobs.main, rebalancer.main, htlc_stream.main, p2p.main]
     print('Controller is starting...')
 
     processes = []

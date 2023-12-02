@@ -18,6 +18,7 @@ router.register(r'settings', views.LocalSettingsViewSet)
 router.register(r'pendinghtlcs', views.PendingHTLCViewSet)
 router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 router.register(r'peerevents', views.PeerEventsViewSet)
+router.register(r'trades', views.TradeSalesViewSet)
 router.register(r'feelog', views.FeeLogViewSet)
 
 urlpatterns = [
@@ -29,6 +30,7 @@ urlpatterns = [
     path('closures', views.closures, name='closures'),
     path('towers', views.towers, name='towers'),
     path('batch', views.batch, name='batch'),
+    path('trades', views.trades, name='trades'),
     path('batchopen/', views.batch_open, name='batch-open'),
     path('resolutions', views.resolutions, name='resolutions'),
     path('channel', views.channel, name='channel'),
@@ -88,6 +90,7 @@ urlpatterns = [
     path('api/chanpolicy/', views.chan_policy, name='chan-policy'),
     path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
     path('api/node_info/', views.node_info, name='node-info'),
+    path('api/createtrade/', views.create_trade, name='create-trade'),
     path('api/forwards_summary/', views.forwards_summary, name='forwards-summary'),
     path('api/sign_message/', views.sign_message, name='sign-message'),
     path('lndg-admin/', admin.site.urls),

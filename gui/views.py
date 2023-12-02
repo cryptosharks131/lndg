@@ -9,9 +9,9 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from .forms import OpenChannelForm, CloseChannelForm, ConnectPeerForm, AddInvoiceForm, RebalancerForm, UpdateChannel, UpdateSetting, LocalSettingsForm, AddTowerForm, RemoveTowerForm, DeleteTowerForm, BatchOpenForm, UpdatePending, UpdateClosing, UpdateKeysend, AddAvoid, RemoveAvoid
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents
-from .serializers import ConnectPeerSerializer, DisconnectPeerSerializer, FailedHTLCSerializer, LocalSettingsSerializer, OpenChannelSerializer, CloseChannelSerializer, AddInvoiceSerializer, PaymentHopsSerializer, PaymentSerializer, InvoiceSerializer, ForwardSerializer, ChannelSerializer, PendingHTLCSerializer, RebalancerSerializer, UpdateAliasSerializer, PeerSerializer, OnchainSerializer, ClosuresSerializer, ResolutionsSerializer, BumpFeeSerializer, UpdateChanPolicy, NewAddressSerializer, BroadcastTXSerializer, PeerEventsSerializer, SignMessageSerializer, FeeLogSerializer
+from .forms import *
+from .serializers import *
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, TradeSales
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -25,7 +25,9 @@ from lndg import settings
 from os import path
 from pandas import DataFrame, merge
 from requests import get
-from . import af
+from secrets import token_bytes
+from trade import create_trade_details
+import af
 
 def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
@@ -1195,6 +1197,17 @@ def batch(request):
         return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def trades(request):
+    if request.method == 'GET':
+        stub = lnrpc.LightningStub(lnd_connect())
+        context = {
+            'trade_link': create_trade_details(stub)
+        }
+        return render(request, 'trades.html', context)
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def addresses(request):
     if request.method == 'GET':
         try:
@@ -2133,6 +2146,19 @@ class PeerEventsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PeerEventsSerializer
     filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
 
+class TradeSalesViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = TradeSales.objects.all()
+    serializer_class = TradeSalesSerializer
+      
+    def update(self, request, pk):
+        rebalance = get_object_or_404(self.queryset, pk=pk)
+        serializer = self.get_serializer(rebalance, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
+
 class FeeLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Autofees.objects.all().order_by('-id')
@@ -2817,7 +2843,7 @@ def broadcast_tx(request):
             if response.publish_error == '':
                 return Response({'message': f'Successfully broadcast tx!'})
             else:
-                return Response({'message': f'Error while broadcasting TX: {response.publish_error}'})
+                return Response({'error': f'Error while broadcasting TX: {response.publish_error}'})
         except Exception as e:
             error = str(e)
             details_index = error.find('details =') + 11
@@ -2826,3 +2852,25 @@ def broadcast_tx(request):
             return Response({'error': f'TX broadcast failed! Error: {error_msg}'})
     else:
         return Response({'error': 'Invalid request!'})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def create_trade(request):
+    serializer = CreateTradeSerializer(data=request.data)
+    if serializer.is_valid():
+        description = serializer.validated_data['description']
+        price = serializer.validated_data['price']
+        sale_type = serializer.validated_data['type']
+        secret = serializer.validated_data['secret']
+        expiry = serializer.validated_data['expiry']
+        sale_limit = serializer.validated_data['sale_limit']
+        trade_id = token_bytes(32).hex()
+        try:
+            new_trade = TradeSales(id=trade_id, description=description, price=price, secret=secret, expiry=expiry, sale_type=sale_type, sale_limit=sale_limit)
+            new_trade.save()
+            return Response({'message': f'Created trade: {description}', 'id': new_trade.id, 'description': new_trade.description, 'price': new_trade.price, 'expiry': new_trade.expiry, 'sale_type': new_trade.sale_type, 'secret': new_trade.secret, 'sale_count': new_trade.sale_count, 'sale_limit': new_trade.sale_limit})
+        except Exception as e:
+            error = str(e)
+            return Response({'error': f'Error creating trade: {error}'})
+    else:
+        return Response({'error': serializer.error_messages})

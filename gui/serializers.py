@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, Autofees
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, TradeSales, Autofees
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
@@ -123,6 +123,24 @@ class BumpFeeSerializer(serializers.Serializer):
 
 class BroadcastTXSerializer(serializers.Serializer):
     raw_tx = serializers.CharField(label='raw_tx')
+
+class CreateTradeSerializer(serializers.Serializer):
+    description = serializers.CharField(max_length=100)
+    price = serializers.IntegerField()
+    type = serializers.IntegerField()
+    secret = serializers.CharField(max_length=100, required=False, default=None)
+    expiry = serializers.DateTimeField(required=False, default=None)
+    sale_limit = serializers.IntegerField(required=False, default=None)
+
+class TradeSalesSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    creation_date = serializers.ReadOnlyField()
+    sale_type = serializers.ReadOnlyField()
+    secret = serializers.ReadOnlyField()
+    sale_count = serializers.ReadOnlyField()
+    class Meta:
+        model = TradeSales
+        exclude = []
 
 class SignMessageSerializer(serializers.Serializer):
     message = serializers.CharField(label='message')
