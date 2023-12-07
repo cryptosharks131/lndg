@@ -194,7 +194,7 @@ def auto_schedule() -> List[Rebalancer]:
         if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
             LocalSettings(key='AR-Outbound%', value='75').save()
         if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
-            LocalSettings(key='AR-Inbound%', value='100').save()
+            LocalSettings(key='AR-Inbound%', value='90').save()
         outbound_cans = list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).values_list('chan_id', flat=True))
         already_scheduled = Rebalancer.objects.exclude(last_hop_pubkey='').filter(status=0).values_list('last_hop_pubkey')
         inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
@@ -204,8 +204,8 @@ def auto_schedule() -> List[Rebalancer]:
         if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
             max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
         else:
-            LocalSettings(key='AR-MaxFeeRate', value='100').save()
-            max_fee_rate = 100
+            LocalSettings(key='AR-MaxFeeRate', value='500').save()
+            max_fee_rate = 500
         if LocalSettings.objects.filter(key='AR-Variance').exists():
             variance = int(LocalSettings.objects.filter(key='AR-Variance')[0].value)
         else:
@@ -217,7 +217,7 @@ def auto_schedule() -> List[Rebalancer]:
             LocalSettings(key='AR-WaitPeriod', value='30').save()
             wait_period = 30
         if not LocalSettings.objects.filter(key='AR-Target%').exists():
-            LocalSettings(key='AR-Target%', value='5').save()
+            LocalSettings(key='AR-Target%', value='3').save()
         if not LocalSettings.objects.filter(key='AR-MaxCost%').exists():
             LocalSettings(key='AR-MaxCost%', value='65').save()
         for target in inbound_cans:

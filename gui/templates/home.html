@@ -97,7 +97,7 @@
         <th id="onChain" class="w3-border-bottom w3-border-right">Onchain: 0</th>
         <th id="confirmed" colspan="2" class="w3-border-bottom w3-border-right">Confirmed: 0</th>
         <th id="unconfirmed" class="w3-border-bottom w3-border-right">Unconfirmed: 0</th>
-        <th id="limbo" class="w3-border-bottom w3-border-right">Limbo: 0</th>
+        <th id="limbo" class="w3-border-bottom w3-border-right" title="Amount in limbo from channel closing activities">Limbo: 0</th>
         <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span></th>
         <th class="w3-border-bottom">
           <form method="post" action="/newaddress/">
@@ -449,13 +449,13 @@
     <form action="/closechannel/" method="post">
       {% csrf_token %}
       <span class="input">
-        <input placeholder="Channel ID" id="chan_id" type="text" name="chan_id">
+        <input placeholder="Channel ID" id="chan_id" type="text" name="chan_id" required>
       </span>
-      <div class="input" data-unit="sats/vbyte" title="Closing tx fee">
-        <input id="target_fee" placeholder="0" type="number" min="1" name="target_fee">
+      <div class="input" data-unit="sats/vbyte" title="Requested closing fee rate (graceful closures only)">
+        <input id="target_fee" placeholder="0" type="number" min="1" name="target_fee" required>
       </div>
-      <label style="top:-4px;position:relative" title="Force Close" for="force">FC</label>
-      <input class="w3-check" id="force" style="top:2px" title="Force Close?" type="checkbox" name="force">
+      <label style="top:-4px;position:relative" title="Force close the channel" for="force">FC</label>
+      <input onchange="this.checked ? (byId('target_fee').setAttribute('disabled', 'disabled'), byId('target_fee').removeAttribute('required')) : (byId('target_fee').removeAttribute('disabled'), byId('target_fee').setAttribute('required', 'required'))" class="w3-check" id="force" style="top:2px" title="Force Close?" type="checkbox" name="force">
       <input type="submit" style="position:relative;top:-4px" value="OK">
     </form>
   </div>

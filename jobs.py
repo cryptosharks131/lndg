@@ -492,7 +492,6 @@ def clean_payments(stub):
         enabled = int(LocalSettings.objects.filter(key='LND-CleanPayments')[0].value)
     else:
         LocalSettings(key='LND-CleanPayments', value='0').save()
-        LocalSettings(key='LND-RetentionDays', value='30').save()
         enabled = 0
     if enabled == 1:
         if LocalSettings.objects.filter(key='LND-RetentionDays').exists():
