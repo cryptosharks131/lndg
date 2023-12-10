@@ -334,7 +334,7 @@ async def async_queue_manager(rebalancer_queue: asyncio.Queue, worker_count):
             if len(scheduled) > 0:
                 print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Scheduling {len(scheduled)} rebalancing jobs: ", end="")
                 for rebalance in scheduled:
-                    print(str(rebalance.id) + ", ")
+                    print(str(rebalance.id) + ", ", end="")
                     scheduled_rebalances.append(rebalance.id)
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
