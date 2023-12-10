@@ -71,6 +71,7 @@ urlpatterns = [
     path('advanced/', views.advanced, name='advanced'),
     path('logs/', views.logs, name='logs'),
     path('addresses/', views.addresses, name='addresses'),
+    path('reset/', views.reset, name='reset'),
     path('api/', include(router.urls), name='api-root'),
     path('api-auth/', include('rest_framework.urls'), name='api-auth'),
     path('api/connectpeer/', views.connect_peer, name='connect-peer'),
@@ -93,5 +94,6 @@ urlpatterns = [
     path('api/createtrade/', views.create_trade, name='create-trade'),
     path('api/forwards_summary/', views.forwards_summary, name='forwards-summary'),
     path('api/sign_message/', views.sign_message, name='sign-message'),
+    path('api/reset/', views.reset_api, name='reset-api'),
     path('lndg-admin/', admin.site.urls),
 ]

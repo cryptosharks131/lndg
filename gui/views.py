@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import *
 from .serializers import *
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, TradeSales
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, HistFailedHTLC, TradeSales
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -1204,6 +1204,36 @@ def trades(request):
             'trade_link': create_trade_details(stub)
         }
         return render(request, 'trades.html', context)
+    else:
+        return redirect(request.META.get('HTTP_REFERER'))
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def reset(request):
+    if request.method == 'GET':
+        context = {
+            'tables':[
+                {'name':'Forwards', 'count': Forwards.objects.count()},
+                {'name':'Payments', 'count': Payments.objects.count()},
+                {'name':'PaymentHops', 'count': PaymentHops.objects.count()},
+                {'name':'Invoices', 'count': Invoices.objects.count()},
+                {'name':'Rebalancer', 'count': Rebalancer.objects.count()},
+                {'name':'Closures', 'count': Closures.objects.count()},
+                {'name':'Resolutions', 'count': Resolutions.objects.count()},
+                {'name':'Peers', 'count': Peers.objects.count()},
+                {'name':'Channels', 'count': Channels.objects.count()},
+                {'name':'PendingChannels', 'count': PendingChannels.objects.count()},
+                {'name':'Onchain', 'count': Onchain.objects.count()},
+                {'name':'PendingHTLCs', 'count': FailedHTLCs.objects.count()},
+                {'name':'FailedHTLCs', 'count': FailedHTLCs.objects.count()},
+                {'name':'HistFailedHTLC', 'count': HistFailedHTLC.objects.count()},
+                {'name':'Autopilot', 'count': Autopilot.objects.count()},
+                {'name':'Autofees', 'count': Autofees.objects.count()},
+                {'name':'AvoidNodes', 'count': AvoidNodes.objects.count()},
+                {'name':'PeerEvents', 'count': PeerEvents.objects.count()},
+                {'name':'LocalSettings', 'count': LocalSettings.objects.count()}
+            ]
+        }
+        return render(request, 'reset.html', context)
     else:
         return redirect(request.META.get('HTTP_REFERER'))
 
@@ -2875,5 +2905,42 @@ def create_trade(request):
         except Exception as e:
             error = str(e)
             return Response({'error': f'Error creating trade: {error}'})
+    else:
+        return Response({'error': serializer.error_messages})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def reset_api(request):
+    serializer = ResetSerializer(data=request.data)
+    if serializer.is_valid():
+        table = serializer.validated_data['table']
+        tables = {
+            'Forwards': Forwards.objects.all(),
+            'Payments': Payments.objects.all(),
+            'PaymentHops': PaymentHops.objects.all(),
+            'Invoices': Invoices.objects.all(),
+            'Rebalancer': Rebalancer.objects.all(),
+            'Closures': Closures.objects.all(),
+            'Resolutions': Resolutions.objects.all(),
+            'Peers': Peers.objects.all(),
+            'Channels': Channels.objects.all(),
+            'PendingChannels': PendingChannels.objects.all(),
+            'Onchain': Onchain.objects.all(),
+            'PendingHTLCs': FailedHTLCs.objects.all(),
+            'FailedHTLCs': FailedHTLCs.objects.all(),
+            'HistFailedHTLC': HistFailedHTLC.objects.all(),
+            'Autopilot': Autopilot.objects.all(),
+            'Autofees': Autofees.objects.all(),
+            'AvoidNodes': AvoidNodes.objects.all(),
+            'PeerEvents': PeerEvents.objects.all(),
+            'LocalSettings': LocalSettings.objects.all()
+        }
+        try:
+            target_table = tables[table]
+            target_table.delete()
+            return Response({'message': f'Successfully deleted table: {table}'})
+        except Exception as e:
+            error = str(e)
+            return Response({'error': f'Error deleting table: {error}'})
     else:
         return Response({'error': serializer.error_messages})
