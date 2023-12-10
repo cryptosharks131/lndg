@@ -155,17 +155,16 @@ def estimate_liquidity( payment ):
 
     return estimated_liquidity
 
-@sync_to_async
-def update_channels(stub, incoming_channel, outgoing_channel):
+async def update_channels(stub, incoming_channel, outgoing_channel):
     try:
         # Incoming channel update
-        channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(incoming_channel))).channels[0]
+        channel = await stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(incoming_channel))).channels[0]
         db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
         db_channel.save()
         # Outgoing channel update
-        channel = stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(outgoing_channel))).channels[0]
+        channel = await stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(outgoing_channel))).channels[0]
         db_channel = Channels.objects.filter(chan_id=channel.chan_id)[0]
         db_channel.local_balance = channel.local_balance
         db_channel.remote_balance = channel.remote_balance
@@ -320,11 +319,9 @@ async def async_queue_manager(rebalancer_queue: asyncio.Queue, worker_count):
             if worker_count != new_worker_count:
                 while not rebalancer_queue.empty():
                     await rebalancer_queue.get() #Empty queue to restart with new worker_count config
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Reloading worker count...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Reloading worker count...", end="")
                 return
-            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue currently has {rebalancer_queue.qsize()} items...")
-            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : There are currently {len(active_rebalances)} tasks in progress...")
-            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is checking for more work...")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue currently has {rebalancer_queue.qsize()} items with {len(active_rebalances)} tasks in progress")
             pending_rebalances, rebal_count = await get_pending_rebals()
             if rebal_count > 0:
                 for rebalance in pending_rebalances:
@@ -335,18 +332,19 @@ async def async_queue_manager(rebalancer_queue: asyncio.Queue, worker_count):
             await auto_enable()
             scheduled = await auto_schedule()
             if len(scheduled) > 0:
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Scheduling {len(scheduled)} more jobs...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Scheduling {len(scheduled)} rebalancing jobs: ", end="")
                 for rebalance in scheduled:
+                    print(str(rebalance.id) + ", ")
                     scheduled_rebalances.append(rebalance.id)
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stoping the rebalancer...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stoping the rebalancer...", end="")
                 return
             await asyncio.sleep(30)
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager exception: {str(e)}")
     finally:
-        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager has shut down...")
+        print("Stopped")
 
 async def async_run_rebalancer(manager: asyncio.Task, rebalancer_queue, conn):
     global scheduled_rebalances, active_rebalances
@@ -354,9 +352,11 @@ async def async_run_rebalancer(manager: asyncio.Task, rebalancer_queue, conn):
 
     while not manager.done():
         rebalance = await rebalancer_queue.get()
-        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} is starting a new request...")
         active_rebalance_id = None
         if rebalance != None:
+            pending = await sync_to_async(Rebalancer.objects.filter(id=rebalance.id, status=0).exists)()
+            if not pending: 
+                continue # Make sure only pending requests executes (excludes cancelled)
             active_rebalance_id = rebalance.id
             active_rebalances.append(active_rebalance_id)
             scheduled_rebalances.remove(active_rebalance_id)
@@ -364,17 +364,18 @@ async def async_run_rebalancer(manager: asyncio.Task, rebalancer_queue, conn):
             rebalance = await run_rebalancer(rebalance, conn, worker)
         if active_rebalance_id != None:
             active_rebalances.remove(active_rebalance_id)
-        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} completed its request...")
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} completed its request...")
         await asyncio.sleep(3)
 
-async def start_queue(conn):
+async def start_queue():
+    conn = async_lnd_connect()
     workers = await get_worker_count()
     rebalancer_queue = asyncio.Queue()
     manager = asyncio.create_task(async_queue_manager(rebalancer_queue, workers))
     workers = [asyncio.create_task(async_run_rebalancer(manager, rebalancer_queue, conn), name=f"Worker {id}") for id in range(1, workers+1)]
 
     await asyncio.gather(manager, *workers)
-    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Manager and workers have stopped...")
+    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Manager and workers have stopped")
 
 @sync_to_async
 def get_worker_count():
@@ -385,7 +386,6 @@ def main():
     if not LocalSettings.objects.filter(key='AR-Workers').exists():
         LocalSettings(key='AR-Workers', value='1').save()
     
-    conn = async_lnd_connect()
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     while True:
@@ -397,7 +397,7 @@ def main():
                 unknown_error.status = 400
                 unknown_error.stop = datetime.now()
                 unknown_error.save()
-        loop.run_until_complete(start_queue(conn))
+        loop.run_until_complete(start_queue())
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
         sleep(20)
 
