@@ -2907,3 +2907,40 @@ def create_trade(request):
             return Response({'error': f'Error creating trade: {error}'})
     else:
         return Response({'error': serializer.error_messages})
+    
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def reset_api(request):
+    serializer = ResetSerializer(data=request.data)
+    if serializer.is_valid():
+        table = serializer.validated_data['table']
+        tables = {
+            'Forwards': Forwards.objects.all(),
+            'Payments': Payments.objects.all(),
+            'PaymentHops': PaymentHops.objects.all(),
+            'Invoices': Invoices.objects.all(),
+            'Rebalancer': Rebalancer.objects.all(),
+            'Closures': Closures.objects.all(),
+            'Resolutions': Resolutions.objects.all(),
+            'Peers': Peers.objects.all(),
+            'Channels': Channels.objects.all(),
+            'PendingChannels': PendingChannels.objects.all(),
+            'Onchain': Onchain.objects.all(),
+            'PendingHTLCs': FailedHTLCs.objects.all(),
+            'FailedHTLCs': FailedHTLCs.objects.all(),
+            'HistFailedHTLC': HistFailedHTLC.objects.all(),
+            'Autopilot': Autopilot.objects.all(),
+            'Autofees': Autofees.objects.all(),
+            'AvoidNodes': AvoidNodes.objects.all(),
+            'PeerEvents': PeerEvents.objects.all(),
+            'LocalSettings': LocalSettings.objects.all()
+        }
+        try:
+            target_table = tables[table]
+            target_table.delete()
+            return Response({'message': f'Successfully deleted table: {table}'})
+        except Exception as e:
+            error = str(e)
+            return Response({'error': f'Error deleting table: {error}'})
+    else:
+        return Response({'error': serializer.error_messages})

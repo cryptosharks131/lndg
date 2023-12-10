@@ -227,3 +227,6 @@ class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = FailedHTLCs
         exclude = []
+
+class ResetSerializer(serializers.Serializer):
+    table = serializers.CharField(max_length=20)

@@ -94,5 +94,6 @@ urlpatterns = [
     path('api/createtrade/', views.create_trade, name='create-trade'),
     path('api/forwards_summary/', views.forwards_summary, name='forwards-summary'),
     path('api/sign_message/', views.sign_message, name='sign-message'),
+    path('api/reset/', views.reset_api, name='reset-api'),
     path('lndg-admin/', admin.site.urls),
 ]
