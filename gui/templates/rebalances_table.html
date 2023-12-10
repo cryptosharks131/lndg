@@ -53,8 +53,8 @@
           input.innerHTML = "🔂"
           input.title="Repeat this request" 
           input.onclick = async function(){
-            const {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias} = rebalance
-            const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias}
+            const {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias, manual} = rebalance
+            const new_rebal = {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias, manual}
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
             table.prepend(use(transformations).render(response))

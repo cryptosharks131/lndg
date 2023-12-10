@@ -129,15 +129,15 @@ class Channels(models.Model):
             if LocalSettings.objects.filter(key='AR-Inbound%').exists():
                 inbound_setting = int(LocalSettings.objects.filter(key='AR-Inbound%')[0].value)
             else:
-                LocalSettings(key='AR-Inbound%', value='100').save()
-                inbound_setting = 100
+                LocalSettings(key='AR-Inbound%', value='90').save()
+                inbound_setting = 90
             self.ar_in_target = inbound_setting
         if not self.ar_amt_target:
             if LocalSettings.objects.filter(key='AR-Target%').exists():
                 amt_setting = float(LocalSettings.objects.filter(key='AR-Target%')[0].value)
             else:
-                LocalSettings(key='AR-Target%', value='5').save()
-                amt_setting = 5
+                LocalSettings(key='AR-Target%', value='3').save()
+                amt_setting = 3
             self.ar_amt_target = int((amt_setting/100) * self.capacity)
         if not self.ar_max_cost:
             if LocalSettings.objects.filter(key='AR-MaxCost%').exists():
@@ -326,3 +326,14 @@ class HistFailedHTLC(models.Model):
     class Meta:
         app_label = 'gui'
         unique_together = (('date', 'chan_id_in', 'chan_id_out'),)
+
+class TradeSales(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    creation_date = models.DateTimeField(default=timezone.now)
+    expiry = models.DateTimeField(null=True)
+    description = models.CharField(max_length=100)
+    price = models.BigIntegerField()
+    sale_type = models.IntegerField()
+    secret = models.CharField(null=True, max_length=1000)
+    sale_limit = models.IntegerField(null=True)
+    sale_count = models.IntegerField(default=0)

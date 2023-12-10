@@ -346,43 +346,33 @@
 <div id="rebalancerDiv">
   {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title='<a href="/rebalancing" target="_blank">Rebalance Requests</a>' %}
 </div>
-{% if payments %}
-<div class="w3-container w3-padding-small">
+<div id="paymentsDiv" class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="paymentsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
-      <th width=28%>Hash</th>
-      <th width=6%>Value</th>
-      <th width=6%>Fee Paid</th>
-      <th width=6%>PPM Paid</th>
-      <th width=6%>Status</th>
-      <th width=12%>Chan Out Alias</th>
-      <th width=12%>Chan Out ID</th>
-      <th width=4%>Route</th>
-      <th width=6%>Keysend</th>
+      <th>Value</th>
+      <th>Fee Paid</th>
+      <th>PPM Paid</th>
+      <th>Status</th>
+      <th>Chan Out Alias</th>
+      <th>Chan Out ID</th>
+      <th>Hash</th>
+      <th>Rebalance</th>
+      <th>Keysend</th>
     </tr>
-    {% for payment in payments %}
-    <tr>
-      <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</td>
-      <td>{{ payment.value|add:"0"|intcomma }}</td>
-      <td>{{ payment.fee|intcomma }}</td>
-      <td>{{ payment.ppm|intcomma }}</td>
-      <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
-      <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}{{ payment.chan_out }}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}---{% endif %}</td>
-      <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <tfoot id="loadMorePayments">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="10">
+          <a onclick="loadPayments()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
-{% endif %}
-{% if invoices %}
-<div class="w3-container w3-padding-small">
+<div id="invoicesDiv" class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/invoices" target="_blank">Payments Received</a></h2>
-  <table class="w3-table-all w3-centered w3-hoverable">
+  <table id="invoicesTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Created</th>
       <th>Settled</th>
@@ -394,22 +384,15 @@
       <th width=10%>Channel In</th>
       <th><a href="/keysends" target="_blank">Keysend</a></th>
     </tr>
-    {% for invoice in invoices %}
-    <tr>
-      <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
-      <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
-      <td>{{ invoice.value|add:"0"|intcomma }}</td>
-      <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
-      <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
-      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
-    </tr>
-    {% endfor %}
+    <tfoot id="loadMoreInvoices">
+      <tr style="background-color:transparent;cursor:pointer;">
+        <td colspan="9">
+          <a onclick="loadInvoices()">Load More</a>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 </div>
-{% endif %}
 <div id="failedhtlcsDiv" class="w3-container w3-padding-small">
   <h2>Last <a href="/failed_htlcs?={{chan_id}}_O" target="_blank">Failed HTLCs</a></h2>
   <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
@@ -455,7 +438,7 @@
     </tr>
     <tfoot id="loadMorePeerEvents">
       <tr style="background-color:transparent;cursor:pointer;">
-        <td colspan="9">
+        <td colspan="8">
           <a onclick="loadPeerEvents()">Load More</a>
         </td>
       </tr>
@@ -475,14 +458,20 @@
 <script>
   document.addEventListener('DOMContentLoaded', async () =>{
     const forwardsTable = byId('forwardsTable')
+    const paymentsTable = byId('paymentsTable')
+    const invoicesTable = byId('invoicesTable')
     const failedhtlcsTable = byId('failedhtlcsTable')
     const peerEventsTable = byId('peerEventsTable')
     const forwards_task = GET('forwards', {data: {chan_in_or_out: "{{ chan_id }}", limit: 5} })
+    const payments_task = GET('payments', {data: {chan_out: "{{ chan_id }}", status__lt: 3, limit: 5} })
+    const invoices_task = GET('invoices', {data: {chan_in: "{{ chan_id }}", state__lt: 2, limit: 5} })
     const failedhtlcs_task = GET('failedhtlcs', {data: {chan_in_or_out: "{{ chan_id}}", wire_failure__lt: 99, limit: 5} })
     const peerEvents_task = GET('peerevents', {data: {chan_id: "{{ chan_id}}", limit: 5} })
     let failed_htlcs = (await failedhtlcs_task).results
     let peer_events = (await peerEvents_task).results
     let forwards = (await forwards_task).results
+    let payments = (await payments_task).results
+    let invoices = (await invoices_task).results
     if(byId('rebalsTable_')==null){
       byId("rebalancerDiv").style.display = "none"
     }
@@ -501,6 +490,16 @@
     }else{
       build_routed(forwards)
     }
+    if(payments.length==0){
+      byId("paymentsDiv").style.display = "none"
+    }else{
+      build_payments(payments)
+    }
+    if(invoices.length==0){
+      byId("invoicesDiv").style.display = "none"
+    }else{
+      build_invoices(invoices)
+    }
   })
   async function loadForwards(){
     const lastId = forwardsTable.tBodies[0].lastChild.objId
@@ -509,8 +508,10 @@
     build_routed(forwards)
   }
   async function build_routed(next_forwards){
-    if(next_forwards.length==0){
+    if(next_forwards.length<5){
       byId("loadMoreForwards").style.display = "none"
+    }
+    if(next_forwards.length==0){
       return
     }
     const tableBody = forwardsTable.querySelector("tbody")
@@ -521,12 +522,51 @@
       tableBody.appendChild(use(routed_template).render(f))
     }
   }
+  async function loadPayments(){
+    const lastId = paymentsTable.tBodies[0].lastChild.objId
+    const payments_task = GET('payments', {data: {chan_out: "{{ chan_id }}", index__lt: lastId, status__lt: 3, limit: 5} })
+    let next_payments = (await payments_task).results
+    build_payments(next_payments)
+  }
+  async function build_payments(payments){
+    if(payments.length<5){
+      byId("loadMorePayments").style.display = "none"
+    }
+    if(payments.length==0){
+      return
+    }
+    const tableBody = paymentsTable.querySelector("tbody")
+    for (p of payments){
+      p.ppm = p.fee*1000000/p.value
+      tableBody.appendChild(use(payments_template).render(p))
+    }
+  }
+  async function loadInvoices(){
+    const lastId = invoicesTable.tBodies[0].lastChild.objId
+    const invoices_task = GET('invoices', {data: {chan_out: "{{ chan_id }}", index__lt: lastId, state__lt: 2, limit: 5} })
+    let next_invoices = (await invoices_task).results
+    build_invoices(next_invoices)
+  }
+  async function build_invoices(invoices){
+    if(invoices.length<5){
+      byId("loadMoreInvoices").style.display = "none"
+    }
+    if(invoices.length==0){
+      return
+    }
+    const tableBody = invoicesTable.querySelector("tbody")
+    for (inv of invoices){
+      tableBody.appendChild(use(invoices_template).render(inv))
+    }
+  }
   async function loadFailedHTLCs(){
     const lastId = failedhtlcsTable.tBodies[0].lastChild.objId
     const failedhtlcs_task = GET('failedhtlcs', {data: {chan_in_or_out: "{{ chan_id}}", wire_failure__lt: 99, id__lt: lastId, limit: 5} })
     let next_failed_htlcs = (await failedhtlcs_task).results
-    if(next_failed_htlcs.length==0){
+    if(next_failed_htlcs.length<5){
       byId("loadMoreFailedHTLCs").style.display = "none"
+    }    
+    if(next_failed_htlcs.length==0){
       return
     }
     build_failedhtlcs(next_failed_htlcs)
@@ -541,8 +581,10 @@
     const lastId = peerEventsTable.tBodies[0].lastChild.objId
     const peerEvents_task = GET('peerevents', {data: {chan_id: "{{ chan_id}}", id__lt: lastId, limit: 5} })
     let next_peer_events = (await peerEvents_task).results
-    if(next_peer_events.length==0){
+    if(next_peer_events.length<5){
       byId("loadMorePeerEvents").style.display = "none"
+    }
+    if(next_peer_events.length==0){
       return
     }
     build_peerEvents(next_peer_events)

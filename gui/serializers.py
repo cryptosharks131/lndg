@@ -1,16 +1,18 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents
+from .models import LocalSettings, Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, Peers, Onchain, PendingHTLCs, FailedHTLCs, Closures, Resolutions, PeerEvents, TradeSales, Autofees
 
 ##FUTURE UPDATE 'exclude' TO 'fields'
 
 class PaymentSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.IntegerField(source='index')
     payment_hash = serializers.ReadOnlyField()
     class Meta:
         model = Payments
         exclude = []
 
 class InvoiceSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.IntegerField(source='index')
     r_hash = serializers.ReadOnlyField()
     creation_date = serializers.ReadOnlyField()
     settle_date = serializers.ReadOnlyField()
@@ -100,6 +102,9 @@ class RebalancerSerializer(serializers.HyperlinkedModelSerializer):
 class ConnectPeerSerializer(serializers.Serializer):
     peer_id = serializers.CharField(label='peer_pubkey', max_length=200)
 
+class DisconnectPeerSerializer(serializers.Serializer):
+    peer_id = serializers.CharField(label='peer_pubkey', max_length=66)
+
 class OpenChannelSerializer(serializers.Serializer):
     peer_pubkey = serializers.CharField(label='peer_pubkey', max_length=66)
     local_amt = serializers.IntegerField(label='local_amt')
@@ -118,6 +123,24 @@ class BumpFeeSerializer(serializers.Serializer):
 
 class BroadcastTXSerializer(serializers.Serializer):
     raw_tx = serializers.CharField(label='raw_tx')
+
+class CreateTradeSerializer(serializers.Serializer):
+    description = serializers.CharField(max_length=100)
+    price = serializers.IntegerField()
+    type = serializers.IntegerField()
+    secret = serializers.CharField(max_length=100, required=False, default=None)
+    expiry = serializers.DateTimeField(required=False, default=None)
+    sale_limit = serializers.IntegerField(required=False, default=None)
+
+class TradeSalesSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    creation_date = serializers.ReadOnlyField()
+    sale_type = serializers.ReadOnlyField()
+    secret = serializers.ReadOnlyField()
+    sale_count = serializers.ReadOnlyField()
+    class Meta:
+        model = TradeSales
+        exclude = []
 
 class SignMessageSerializer(serializers.Serializer):
     message = serializers.CharField(label='message')
@@ -192,6 +215,12 @@ class PeerEventsSerializer(serializers.HyperlinkedModelSerializer):
     def get_out_liq_percent(self, obj):
         capacity = Channels.objects.filter(chan_id=obj.chan_id).get().capacity
         return int(round((obj.out_liq/capacity)*100, 1))
+
+class FeeLogSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    class Meta:
+        model = Autofees
+        exclude = []
 
 class FailedHTLCSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()

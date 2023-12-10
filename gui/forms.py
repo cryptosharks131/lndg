@@ -34,7 +34,7 @@ class OpenChannelForm(forms.Form):
 
 class CloseChannelForm(forms.Form):
     chan_id = forms.CharField(label='chan_id')
-    target_fee = forms.IntegerField(label='target_fee')
+    target_fee = forms.IntegerField(label='target_fee', required=False)
     force = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
 class ConnectPeerForm(forms.Form):

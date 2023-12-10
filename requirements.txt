@@ -1,10 +1,11 @@
 Django
 djangorestframework
 django-filter
-django-qr-code
 grpcio
 protobuf
 pytz
 pandas
 requests
 asyncio
+bech32
+cryptography
