@@ -376,12 +376,12 @@
     <tr>
       <th>Created</th>
       <th>Settled</th>
-      <th width=25%>Payment Hash</th>
       <th>Value</th>
       <th>Amount Paid</th>
       <th>State</th>
       <th>Channel In Alias</th>
-      <th width=10%>Channel In</th>
+      <th>Channel In</th>
+      <th>Hash</th>
       <th><a href="/keysends" target="_blank">Keysend</a></th>
     </tr>
     <tfoot id="loadMoreInvoices">
@@ -555,8 +555,9 @@
       return
     }
     const tableBody = invoicesTable.querySelector("tbody")
+    const renderer = use(invoices_template)
     for (inv of invoices){
-      tableBody.appendChild(use(invoices_template).render(inv))
+      tableBody.appendChild(renderer.render(inv))
     }
   }
   async function loadFailedHTLCs(){
