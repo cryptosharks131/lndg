@@ -274,7 +274,7 @@ async def queue_manager(rebalancer_queue: asyncio.Queue, worker_count):
     print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue manager is starting with {worker_count} workers...")
     try:
         while True:
-            new_worker_count = (await LocalSettings.objects.aget(key='AR-Workers')).value
+            new_worker_count = int((await LocalSettings.objects.aget(key='AR-Workers')).value)
             if worker_count != new_worker_count:
                 while not rebalancer_queue.empty():
                     await rebalancer_queue.get() #Empty queue to restart with new worker_count config
@@ -340,7 +340,7 @@ async def worker_manager(manager: asyncio.Task, rebalancer_queue, conn):
 
 async def start_queue():
     conn = async_lnd_connect()
-    workers = (await LocalSettings.objects.aget(key='AR-Workers')).value
+    workers = int((await LocalSettings.objects.aget(key='AR-Workers')).value)
     rebalancer_queue = asyncio.Queue()
     manager = asyncio.create_task(queue_manager(rebalancer_queue, workers))
     workers = [asyncio.create_task(worker_manager(manager, rebalancer_queue, conn), name=f"Worker {id}") for id in range(1, workers+1)]
