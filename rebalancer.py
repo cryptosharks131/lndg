@@ -315,7 +315,7 @@ async def worker_manager(manager: asyncio.Task, rebalancer_queue, conn):
         if rebalance == None:
             continue
 
-        if not await sync_to_async(Rebalancer.objects.filter(id=rebalance.id, status=0).exists)(): 
+        if not await Rebalancer.objects.filter(id=rebalance.id, status=0).aexists(): 
             continue # Make sure only pending requests executes (excludes cancelled)
 
         if not rebalance.manual:
