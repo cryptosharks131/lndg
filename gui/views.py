@@ -1174,7 +1174,7 @@ def invoices(request):
 def rebalances(request):
     if request.method == 'GET':
         try:
-            return render(request, 'rebalances.html')
+            return render(request, 'rebalances.html', {'target_time': LocalSettings.objects.get(key='AR-Time').value})
         except Exception as e:
             try:
                 error = str(e.code())

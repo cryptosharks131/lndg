@@ -336,7 +336,7 @@
     </tfoot>
   </table>
 </div>
-{% include 'rebalances_table.html' with count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
+{% include 'rebalances_table.html' with target_time=local_settings.3.value count=10 load_count=10 title='<a href="/rebalances" target="_blank">Rebalance Requests</a>' %}
 <div id="payments_container" style="display:none" class="w3-container w3-padding-small">
   <table id="paymentsTable" class="w3-table-all w3-centered w3-hoverable">
     <thead>
