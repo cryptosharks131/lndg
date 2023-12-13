@@ -31,7 +31,7 @@
 <script>
   var rapidFire = 'rapidFire', target_time = {{target_time}}
   function formatDuration(duration) {
-    return `${duration} minute${duration === 1 ? 's':''}`
+    return `${duration} minute${duration > 1 ? 's':''}`
   }
   statuses = { 0: 'Pending ⏳', 1: 'In-Flight 🚀', 2: 'Successful ✅', 3: 'Timeout ⏱️', 4: 'No-Route ⭕', 5: 'Error ⛔', 6: 'Incorrect-Payment-Detail❗', 7: 'Insufficient-Balance💸', 400: 'Rebalancer-Failed', 406: 'No-Sources ⛽', 408: 'Rebalancer-Timeout ⏱️', 499: 'Cancelled ✖️' }
   template = {
