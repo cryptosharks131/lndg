@@ -27,7 +27,7 @@ def log_fail(msg):
 
 @sync_to_async
 @log_fail("Error getting outbound cans")
-def get_out_cans(rebalance):
+def get_out_cans(rebalance: Rebalancer):
     pub_active_chans = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound')-rebalance.value)*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
     return pub_active_chans, list(pub_active_chans.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
 
@@ -80,37 +80,26 @@ async def run(rebalance: Rebalancer, conn, worker) -> Rebalancer:
             
 @log_fail("Error on rapid_fire")
 async def rapid_fire(rebalance: Rebalancer, stub: lnrpc.LightningStub, payment_response) -> Rebalancer:
-    if rebalance.status < 2:
-        return None
-    pub_active_chans, outbound_cans = await get_out_cans(rebalance)
-    inbound_cans_len = await pub_active_chans.filter(remote_pubkey=rebalance.last_hop_pubkey, auto_rebalance=True, inbound_can__gte=1).acount()
-    if rebalance.status == 2: 
-        inc=1.21
-        successful_out = payment_response.htlcs[0].route.hops[0].pub_key
-        await update_channel(stub, successful_out)            # Outgoing channel update
-        await update_channel(stub, rebalance.last_hop_pubkey) # Incoming channel update
-        #Reduce potential rebalance value in percent out to avoid going below AR-OUT-Target
+    async def next_rapid_fire(inc:float):
+        test = Rebalancer(value=int(rebalance.value*inc), last_hop_pubkey=rebalance.last_hop_pubkey)
+        if test.value < 1000:
+            return None
+        pub_active_chans, outbound_cans = await get_out_cans(test)
+        inbound_cans_len = await pub_active_chans.filter(remote_pubkey=rebalance.last_hop_pubkey, auto_rebalance=True, inbound_can__gte=1).acount()
         if inbound_cans_len > 0 and len(outbound_cans) > 0:
-            next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
             await next_rebalance.asave()
-            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire increase for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value} ")
+            next_rebalance = Rebalancer(value=test.value, fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : new RapidFire for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value} ")
             return next_rebalance
-    # For failed rebalances, try in rapid fire with reduced balances until give up.
-    elif rebalance.value > 69420:
-        dec=2
-        #Previous Rapidfire with increased value failed, try with lower value up to 69420.
-        if rebalance.duration > 1:
-            next_value = await estimate_liquidity(payment_response)
-            if next_value < 1000:
-                return None
-        else:
-            next_value = rebalance.value/dec
 
-        if inbound_cans_len > 0 and len(outbound_cans) > 0:
-            next_rebalance = Rebalancer(value=int(next_value), fee_limit=round(rebalance.fee_limit/(rebalance.value/next_value), 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
-            await next_rebalance.asave()
-            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire decrease for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value} ")
-            return next_rebalance
+    if rebalance.status == 2: 
+        await update_channel(payment_response.htlcs[0].route.hops[0].pub_key, stub) # Outgoing channel update
+        await update_channel(rebalance.last_hop_pubkey, stub)                       # Incoming channel update
+        return await next_rapid_fire(1.21)               
+    elif rebalance.status > 2 and rebalance.value > 69420: # For failed rebalances, try in rapid fire with reduced balances until give up.
+        #Previous Rapidfire with increased value failed, try with lower value up to 69420.
+        incr = (await estimate_liquidity(payment_response))/rebalance.value if rebalance.duration > 1 else .5
+        return await next_rapid_fire(incr)
     return None
 
 @sync_to_async
@@ -131,7 +120,7 @@ def estimate_liquidity( payment ):
     return estimated_liquidity
 
 @log_fail("Error updating channel balances")
-async def update_channel(stub, chann):
+async def update_channel(chann, stub):
     channel = (await stub.ListChannels(ln.ListChannelsRequest(peer=bytes.fromhex(chann)))).channels[0]
     db_channel = await Channels.objects.aget(chan_id=channel.chan_id)
     db_channel.local_balance = channel.local_balance
