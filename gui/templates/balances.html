@@ -32,18 +32,26 @@
       <th>Total Attempts</th>
       <th>Next Attempt</th>
       <th>Force</th>
+      <th>Bump Fee</th>
     </tr>
     {% for sweep in pending_sweeps %}
     <tr>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.txid_str }}" target="_blank">{{ sweep.txid_str }}</a></td>
       <td>{{ sweep.amount_sat|intcomma }}</td>
-      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
+      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 2 %}COMMITMENT_NO_DELAY{% elif sweep.witness_type == 3 %}COMMITMENT_REVOKE{% elif sweep.witness_type == 4 %}HTLC_OFFERED_REVOKE{% elif sweep.witness_type == 5 %}HTLC_ACCEPTED_REVOKE{% elif sweep.witness_type == 6 %}HTLC_OFFERED_TIMEOUT_SECOND_LEVEL{% elif sweep.witness_type == 8 %}HTLC_OFFERED_REMOTE_TIMEOUT{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
       <td>{% if sweep.requested_sat_per_vbyte == 0 %}---{% else %}{{ sweep.requested_sat_per_vbyte|intcomma }}{% endif %}</td>
       <td>{{ sweep.sat_per_vbyte|intcomma }}</td>
       <td>{{ sweep.requested_conf_target|intcomma }}</td>
       <td>{{ sweep.broadcast_attempts|intcomma }}</td>
       <td>{{ sweep.next_broadcast_height|intcomma }}</td>
       <td>{% if sweep.force %}Yes{% else %}No{% endif %}</td>
+      <td>
+          <form onsubmit="bumpFee(this,'{{ sweep.txid_str }}','{{ sweep.txid_index }}'); return false">
+            <span style="float:none" class="input" data-unit="sats/vbyte" title="Fee bump an unconfirmed tx">
+              <input style="width:225px" id="target_fee" type="number" min="1" max="1000" placeholder="New Fee Rate" name="target_fee">
+            </span>
+          </form>
+      </td>
     </tr>
     {% endfor %}
   </table>

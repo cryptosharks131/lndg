@@ -310,7 +310,8 @@ def balances(request):
         sweeps = []
         for pending_sweep in pending_sweeps:
             sweep = {}
-            sweep['txid_str'] = pending_sweep.outpoint.txid_bytes.hex()
+            sweep['txid_str'] = pending_sweep.outpoint.txid_bytes[::-1].hex()
+            sweep['txid_index'] = pending_sweep.outpoint.output_index
             sweep['amount_sat'] = pending_sweep.amount_sat
             sweep['witness_type'] = pending_sweep.witness_type
             sweep['requested_sat_per_vbyte'] = pending_sweep.requested_sat_per_vbyte
