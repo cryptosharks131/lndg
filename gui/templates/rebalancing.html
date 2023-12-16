@@ -66,7 +66,11 @@
       return {innerHTML: out ? 'Out' : _in ? `In <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : '---', style: {backgroundColor: out ? 'rgba(100,100,100,.15)' : _in ? 'rgba(56,139,253,0.15)' : red} }
     },
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, title: `Out: ${ch.local_fee_rate}ₚₚₘ\nIn: ${ch.remote_fee_rate}ₚₚₘ`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
+    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`,
+      changed: function(new_value){
+        updateCols(['rebalance'], this, new_value)
+      }
+    }),
     "ar_max_cost": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/></span>`, 
       changed: function(new_value){
         updateCols(['ar_max_cost', 'fee_ratio'], this, new_value)
