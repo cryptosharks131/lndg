@@ -1,32 +1,6 @@
 from django import forms
 from .models import Channels
 
-class RebalancerModelChoiceIterator(forms.models.ModelChoiceIterator):
-    def choice(self, obj):
-        return (self.field.prepare_value(obj),
-                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + "{:,}".format(obj.local_balance) + ' | ' + obj.remote_pubkey))
-
-class RebalancerModelChoiceField(forms.models.ModelMultipleChoiceField):
-    def _get_choices(self):
-        if hasattr(self, '_choices'):
-            return self._choices
-        return RebalancerModelChoiceIterator(self)
-    choices = property(_get_choices,  
-                       forms.MultipleChoiceField._set_choices)
-
-class ChanPolicyModelChoiceIterator(forms.models.ModelChoiceIterator):
-    def choice(self, obj):
-        return (self.field.prepare_value(obj),
-                (str(obj.chan_id) + ' | ' + obj.alias + ' | ' + str(obj.local_base_fee) + ' | ' + str(obj.local_fee_rate) + ' | ' + str(obj.local_cltv)))
-
-class ChanPolicyModelChoiceField(forms.models.ModelMultipleChoiceField):
-    def _get_choices(self):
-        if hasattr(self, '_choices'):
-            return self._choices
-        return ChanPolicyModelChoiceIterator(self)
-    choices = property(_get_choices,  
-                       forms.MultipleChoiceField._set_choices)
-
 class OpenChannelForm(forms.Form):
     peer_pubkey = forms.CharField(label='peer_pubkey', max_length=66)
     local_amt = forms.IntegerField(label='local_amt')
@@ -59,7 +33,7 @@ class RebalancerForm(forms.ModelForm):
         fields = []
     value = forms.IntegerField(label='value')
     fee_limit = forms.IntegerField(label='fee_limit')
-    outgoing_chan_ids = RebalancerModelChoiceField(widget=forms.CheckboxSelectMultiple, queryset=Channels.objects.filter(is_open=1, is_active=1).order_by('-local_balance'), required=False)
+    outgoing_chan_ids = forms.ModelMultipleChoiceField(queryset=Channels.objects.filter(is_open=1, is_active=1), required=False)
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
 
