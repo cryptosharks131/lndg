@@ -76,7 +76,7 @@
       } 
     };
     async function buildTable(){
-      const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:'{{last_hop_pubkey}}' }})
+      const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey: '{% if last_hop_pubkey %}{{last_hop_pubkey}}{%else%}request.GET.last_hop_pubkey{%endif%}' }})
       if(res.errors) return
       if(res.results.length == 0){
         document.getElementById("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any ${'{{status}}'=='' ? '' : statuses['{{status}}'].toLowerCase()} rebalance request</h1></center>`

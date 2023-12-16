@@ -344,7 +344,11 @@
   </table>
 </div>
 <div id="rebalancerDiv">
-  {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title='<a href="/rebalancing" target="_blank">Rebalance Requests</a>' %}
+{% autoescape off %}
+  {% with rebal_url='<a href="/rebalances?last_hop_pubkey='|add:channel.remote_pubkey|add:'" target:"_blank">'|add:channel.alias|add:' Rebalances</a>'%}
+    {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title=rebal_url %}
+  {% endwith %}
+{% endautoescape %}
 </div>
 <div id="paymentsDiv" class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
