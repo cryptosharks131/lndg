@@ -81,7 +81,7 @@
     duration.title = `+${index} RapidFire🔥 rebalances:\nWhen the previous rebalance is successful, LNDg tries new 1min-long rebalances as a lift to quicker fulfill the AR target amount.`
   }
   async function buildTable(ev) {
-    const res = await GET('rebalancer', { data: { limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey: '{{last_hop_pubkey}}' } })
+    const res = await GET('rebalancer', { data: { limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey:  '{% if last_hop_pubkey %}{{last_hop_pubkey}}{%else%}{{request.GET.last_hop_pubkey}}{%endif%}' } })
     if (res.errors) return
     if (res.results.length == 0) {
       byId("rebalances_div_{{status}}").innerHTML = `<center><h1>You dont have any ${'{{status}}' == '' ? '' : statuses['{{status}}'].toLowerCase()} rebalance request</h1></center>`
