@@ -87,8 +87,8 @@ async def rapid_fire(rebalance: Rebalancer, stub: lnrpc.LightningStub, payment_r
         pub_active_chans, outbound_cans = await get_out_cans(test)
         inbound_cans_len = await pub_active_chans.filter(remote_pubkey=rebalance.last_hop_pubkey, auto_rebalance=True, inbound_can__gte=1).acount()
         if inbound_cans_len > 0 and len(outbound_cans) > 0:
-            await next_rebalance.asave()
             next_rebalance = Rebalancer(value=test.value, fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=rebalance.target_alias, duration=1)
+            await next_rebalance.asave()
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : new RapidFire for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value} ")
             return next_rebalance
 
