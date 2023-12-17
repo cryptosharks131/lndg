@@ -8,10 +8,27 @@ if [ "$INSTALL_USER" == 'root' ]; then
 else
     HOME_DIR="/home/$INSTALL_USER"
 fi
+LNDG_DIR="$HOME_DIR/lndg"
+
+function check_path() {
+    if [ -e $LNDG_DIR/lndg/wsgi.py ]; then
+        echo "Using LNDg installation found at $LNDG_DIR"
+    else
+        echo "LNDg installation not found at $LNDG_DIR/, please provide the correct path:"
+        read USR_DIR
+        if [ -e $USR_DIR/lndg/wsgi.py ]; then
+            LNDG_DIR=$USR_DIR
+            echo "Using LNDg installation found at $LNDG_DIR"
+        else
+            echo "LNDg installation still not found, exiting..."
+            exit 1
+        fi
+    fi
+}
 
 # Ensure the lndg directory exists
-mkdir -p $HOME_DIR/lndg
-mkdir -p $HOME_DIR/lndg/.venv/bin
+mkdir -p $LNDG_DIR
+mkdir -p $LNDG_DIR/.venv/bin
 mkdir -p /var/log/uwsgi
 
 function install_deps() {
@@ -22,25 +39,25 @@ function install_deps() {
 
 function setup_uwsgi() {
     # Creating the lndg.ini file
-    cat << EOF > $HOME_DIR/lndg/lndg.ini
+    cat << EOF > $LNDG_DIR/lndg.ini
 # lndg.ini file
 [uwsgi]
 # Django-related settings
-chdir           = $HOME_DIR/lndg
+chdir           = $LNDG_DIR
 module          = lndg.wsgi
-home            = $HOME_DIR/lndg/.venv
+home            = $LNDG_DIR/.venv
 logto           = /var/log/uwsgi/%n.log
 
 # process-related settings
 master          = true
 processes       = 1
-socket          = $HOME_DIR/lndg/lndg.sock
+socket          = $LNDG_DIR/lndg.sock
 chmod-socket    = 660
 vacuum          = true
 EOF
 
     # Creating the uwsgi_params file
-    cat << EOF > $HOME_DIR/lndg/uwsgi_params
+    cat << EOF > $LNDG_DIR/uwsgi_params
 uwsgi_param  QUERY_STRING       \$query_string;
 uwsgi_param  REQUEST_METHOD     \$request_method;
 uwsgi_param  CONTENT_TYPE       \$content_type;
@@ -66,7 +83,7 @@ Description=Lndg uWSGI app
 After=syslog.target
 
 [Service]
-ExecStart=$HOME_DIR/lndg/.venv/bin/uwsgi --ini $HOME_DIR/lndg/lndg.ini
+ExecStart=$LNDG_DIR/.venv/bin/uwsgi --ini $LNDG_DIR/lndg.ini
 User=$INSTALL_USER
 Group=www-data
 Restart=on-failure
@@ -85,7 +102,7 @@ function setup_nginx() {
     # Creating the Nginx configuration file
     cat << EOF > /etc/nginx/sites-available/lndg
 upstream django {
-    server unix://$HOME_DIR/lndg/lndg.sock;
+    server unix://$LNDG_DIR/lndg.sock; # for a file socket
 }
 
 server {
@@ -96,12 +113,12 @@ server {
     proxy_read_timeout 180;
 
     location /static {
-        alias $HOME_DIR/lndg/gui/static;
+        alias $LNDG_DIR/gui/static; # your Django project's static files - amend as required
     }
 
     location / {
         uwsgi_pass  django;
-        include     $HOME_DIR/lndg/uwsgi_params;
+        include     $LNDG_DIR/uwsgi_params; # the uwsgi_params file
     }
 }
 EOF
@@ -112,17 +129,24 @@ EOF
 }
 
 function start_services() {
-    systemctl start uwsgi.service
-    systemctl restart nginx.service
-    systemctl enable uwsgi.service
-    systemctl enable nginx.service
+    touch /var/log/uwsgi/lndg.log
+    touch $LNDG_DIR/lndg.sock
+    chgrp www-data /var/log/uwsgi/lndg.log
+    chgrp www-data $LNDG_DIR/lndg.sock
+    chmod 660 /var/log/uwsgi/lndg.log
+    systemctl start uwsgi
+    systemctl restart nginx
+    systemctl enable uwsgi
+    systemctl enable nginx
 }
 
 function report_information() {
     echo "Nginx and uWSGI have been set up with user $INSTALL_USER at $NODE_IP:8889."
 }
 
-# Main execution
+##### Main #####
+echo -e "Setting up, this may take a few minutes..."
+check_path
 install_deps
 setup_uwsgi
 setup_nginx

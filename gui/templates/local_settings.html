@@ -10,8 +10,8 @@
           <label for="{{sett.form_id}}" class="w3-col" title="{{ sett.title }}">{{ sett.label }}</label>
           {% if sett.min == 0 and sett.max == 1 %}
           <select style="height:27px" class="w3-col" name="{{sett.form_id}}" id="{{sett.form_id}}">
-            <option value="0" {% if sett.value == "0" %}selected="selected"{% endif %}>Off</option>
-            <option value="1" {% if sett.value == "1" %}selected="selected"{% endif %}>On</option>
+            <option value="0" {% if sett.value == "0" %}selected{% endif %}>Off</option>
+            <option value="1" {% if sett.value == "1" %}selected{% endif %}>On</option>
           </select>
           {% else %}
           <div class="w3-col input" data-unit="{{sett.unit}}">

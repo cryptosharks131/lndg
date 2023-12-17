@@ -1,11 +1,11 @@
-import secrets, argparse, django, os
+import os, secrets, argparse, django
 from pathlib import Path
 from django.core.management import call_command
 from django.contrib.auth import get_user_model
 from django.conf import settings
 BASE_DIR = Path(__file__).resolve().parent
 
-def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired):
+def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age):
     #Generate a unique secret to be used for your django site
     secret = secrets.token_urlsafe(64)
     if whitenoise:
@@ -15,7 +15,7 @@ def write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, 
         wnl = ''
     if csrftrusted:
         csrf = """
-CSRF_TRUSTED_ORIGINS = [%s]
+CSRF_TRUSTED_ORIGINS = ['%s']
     """ % (csrftrusted)
     else:
         csrf = ''
@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'gui',
     'rest_framework',
     'django_filters',
-    'qr_code',
 ]
 
 MIDDLEWARE = [
@@ -171,19 +170,16 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, not nologinrequired, wnl, api_login)
-    try:
-        f = open("lndg/settings.py", "x")
-        f.close()
-    except:
-        print('A settings file may already exist, skipping creation...')
+SESSION_COOKIE_AGE = %s
+''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, not nologinrequired, wnl, api_login, cookie_age)
+    if not force_new and Path("lndg/settings.py").exists():
+        print('A settings file already exist, skipping creation...')
         return
     try:
-        f = open("lndg/settings.py", "w")
-        f.write(settings_file)
-        f.close()
+        with open("lndg/settings.py", "w") as f:
+            f.write(settings_file)
     except Exception as e:
-        print('Error creating the settings file:', e)
+        print('Error creating the settings file: ', str(e))
 
 def write_supervisord_settings(sduser):
     supervisord_secret = secrets.token_urlsafe(16)
@@ -212,94 +208,26 @@ password = %s
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory=supervisor.rpcinterface:make_main_rpcinterface
 
-[program:jobs]
-command = sh -c "python jobs.py && sleep 15"
-process_name = lndg-jobs
+[program:controller]
+command = sh -c "python controller.py && sleep 15"
+process_name = lndg-controller
 directory = %s
 autorestart = true
 redirect_stderr = true
-stdout_logfile = /var/log/lndg-jobs.log
+stdout_logfile = %s/data/lndg-controller.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
-
-[program:rebalancer]
-command = sh -c "python rebalancer.py && sleep 15"
-process_name = lndg-rebalancer
-directory = %s
-autorestart = true
-redirect_stderr = true
-stdout_logfile = /var/log/lndg-rebalancer.log
-stdout_logfile_maxbytes = 150MB
-stdout_logfile_backups = 15
-
-[program:htlc-stream]
-command = sh -c "python htlc_stream.py && sleep 15"
-process_name = lndg-htlc-stream
-directory = %s
-autorestart = true
-redirect_stderr = true
-stdout_logfile = /var/log/lndg-htlc-stream.log
-stdout_logfile_maxbytes = 150MB
-stdout_logfile_backups = 15
-''' % (sduser, supervisord_secret, supervisord_secret, BASE_DIR, BASE_DIR, BASE_DIR)
-    try:
-        f = open("/usr/local/etc/supervisord.conf", "x")
-        f.close()
-    except:
-        print('A supervisord settings file may already exist, skipping creation...')
+''' % (sduser, supervisord_secret, supervisord_secret, BASE_DIR, BASE_DIR)
+    if Path("/usr/local/etc/supervisord.conf").exists():
+        print('A supervisord settings file already exist, skipping creation...')
         return
     try:
-        f = open("/usr/local/etc/supervisord.conf", "w")
-        f.write(supervisord_settings_file)
-        f.close()
+        with open("/usr/local/etc/supervisord.conf", "w") as f:
+            f.write(supervisord_settings_file)
     except Exception as e:
-        print('Error creating the settings file:', str(e))
+        print('Error creating the settings file: ', str(e))
 
-def main():
-    help_msg = "LNDg Initializer"
-    parser = argparse.ArgumentParser(description = help_msg)
-    parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
-    parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default=None)
-    parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
-    parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
-    parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
-    parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
-    parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='root')
-    parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
-    parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
-    parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')
-    parser.add_argument('-u', '--adminuser', help = 'Setup a custom admin username', default='lndg-admin')
-    parser.add_argument('-pw', '--adminpw', help = 'Setup a custom admin password', default=None)
-    parser.add_argument('-csrf', '--csrftrusted', help = 'Set trusted CSRF origins', default=None)
-    parser.add_argument('-tls', '--tlscert', help = 'Set the path to a custom tls cert', default=None)
-    parser.add_argument('-mcrn', '--macaroon', help = 'Set the path to a custom macroon file', default=None)
-    parser.add_argument('-lnddb', '--lnddatabase', help = 'Set the path to the channel.db for monitoring', default=None)
-    parser.add_argument('-nologin', '--nologinrequired', help = 'By default, force all connections to be authenticated', action='store_true')
-    args = parser.parse_args()
-    node_ip = args.nodeip
-    lnd_dir_path = args.lnddir if args.lnddir else '~/.lnd'
-    lnd_network = args.network
-    lnd_rpc_server = args.rpcserver
-    lnd_max_message = args.maxmessage
-    setup_supervisord = args.supervisord
-    sduser = args.sduser
-    whitenoise = args.whitenoise
-    docker = args.docker
-    debug = args.debug
-    adminuser = args.adminuser
-    adminpw = args.adminpw
-    csrftrusted = args.csrftrusted
-    nologinrequired = args.nologinrequired
-    lnd_tls_path = args.tlscert if args.tlscert else lnd_dir_path + '/tls.cert'
-    lnd_macaroon_path = args.macaroon if args.macaroon else lnd_dir_path + '/data/chain/bitcoin/' + lnd_network + '/admin.macaroon'
-    lnd_database_path = args.lnddatabase if args.lnddatabase else lnd_dir_path + '/data/graph/' + lnd_network + '/channel.db'
-    if docker:
-        setup_supervisord = True
-        whitenoise = True
-    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired)
-    if setup_supervisord:
-        print('Supervisord setup requested...')
-        write_supervisord_settings(sduser)
+def initialize_django(adminuser, adminpw):
     try:
         DATA_DIR = os.path.join(BASE_DIR, 'data')
         try:
@@ -352,6 +280,57 @@ def main():
                 print('Error setting up initial user:', str(e))
     except Exception as e:
         print('Error initializing django:', str(e))
+
+def main():
+    help_msg = "LNDg Initializer"
+    parser = argparse.ArgumentParser(description = help_msg)
+    parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
+    parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default=None)
+    parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
+    parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
+    parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
+    parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
+    parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='root')
+    parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
+    parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
+    parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')
+    parser.add_argument('-u', '--adminuser', help = 'Setup a custom admin username', default='lndg-admin')
+    parser.add_argument('-pw', '--adminpw', help = 'Setup a custom admin password', default=None)
+    parser.add_argument('-csrf', '--csrftrusted', help = 'Set trusted CSRF origins', default=None)
+    parser.add_argument('-tls', '--tlscert', help = 'Set the path to a custom tls cert', default=None)
+    parser.add_argument('-mcrn', '--macaroon', help = 'Set the path to a custom macroon file', default=None)
+    parser.add_argument('-lnddb', '--lnddatabase', help = 'Set the path to the channel.db for monitoring', default=None)
+    parser.add_argument('-nologin', '--nologinrequired', help = 'By default, force all connections to be authenticated', action='store_true')
+    parser.add_argument('-sessionage', '--sessioncookieage', help = 'Number of seconds before the login session expires', default='1209600')
+    parser.add_argument('-f', '--force', help = 'Force a new settings file to be created', action='store_true')
+    args = parser.parse_args()
+    node_ip = args.nodeip
+    lnd_dir_path = args.lnddir if args.lnddir else '~/.lnd'
+    lnd_network = args.network
+    lnd_rpc_server = args.rpcserver
+    lnd_max_message = args.maxmessage
+    setup_supervisord = args.supervisord
+    sduser = args.sduser
+    whitenoise = args.whitenoise
+    docker = args.docker
+    debug = args.debug
+    adminuser = args.adminuser
+    adminpw = args.adminpw
+    csrftrusted = args.csrftrusted
+    nologinrequired = args.nologinrequired
+    force_new = args.force
+    lnd_tls_path = args.tlscert if args.tlscert else lnd_dir_path + '/tls.cert'
+    lnd_macaroon_path = args.macaroon if args.macaroon else lnd_dir_path + '/data/chain/bitcoin/' + lnd_network + '/admin.macaroon'
+    lnd_database_path = args.lnddatabase if args.lnddatabase else lnd_dir_path + '/data/graph/' + lnd_network + '/channel.db'
+    cookie_age = int(args.sessioncookieage)
+    if docker:
+        setup_supervisord = True
+        whitenoise = True
+    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age)
+    if setup_supervisord:
+        print('Supervisord setup requested...')
+        write_supervisord_settings(sduser)
+    initialize_django(adminuser, adminpw)
 
 if __name__ == '__main__':
     main()
