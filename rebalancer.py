@@ -96,7 +96,7 @@ async def rapid_fire(rebalance: Rebalancer, stub: lnrpc.LightningStub, payment_r
         await update_channel(payment_response.htlcs[0].route.hops[0].pub_key, stub) # Outgoing channel update
         await update_channel(rebalance.last_hop_pubkey, stub)                       # Incoming channel update
         return await next_rapid_fire(1.21)               
-    elif rebalance.status > 2 and rebalance.value > 69420: # For failed rebalances, try in rapid fire with reduced balances until give up.
+    elif rebalance.status > 2 and rebalance.duration == 1 and rebalance.value > 69420: # For failed rebalances, try in rapid fire with reduced balances until give up.
         #Previous Rapidfire with increased value failed, try with lower value up to 69420.
         incr = (await estimate_liquidity(payment_response))/rebalance.value if rebalance.duration > 1 else .5
         return await next_rapid_fire(incr)
