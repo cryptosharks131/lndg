@@ -615,7 +615,7 @@
   }
   function build_active(channels, forwards_sum){
     let sum = {inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
-    if(!addTitle("Active Channels", channels)) return sum
+    if(!addTitle("Active Channels", channels)) return update_liq('active_', sum)
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
 
@@ -689,7 +689,7 @@
   }
   function build_inactive(channels){
     let sum = {inbound: 0, outbound: 0, unsettled: 0}
-    if(!addTitle("Inactive Channels", channels)) return sum
+    if(!addTitle("Inactive Channels", channels)) return update_liq('inactive_', sum)
 
     const table = byId('inactive_channels'), template = use(inactive_ch_template)
     table.innerHTML = null
@@ -704,9 +704,7 @@
   }
   function update_liq(status, sum){
     for (id of ['inbound', 'outbound', 'unsettled']){
-      const [value, total] = [sum[id], byId('total_'+id)]
-
-      byId(status+id).innerHTML = value.intcomma()
+      byId(status+id).innerHTML = sum[id].intcomma()
     }
     return sum
   }
