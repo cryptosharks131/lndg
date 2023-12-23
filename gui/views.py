@@ -1224,7 +1224,7 @@ def reset(request):
                 {'name':'Channels', 'count': Channels.objects.count()},
                 {'name':'PendingChannels', 'count': PendingChannels.objects.count()},
                 {'name':'Onchain', 'count': Onchain.objects.count()},
-                {'name':'PendingHTLCs', 'count': FailedHTLCs.objects.count()},
+                {'name':'PendingHTLCs', 'count': PendingHTLCs.objects.count()},
                 {'name':'FailedHTLCs', 'count': FailedHTLCs.objects.count()},
                 {'name':'HistFailedHTLC', 'count': HistFailedHTLC.objects.count()},
                 {'name':'Autopilot', 'count': Autopilot.objects.count()},
