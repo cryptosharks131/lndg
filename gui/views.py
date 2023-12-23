@@ -2927,7 +2927,7 @@ def reset_api(request):
             'Channels': Channels.objects.all(),
             'PendingChannels': PendingChannels.objects.all(),
             'Onchain': Onchain.objects.all(),
-            'PendingHTLCs': FailedHTLCs.objects.all(),
+            'PendingHTLCs': PendingHTLCs.objects.all(),
             'FailedHTLCs': FailedHTLCs.objects.all(),
             'HistFailedHTLC': HistFailedHTLC.objects.all(),
             'Autopilot': Autopilot.objects.all(),
