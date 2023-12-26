@@ -25,7 +25,7 @@
     </div>
 
     <label for="expiry">Optional Expiration:</label>
-    <input type="datetime-local" id="expiry" name="expiry"><br>
+    <input type="datetime-local" id="expiry" name="expiry"> UTC<br>
 
     <label for="sale_limit">Optional Sale Limit:</label>
     <input type="number" min="0" id="sale_limit" name="sale_limit"><br>
@@ -94,7 +94,7 @@
   function setExpiry(obj){
     const trade_row = obj.parentElement.parentElement
     const trade_id = trade_row.cells[0].id
-    if (confirm(`Set new expiry for trade ${trade_id.substring(0,7)} to ${obj.value}?`)){
+    if (confirm(`Set new expiry for trade ${trade_id.substring(0,7)} to ${obj.value} UTC?`)){
       Sync.PUT(`trades/${trade_id}`, {"body": {"expiry": obj.value}}, ts => trade_row.outerHTML=use(base_trade_template).render(ts).outerHTML)
     }
   }
