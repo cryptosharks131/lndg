@@ -1,7 +1,7 @@
 import os, codecs, grpc
 from lndg import settings
 
-def creds():
+def get_creds():
     #Open connection with lnd via grpc
     with open(os.path.expanduser(settings.LND_MACAROON_PATH), 'rb') as f:
         macaroon_bytes = f.read()
@@ -15,11 +15,12 @@ def creds():
     creds = grpc.composite_channel_credentials(cert_creds, auth_creds)
     return creds
 
+creds = get_creds()
 def lnd_connect():
-    return grpc.secure_channel(settings.LND_RPC_SERVER, creds(), options=[('grpc.max_send_message_length', int(settings.LND_MAX_MESSAGE)*1000000), ('grpc.max_receive_message_length', int(settings.LND_MAX_MESSAGE)*1000000),])
+    return grpc.secure_channel(settings.LND_RPC_SERVER, creds, options=[('grpc.max_send_message_length', int(settings.LND_MAX_MESSAGE)*1000000), ('grpc.max_receive_message_length', int(settings.LND_MAX_MESSAGE)*1000000),])
 
 def async_lnd_connect():
-    return grpc.aio.secure_channel(settings.LND_RPC_SERVER, creds(), options=[('grpc.max_send_message_length', int(settings.LND_MAX_MESSAGE)*1000000), ('grpc.max_receive_message_length', int(settings.LND_MAX_MESSAGE)*1000000),])
+    return grpc.aio.secure_channel(settings.LND_RPC_SERVER, creds, options=[('grpc.max_send_message_length', int(settings.LND_MAX_MESSAGE)*1000000), ('grpc.max_receive_message_length', int(settings.LND_MAX_MESSAGE)*1000000),])
 
 def main():
     pass

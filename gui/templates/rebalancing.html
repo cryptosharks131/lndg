@@ -50,15 +50,15 @@
 <script>
   const rebalance_template = Object.assign({}, {
     "select": ch => ({innerHTML: `<input onclick="this.checked ? byId('rebal_form').prepend(this.cloneNode({type:'hidden', name:'outgoing_chan_ids', id:'chan_id_${ch.chan_id}'})) : byId('chan_id_${ch.chan_id}').remove()" value="${ch.chan_id}" class="w3-check chan_id" type="checkbox"/>`}),
-    "PK": ch => ({innerHTML: `<a href="#." data-value="${ch.remote_pubkey}" onclick="toggle(this)">
-      <svg version="1.1" viewBox="0 0 16 16" width="25" height="25">
+    "PK": ch => ({innerHTML: `<a style="display: inline-block;position:relative;width:25px;height:25px" href="#." data-value="${ch.remote_pubkey}" onclick="toggle(this)">
+      <svg style="position:absolute;top:0;left:0;width:25px;height:25px" version="1.1" viewBox="0 0 16 16">
         <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
         <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
       </svg>
-      <svg style="visibility:collapse;transform:translateY(-25px)" version="1.1" viewBox="0 0 16 16" width="25" height="25">
+      <svg style="position:absolute;top:0;left:0;width:25;height:25;visibility:hidden" version="1.1" viewBox="0 0 16 16">
         <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
       </svg>
-    </a>`, style:{height:'25px',width:'25px',padding:'15px 0px 0px 0px',lineHeight: '0px'} }),
+    </a>` }),
     }, base_ch_template, {
     "rebalance": ch => {
       let out = ch.percent_outbound >= ch.ar_out_target && !ch.auto_rebalance
@@ -66,7 +66,11 @@
       return {innerHTML: out ? 'Out' : _in ? `In <small class="w3-round w3-border-small w3-border-grey">${ch.steps}</small>` : '---', style: {backgroundColor: out ? 'rgba(100,100,100,.15)' : _in ? 'rgba(56,139,253,0.15)' : red} }
     },
     "fee_ratio": ch => ({innerHTML: `${ch.fee_ratio}%`, title: `Out: ${ch.local_fee_rate}ₚₚₘ\nIn: ${ch.remote_fee_rate}ₚₚₘ`, style: {backgroundColor: ch.fee_check < 100 ? green : red} }),
-    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`}),
+    "ar_amt_target": ch => ({innerHTML: `<input style="text-align:center" name="AR Amount target" id="target" type="number" min="0" max="100000000" value="${ch.ar_amt_target}" onkeydown="update('ar_amt_target')"/>`,
+      changed: function(new_value){
+        updateCols(['rebalance'], this, new_value)
+      }
+    }),
     "ar_max_cost": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR max cost %" id="target" type="number" min="0" max="100" value="${ch.ar_max_cost}" onkeydown="update('ar_max_cost')"/></span>`, 
       changed: function(new_value){
         updateCols(['ar_max_cost', 'fee_ratio'], this, new_value)
@@ -80,7 +84,7 @@
     }),
     "ar_in_target": ch => ({innerHTML: `<span class="input" style="min-width:100px;width:100%" data-unit="%"><input style="text-align:center;width:100%" name="AR in target %" id="target" type="number" min="1" max="100" value="${ch.ar_in_target}" onkeydown="update('ar_in_target')"/></span>`, style: {backgroundColor: ch.auto_rebalance ? green : red},
       changed: function(new_value){
-        updateCols(['ar_in_target'], this, new_value)
+        updateCols(['rebalance', 'ar_in_target'], this, new_value)
         update_title(ch, new_value)
       }
     }),

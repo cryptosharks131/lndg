@@ -45,7 +45,7 @@ def main(channels):
         if LocalSettings.objects.filter(key='AF-LowLiqLimit').exists():
             lowliq_limit = int(LocalSettings.objects.filter(key='AF-LowLiqLimit').get().value)
         else:
-            LocalSettings(key='AF-LowLiqLimit', value='5').save()
+            LocalSettings(key='AF-LowLiqLimit', value='15').save()
             lowliq_limit = 5
         if LocalSettings.objects.filter(key='AF-ExcessLimit').exists():
             excess_limit = int(LocalSettings.objects.filter(key='AF-ExcessLimit').get().value)
@@ -57,12 +57,20 @@ def main(channels):
             lowliq_limit = 5
             excess_limit = 95
         forwards = Forwards.objects.filter(forward_date__gte=filter_7day, amt_out_msat__gte=1000000)
-        if forwards.exists():
-            forwards_df_in_7d_sum = DataFrame.from_records(forwards.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
-            forwards_df_out_7d_sum = DataFrame.from_records(forwards.values('chan_id_out').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_out')
+        forwards_1d = forwards.filter(forward_date__gte=filter_1day)
+        if forwards_1d.exists():
+            forwards_df_in_1d_sum = DataFrame.from_records(forwards_1d.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
+            if forwards.exists():
+                forwards_df_in_7d_sum = DataFrame.from_records(forwards.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
+                forwards_df_out_7d_sum = DataFrame.from_records(forwards.values('chan_id_out').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_out')
+            else:
+                forwards_df_in_7d_sum = DataFrame()
+                forwards_df_out_7d_sum = DataFrame()
         else:
+            forwards_df_in_1d_sum = DataFrame()
             forwards_df_in_7d_sum = DataFrame()
             forwards_df_out_7d_sum = DataFrame()
+        channels_df['amt_routed_in_1day'] = channels_df.apply(lambda row: int(forwards_df_in_1d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_1d_sum.index == row.chan_id).any() else 0, axis=1)
         channels_df['amt_routed_in_7day'] = channels_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
         channels_df['amt_routed_out_7day'] = channels_df.apply(lambda row: int(forwards_df_out_7d_sum.loc[row.chan_id].amt_out_msat/1000) if (forwards_df_out_7d_sum.index == row.chan_id).any() else 0, axis=1)
         channels_df['net_routed_7day'] = channels_df.apply(lambda row: round((row['amt_routed_out_7day']-row['amt_routed_in_7day'])/row['capacity'], 1), axis=1)
@@ -79,13 +87,13 @@ def main(channels):
             failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
         lowliq_df['failed_out_1day'] = 0 if failed_htlc_df.empty else lowliq_df.apply(lambda row: len(failed_htlc_df[failed_htlc_df['chan_id_out']==row.chan_id]), axis=1)
         # INCREASE IF (failed htlc > threshhold) && (flow in == 0)
-        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_1day']>failed_htlc_limit and row['amt_routed_in_7day'] == 0 else row['local_fee_rate'], axis=1)
+        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_1day']>failed_htlc_limit and row['amt_routed_in_1day'] == 0 else row['local_fee_rate'], axis=1)
 
         # Balanced Liquidity
         balanced_df = channels_df[(channels_df['out_percent'] > lowliq_limit) & (channels_df['out_percent'] < excess_limit)].copy()
         # IF NO FLOW THEN DECREASE FEE AND IF HIGH FLOW THEN SLOWLY INCREASE FEE
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > row['capacity'] else row['local_fee_rate'], axis=1)
-        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']-(3*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['local_fee_rate'], axis=1)
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']+((2*multiplier)*(1+(row['net_routed_7day']/row['capacity']))) if row['net_routed_7day'] > 1 else row['local_fee_rate'], axis=1)
+        balanced_df['new_rate'] = balanced_df.apply(lambda row: row['local_fee_rate']-(3*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['new_rate'], axis=1)
 
         # Excess Liquidity
         excess_df = channels_df[channels_df['out_percent'] >= excess_limit].copy()
@@ -93,7 +101,7 @@ def main(channels):
         excess_df['revenue_assist_7day'] = excess_df.apply(lambda row: int(forwards_df_in_7d_sum.loc[row.chan_id].fee) if forwards_df_in_7d_sum.empty == False and (forwards_df_in_7d_sum.index == row.chan_id).any() else 0, axis=1)
         # DECREASE IF (assisting channel or stagnant liq)
         excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if row['net_routed_7day'] < 0 and row['revenue_assist_7day'] > (row['revenue_7day']*10) else row['local_fee_rate'], axis=1)
-        excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['local_fee_rate'], axis=1)
+        excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['new_rate'], axis=1)
 
         #Merge back results
         result_df = concat([lowliq_df, balanced_df, excess_df])

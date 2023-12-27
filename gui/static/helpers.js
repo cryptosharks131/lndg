@@ -2,7 +2,6 @@
 function byId(id){ return document.getElementById(id) }
 String.prototype.toInt = function(){ return parseInt(this.replace(/,/g,''))}
 String.prototype.toBool = function(if_false = 0){ return this && /^true$/i.test(this) ? 1 : if_false}
-String.prototype.default = function(value){ return (this || '').length === 0 ? value : this}
 Number.prototype.intcomma = function(){ return parseInt(this).toLocaleString() }
 HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
 HTMLElement.prototype.cloneNode = function(attrs){
@@ -32,7 +31,7 @@ function adjustTZ(datetime){
 }
 async function toggle(button){
   try{
-    button.children[0].style.visibility = 'collapse';
+    button.children[0].style.visibility = 'hidden';
     button.children[1].style.visibility = 'visible';
     navigator.clipboard.writeText(button.getAttribute('data-value'))
     await sleep(1000)
@@ -42,7 +41,7 @@ async function toggle(button){
   }
   finally{
     button.children[0].style.visibility = 'visible';
-    button.children[1].style.visibility = 'collapse'
+    button.children[1].style.visibility = 'hidden'
   }
 }
 function use(template){
@@ -105,43 +104,82 @@ function formatDate(start, end = new Date().getTime() + new Date().getTimezoneOf
   end = new Date(end)
   if (start == null) return '---'
   difference = (end - new Date(start))/1000
-  if (difference < 0) return 'Just now'
-  if (difference < 60) {
+  if (difference > 0) {
+    if (difference < 60) {
       if (Math.floor(difference) == 1){
           return `a second ago`;
       }else{
           return `${Math.floor(difference)} seconds ago`;
       }
-  } else if (difference < 3600) {
-      if (Math.floor(difference / 60) == 1){
-          return `a minute ago`;
+    } else if (difference < 3600) {
+        if (Math.floor(difference / 60) == 1){
+            return `a minute ago`;
+        }else{
+            return `${Math.floor(difference / 60)} minutes ago`;
+        }
+    } else if (difference < 86400) {
+        if (Math.floor(difference / 3600) == 1){
+            return `an hour ago`;
+        }else{
+            return `${Math.floor(difference / 3600)} hours ago`;
+        }
+    } else if (difference < 2620800) {
+        if (Math.floor(difference / 86400) == 1){
+            return `a day ago`;
+        }else{
+            return `${Math.floor(difference / 86400)} days ago`;
+        }
+    } else if (difference < 31449600) {
+        if (Math.floor(difference / 2620800) == 1){
+            return `a month ago`;
+        }else{
+            return `${Math.floor(difference / 2620800)} months ago`;
+        }
+    } else {
+        if (Math.floor(difference / 31449600) == 1){
+            return `a year ago`;
+        }else{
+            return `${Math.floor(difference / 31449600)} years ago`;
+        }
+    }   
+  } else if (difference < 0) {
+    if (-difference < 60) {
+      if (Math.floor(-difference) == 1){
+          return `in a second`;
       }else{
-          return `${Math.floor(difference / 60)} minutes ago`;
+          return `in ${Math.floor(-difference)} seconds`;
       }
-  } else if (difference < 86400) {
-      if (Math.floor(difference / 3600) == 1){
-          return `an hour ago`;
-      }else{
-          return `${Math.floor(difference / 3600)} hours ago`;
-      }
-  } else if (difference < 2620800) {
-      if (Math.floor(difference / 86400) == 1){
-          return `a day ago`;
-      }else{
-          return `${Math.floor(difference / 86400)} days ago`;
-      }
-  } else if (difference < 31449600) {
-      if (Math.floor(difference / 2620800) == 1){
-          return `a month ago`;
-      }else{
-          return `${Math.floor(difference / 2620800)} months ago`;
-      }
-  } else {
-      if (Math.floor(difference / 31449600) == 1){
-          return `a year ago`;
-      }else{
-          return `${Math.floor(difference / 31449600)} years ago`;
-      }
-  }
+    } else if (-difference < 3600) {
+        if (Math.floor(-difference / 60) == 1){
+            return `in a minute`;
+        }else{
+            return `in ${Math.floor(-difference / 60)} minutes`;
+        }
+    } else if (-difference < 86400) {
+        if (Math.floor(-difference / 3600) == 1){
+            return `in an hour`;
+        }else{
+            return `in ${Math.floor(-difference / 3600)} hours`;
+        }
+    } else if (-difference < 2620800) {
+        if (Math.floor(-difference / 86400) == 1){
+            return `in a day`;
+        }else{
+            return `in ${Math.floor(-difference / 86400)} days`;
+        }
+    } else if (-difference < 31449600) {
+        if (Math.floor(-difference / 2620800) == 1){
+            return `in a month`;
+        }else{
+            return `in ${Math.floor(-difference / 2620800)} months`;
+        }
+    } else {
+        if (Math.floor(-difference / 31449600) == 1){
+            return `in a year`;
+        }else{
+            return `in ${Math.floor(-difference / 31449600)} years`;
+        }
+    } 
+  } else { return 'Just now' }
 }
 //END: COMMON FUNCTIONS & VARIABLES

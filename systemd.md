@@ -1,123 +1,32 @@
-# Systemd Setup For Backend Refreshes And Rebalancer Tools
+# Systemd Setup For Backend Tools
 
-You will need to fill in the proper username below in the paths marked `<run_as_user>`. This assumes you have installed lndg on the home directory of the user. For example, user `mynode` will have a home directory of `/home/mynode/`.
+- **You will need to fill in the proper username below in the paths marked `<run_as_user>`.**
+- **This assumes you have installed lndg on the home directory of the user. For example, user `mynode` will have a home directory of `/home/mynode/`.**
 
-## Backend Refreshes
-Create a simple bash file to call `jobs.py`, copying the contents below to the file and filling in your user.  
-`nano /home/<run_as_user>/lndg/jobs.sh`
-```
-#!/bin/bash
-
-/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/jobs.py
-```
-Create a service file for `jobs.sh`, copying the contents below to the file and filling in the user you would like this to run under.  
-`nano /etc/systemd/system/jobs-lndg.service`
+## Backend Controller Setup
+Create a service file for `controller.py`, copying the contents below to the file and filling in the user you would like this to run under.  
+`nano /etc/systemd/system/lndg-controller.service`
 ```
 [Unit]
-Description=Run Jobs For Lndg
+Description=Backend Controller For Lndg
 [Service]
+Environment=PYTHONUNBUFFERED=1
 User=<run_as_user>
 Group=<run_as_user>
-ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/jobs.sh
-StandardError=append:/var/log/lnd_jobs_error.log
-```
-
-Create a timer file for `jobs.sh`, copying the contents below to the file and change the 20s refresh if you like..  
-`nano /etc/systemd/system/jobs-lndg.timer`
-```
-[Unit]
-Description=Run Lndg Jobs Every 20 Seconds
-[Timer]
-OnBootSec=300
-OnUnitActiveSec=20
-AccuracySec=1
-[Install]
-WantedBy=timers.target
-```
-Enable the timer to run the jobs service file at the specified interval.  
-`sudo systemctl enable jobs-lndg.timer`  
-`sudo systemctl start jobs-lndg.timer`  
-
-## Rebalancer Runs
-Create a simple bash file to call `rebalancer.py`, copying the contents below to the file and filling in your user.  
-`nano /home/<run_as_user>/lndg/rebalancer.sh`
-```
-#!/bin/bash
-
-/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/rebalancer.py
-```
-Create a service file for `rebalancer.sh`, copying the contents below to the file and filling in the user you would like this to run under.  
-`nano /etc/systemd/system/rebalancer-lndg.service`
-```
-[Unit]
-Description=Run Rebalancer For Lndg
-[Service]
-User=<run_as_user>
-Group=<run_as_user>
-ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/rebalancer.sh
-StandardError=append:/var/log/lnd_rebalancer_error.log
-RuntimeMaxSec=3600
-```
-
-Create a timer file for `rebalancer.sh`, copying the contents below to the file and change the 20s refresh if you like.  
-`nano /etc/systemd/system/rebalancer-lndg.timer`
-```
-[Unit]
-Description=Run Lndg Rebalancer Every 20 Seconds
-[Timer]
-OnBootSec=315
-OnUnitActiveSec=20
-AccuracySec=1
-[Install]
-WantedBy=timers.target
-```
-Enable and start the timer to run the rebalancer service file at the specified interval.  
-`sudo systemctl enable rebalancer-lndg.timer`  
-`sudo systemctl start rebalancer-lndg.timer`  
-
-## HTLC Failure Stream Data
-Create a simple bash file to call `htlc_stream.py`, copying the contents below to the file and filling in your user.  
-`nano /home/<run_as_user>/lndg/htlc_stream.sh`
-```
-#!/bin/bash
-
-/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/htlc_stream.py
-```
-Create a service file for `htlc_stream.sh`, copying the contents below to the file and filling in the user you would like this to run under.  
-`nano /etc/systemd/system/htlc-stream-lndg.service`
-```
-[Unit]
-Description=Run HTLC Stream For Lndg
-[Service]
-User=<run_as_user>
-Group=<run_as_user>
-ExecStart=/usr/bin/bash /home/<run_as_user>/lndg/htlc_stream.sh
-StandardError=append:/var/log/lnd_htlc_stream_error.log
+ExecStart=/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/controller.py
+StandardOuput=append:/var/log/lndg-controller.log
+StandardError=append:/var/log/lndg-controller.log
 Restart=always
 RestartSec=60s
 [Install]
 WantedBy=multi-user.target
 ```
-Enable and start the service to run the htlc failure stream service file.  
-`sudo systemctl enable htlc-stream-lndg.service`  
-`sudo systemctl start htlc-stream-lndg.service`
+Enable and start the service to run the backend controller.  
+`sudo systemctl enable lndg-controller.service`  
+`sudo systemctl start lndg-controller.service`
 
-## Status Checks
-You can check on the status of your timers.  
-`sudo systemctl status jobs-lndg.timer`  
-`sudo systemctl status rebalancer-lndg.timer`  
-
-You can also check to make sure the last run of the service files triggered by the timers were successful.  
-`sudo systemctl status jobs-lndg.service`  
-`sudo systemctl status rebalancer-lndg.service`  
-
-You can disable your timers as well if you would like them to stop.  
-`sudo systemctl disable jobs-lndg.timer`  
-`sudo systemctl stop jobs-lndg.timer`  
-`sudo systemctl disable rebalancer-lndg.timer`  
-`sudo systemctl stop rebalancer-lndg.timer`  
-
-You can also check on and disable your htlc stream data.  
-`sudo systemctl status htlc-stream-lndg.service`  
-`sudo systemctl disable htlc-stream-lndg.service`  
-`sudo systemctl stop htlc-stream-lndg.service`  
+## Additional Commands
+You can also check on the status, disable or stop the backend controller.  
+`sudo systemctl status lndg-controller.service`  
+`sudo systemctl disable lndg-controller.service`  
+`sudo systemctl stop lndg-controller.service`  

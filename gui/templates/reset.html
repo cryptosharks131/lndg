@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Reset{% endblock %}
+{% block content %}
+{% load humanize %}
+<div class="w3-container w3-padding-small">
+  <center><h1>Reset Data</h1></center>
+  <table id="resetTable" class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Table</th>
+      <th>Records</th>
+      <th>Action</th>
+    </tr>
+    {% for table in tables %}
+    <tr>
+      <td>{{ table.name }}</td>
+      <td>{{ table.count|intcomma }}</td>
+      <td>
+        <button onclick="window.confirm('Are you sure you want to delete all the records in the {{ table.name }} table?') ? (POST('reset', {body:{'table':'{{ table.name }}'}}), this.parentElement.parentElement.cells[1].innerHTML=0) : ''">Delete</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}
