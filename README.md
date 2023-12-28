@@ -144,6 +144,11 @@ To restart the uWSGI service, use the following command:
 sudo systemctl restart uwsgi.service
 ``` 
 
+### Postgres
+Optionally, you may chose to run LNDg using a postgres database instead of the default sqlite3.
+
+A setup guide can be found here: [Postgres Setup](https://github.com/cryptosharks131/lndg/blob/master/postgres.md)
+
 ## Key Features
 
 ### Track Peer Events
