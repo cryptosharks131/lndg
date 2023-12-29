@@ -59,7 +59,7 @@ docker system prune -f
 ```
 ## Manual Installation
 
-### [Step 1 - Install LNDg](#step-1)
+### Step 1 - Install LNDg
 
 1. Clone the repository: `git clone https://github.com/cryptosharks131/lndg.git`
 2. Change the directory into the repository: `cd lndg`
@@ -100,8 +100,8 @@ Alternatively, you may create your own task for these files using your preferred
 ### Notes
 
 1. If you're not using default settings for LND or you'd like to run on a network other than `mainnet`, use the correct flags in step 6 (see `initialize.py --help`) or edit the variables directly in `lndg/settings.py`.
-2. You can not run the development server outside of DEBUG mode due to static file issues. To address this, install and configure Whitenoise by running the following command: `.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn`. (see [6.1](#step-1))
-3. You can always update the `lndg/settings.py` file by directly modifying it or re-running the script `.venv/bin/python initialize.py <options> -f`. (see [6](#step-1))
+2. You can not run the development server outside of DEBUG mode due to static file issues. To address this, install and configure Whitenoise by running the following command: `.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn`. (see [6.1](#step-1---install-lndg))
+3. You can always update the `lndg/settings.py` file by directly modifying it or re-running the script `.venv/bin/python initialize.py <options> -f`. (see [6](#step-1---install-lndg))
 4. If you plan to run this site continuously, it's advisable to set up a proper web server to host it (see Nginx below).
 5. You can manage your login credentials from the admin page, accessible at `http:<your-hosting-lndg-ip:port>/lndg-admin`.
 6. If you encounter issues accessing the site, ensure that any firewall is open on port 8889, where LNDg is running.
