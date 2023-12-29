@@ -14,7 +14,7 @@ Environment=PYTHONUNBUFFERED=1
 User=<run_as_user>
 Group=<run_as_user>
 ExecStart=/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/controller.py
-StandardOuput=append:/var/log/lndg-controller.log
+StandardOutput=append:/var/log/lndg-controller.log
 StandardError=append:/var/log/lndg-controller.log
 Restart=always
 RestartSec=60s
