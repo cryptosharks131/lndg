@@ -66,16 +66,16 @@ docker system prune -f
 3. Ensure you have Python virtualenv installed: `sudo apt install virtualenv`
 4. Set up a Python 3 virtual environment: `virtualenv -p python3 .venv`
 5. Install the required dependencies: `.venv/bin/pip install -r requirements.txt`
-6. Initialize necessary settings for your Django site (refer to notes below): `.venv/bin/python initialize.py`
-7. The initial login user is `lndg-admin`, and the password can be found here: `data/lndg-admin.txt`
-8. Generate initial data for your dashboard: `.venv/bin/python jobs.py`
-9. Run the server using a Python development server: `.venv/bin/python manage.py runserver 0.0.0.0:8889`
+6. Initialize necessary settings for your Django site: `.venv/bin/python initialize.py`
+   1. use `.venv/bin/python initialize.py --help` to see additional options
+   2. add `-wn | --whitenoise` option to serve static _(.js, .css)_ files (required if installing manually)
+      - if **whitenoise** option is provided, you'll need to install it via `.venv/bin/pip install whitenoise`
+7. The initial login user is `lndg-admin`, and the password will be genereted and stored in: `data/lndg-admin.txt`
+8. Run the server using a Python development server: `.venv/bin/python manage.py runserver 0.0.0.0:8889`
 
-*Note: If you plan to use the development server exclusively, you will need to set up whitenoise (see note below).*
+### Step 2 - Setup Backend Controller For Data, Automated Rebalancing, HTLC Stream Data and p2p-trade-secrets
 
-### Step 2 - Setup Backend Controller For Data, Automated Rebalancing, and HTLC Stream Data
-
-The file `controller.py` inside the `lndg/gui/` directory orchastrates the services needed to update the backend database with the most up-to-date information, rebalance any channels based on your LNDg dashboard settings, and listen for any failure events in your HTLC stream.
+The file `controller.py` orchastrates the services needed to update the backend database with the most up-to-date information, rebalance any channels based on your LNDg dashboard settings, listen for any failure events in your HTLC stream and serves the p2p trade secrets.
 
 **Recommended Setup with Supervisord (least setup) or Systemd (most compatible):**
 
@@ -99,33 +99,12 @@ Alternatively, you may create your own task for these files using your preferred
 
 ### Notes
 
-1. If not using default settings for LND or would like to run on a network other than `mainnet`, use the correct flags in step 6 (see `initialize.py --help`) or edit the variables directly in `lndg/lndg/settings.py`.
-2. You can not run the development server outside of DEBUG mode due to static file issues. To address this, install and configure Whitenoise by running the following command:  
-```.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn```
-3. If you need to recreate a settings file, delete it from `lndg/lndg/settings.py` and rerun `initialize.py`.
+1. If you're not using default settings for LND or you'd like to run on a network other than `mainnet`, use the correct flags in step 6 (see `initialize.py --help`) or edit the variables directly in `lndg/settings.py`.
+2. You can not run the development server outside of DEBUG mode due to static file issues. To address this, install and configure Whitenoise by running the following command: `.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn`. (see [6.1](#step-1---install-lndg))
+3. You can always update the `lndg/settings.py` file by directly modifying it or re-running the script `.venv/bin/python initialize.py <options> -f`. (see [6](#step-1---install-lndg))
 4. If you plan to run this site continuously, it's advisable to set up a proper web server to host it (see Nginx below).
-5. You can manage your login credentials from the admin page, accessible at `/lndg-admin`.
+5. You can manage your login credentials from the admin page, accessible at `http:<your-hosting-lndg-ip:port>/lndg-admin`.
 6. If you encounter issues accessing the site, ensure that any firewall is open on port 8889, where LNDg is running.
-
-### Setup lndg initialize.py options
-1. `-ip` or `--nodeip` - Accepts only this host IP to serve the LNDg page - default: `*`
-2. `-dir` or `--lnddir` - LND Directory for tls cert and admin macaroon paths (or see commands below to set custom values) - default: `~/.lnd`
-3. `-net` or `--network` - Network LND will run over - default: `mainnet`
-4. `-server` or `--rpcserver` - Server address to use for rpc communications with LND - default: `localhost:10009`
-5. `-maxmsg` or `--maxmessage` - Maximum message size for grpc communications (MB) - default: `30`
-6. `-sd` or `--supervisord` - Setup supervisord to run jobs/rebalancer background processes - default: `False`
-7. `-sdu` or `--sduser` - Configure supervisord with a non-root user - default: `root`
-8. `-wn` or `--whitenoise` - Add whitenoise middleware (docker requirement for static files) - default: `False`
-9. `-d` or `--docker` - Single option for docker container setup (supervisord + whitenoise) - default: `False`
-10. `-dx` or `--debug` - Setup the django site in debug mode - default: `False`
-11. `-u` or `--adminuser` Setup a custom admin username - default: `lndg-admin`
-12. `-pw` or `--adminpw` Setup a custom admin password - default: `Randomized`
-13. `-csrf` or `--csrftrusted` Set trusted CSRF origins - default: `None`
-14. `-tls` or `--tlscert` Set a custom path to the tls cert - default: `--lnddir used`
-15. `-mcrn` or `--macaroon` Set a custom path to the macroon file - default: `--lnddir used`
-16. `-lnddb` or `--lnddatabase` Set a custom path to the channel.db for monitoring - default: `--lnddir used`
-17. `-nologin` or `--nologinrequired` Remove authentication requirements from LNDg - default: `False`
-18. `-f` or `--force` Force the replacement of an existing settings file - default: `False`
 
 ### Using A Webserver
 You can serve the dashboard at all times using a webserver instead of the development server. Using a webserver will serve your static files, and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aid in the setup of an nginx webserver.
