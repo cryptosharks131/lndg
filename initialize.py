@@ -214,7 +214,7 @@ process_name = lndg-controller
 directory = %s
 autorestart = true
 redirect_stderr = true
-stdout_logfile = %s/data/lndg-controller.log
+stdout_logfile = /var/log/lndg-controller.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
 ''' % (sduser, supervisord_secret, supervisord_secret, BASE_DIR, BASE_DIR)
