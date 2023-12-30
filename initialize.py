@@ -284,10 +284,10 @@ def initialize_django(adminuser, adminpw):
 def main():
     help_msg = "LNDg Initializer"
     parser = argparse.ArgumentParser(description = help_msg)
-    parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
+    parser.add_argument('-aip', '--allowed-ip',help = 'Allowed IP to access the LNDg page (IP of the device you want to access LNDg from)', default='*')
     parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default=None)
     parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
-    parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
+    parser.add_argument('-rpc', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
     parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
     parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='root')
@@ -304,7 +304,7 @@ def main():
     parser.add_argument('-sessionage', '--sessioncookieage', help = 'Number of seconds before the login session expires', default='1209600')
     parser.add_argument('-f', '--force', help = 'Force a new settings file to be created', action='store_true')
     args = parser.parse_args()
-    node_ip = args.nodeip
+    allowed_remote = args.allowed_ip
     lnd_dir_path = args.lnddir if args.lnddir else '~/.lnd'
     lnd_network = args.network
     lnd_rpc_server = args.rpcserver
@@ -326,7 +326,7 @@ def main():
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age)
+    write_settings(allowed_remote, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)

@@ -1,5 +1,5 @@
-import multiprocessing
-import jobs, rebalancer, htlc_stream, p2p
+import multiprocessing, sys
+import jobs, rebalancer, htlc_stream, p2p, manage
 
 def run_task(task):
     task()
@@ -10,7 +10,12 @@ def main():
 
     processes = []
     for task in tasks:
-        process = multiprocessing.Process(target=run_task, args=(task,))
+        process = multiprocessing.Process(target=run_task, name=task.__module__, args=(task,))
+        processes.append(process)
+        process.start()
+
+    if len(sys.argv) > 1:
+        process = multiprocessing.Process(target=manage.main(sys.argv), name="manage.py")
         processes.append(process)
         process.start()
 
