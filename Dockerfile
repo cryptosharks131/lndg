@@ -1,4 +1,4 @@
-FROM python:3
+FROM python:3-alpine
 ENV PYTHONUNBUFFERED 1
 RUN git clone https://github.com/cryptosharks131/lndg --depth=1 /app
 WORKDIR /app
