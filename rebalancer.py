@@ -36,8 +36,19 @@ def inbound_cans_len(inbound_cans):
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error getting inbound cands: {str(e)}")
 
+
 async def run_rebalancer(rebalance, worker):
     try:
+        # Check if LocalSetting LND-EnableMPP exists and set allow_mpp accordingly
+        if LocalSettings.objects.filter(key='LND-DisableMPP').exists():
+            if int(LocalSettings.objects.filter(key='LND-DisableMPP')[0].value) > 0:
+                allow_multishards = False
+            else:
+                LocalSettings(key='LND-DisableMPP', value='0').save()  # Set with 0 value for the future
+                allow_multishards = True
+        else:
+            allow_multishards = True  # Default value is True.
+        max_parts = None if allow_multishards else 1  # Adjust max_parts based on the allow_multishards value
         #Reduce potential rebalance value in percent out to avoid going below AR-OUT-Target
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound')-rebalance.value)*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
         outbound_cans = await get_out_cans(rebalance, auto_rebalance_channels)
@@ -59,7 +70,7 @@ async def run_rebalancer(rebalance, worker):
             timeout = rebalance.duration * 60
             invoice_response = stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
             print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} starting rebalance for {rebalance.target_alias} {rebalance.last_hop_pubkey} for {rebalance.value} sats and duration {rebalance.duration}, using {len(chan_ids)} outbound channels")
-            async for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
+            async for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True, max_parts=max_parts), timeout=(timeout+60)):
                 if payment_response.status == 1 and rebalance.status == 0:
                     #IN-FLIGHT
                     rebalance.payment_hash = payment_response.payment_hash
