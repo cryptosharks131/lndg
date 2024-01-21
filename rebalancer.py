@@ -36,18 +36,24 @@ def inbound_cans_len(inbound_cans):
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Error getting inbound cands: {str(e)}")
 
+@sync_to_async
+def check_and_set_allow_multishards():
+    allow_multishards = True  # Default value is True
+    disable_mpp_setting = LocalSettings.objects.filter(key='LND-DisableMPP').first()
+    
+    if disable_mpp_setting:
+        if int(disable_mpp_setting.value) > 0:
+            allow_multishards = False
+    else:
+        # If the setting does not exist, create it with a default value of '0'
+        LocalSettings.objects.create(key='LND-DisableMPP', value='0')
+    
+    return allow_multishards
 
 async def run_rebalancer(rebalance, worker):
     try:
         # Check if LocalSetting LND-EnableMPP exists and set allow_mpp accordingly
-        if LocalSettings.objects.filter(key='LND-DisableMPP').exists():
-            if int(LocalSettings.objects.filter(key='LND-DisableMPP')[0].value) > 0:
-                allow_multishards = False
-            else:
-                LocalSettings(key='LND-DisableMPP', value='0').save()  # Set with 0 value for the future
-                allow_multishards = True
-        else:
-            allow_multishards = True  # Default value is True.
+        allow_multishards = await check_and_set_allow_multishards()  # Default value is True.
         max_parts = None if allow_multishards else 1  # Adjust max_parts based on the allow_multishards value
         #Reduce potential rebalance value in percent out to avoid going below AR-OUT-Target
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound')-rebalance.value)*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
