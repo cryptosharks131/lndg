@@ -145,10 +145,10 @@
       }
       applyThemeToGrid()
       byId('step').addEventListener('keypress', function(e){
-        if(e.keyCode != 13) return 
+        if(e.keyCode != 13) return
         buildChart(e.target.value, response)
       })
-      byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
+      byId('toggleTheme').addEventListener('click', applyThemeToGrid)
       byId('timeFilter').addEventListener('input', function(e){
         const value = 100 - e.target.value, size = parseInt(value*response.length/100), datapoints = [...response].splice(response.length - size-1)
         if (size == response.length || size < 10) return

@@ -45,7 +45,7 @@
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Locked Liquidity: <span id="private_liquidity">0</span></span>
     <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-grey">Active Private Channels: <span id="private_active">0</span> / <span id="private_count">0</span></span>
   </h6>
-  Addresses: 
+  Addresses:
   {% for addr in node_info.uris %}
   <div class="w3-container" style="height:40px">
     <text readonly style="word-wrap: break-word;vertical-align:top;">{{ addr }}</text>
@@ -138,10 +138,10 @@
 <br/>
 <div class="w3-bar w3-border-top" style="background-color: transparent">
   <a class="w3-bar-item w3-hover-blue" href="/income" target="_blank">P&L</a>
-  <a class="w3-bar-item w3-hover-blue" href="/closures" target="_blank">Closures</a> 
+  <a class="w3-bar-item w3-hover-blue" href="/closures" target="_blank">Closures</a>
   <a class="w3-bar-item w3-hover-blue" href="/opens" target="_blank">New Peers</a>
   <a class="w3-bar-item w3-hover-blue" href="/peerevents" target="_blank">Peer Events</a>
-  <a class="w3-bar-item w3-hover-blue" href="/actions" target="_blank">AR Actions</a> 
+  <a class="w3-bar-item w3-hover-blue" href="/actions" target="_blank">AR Actions</a>
   <a class="w3-bar-item w3-hover-blue" href="/fees" target="_blank">Fee Rates</a>
   <a class="w3-bar-item w3-hover-blue" href="/autopilot" target="_blank">Autopilot</a>
   <a class="w3-bar-item w3-hover-blue" href="/autofees" target="_blank">Fee Log</a>
@@ -489,7 +489,7 @@
     "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</small>`, style: {color: ch.routed_in_7day ? `rgba(100,${(100 + (255*ch.amt_routed_in_7day/ch.capacity))*(darkMode? 1 : .7)},0, ${.5 + (ch.amt_routed_in_7day/ch.capacity)})` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
-    "ar_out_target": ch => ({innerHTML: `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_out_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target)});">`,  style: !ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),   
+    "ar_out_target": ch => ({innerHTML: `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_out_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target)});">`,  style: !ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),
     "ar_in_target": ch => ({innerHTML: `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_in_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_in_target: this.value}}, r => {flash(this, r.ar_in_target)});">`, style: ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),
     "auto_rebalance": ch => ({innerHTML: `<input type="submit" value="${ch.auto_rebalance ? 'Dis' : 'En'}able" onclick="Sync.PUT('channels/${ch.chan_id}', {body:{auto_rebalance: ${!ch.auto_rebalance} }}, ch => this.parentElement.changed(ch))">`, style: {backgroundColor: ch.auto_rebalance ? green : null},
       changed: function(newVal) {
@@ -589,7 +589,7 @@
   let {capacity, local_balance, remote_balance} = pending_open_template
   const pending_closed_template = Object.assign({}, {
     "channel_id" : ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: ch.channel_point}),
-    "peer_alias" : ch => ({innerHTML: `<a href="{{ graph_links }}/{{ network }}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}) 
+    "peer_alias" : ch => ({innerHTML: `<a href="{{ graph_links }}/{{ network }}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub})
   }, {capacity, local_balance, remote_balance },
   {
     "limbo_bal" : ch => ({innerHTML: ch.limbo_balance.intcomma() }),
@@ -621,7 +621,7 @@
       ch.inbound_can = ch.percent_inbound / ch.ar_in_target
       ch.fee_ratio = ch.local_fee_rate == 0 ? 100 : parseInt(ch.remote_fee_rate*100/ch.local_fee_rate)
       ch.fee_check = parseInt(ch.fee_ratio*100/ch.ar_max_cost)
-      
+
       sum.inbound += ch.remote_balance
       sum.outbound += ch.local_balance
       sum.unsettled += ch.unsettled_balance
@@ -643,7 +643,7 @@
         ch['routed_in_7day'] = 0
         ch['amt_routed_in_7day'] = 0
         ch['routed_out_7day'] = 0
-        ch['amt_routed_out_7day'] = 0    
+        ch['amt_routed_out_7day'] = 0
       }
 
       return ch
@@ -653,7 +653,7 @@
     return update_liq('active_', sum)
   }
   function build_private(channels){
-    let act = {outbound: 0, inbound: 0}, ina = {outbound: 0, inbound: 0} 
+    let act = {outbound: 0, inbound: 0}, ina = {outbound: 0, inbound: 0}
     let sum = {earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
     if(!addTitle("Private Channels", channels)) return Object.assign({}, sum, {outbound: act.outbound + ina.outbound, inbound: act.inbound + ina.inbound})
 
@@ -711,7 +711,7 @@
       if(adjustTZ(p.creation_date) >= _1day_ago){
         offChain.d1.fee += p.fee
         offChain.d1.amt += p.value
-      } 
+      }
       offChain.d7.fee += p.fee
       offChain.d7.amt += p.value
     }
@@ -736,14 +736,14 @@
     }
     function merge(obj, other){
       const result = Object.assign({}, obj)
-    
+
       for(let [key, value] of Object.entries(other)){
         if(value instanceof Object) result[key] = merge(result[key], value) //deep sum
-        else result[key] = (result[key] || 0) + value 
+        else result[key] = (result[key] || 0) + value
       }
       return result
     }
-    
+
     byId('total_inbound').innerHTML = (active.inbound + inactive.inbound).intcomma()
     byId('total_outbound').innerHTML = (active.outbound + inactive.outbound).intcomma()
     byId('total_unsettled').innerHTML = (active.unsettled + inactive.unsettled).intcomma()
@@ -760,7 +760,7 @@
       byId(`fees_${d}day`).innerHTML = `${offchain.fee.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${(offchain.fee*1000000/(offchain.amt||1)).intcomma()}ₚₚₘ</small>`
       byId(`onchain_costs_${d}day`).innerHTML = chaincosts.intcomma()
       byId(`percent_cost_${d}day`).innerHTML = (earned ? costs*100/earned : 0).intcomma()+'%'
-      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}ₚₚₘ</span> 
+      byId(`profit_per_outbound_${d}d`).innerHTML = `<span class="w3-round w3-border-small w3-border-grey">⚡${((earned - offchain.fee)*1000000/total_outbound).intcomma()}ₚₚₘ</span>
         <span class="w3-round w3-border-small w3-border-grey">⛓️${((earned - costs)*1000000/total_outbound).intcomma()}ₚₚₘ</span>`
       byId(`routed_${d}day_percent`).innerHTML = parseFloat((routed.amt*100/total_outbound).toFixed(1)).toLocaleString()+'%'
     }
@@ -872,16 +872,16 @@
     table.innerHTML = null
     for(htlc of fHTLCs){
       table.append(template.render(htlc))
-    } 
+    }
   }
   function process_forwards(forwards){
     let forwards_sum = {}
     let forwards_summary = { o1d: 0, o1dc: 0, o7d: 0, o7dc: 0, earned1d: 0, earned7d: 0 }
     for(f of forwards){
       chan_id = f.chan_id
-      
+
       if(forwards_sum[chan_id] === undefined){ forwards_sum[chan_id]={o1d:0, o1dc:0, o7d:0, o7dc:0, i1d:0, i1dc:0, i7d:0, i7dc:0} }
-      
+
       forwards_sum[chan_id].o1d += f.sum_outgoing_1day/1000
       forwards_sum[chan_id].o1dc += f.count_outgoing_1day
       forwards_sum[chan_id].i1d += f.sum_incoming_1day/1000
@@ -900,14 +900,14 @@
     }
     return [forwards_sum, forwards_summary]
   }
-  
+
   function buildMainStats(node_info) {
     const lnd = byId('lnd')
     lnd.classList.remove('w3-red')
     lnd.classList.remove('w3-green')
     lnd.classList.toggle('w3-red', !node_info.synced_to_graph)
     lnd.classList.toggle('w3-green', node_info.synced_to_graph)
-    
+
     const timechain = byId('timechain')
     timechain.classList.remove('w3-border-red')
     timechain.classList.remove('w3-border-green')
@@ -982,7 +982,7 @@
     byId("datetime").innerHTML = new Date().toLocaleTimeString();
     await auto_refresh(buildMain)
   }
-  document.addEventListener('DOMContentLoaded', async () => { 
+  document.addEventListener('DOMContentLoaded', async () => {
     const builder = buildMain()
     await builder
   })
