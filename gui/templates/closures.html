@@ -19,17 +19,17 @@
     </tr>
     {% for channel in pending_closed %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_self">{{ channel.short_chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_self">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_self">{{ channel.channel_point }}</a></td>
       {% endwith %}
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.local_commit_fee_sat }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_self">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
   </table>
@@ -52,17 +52,17 @@
     </tr>
     {% for channel in pending_force_closed %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_self">{{ channel.short_chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_self">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_self">{{ channel.channel_point }}</a></td>
       {% endwith %}
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td title="Blocks: {{ channel.blocks_til_maturity|intcomma }}">{{ channel.maturity_datetime|naturaltime }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_self">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
   </table>
@@ -85,17 +85,17 @@
     </tr>
     {% for channel in waiting_for_close %}
     <tr>
-      <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+      <td><a href="/channel?={{ channel.chan_id }}" target="_self">{{ channel.short_chan_id }}</a></td>
+      <td title="{{ channel.remote_node_pub }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_node_pub }}" target="_self">{% if channel.alias == '' %}{{ channel.remote_node_pub|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
       {% with funding_txid=channel.channel_point|slice:":-2" %}
-        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_blank">{{ channel.channel_point }}</a></td>
+        <td><a href='{{ network_links }}/{{ network }}tx/{{ funding_txid }}' target="_self">{{ channel.channel_point }}</a></td>
       {% endwith %}
       <td>{{ channel.capacity|intcomma }}</td>
       <td>{{ channel.local_balance|intcomma }}</td>
       <td>{{ channel.remote_balance|intcomma }}</td>
       <td>{{ channel.limbo_balance|intcomma }}</td>
       <td>{{ channel.local_commit_fee_sat }}</td>
-      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_blank">{{ channel.closing_txid }}</a></td>
+      <td><a href='{{ network_links }}/{{ network }}tx/{{ channel.closing_txid }}' target="_self">{{ channel.closing_txid }}</a></td>
     </tr>
     {% endfor %}
   </table>
@@ -121,17 +121,17 @@
     </tr>
     {% for closure in closures %}
     <tr>
-      <td>{% if closure.chan_id == '0' %}---{% else %}<a href="/channel?={{ closure.chan_id }}" target="_blank">{{ closure.short_chan_id }}</a>{% endif %}</td>
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ closure.remote_pubkey }}" target="_blank">{% if closure.alias == '' %}{{ closure.remote_pubkey|slice:":12" }}{% else %}{{ closure.alias }}{% endif %}</a></td>
+      <td>{% if closure.chan_id == '0' %}---{% else %}<a href="/channel?={{ closure.chan_id }}" target="_self">{{ closure.short_chan_id }}</a>{% endif %}</td>
+      <td><a href="{{ graph_links }}/{{ network }}node/{{ closure.remote_pubkey }}" target="_self">{% if closure.alias == '' %}{{ closure.remote_pubkey|slice:":12" }}{% else %}{{ closure.alias }}{% endif %}</a></td>
       <td title="{{ closure.funding_txid }}:{{ closure.funding_index }}">{{ closure.capacity|intcomma }}</td>
-      <td>{% if closure.closing_tx == '0000000000000000000000000000000000000000000000000000000000000000' %}---{% else %}<a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx }}" target="_blank">{{ closure.closing_tx }}</a>{% endif %}</td>
+      <td>{% if closure.closing_tx == '0000000000000000000000000000000000000000000000000000000000000000' %}---{% else %}<a href="{{ network_links }}/{{ network }}tx/{{ closure.closing_tx }}" target="_self">{{ closure.closing_tx }}</a>{% endif %}</td>
       <td>{{ closure.settled_balance|intcomma }}</td>
       <td>{{ closure.time_locked_balance|intcomma }}</td>
       <td>{{ closure.close_height|intcomma }}</td>
       <td>{% if closure.close_type == 0 %}Cooperative{% elif closure.close_type == 1 %}Local Force{% elif closure.close_type == 2 %}Remote Force{% elif closure.close_type == 3 %}Breach{% elif closure.close_type == 4 %}Funding Cancelled{% elif closure.close_type == 5 %}Abandoned{% else %}{{ closure.close_type }}{% endif %}</td>
       <td>{% if closure.open_initiator == 0 %}Unknown{% elif closure.open_initiator == 1 %}Local{% elif closure.open_initiator == 2 %}Remote{% elif closure.open_initiator == 3 %}Both{% else %}{{ closure.open_initiator }}{% endif %}</td>
       <td>{% if closure.close_initiator == 0 %}Unknown{% elif closure.close_initiator == 1 %}Local{% elif closure.close_initiator == 2 %}Remote{% elif closure.close_initiator == 3 %}Both{% else %}{{ closure.close_initiator }}{% endif %}</td>
-      <td>{% if closure.resolution_count > 0 %}<a href="/resolutions?={{ closure.chan_id }}" target="_blank">Details</a>{% else %}---{% endif %}</td>
+      <td>{% if closure.resolution_count > 0 %}<a href="/resolutions?={{ closure.chan_id }}" target="_self">Details</a>{% else %}---{% endif %}</td>
       <td>
         {% if closure.close_type == 4 or closure.close_type == 5 %}
         ---

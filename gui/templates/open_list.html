@@ -19,9 +19,9 @@
       </tr>
       {% for node in open_list %}
       <tr>
-        <td><a href="{{ graph_links }}/{{ network }}node/{{ node.node_pubkey }}" target="_blank">{{ node.node_pubkey }}</a></td>
+        <td><a href="{{ graph_links }}/{{ network }}node/{{ node.node_pubkey }}" target="_self">{{ node.node_pubkey }}</a></td>
         <td>{% if node.alias == '' %}---{% else %}{{ node.alias }}{% endif %}</td>
-        <td><a href="/routes?={{ node.node_pubkey }}" target="_blank">{{ node.count }}</a></td>
+        <td><a href="/routes?={{ node.node_pubkey }}" target="_self">{{ node.count }}</a></td>
         <td>{{ node.amount|add:"0"|intcomma }}</td>
         <td>{{ node.fees|add:"0"|intcomma }}</td>
         <td>{{ node.ppm|add:"0"|intcomma }}</td>

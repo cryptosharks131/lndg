@@ -15,18 +15,18 @@
       <th>State</th>
       <th>Channel In Alias</th>
       <th width=10%>Channel In</th>
-      <th><a href="/keysends" target="_blank">Keysend</a></th>
+      <th><a href="/keysends" target="_self">Keysend</a></th>
     </tr>
     {% for invoice in invoices %}
     <tr>
       <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
       <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
+      <td><a href="/route?={{ invoice.r_hash }}" target="_self">{{ invoice.r_hash }}</td>
       <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
       <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
+      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_self">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
       <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
     {% endfor %}

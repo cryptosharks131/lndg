@@ -28,7 +28,7 @@
       <td>{{ hop.cost_to|intcomma }}</td>
       <td>{% if hop.step == 1 %}📍{% else %}🔻{% endif %}
       <td>{% if hop.alias == '' %}---{% else %}{{ hop.alias }}{% endif %}</td>
-      <td><a href="/channel?={{ hop.chan_id }}" target="_blank">{{ hop.chan_id }}</a></td>
+      <td><a href="/channel?={{ hop.chan_id }}" target="_self">{{ hop.chan_id }}</a></td>
       <td>{{ hop.chan_capacity|intcomma }}</td>
     </tr>
     {% endfor %}
@@ -54,19 +54,19 @@
       <th>State</th>
       <th>Channel In Alias</th>
       <th width=10%>Channel In</th>
-      <th><a href="/keysends" target="_blank">Keysend</a></th>
+      <th><a href="/keysends" target="_self">Keysend</a></th>
     </tr>
     {% for invoice in invoices %}
     <tr>
       <td title="{{ invoice.creation_date }}">{{ invoice.creation_date|naturaltime }}</td>
       <td title="{{ invoice.settle_date }}">{% if invoice.state == 1 %}{{ invoice.settle_date|naturaltime }}{% else %}---{% endif %}</td>
-      <td><a href="/route?={{ invoice.r_hash }}" target="_blank">{{ invoice.r_hash }}</td>
+      <td><a href="/route?={{ invoice.r_hash }}" target="_self">{{ invoice.r_hash }}</td>
       <td>{{ invoice.value|add:"0"|intcomma }}</td>
       <td>{% if invoice.state == 1 %}{{ invoice.amt_paid|intcomma }}{% else %}---{% endif %}</td>
       <td>{% if invoice.state == 0 %}Open{% elif invoice.state == 1 %}Settled{% elif invoice.state == 2 %}Canceled{% else %}{{ invoice.state }}{% endif %}</td>
       <td>{% if invoice.state == 1 %}{% if invoice.chan_in_alias == '' %}---{% else %}{{ invoice.chan_in_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_blank">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
-      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}<a href="/keysends?={{ invoice.r_hash }}" target="_blank">Yes</a>{% else %}No{% endif %}</td>
+      <td>{% if invoice.state == 1 and invoice.chan_in != None %}<a href="/channel?={{ invoice.chan_in }}" target="_self">{{ invoice.chan_in }}</a>{% else %}---{% endif %}</td>
+      <td title="{{ invoice.message }}">{% if invoice.keysend_preimage != None %}<a href="/keysends?={{ invoice.r_hash }}" target="_self">Yes</a>{% else %}No{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
@@ -87,9 +87,9 @@
     </tr>
     {% for htlc in outgoing_htlcs %}
     <tr>
-      <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
+      <td><a href="/channel?={{ htlc.chan_id }}" target="_self">{{ htlc.chan_id }}</a></td>
       <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
-      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_self">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>
@@ -114,9 +114,9 @@
     </tr>
     {% for htlc in incoming_htlcs %}
     <tr>
-      <td><a href="/channel?={{ htlc.chan_id }}" target="_blank">{{ htlc.chan_id }}</a></td>
+      <td><a href="/channel?={{ htlc.chan_id }}" target="_self">{{ htlc.chan_id }}</a></td>
       <td>{% if htlc.alias == '' %}---{% else %}{{ htlc.alias }}{% endif %}</td>
-      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_blank">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
+      <td>{% if htlc.forwarding_channel == 0 %}---{% else %}<a href="/channel?={{ htlc.forwarding_channel }}" target="_self">{{ htlc.forwarding_channel }}</a>{% endif %}</td>
       <td>{% if htlc.forwarding_alias == '' %}---{% else %}{{ htlc.forwarding_alias }}{% endif %}</td>
       <td>{{ htlc.amount|intcomma }}</td>
       <td title="{{ htlc.blocks_til_expiration|intcomma }} blocks to {{ htlc.expiration_height|intcomma }}">{{ htlc.hours_til_expiration }} hours</td>

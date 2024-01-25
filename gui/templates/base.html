@@ -8,8 +8,8 @@
   <script src="{% static 'helpers.js' %}"></script>
   <script>
     const base_ch_template = {
-      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
-      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_blank">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>${ch.notes.length > 0 ? ` <sup href class="w3-round w3-border-small w3-border-grey" title="${ch.notes}">i</sup>` : ''}`, title: ch.remote_pubkey}),
+      "remote_pubkey": ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_self">${ch.short_chan_id}</a>`, title: `${ch.funding_txid}:${ch.output_index}`}),
+      "chan_id": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_pubkey}" target="_self">${ch.alias == '' ? ch.remote_pubkey.slice(12) : ch.alias}</a>${ch.notes.length > 0 ? ` <sup href class="w3-round w3-border-small w3-border-grey" title="${ch.notes}">i</sup>` : ''}`, title: ch.remote_pubkey}),
       "local_balance": ch => ({innerHTML: `${ch.local_balance.intcomma()} <small class="w3-round w3-border-small w3-border-grey">${ch.percent_outbound}%</small>`}),
       "capacity": ch => ({innerHTML: `<label>${ch.capacity.intcomma()}</label>
       <div class="progress w3-round w3-grey">
@@ -19,14 +19,14 @@
     }
     const routed_template = {
       "forward_date": f => ({innerHTML: formatDate(f.forward_date), title: adjustTZ(f.forward_date) }),
-      "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_in}" target="_blank">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+      "chan_id_in": f => ({innerHTML: `<a href="/channel?=${f.chan_id_in}" target="_self">${(BigInt(f.chan_id_in)>>40n)+'x'+(BigInt(f.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
       "chan_in_alias": f => ({innerHTML: f.chan_in_alias || f.chan_id_in}),
       "amt_in": f => ({innerHTML: f.amt_in > 1000 ? f.amt_in.intcomma() : f.amt_in, style: {paddingRight: "0px", width: "160px"} }),
       "symbolIn": f => ({innerHTML: "●━━━", style: {paddingRight: "0px", paddingLeft: "0px", textAlign: 'right'} }),
       "symbolOut": f => ({innerHTML: "━━━○", style: {paddingLeft: "0px", paddingRight: "0px", textAlign: 'left'} }),
       "amt_out": f => ({innerHTML: (f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out) + ` <small class="w3-round w3-border-small w3-border-grey w3-tiny">+${f.fee.intcomma().toLocaleString()}</small>`, style: {paddingLeft: "0px", width: "160px"} }),
       "chan_out_alias": f => ({innerHTML: f.chan_out_alias || f.chan_id_out}),
-      "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+      "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_self">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
       "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
       "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
     }
@@ -38,8 +38,8 @@
       }, {ppm}, {
       "status": p => ({innerHTML: ['Unknown', 'In-Flight', 'Succeeded', 'Failed'][p.status]}),
       "chan_out_alias": p => ({innerHTML: p.chan_out_alias||'---'}),
-      "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_blank">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out || '---' }),
-      "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_blank">${p.payment_hash.substring(0,7)}</a>`}),
+      "chan_out": p => ({innerHTML: p.status == 2 && p.chan_out !== 'MPP' ? `<a href="/channel?=${p.chan_out}" target="_self">${(BigInt(p.chan_out)>>40n)+'x'+(BigInt(p.chan_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_out) & BigInt('0xFFFF'))}` : p.chan_out || '---' }),
+      "payment_hash": p => ({innerHTML: `<a href="/route?=${p.payment_hash}" target="_self">${p.payment_hash.substring(0,7)}</a>`}),
       "rebal_chan": p => ({innerHTML: (p.rebal_chan || '').length > 0 ? 'Yes' : 'No'}),
       "keysend_preimage": p => ({innerHTML: p.keysend_preimage ? 'Yes' : 'No'})
       }
@@ -51,8 +51,8 @@
       "amt_paid": i => ({innerHTML: i.amt_paid.intcomma()}),
       "state": i => ({innerHTML: ['Open', 'Settled', 'Cancelled', 'Accepted'][i.state]}),
       "chan_in_alias": i => ({innerHTML: i.chan_in_alias||'---'}),
-      "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_blank">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
-      "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_blank">${i.r_hash.substring(0,7)}</a>`}),
+      "chan_in": i => ({innerHTML: i.chan_in? `<a href="/channel?=${i.chan_in}" target="_self">${(BigInt(i.chan_in)>>40n)+'x'+(BigInt(i.chan_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(i.chan_in) & BigInt('0xFFFF'))}</a>` : '---'}),
+      "r_hash": i => ({innerHTML: `<a href="/route?=${i.r_hash}" target="_self">${i.r_hash.substring(0,7)}</a>`}),
       "keysend_preimage": i => ({innerHTML: keysend_preimage(i).innerHTML, title: i.message }),
       }
     )
@@ -60,22 +60,22 @@
     const failure_details = "0|---|2|Link Not Eligible|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
     const failedHTLCs_template = {
       "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
-      "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
-      "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_blank">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
+      "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_self">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
+      "chan_in_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_in}_I" target="_self">${htlc.chan_in_alias || htlc.chan_id_in}</a>`}),
       "fw_amount": htlc => ({innerHTML: htlc.amount.intcomma() + ` <small title="Missed fee" class="w3-round w3-border-small w3-border-grey w3-tiny w3-text-red">+${htlc.missed_fee.intcomma()}</small>`, style: {paddingRight: "4px", width: "160px"} }),
       "symbolIn" : _ => ({innerHTML: "●━━━", style: {paddingRight: "0px", paddingLeft: "0px", textAlign: 'right'} }),
       "symbolOut" : _ => ({innerHTML: "━━━▏", style: {paddingLeft: "0px", paddingRight: "0px", textAlign: 'left'} }),
       "chan_out_liq": htlc => ({innerHTML: `${(htlc.chan_out_liq || 0).intcomma()} <small title="Pending at HTLC time" class="w3-round w3-border-small w3-border-grey">${htlc.chan_out_pending}</small>`, style: {paddingLeft: "0px", width: "160px"} }),
-      "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
-      "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
+      "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_self">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
+      "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_self">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
       "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
       "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
       "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
     }
     const peer_events_template = {
       "timestamp": p => ({innerHTML: formatDate(p.timestamp), title: adjustTZ(p.timestamp) }),
-      "chan_id": p => ({innerHTML: `<a href="/channel?=${p.chan_id}" target="_blank">${(BigInt(p.chan_id)>>40n)+'x'+(BigInt(p.chan_id)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_id) & BigInt('0xFFFF'))}</a>`}),
-      "peer_alias": p => ({innerHTML: `<a href="/peerevents?=${p.chan_id}" target="_blank">${p.peer_alias || p.chan_id}</a>`}),
+      "chan_id": p => ({innerHTML: `<a href="/channel?=${p.chan_id}" target="_self">${(BigInt(p.chan_id)>>40n)+'x'+(BigInt(p.chan_id)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(p.chan_id) & BigInt('0xFFFF'))}</a>`}),
+      "peer_alias": p => ({innerHTML: `<a href="/peerevents?=${p.chan_id}" target="_self">${p.peer_alias || p.chan_id}</a>`}),
       "event": p => ({innerHTML: p.event}),
       "old_value": p => ({innerHTML: p.event == 'Connection' & p.old_value == 1 ? 'Online' : p.event == 'Connection' & p.old_value == 0 ? 'Offline' : p.event == 'Disabled' & p.old_value == 1 ? 'True' : p.event == 'Disabled' & p.old_value == 0 ? 'False' : p.old_value == null ? '---' : p.old_value }),
       "new_value": p => ({innerHTML: p.event == 'Connection' & p.new_value == 1 ? 'Online' : p.event == 'Connection' & p.new_value == 0 ? 'Offline' : p.event == 'Disabled' & p.new_value == 1 ? 'True' : p.event == 'Disabled' & p.new_value == 0 ? 'False' : p.event == 'MinHTLC' | p.event == 'MaxHTLC' ? (p.new_value/1000).intcomma() : p.new_value.intcomma(), style: {backgroundColor: p.event == 'Disabled' & p.new_value == 0 ? 'rgba(46,160,67,0.15)' : p.event == 'Connection' & p.new_value == 1 ? 'rgba(46,160,67,0.15)' : p.event == 'Disabled' & p.new_value == 1 ? 'rgba(248,81,73,0.15)' : p.new_value > p.old_value & p.old_value != null ? 'rgba(46,160,67,0.15)' : 'rgba(248,81,73,0.15)'} }),

@@ -5,7 +5,7 @@
 <script src="{% static 'charts.js' %}"></script>
 {% load humanize %}
 <div class="w3-container w3-padding-small">
-  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_blank">{% if node_info.alias != "" %}{{ node_info.alias }}</a> <small class="w3-round w3-border-small w3-border-grey">{{ node_info.identity_pubkey }}</small>{% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
+  <h2>P&L Statement For <a href="{{ graph_links }}/{{ network }}node/{{ node_info.identity_pubkey }}" target="_self">{% if node_info.alias != "" %}{{ node_info.alias }}</a> <small class="w3-round w3-border-small w3-border-grey">{{ node_info.identity_pubkey }}</small>{% else %}{{ node_info.identity_pubkey }}</a>{% endif %}</h2>
   <span class="input" data-unit="%"><label title="Aggregate events with `cost`, `offchain` or `onchain` < minimum `step`% value">Step > </label> <input id="step" value="0.01" min="0" step="0.1" max="100" type="number"/></span>
   <canvas id="balances" style="max-height:500px"></canvas>
   <input id="timeFilter" type="range" min="0" max="100" style="width:100%" value="0"/>
@@ -145,10 +145,10 @@
       }
       applyThemeToGrid()
       byId('step').addEventListener('keypress', function(e){
-        if(e.keyCode != 13) return 
+        if(e.keyCode != 13) return
         buildChart(e.target.value, response)
       })
-      byId('toggleTheme').addEventListener('click', applyThemeToGrid) 
+      byId('toggleTheme').addEventListener('click', applyThemeToGrid)
       byId('timeFilter').addEventListener('input', function(e){
         const value = 100 - e.target.value, size = parseInt(value*response.length/100), datapoints = [...response].splice(response.length - size-1)
         if (size == response.length || size < 10) return

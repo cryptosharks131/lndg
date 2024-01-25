@@ -36,7 +36,7 @@
     </tr>
     {% for sweep in pending_sweeps %}
     <tr>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.txid_str }}" target="_blank">{{ sweep.txid_str }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.txid_str }}" target="_self">{{ sweep.txid_str }}</a></td>
       <td>{{ sweep.amount_sat|intcomma }}</td>
       <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 2 %}Commitment No Delay{% elif sweep.witness_type == 3 %}Commitment Revoke{% elif sweep.witness_type == 4 %}HTLC Offered Revoke{% elif sweep.witness_type == 5 %}HTLC Accepted Revoke{% elif sweep.witness_type == 6 %}HTLC Offered Timeout Second Level{% elif sweep.witness_type == 8 %}HTLC Offered Remote Timeout{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
       <td>{% if sweep.requested_sat_per_vbyte == 0 %}---{% else %}{{ sweep.requested_sat_per_vbyte|intcomma }}{% endif %}</td>
@@ -62,7 +62,7 @@
   <h2>Balances</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
-      <th width=30%><a href="/addresses" target="_blank">Addresses</a></th>
+      <th width=30%><a href="/addresses" target="_self">Addresses</a></th>
       <th>Amount</th>
       <th width=40%>Outpoint</th>
       <th>Confirmations</th>
@@ -70,9 +70,9 @@
     </tr>
     {% for utxo in utxos %}
     <tr>
-      <td><a href="{{ network_links }}/{{ network }}address/{{ utxo.address }}" target="_blank">{{ utxo.address }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}address/{{ utxo.address }}" target="_self">{{ utxo.address }}</a></td>
       <td>{{ utxo.amount_sat|intcomma }}</td>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ utxo.outpoint.txid_str }}" target="_blank">{{ utxo.outpoint.txid_str }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ utxo.outpoint.txid_str }}" target="_self">{{ utxo.outpoint.txid_str }}</a></td>
       <td>{{ utxo.confirmations|intcomma }}</td>
       <td>
         {% if utxo.confirmations == 0 %}
@@ -103,9 +103,9 @@
     </tr>
     {% for transaction in transactions %}
     <tr>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ transaction.tx_hash }}" target="_blank">{{ transaction.tx_hash }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ transaction.tx_hash }}" target="_self">{{ transaction.tx_hash }}</a></td>
       <td>{{ transaction.amount|intcomma }}</td>
-      <td>{% if transaction.block_height == 0 %}---{% else %}<a href="{{ network_links }}/{{ network }}block/{{ transaction.block_height }}" target="_blank">{{ transaction.block_height|intcomma }}</a>{% endif %}</td>
+      <td>{% if transaction.block_height == 0 %}---{% else %}<a href="{{ network_links }}/{{ network }}block/{{ transaction.block_height }}" target="_self">{{ transaction.block_height|intcomma }}</a>{% endif %}</td>
       <td>{{ transaction.fee|intcomma }}</td>
       <td>{{ transaction.label }}</td>
     </tr>
