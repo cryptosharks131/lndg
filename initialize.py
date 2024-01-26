@@ -290,7 +290,7 @@ def main():
     parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
     parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
-    parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='root')
+    parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='lndg')
     parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
     parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
     parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')

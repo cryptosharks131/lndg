@@ -186,11 +186,11 @@ def auto_schedule() -> List[Rebalancer]:
             enabled = 0
         if enabled == 0:
             return []
-        
+
         auto_rebalance_channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(percent_outbound=((Sum('local_balance')+Sum('pending_outbound'))*100)/Sum('capacity')).annotate(inbound_can=(((Sum('remote_balance')+Sum('pending_inbound'))*100)/Sum('capacity'))/Sum('ar_in_target'))
         if len(auto_rebalance_channels) == 0:
             return []
-        
+
         if not LocalSettings.objects.filter(key='AR-Outbound%').exists():
             LocalSettings(key='AR-Outbound%', value='75').save()
         if not LocalSettings.objects.filter(key='AR-Inbound%').exists():
@@ -200,7 +200,7 @@ def auto_schedule() -> List[Rebalancer]:
         inbound_cans = auto_rebalance_channels.filter(auto_rebalance=True, inbound_can__gte=1).exclude(remote_pubkey__in=already_scheduled).order_by('-inbound_can')
         if len(inbound_cans) == 0 or len(outbound_cans) == 0:
             return []
-        
+
         if LocalSettings.objects.filter(key='AR-MaxFeeRate').exists():
             max_fee_rate = int(LocalSettings.objects.filter(key='AR-MaxFeeRate')[0].value)
         else:
@@ -227,7 +227,7 @@ def auto_schedule() -> List[Rebalancer]:
                 target_fee = round(target_fee_rate*target_value*0.000001, 3) if target_fee_rate <= max_fee_rate else round(max_fee_rate*target_value*0.000001, 3)
                 if target_fee == 0:
                     continue
-            
+
                 if LocalSettings.objects.filter(key='AR-Time').exists():
                     target_time = int(LocalSettings.objects.filter(key='AR-Time')[0].value)
                 else:
@@ -337,7 +337,7 @@ async def async_queue_manager(rebalancer_queue):
                     scheduled_rebalances.append(rebalance.id)
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stoping the rebalancer...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stopping the rebalancer...")
                 shutdown_rebalancer = True
                 return
             await asyncio.sleep(30)
