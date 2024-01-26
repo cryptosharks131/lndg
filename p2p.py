@@ -43,7 +43,7 @@ def main():
         finally:
             if 'p2p_thread' in locals() and p2p_thread.is_alive():
                 print(f"{datetime.now().strftime('%c')} : [P2P] : Removing any remaining processes...")
-                p2p_thread.terminate()       
+                p2p_thread.terminate()
             sleep(20)
 
 if __name__ == '__main__':
