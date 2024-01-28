@@ -168,14 +168,20 @@ def update_invoice(stub, invoice, db_invoice):
     db_invoice.save()
 
 def update_forwards(stub):
-    records = Forwards.objects.count()
-    forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records, num_max_events=100)).forwarding_events
-    for forward in forwards:
-        incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].alias if Channels.objects.filter(chan_id=forward.chan_id_in).exists() else None
-        incoming_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_in)[0].remote_pubkey[:12] if incoming_peer_alias == '' else incoming_peer_alias
-        outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].alias if Channels.objects.filter(chan_id=forward.chan_id_out).exists() else None
-        outgoing_peer_alias = Channels.objects.filter(chan_id=forward.chan_id_out)[0].remote_pubkey[:12] if outgoing_peer_alias == '' else outgoing_peer_alias
-        Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=forward.amt_in_msat, amt_out_msat=forward.amt_out_msat, fee=round(forward.fee_msat/1000, 3)).save()
+    records = list(map(lambda f: str(int(f['forward_date'].timestamp())) + str(f['amt_in_msat']), Forwards.objects.values('forward_date', 'amt_in_msat').all()))
+    forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=len(records), num_max_events=100)).forwarding_events
+    for f in forwards:
+        if (str(f.timestamp) + str(f.amt_in_msat)) in records: 
+            continue
+        
+        ch_1, ch_2 = list(Channels.objects.filter(chan_id__in=(f.chan_id_in, f.chan_id_out)))
+        ch_in, ch_out = [ch_1, ch_2] if ch_1.chan_id == f.chan_id_in else [ch_2, ch_1] #swap if order is inversed
+        incoming_peer_alias = ch_in.alias if Channels.objects.filter(chan_id=f.chan_id_in).exists() else None
+        incoming_peer_alias = ch_in.remote_pubkey[:12] if incoming_peer_alias == '' else incoming_peer_alias
+        outgoing_peer_alias = ch_out.alias if Channels.objects.filter(chan_id=f.chan_id_out).exists() else None
+        outgoing_peer_alias = ch_out.remote_pubkey[:12] if outgoing_peer_alias == '' else outgoing_peer_alias
+        Forwards(forward_date=datetime.fromtimestamp(f.timestamp), chan_id_in=f.chan_id_in, chan_id_out=f.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=f.amt_in_msat, amt_out_msat=f.amt_out_msat, fee=round(f.fee_msat/1000, 3)).save()
+        print(f"{datetime.now().strftime('%c')} : [Data] : Routed [{incoming_peer_alias} -> {outgoing_peer_alias}] (+ {f.fee} msat)")
 
 def update_channels(stub):
     counter = 0
