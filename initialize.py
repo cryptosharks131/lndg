@@ -284,7 +284,7 @@ def initialize_django(adminuser, adminpw):
 def main():
     help_msg = "LNDg Initializer"
     parser = argparse.ArgumentParser(description = help_msg)
-    parser.add_argument('-aip', '--allowed-ip',help = 'Allowed IP to access the LNDg page (IP of the device you want to access LNDg from)', default='*')
+    parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
     parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default=None)
     parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
     parser.add_argument('-rpc', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
