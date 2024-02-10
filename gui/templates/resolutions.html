@@ -17,9 +17,9 @@
     <tr>
       <td>{% if resolution.resolution_type == 0 %}Unknown{% elif resolution.resolution_type == 1 %}Anchor{% elif resolution.resolution_type == 2 %}Incoming HTLC{% elif resolution.resolution_type == 3 %}Outgoing HTLC{% elif resolution.resolution_type == 4 %}Commit{% else %}{{ resolution.resolution_type }}{% endif %}</td>
       <td>{% if resolution.outcome == 0 %}Unknown{% elif resolution.outcome == 1 %}Claimed{% elif resolution.outcome == 2 %}Unclaimed{% elif resolution.outcome == 3 %}Abandoned{% elif resolution.outcome == 4 %}First Stage{% elif resolution.outcome == 5 %}Timeout{% else %}{{ resolution.outcome }}{% endif %}</td>
-      <td><a href="{{ network_links }}/{{ network }}tx/{{ resolution.outpoint_tx }}" target="_blank">{{ resolution.outpoint_tx }}:{{ resolution.outpoint_index }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}tx/{{ resolution.outpoint_tx }}" target="_self">{{ resolution.outpoint_tx }}:{{ resolution.outpoint_index }}</a></td>
       <td>{{ resolution.amount_sat|intcomma }}</td>
-      <td>{% if resolution.resolution_type != 2 %}<a href="{{ network_links }}/{{ network }}tx/{{ resolution.sweep_txid }}" target="_blank">{{ resolution.sweep_txid }}</a>{% else %}---{% endif %}</td>
+      <td>{% if resolution.resolution_type != 2 %}<a href="{{ network_links }}/{{ network }}tx/{{ resolution.sweep_txid }}" target="_self">{{ resolution.sweep_txid }}</a>{% else %}---{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

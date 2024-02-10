@@ -9,4 +9,11 @@ lndg-admin.txt
 gui/static/admin
 gui/static/rest_framework
 data/
-.DS_Store
+container
+doc
+scripts
+.github
+.git
+!scripts/entrypoint.sh
+!scripts/init.sh
+!scripts/suinit.sh

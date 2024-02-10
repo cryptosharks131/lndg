@@ -18,7 +18,7 @@
     </tr>
     {% for peer in peers %}
     <tr>
-      <td><a href="{{ graph_links }}/{{ network }}node/{{ peer.pubkey }}" target="_blank">{{ peer.pubkey }}</a></td>
+      <td><a href="{{ graph_links }}/{{ network }}node/{{ peer.pubkey }}" target="_self">{{ peer.pubkey }}</a></td>
       <td>{% if peer.alias != '' %}{{ peer.alias }}{% else %}---{% endif %}</td>
       <td>{{ peer.address }}</td>
       <td>{{ peer.ping_time|intcomma }}</td>

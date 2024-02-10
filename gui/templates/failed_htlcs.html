@@ -16,8 +16,8 @@
     </tr>
     {% for failed_htlc in agg_failed_htlcs %}
     <tr>
-      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_blank">{{ failed_htlc.chan_id_in }}</a></td>
-      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_blank">{{ failed_htlc.chan_id_out }}</a></td>
+      <td><a href="/channel?={{ failed_htlc.chan_id_in }}" target="_self">{{ failed_htlc.chan_id_in }}</a></td>
+      <td><a href="/channel?={{ failed_htlc.chan_id_out }}" target="_self">{{ failed_htlc.chan_id_out }}</a></td>
       <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_in }}_I">{% if failed_htlc.chan_in_alias == '' %}---{% else %}{{ failed_htlc.chan_in_alias }}{% endif %}</a></td>
       <td><a href="/failed_htlcs?={{ failed_htlc.chan_id_out }}_O">{% if failed_htlc.chan_out_alias == '' %}---{% else %}{{ failed_htlc.chan_out_alias }}{% endif %}</a></td>
       <td>{{ failed_htlc.count|intcomma }}</td>

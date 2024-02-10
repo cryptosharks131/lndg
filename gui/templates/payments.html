@@ -21,14 +21,14 @@
     {% for payment in payments %}
     <tr>
       <td title="{{ payment.creation_date }}">{{ payment.creation_date|naturaltime }}</td>
-      <td><a href="/route?={{ payment.payment_hash }}" target="_blank">{{ payment.payment_hash }}</td>
+      <td><a href="/route?={{ payment.payment_hash }}" target="_self">{{ payment.payment_hash }}</td>
       <td>{{ payment.value|add:"0"|intcomma }}</td>
       <td>{{ payment.fee|intcomma }}</td>
       <td>{{ payment.ppm|intcomma }}</td>
       <td>{% if payment.status == 1 %}In-Flight{% elif payment.status == 2 %}Succeeded{% elif payment.status == 3 %}Failed{% else %}{{ payment.status }}{% endif %}</td>
       <td>{% if payment.status == 2 %}{% if payment.chan_out_alias == '' %}---{% else %}{{ payment.chan_out_alias }}{% endif %}{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/channel?={{ payment.chan_out }}" target="_blank">{{ payment.chan_out }}</a>{% else %}---{% endif %}</td>
-      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_blank">Open</a>{% else %}---{% endif %}</td>
+      <td>{% if payment.status == 2 %}<a href="/channel?={{ payment.chan_out }}" target="_self">{{ payment.chan_out }}</a>{% else %}---{% endif %}</td>
+      <td>{% if payment.status == 2 %}<a href="/route?={{ payment.payment_hash }}" target="_self">Open</a>{% else %}---{% endif %}</td>
       <td title="{{ payment.message }}">{% if payment.keysend_preimage != None %}Yes{% else %}No{% endif %}</td>
     </tr>
     {% endfor %}

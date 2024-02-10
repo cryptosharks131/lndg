@@ -17,7 +17,7 @@
     {% for log in autopilot %}
     <tr>
       <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
-      <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
+      <td><a href="/channel?={{ log.chan_id }}" target="_self">{{ log.chan_id }}</a></td>
       <td><a href="/autopilot?={{ log.chan_id }}">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
       <td>{{ log.setting }}</td>
       <td>{{ log.old_value }}</td>
@@ -30,7 +30,7 @@
 {% if not autopilot %}
 <div class="w3-container w3-padding-small">
   <center><h1>No autopilot logs to see here yet!</h1></center>
-  <center><h6>Experimental. This will allow LNDg to automatically act upon the suggestions found <a href="/actions" target="_blank">here</a>.</h6></center>
+  <center><h6>Experimental. This will allow LNDg to automatically act upon the suggestions found <a href="/actions" target="_self">here</a>.</h6></center>
 </div>
 {% endif %}
 {% endblock %}

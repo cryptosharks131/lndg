@@ -16,7 +16,7 @@
     <tr>
       <td>{{ address.is_internal }}</td>
       <td>{% if address.balance == 0 %}---{% else %}{{ address.balance|intcomma }}{% endif %}</td>
-      <td><a href="{{ network_links }}/{{ network }}address/{{ address.address }}" target="_blank">{{ address.address }}</a></td>
+      <td><a href="{{ network_links }}/{{ network }}address/{{ address.address }}" target="_self">{{ address.address }}</a></td>
     </tr>
     {% endfor %}
   </table>

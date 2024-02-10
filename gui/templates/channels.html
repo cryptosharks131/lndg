@@ -32,8 +32,8 @@
       </tr>
       {% for channel in channels %}
       <tr>
-        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.short_chan_id }}</a></td>
-        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_blank">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
+        <td title="{{ channel.funding_txid }}:{{ channel.output_index }}"><a href="/channel?={{ channel.chan_id }}" target="_self">{{ channel.short_chan_id }}</a></td>
+        <td title="{{ channel.remote_pubkey }}"><a href="{{ graph_links }}/{{ network }}node/{{ channel.remote_pubkey }}" target="_self">{% if channel.alias == '' %}{{ channel.remote_pubkey|slice:":12" }}{% else %}{{ channel.alias }}{% endif %}</a></td>
         <td title="Local Balance: {{ channel.local_balance|intcomma }}">{{ channel.mil_capacity }}M</td>
         <td>{{ channel.amt_routed_out_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_out_7day }}</small> | {{ channel.amt_routed_in_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.routed_in_7day }}</small></td>
         <td>{{ channel.amt_rebal_in_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.rebal_in_7day }}</small> | {{ channel.amt_rebal_out_7day|intcomma }}M <small class="w3-round w3-border-small w3-border-grey">{{ channel.rebal_out_7day }}</small></td>
