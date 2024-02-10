@@ -304,7 +304,7 @@ def main():
     parser.add_argument('-sessionage', '--sessioncookieage', help = 'Number of seconds before the login session expires', default='1209600')
     parser.add_argument('-f', '--force', help = 'Force a new settings file to be created', action='store_true')
     args = parser.parse_args()
-    allowed_remote = args.allowed_ip
+    node_ip = args.nodeip
     lnd_dir_path = args.lnddir if args.lnddir else '~/.lnd'
     lnd_network = args.network
     lnd_rpc_server = args.rpcserver
@@ -326,7 +326,7 @@ def main():
     if docker:
         setup_supervisord = True
         whitenoise = True
-    write_settings(allowed_remote, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age)
+    write_settings(node_ip, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, whitenoise, debug, csrftrusted, nologinrequired, force_new, cookie_age)
     if setup_supervisord:
         print('Supervisord setup requested...')
         write_supervisord_settings(sduser)
