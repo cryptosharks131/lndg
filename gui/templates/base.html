@@ -129,6 +129,7 @@
       document.cookie = `darkmode=${darkMode};max-age=34560000`
       byId('toggleTheme').innerHTML = `${darkMode ? 'Light' : 'Dark'} Theme`
     }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => e.matches ^ darkMode ? toggleTheme() : '')
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
         const el = evt.currentTarget, sT = el.scrollTop;
