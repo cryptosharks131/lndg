@@ -102,33 +102,51 @@
         {% endfor %}
       </div>
       {% endif %}
-      <div class="w3-container">
-        <h1><a href="/">My Lnd Overview</a></h1>
-      </div>
       {% block content %}{% endblock %}
     </div>
   </body>
-  <footer>
-    <div id="footer">
-      <div class="w3-container w3-padding-small">
-        <center><button id="toggleTheme" onclick="toggleTheme()">{% if request.COOKIES.darkmode == 'true' %}Light{%else%}Dark{% endif %} Theme</button></center>
-      </div>
-      <div class="w3-container w3-padding-small">
-        <center>LNDg v1.8.0</center>
-        <center><a href="{% url 'logout' %}">Logout</a></center>
-      </div>
+  <footer id="footer">
+    <div class="w3-container w3-padding-small" style="margin-bottom:50px">
+      <center>LNDg v1.8.0</center>
+    </div>
+    <div class="w3-bar w3-black" style="position:fixed;bottom:0px;width:100%;z-index:100">
+      <a class="w3-bar-item w3-hover-blue" style="padding:0" title="Dashboard" href="/" target="_blank"><img height="38px" src="favicon.ico"></img></a>
+      <a class="w3-bar-item w3-hover-blue" href="/income" target="_blank">P&L</a>
+      <a class="w3-bar-item w3-hover-blue" href="/closures" target="_blank">Closures</a> 
+      <a class="w3-bar-item w3-hover-blue" href="/opens" target="_blank">New Peers</a>
+      <a class="w3-bar-item w3-hover-blue" href="/peerevents" target="_blank">Peer Events</a>
+      <a class="w3-bar-item w3-hover-blue" href="/actions" target="_blank">AR Actions</a> 
+      <a class="w3-bar-item w3-hover-blue" href="/fees" target="_blank">Fee Rates</a>
+      <a class="w3-bar-item w3-hover-blue" href="/autopilot" target="_blank">Autopilot</a>
+      <a class="w3-bar-item w3-hover-blue" href="/autofees" target="_blank">Fee Log</a>
+      <a class="w3-bar-item w3-hover-blue" href="/channels" target="_blank">Channel Performance</a>
+      <a class="w3-bar-item w3-hover-blue" href="/keysends" target="_blank">Keysends</a>
+      <a class="w3-bar-item w3-hover-blue" href="/rebalancing" target="_blank">Rebalancing</a>
+      <a class="w3-bar-item w3-hover-blue" href="/towers" target="_blank">Towers</a>
+      <a class="w3-bar-item w3-hover-blue" href="/batch" target="_blank">Batching</a>
+      <a class="w3-bar-item w3-hover-blue" href="/trades" target="_blank">Trades</a>
+      <a class="w3-bar-item w3-hover-blue" href="/advanced" target="_blank">Advanced Settings</a>
+      <a class="w3-bar-item w3-hover-blue" href="/logs/?tail=20" target="_blank">Logs</a>
+      <span class="w3-padding-small w3-right" style="max-height:30px;">
+        <a class="w3-bar-item w3-hover w3-text-white" title="Last Update" id="refresh_stats" style="padding:8px 0px"></a>
+        <a class="w3-bar-item w3-hover w3-btn" title="Toggle Theme" id="themeToggler" style="padding:8px">{% if request.COOKIES.darkmode == 'true' %}☀️{%else%}🌙{% endif %}</a>
+        <a class="w3-bar-item w3-hover w3-text-red" title="Logout" href="{% url 'logout' %}" style="padding:8px">⏻</a>
+      </span>
     </div>
   </footer>
   <script>
     var darkMode = {% if request.COOKIES.darkmode == 'true' %}true{%else%}false{% endif %}
     //BASE CONFIG
-    function toggleTheme() {
-      var element = document.body;
-      element.classList.toggle("dark-mode")
-      darkMode = element.classList.contains("dark-mode")
-      document.cookie = `darkmode=${darkMode};max-age=34560000`
-      byId('toggleTheme').innerHTML = `${darkMode ? 'Light' : 'Dark'} Theme`
+    function toggleTheme(ev) {
+      const el = ev.target
+      document.body.classList.toggle("dark-mode")
+      darkMode = document.body.classList.contains("dark-mode")
+      document.cookie = `darkmode=${darkMode};max-age=34560000;samesite=strict`
+      el.innerHTML = darkMode ? '☀️' : '🌙'
     }
+    byId('themeToggler').addEventListener('click', toggleTheme)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => e.matches ^ darkMode ? toggleTheme({target: byId('themeToggler')}) : '')
+
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
         const el = evt.currentTarget, sT = el.scrollTop;
@@ -154,11 +172,11 @@
 
     async function auto_refresh(async_callback) {
       await sleep(21000)
-      while(document.hidden || document.cookie.includes('refresh=false')) {
-        await sleep(100)
+	    while(document.hidden || document.cookie.includes('refresh=false')) {
+          await sleep(100)
       }
       await async_callback()
-    }
+     }
     //END: BASE CONFIG
     //-------------------------------------------------------------------------------------------------------------------------
   </script>
