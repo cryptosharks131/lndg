@@ -91,10 +91,7 @@
         <th id="limbo" class="w3-border-bottom w3-border-right" title="Amount in limbo from channel closing activities">Limbo: 0</th>
         <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span></th>
         <th class="w3-border-bottom">
-          <form method="post" action="/newaddress/">
-            {% csrf_token %}
-            <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true, r.data);qr_addr(r.data);})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true, r.data);qr_addr(r.data);})">Legacy</a>
-          </form>
+          <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true, r.data);qr_addr(r.data);})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true, r.data);qr_addr(r.data);})">Legacy</a>
         </th>
       </tr>
     </thead>
