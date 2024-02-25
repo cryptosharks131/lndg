@@ -957,7 +957,6 @@
     build_payments(payments7d)
     build_invoices((await invoices_task).results)
     build_failedHTLC((await failedHTLCs_task).results)
-    build_failedHTLC((await failedHTLCs_task).results)
 	  const refresh = document.cookie.includes("refresh=true")
     refreshStats.innerHTML = `${new Date().toLocaleTimeString()} <label title="Auto Page Refresh" class="switch"><input type="checkbox" ${refresh?'checked':''}><span onclick="document.cookie='refresh=${!refresh};max-age=34560000;samesite=strict'" class="slider round"></span></label>`;
     await auto_refresh(buildMain)
