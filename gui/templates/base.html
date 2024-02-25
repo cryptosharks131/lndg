@@ -173,8 +173,8 @@
 
     async function auto_refresh(async_callback) {
       await sleep(21000)
-	    while(document.hidden || document.cookie.includes('refresh=false')) {
-          await sleep(100)
+      while(document.hidden || document.cookie.includes('refresh=false') || document.activeElement.nodeName == "INPUT" || document.querySelectorAll('tr:hover').length === 1) {
+        await sleep(100)
       }
       await async_callback()
      }
