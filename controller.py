@@ -15,6 +15,7 @@ def main():
         process.start()
 
     if len(sys.argv) > 1:
+        sys.argv[0] = "manage.py"
         process = multiprocessing.Process(target=manage.main(sys.argv), name="manage.py")
         processes.append(process)
         process.start()
