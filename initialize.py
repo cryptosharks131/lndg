@@ -214,7 +214,7 @@ process_name = lndg-controller
 directory = %s
 autorestart = true
 redirect_stderr = true
-stdout_logfile = %s/data/lndg-controller.log
+stdout_logfile = /var/log/lndg-controller.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
 ''' % (sduser, supervisord_secret, supervisord_secret, BASE_DIR, BASE_DIR)
@@ -287,7 +287,7 @@ def main():
     parser.add_argument('-ip', '--nodeip',help = 'IP that will be used to access the LNDg page', default='*')
     parser.add_argument('-dir', '--lnddir',help = 'LND Directory for tls cert and admin macaroon paths', default=None)
     parser.add_argument('-net', '--network', help = 'Network LND will run over', default='mainnet')
-    parser.add_argument('-server', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
+    parser.add_argument('-rpc', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
     parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
     parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='lndg')

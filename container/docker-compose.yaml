@@ -3,10 +3,9 @@ services:
     build: .
     volumes:
       - /root/.lnd:/root/.lnd:ro
-      - /root/lndg/data:/lndg/data:rw
+      - /root/lndg/data:/app/data:rw
     command:
-      - sh
       - -c
-      - python initialize.py -net 'mainnet' -server 'localhost:10009' -d && supervisord && python manage.py runserver 0.0.0.0:8000
+      - python initialize.py -net 'mainnet' -rpc 'localhost:10009' -wn && python controller.py runserver 0.0.0.0:8000 > /var/log/lndg-controller.log 2>&1
     ports:
       - 8889:8000
