@@ -95,7 +95,7 @@
     const table = byId("rebalances_{{status}}"), renderer = use(template)
     table.innerHTML = null
     for (const rebalance of res.results) {
-      const tr = renderer.render(rebalance), isRapidFire = rebalance.duration === 1 && wait_period !== 1
+      const tr = renderer.render(rebalance), isRapidFire = rebalance.duration === 1 && target_time !== 1
       table.append(tr)
       tr.setAttribute(rapidFire, +isRapidFire)
 
@@ -128,7 +128,7 @@
     }
     const tableBody = rebalsTable.tBodies[1], renderer = use(template)
     for (const rebalance of next_rebals) {
-      const tr = renderer.render(rebalance), isRapidFire = rebalance.duration === 1 && wait_period !== 1
+      const tr = renderer.render(rebalance), isRapidFire = rebalance.duration === 1 && target_time !== 1
       tableBody.append(tr)
       tr.setAttribute(rapidFire, +isRapidFire)
 
