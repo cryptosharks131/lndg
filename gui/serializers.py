@@ -163,6 +163,9 @@ class UpdateChanPolicy(serializers.Serializer):
 class NewAddressSerializer(serializers.Serializer):
     legacy = serializers.BooleanField(required=False, default=False)
 
+class ConsolidateSerializer(serializers.Serializer):
+    sat_per_vbyte = serializers.IntegerField(label='sat_per_vbtye')
+
 class PeerSerializer(serializers.HyperlinkedModelSerializer):
     pubkey = serializers.ReadOnlyField()
     class Meta:

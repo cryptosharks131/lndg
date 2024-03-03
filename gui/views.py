@@ -231,7 +231,7 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
-            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            logfile = '/var/log/lndg-controller.log'
             file_size = path.getsize(logfile)-2
             if file_size == 0:
                 logs = ['Logs are empty....']
@@ -310,7 +310,8 @@ def balances(request):
         sweeps = []
         for pending_sweep in pending_sweeps:
             sweep = {}
-            sweep['txid_str'] = pending_sweep.outpoint.txid_bytes.hex()
+            sweep['txid_str'] = pending_sweep.outpoint.txid_bytes[::-1].hex()
+            sweep['txid_index'] = pending_sweep.outpoint.output_index
             sweep['amount_sat'] = pending_sweep.amount_sat
             sweep['witness_type'] = pending_sweep.witness_type
             sweep['requested_sat_per_vbyte'] = pending_sweep.requested_sat_per_vbyte
@@ -684,7 +685,7 @@ def chart(request):
     invoices = Invoices.objects.filter(state=1, is_revenue=True).annotate(dt=TruncDay('settle_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('amt_paid', output_field=FloatField()), onchain=Value(0))
     forwards = Forwards.objects.annotate(dt=TruncDay('forward_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('fee', output_field=FloatField()), onchain=Value(0))
     onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('amount'))
-    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain).values('dt', 'cost', 'onchain', 'revenue'))
+    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain).values('dt', 'cost', 'revenue', 'onchain'))
     results = balance.groupby('dt').sum().reset_index().sort_values('dt')
     return Response(results.to_dict(orient='records'))
 
@@ -1223,7 +1224,7 @@ def reset(request):
                 {'name':'Channels', 'count': Channels.objects.count()},
                 {'name':'PendingChannels', 'count': PendingChannels.objects.count()},
                 {'name':'Onchain', 'count': Onchain.objects.count()},
-                {'name':'PendingHTLCs', 'count': FailedHTLCs.objects.count()},
+                {'name':'PendingHTLCs', 'count': PendingHTLCs.objects.count()},
                 {'name':'FailedHTLCs', 'count': FailedHTLCs.objects.count()},
                 {'name':'HistFailedHTLC', 'count': HistFailedHTLC.objects.count()},
                 {'name':'Autopilot', 'count': Autopilot.objects.count()},
@@ -1585,26 +1586,6 @@ def connect_peer_form(request):
     return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def new_address_form(request):
-    if request.method == 'POST':
-        try:
-            stub = lnrpc.LightningStub(lnd_connect())
-            version = stub.GetInfo(ln.GetInfoRequest()).version
-            # Verify sufficient version to handle p2tr address creation
-            if float(version[:4]) >= 0.15:
-                response = stub.NewAddress(ln.NewAddressRequest(type=4))
-            else:
-                response = stub.NewAddress(ln.NewAddressRequest(type=0))
-            messages.success(request, 'Deposit Address: ' + str(response.address))
-        except Exception as e:
-            error = str(e)
-            details_index = error.find('details =') + 11
-            debug_error_index = error.find('debug_error_string =') - 3
-            error_msg = error[details_index:debug_error_index]
-            messages.error(request, 'Address request failed! Error: ' + error_msg)
-    return redirect('home')
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def add_invoice_form(request):
     if request.method == 'POST':
         form = AddInvoiceForm(request.POST)
@@ -1699,18 +1680,18 @@ def get_local_settings(*prefixes):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_settings(request):
     if request.method == 'POST':
-        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: x,'id': 'AR-Enabled'}, 
+        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AR-Enabled'}, 
                     {'form_id': 'target_percent', 'value': 3.0, 'parse': lambda x: float(x),'id': 'AR-Target%'},
-                    {'form_id': 'target_time', 'value': 5, 'parse': lambda x: x,'id': 'AR-Time'},
-                    {'form_id': 'fee_rate', 'value': 500, 'parse': lambda x: x,'id': 'AR-MaxFeeRate'},
+                    {'form_id': 'target_time', 'value': 5, 'parse': lambda x: int(x),'id': 'AR-Time'},
+                    {'form_id': 'fee_rate', 'value': 500, 'parse': lambda x: int(x),'id': 'AR-MaxFeeRate'},
                     {'form_id': 'outbound_percent', 'value': 75, 'parse': lambda x: int(x),'id': 'AR-Outbound%'},
                     {'form_id': 'inbound_percent', 'value': 90, 'parse': lambda x: int(x),'id': 'AR-Inbound%'},
                     {'form_id': 'max_cost', 'value': 65, 'parse': lambda x: int(x),'id': 'AR-MaxCost%'},
-                    {'form_id': 'variance', 'value': 0, 'parse': lambda x: x,'id': 'AR-Variance'},
-                    {'form_id': 'wait_period', 'value': 30, 'parse': lambda x: x,'id': 'AR-WaitPeriod'},
-                    {'form_id': 'autopilot', 'value': 0, 'parse': lambda x: x,'id': 'AR-Autopilot'},
-                    {'form_id': 'autopilotdays', 'value': 7, 'parse': lambda x: x,'id': 'AR-APDays'},
-                    {'form_id': 'workers', 'value': 1, 'parse': lambda x: x,'id': 'AR-Workers'},
+                    {'form_id': 'variance', 'value': 0, 'parse': lambda x: int(x),'id': 'AR-Variance'},
+                    {'form_id': 'wait_period', 'value': 30, 'parse': lambda x: int(x),'id': 'AR-WaitPeriod'},
+                    {'form_id': 'autopilot', 'value': 0, 'parse': lambda x: int(x),'id': 'AR-Autopilot'},
+                    {'form_id': 'autopilotdays', 'value': 7, 'parse': lambda x: int(x),'id': 'AR-APDays'},
+                    {'form_id': 'workers', 'value': 1, 'parse': lambda x: int(x),'id': 'AR-Workers'},
                     #AF
                     {'form_id': 'af_enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
                     {'form_id': 'af_maxRate', 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
@@ -1722,11 +1703,11 @@ def update_settings(request):
                     {'form_id': 'af_lowliq', 'value': 15, 'parse': lambda x: int(x),'id': 'AF-LowLiqLimit'},
                     {'form_id': 'af_excess', 'value': 95, 'parse': lambda x: int(x),'id': 'AF-ExcessLimit'},
                     #GUI
-                    {'form_id': 'gui_graphLinks', 'value': 'https://mempool.space/lightning', 'parse': lambda x: x,'id': 'GUI-GraphLinks'},
-                    {'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'parse': lambda x: x,'id': 'GUI-NetLinks'},
+                    {'form_id': 'gui_graphLinks', 'value': 'https://mempool.space/lightning', 'parse': lambda x: str(x),'id': 'GUI-GraphLinks'},
+                    {'form_id': 'gui_netLinks', 'value': 'https://mempool.space', 'parse': lambda x: str(x),'id': 'GUI-NetLinks'},
                     #LND
-                    {'form_id': 'lnd_cleanPayments', 'value': 0, 'parse': lambda x: x, 'id': 'LND-CleanPayments'},
-                    {'form_id': 'lnd_retentionDays', 'value': 30, 'parse': lambda x: x, 'id': 'LND-RetentionDays'},
+                    {'form_id': 'lnd_cleanPayments', 'value': 0, 'parse': lambda x: int(x), 'id': 'LND-CleanPayments'},
+                    {'form_id': 'lnd_retentionDays', 'value': 30, 'parse': lambda x: int(x), 'id': 'LND-RetentionDays'},
                     ]
 
         form = LocalSettingsForm(request.POST)
@@ -2583,6 +2564,15 @@ def add_invoice(request):
     else:
         return Response({'error': 'Invalid request!'})
 
+def get_new_address(stub, legacy=False):
+    version = stub.GetInfo(ln.GetInfoRequest()).version
+    # Verify sufficient version to handle p2tr address creation
+    if float(version[:4]) >= 0.15 and not legacy:
+        response = stub.NewAddress(ln.NewAddressRequest(type=4))
+    else:
+        response = stub.NewAddress(ln.NewAddressRequest(type=0))
+    return response
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def new_address(request):
@@ -2590,15 +2580,7 @@ def new_address(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect())
-            if serializer.validated_data['legacy'] == True:
-                response = stub.NewAddress(ln.NewAddressRequest(type=0))
-            else:
-                # Verify sufficient version to handle p2tr address creation
-                version = stub.GetInfo(ln.GetInfoRequest()).version
-                if float(version[:4]) >= 0.15:
-                    response = stub.NewAddress(ln.NewAddressRequest(type=4))
-                else:
-                    response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            response = get_new_address(stub, legacy=serializer.validated_data['legacy'])
             return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
         except Exception as e:
             error = str(e)
@@ -2607,7 +2589,26 @@ def new_address(request):
             error_msg = error[details_index:debug_error_index]
             return Response({'error': 'Address creation failed! Error: ' + error_msg})
     else:
-        return Response({'error': 'Invalid request!'})
+        return Response({'error': 'Invalid request!'}, status=400)
+
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def consolidate_utxos(request):
+    serializer = ConsolidateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            self_addr = get_new_address(stub).address
+            txid = stub.SendCoins(ln.SendCoinsRequest(addr=self_addr, send_all=True, sat_per_vbyte=serializer.validated_data['sat_per_vbyte'])).txid
+            return Response({'message': f'Successfully consolidated UXTOs: {txid}', 'txid':txid})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Failed to consolidate utxos! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'}, status=400)
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
@@ -2926,7 +2927,7 @@ def reset_api(request):
             'Channels': Channels.objects.all(),
             'PendingChannels': PendingChannels.objects.all(),
             'Onchain': Onchain.objects.all(),
-            'PendingHTLCs': FailedHTLCs.objects.all(),
+            'PendingHTLCs': PendingHTLCs.objects.all(),
             'FailedHTLCs': FailedHTLCs.objects.all(),
             'HistFailedHTLC': HistFailedHTLC.objects.all(),
             'Autopilot': Autopilot.objects.all(),

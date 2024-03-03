@@ -1,6 +1,8 @@
-FROM python:3
+FROM python:3-alpine
 ENV PYTHONUNBUFFERED 1
-RUN git clone https://github.com/cryptosharks131/lndg.git /lndg
-WORKDIR /lndg
+RUN apk add git && git clone https://github.com/cryptosharks131/lndg /app
+WORKDIR /app
+RUN git checkout "master"
 RUN pip install -r requirements.txt
-RUN pip install supervisor whitenoise
+RUN pip install whitenoise
+ENTRYPOINT [ "sh" ]

@@ -4,7 +4,7 @@
 {% load humanize %}
 {% if agg_failed_htlcs %}
 <div class="w3-container w3-padding-small">
-  <h2><a href="/failed_htlcs">Top 21 Failed Downstream Routes</a></h2>
+  <h2>Top 21 Failed Downstream Routes</h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Chan In ID</th>
@@ -33,23 +33,23 @@
 </div>
 {% endif %}
 <div id="failedhtlcsDiv" class="w3-container w3-padding-small">
-  <h2><a href="/failed_htlcs">Last Failed HTLCs</a></h2>
+  <h2>Last Failed HTLCs</h2>
   <table id="failedhtlcsTable" class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
       <th>Chan In ID</th>
-      <th>Chan Out ID</th>
       <th>Chan In Alias</th>
+      <th colspan="2">Forward Amount</th>
+      <th colspan="2">Actual Outbound</th>
       <th>Chan Out Alias</th>
-      <th>Forward Amount</th>
-      <th>Actual Outbound</th>
+      <th>Chan Out ID</th>
       <th>Potential Fee</th>
       <th>HTLC Failure</th>
       <th>Failure Detail</th>
     </tr>
     <tfoot id="loadMoreFailedHTLCs">
       <tr style="background-color:transparent;cursor:pointer;">
-        <td colspan="9">
+        <td colspan="12">
           <a onclick="loadFailedHTLCs()">Load More</a>
         </td>
       </tr>

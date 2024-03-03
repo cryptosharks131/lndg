@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %} {{ block.super }} - Dashboard{% endblock %}
-{% block meta %}<meta http-equiv="refresh" content="1260">{% endblock %}
 {% block content %}
 {% load humanize %}
 <span style="position: absolute;top: 0;right: 0;padding: 5px;">Dashboard Last Updated: <span id='datetime'></span> <label title="Auto Page Refresh" class="switch"><input type="checkbox" {% if request.COOKIES.refresh != 'false' %}checked="true"{% endif %}><span onclick="toggleAutoRefresh()" class="slider round"></span></label></span>
@@ -67,26 +66,26 @@
   <table class="w3-col w3-small w3-table-all w3-centered w3-hoverable" style="min-width:300px;width:25%">
     <tr>
       <th title="Total Inbound/Total Outbound">Ratio: <span id="liq_ratio">0</span></h>
-      <th>Inbound</th>
       <th>Outbound</th>
+      <th>Inbound</th>
       <th>Unsettled</th>
     </tr>
     <tr>
       <th>Active</th>
-      <td id="active_inbound">0</td>
       <td id="active_outbound">0</td>
+      <td id="active_inbound">0</td>
       <td id="active_unsettled">0</td>
     </tr>
     <tr>
       <th>Inactive</th>
-      <td id="inactive_inbound">0</td>
       <td id="inactive_outbound">0</td>
+      <td id="inactive_inbound">0</td>
       <td id="inactive_unsettled">0</td>
     </tr>
     <tr>
       <th>Total</th>
-      <td id="total_inbound">0</td>
       <td id="total_outbound">0</td>
+      <td id="total_inbound">0</td>
       <td id="total_unsettled">0</td>
     </tr>
   </table>
@@ -100,10 +99,7 @@
         <th id="limbo" class="w3-border-bottom w3-border-right" title="Amount in limbo from channel closing activities">Limbo: 0</th>
         <th class="w3-border-bottom w3-border-right"><a href="/pending_htlcs" target="_blank">Pending HTLCs</a>: <span id="pending_htlcs">0</span></th>
         <th class="w3-border-bottom">
-          <form method="post" action="/newaddress/">
-            {% csrf_token %}
-            <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true, r.data);qr_addr(r.data);})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true, r.data);qr_addr(r.data);})">Legacy</a>
-          </form>
+          <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:false}}, r => {showBannerMsg('Onchain Address:', r.data, true, r.data);qr_addr(r.data);})">New Onchain Address</a> | <a style="cursor: pointer" onclick="Sync.POST('newaddress/', {body: {legacy:true}}, r => {showBannerMsg('Legacy Address:', r.data, true, r.data);qr_addr(r.data);})">Legacy</a>
         </th>
       </tr>
     </thead>
@@ -488,9 +484,9 @@
   })
   const detailed_ch_template = Object.assign({}, home_ch_base, {
     "o1D": ch => ({innerHTML: `${(ch.amt_routed_out_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_1day}</small>`, style: {color: ch.routed_out_1day ? `rgba(${(100 + (255*ch.amt_routed_out_1day/ch.amt_routed_out_7day))*(darkMode? 1 : .7)},100,0, ${.5 + (ch.amt_routed_out_1day/ch.amt_routed_out_7day)})` : 'gray'} }),
-    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_1day}</small>`, style: {color: ch.routed_in_1day ? `rgba(${(100 + (255*ch.amt_routed_in_1day/ch.amt_routed_in_7day))*(darkMode? 1 : .7)},100,0, ${.5 + (ch.amt_routed_in_1day/ch.amt_routed_in_7day)})` : 'gray'} }),
+    "i1D": ch => ({innerHTML: `${(ch.amt_routed_in_1day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_1day}</small>`, style: {color: ch.routed_in_1day ? `rgba(100,${(100 + (255*ch.amt_routed_in_1day/ch.amt_routed_in_7day))*(darkMode? 1 : .7)},0, ${.5 + (ch.amt_routed_in_1day/ch.amt_routed_in_7day)})` : 'gray'} }),
     "o7D": ch => ({innerHTML: `${(ch.amt_routed_out_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_out_7day}</small>`, style: {color: ch.routed_out_7day ? `rgba(${(100 + (255*ch.amt_routed_out_7day/ch.capacity))*(darkMode? 1 : .7)},100,0, ${.5 + (ch.amt_routed_out_7day/ch.capacity)})` : 'gray'} }),
-    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</small>`, style: {color: ch.routed_in_7day ? `rgba(${(100 + (255*ch.amt_routed_in_7day/ch.capacity))*(darkMode? 1 : .7)},100,0, ${.5 + (ch.amt_routed_in_7day/ch.capacity)})` : 'gray'} }),
+    "i7D": ch => ({innerHTML: `${(ch.amt_routed_in_7day/1000000).toFixed(2)}M <small class="w3-round w3-border-small w3-border-grey">${ch.routed_in_7day}</small>`, style: {color: ch.routed_in_7day ? `rgba(100,${(100 + (255*ch.amt_routed_in_7day/ch.capacity))*(darkMode? 1 : .7)},0, ${.5 + (ch.amt_routed_in_7day/ch.capacity)})` : 'gray'} }),
     "iRate": ch => ({innerHTML: ch.remote_fee_rate.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "iBase": ch => ({innerHTML: ch.remote_base_fee.intcomma(), style: {backgroundColor: ch.remote_disabled ? red : null} }),
     "ar_out_target": ch => ({innerHTML: `<input inputmode="numeric" style="min-width:50px;max-width:75px;text-align:center;width:100%" id="target" type="text" min="1" max="100" name="target" value="${ch.ar_out_target}" onChange="Sync.PUT('channels/${ch.chan_id}', {body: {ar_out_target: this.value}}, r => {flash(this, r.ar_out_target)});">`,  style: !ch.auto_rebalance ? {backgroundColor: green} : {color: 'gray', backgroundColor:''} }),   
@@ -616,7 +612,7 @@
   }
   function build_active(channels, forwards_sum){
     let sum = {inbound: 0, outbound: 0, unsettled: 0, earned:{d1:0, d7:0}, rOUTed:{d1:{amt:0, count:0}, d7:{amt:0, count:0} } }
-    if(!addTitle("Active Channels", channels)) return sum
+    if(!addTitle("Active Channels", channels)) return update_liq('active_', sum)
 
     const [activeChannels, template] = [byId("active_channels"), use(detailed_ch_template)]
 
@@ -690,7 +686,7 @@
   }
   function build_inactive(channels){
     let sum = {inbound: 0, outbound: 0, unsettled: 0}
-    if(!addTitle("Inactive Channels", channels)) return sum
+    if(!addTitle("Inactive Channels", channels)) return update_liq('inactive_', sum)
 
     const table = byId('inactive_channels'), template = use(inactive_ch_template)
     table.innerHTML = null
@@ -705,9 +701,7 @@
   }
   function update_liq(status, sum){
     for (id of ['inbound', 'outbound', 'unsettled']){
-      const [value, total] = [sum[id], byId('total_'+id)]
-
-      byId(status+id).innerHTML = value.intcomma()
+      byId(status+id).innerHTML = sum[id].intcomma()
     }
     return sum
   }

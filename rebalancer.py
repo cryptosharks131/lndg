@@ -32,6 +32,9 @@ def get_out_cans(rebalance: Rebalancer):
     return pub_active_chans, list(pub_active_chans.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
 
 async def run(rebalance: Rebalancer, conn, worker) -> Rebalancer:
+    # Check if LocalSetting LND-EnableMPP exists and set allow_mpp accordingly
+    allow_multishards = await check_and_set_allow_multishards()  # Default value is True.
+    max_parts = None if allow_multishards else 1  # Adjust max_parts based on the allow_multishards value
     rebalance.start = datetime.now()
     try:
         stub = lnrpc.LightningStub(conn)
@@ -40,7 +43,7 @@ async def run(rebalance: Rebalancer, conn, worker) -> Rebalancer:
         timeout = rebalance.duration * 60
         invoice_response = await stub.AddInvoice(ln.Invoice(value=rebalance.value, expiry=timeout))
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} starting rebalance for {rebalance.target_alias} {rebalance.last_hop_pubkey} for {rebalance.value} sats and duration {rebalance.duration}, using {len(chan_ids)} outbound channels")
-        async for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True), timeout=(timeout+60)):
+        async for payment_response in routerstub.SendPaymentV2(lnr.SendPaymentRequest(payment_request=str(invoice_response.payment_request), fee_limit_msat=int(rebalance.fee_limit*1000), outgoing_chan_ids=chan_ids, last_hop_pubkey=bytes.fromhex(rebalance.last_hop_pubkey), timeout_seconds=(timeout-5), allow_self_payment=True, max_parts=max_parts), timeout=(timeout+60)):
             if payment_response.status == 1 and rebalance.status == 0:
                 #IN-FLIGHT
                 rebalance.payment_hash = payment_response.payment_hash
@@ -77,6 +80,21 @@ async def run(rebalance: Rebalancer, conn, worker) -> Rebalancer:
         await rebalance.asave()
         print(f"{datetime.now().strftime('%c')} : [Rebalancer] : {worker} completed payment attempts for: {rebalance.payment_hash}")
         return await rapid_fire(rebalance, stub, payment_response)
+
+@sync_to_async
+def check_and_set_allow_multishards():
+    allow_multishards = True  # Default value is True
+    disable_mpp_setting = LocalSettings.objects.filter(key='LND-DisableMPP').first()
+    
+    if disable_mpp_setting:
+        if int(disable_mpp_setting.value) > 0:
+            allow_multishards = False
+    else:
+        # If the setting does not exist, create it with a default value of '0'
+        LocalSettings.objects.create(key='LND-DisableMPP', value='0')
+    
+    return allow_multishards
+
             
 @log_fail("Error on rapid_fire")
 async def rapid_fire(rebalance: Rebalancer, stub: lnrpc.LightningStub, payment_response) -> Rebalancer:

@@ -2,12 +2,19 @@
 {% block title %} {{ block.super }} - Balances{% endblock %}
 {% block content %}
 {% load humanize %}
-<button style="position:absolute;top:50px;right:50px;" id="open" class="open-button" onclick="openForm()">Broadcast Transaction</button>
+<button style="position:absolute;top:50px;right:50px;" id="openTX" class="open-button" onclick="openForm('tx')">Broadcast Transaction</button>
+<button style="position:absolute;top:50px;right:250px;" id="openUTXOs" class="open-button" onclick="openForm('utxos')">Consolidate UTXOs</button>
 <div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:rgb(225, 145, 50);border-style:solid;border-width:3px;" id="tx" class="w3-round w3-container">
     <h1>Broadcast A Raw Transaction</h1>
     <textarea id="raw_tx" type="text" placeholder="Raw TX Data" name="raw_tx"></textarea>
     <button style="margin-left: 10px;" type="button" class="btn" onclick="broadcastTx()">Broadcast</button>
-    <button type="button" class="btn cancel" onclick="closeForm()">Close</button>
+    <button type="button" class="btn cancel" onclick="closeForms()">Close</button>
+</div>
+<div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:rgb(225, 145, 50);border-style:solid;border-width:3px;" id="utxos" class="w3-round w3-container">
+  <h1>Consolidate TXs</h1>
+  <input title="Desired Fee Rate" id="desiredUTXOs" type="number" placeholder="Desired Fee Rate" name="desired">
+  <button style="margin-left: 10px;" type="button" class="btn" onclick="consolidateUTXOs()">Consolidate</button>
+  <button type="button" class="btn cancel" onclick="closeForms()">Close</button>
 </div>
 <div style="display:none;position:absolute;top:30px;right:30px;padding:30px;z-index:11;background-color:rgb(225, 145, 50);border-style:solid;border-width:3px;" id="calc" class="w3-round w3-container">
   <h1>Estimate A Fee Bump</h1>
@@ -32,18 +39,26 @@
       <th>Total Attempts</th>
       <th>Next Attempt</th>
       <th>Force</th>
+      <th>Bump Fee</th>
     </tr>
     {% for sweep in pending_sweeps %}
     <tr>
       <td><a href="{{ network_links }}/{{ network }}tx/{{ sweep.txid_str }}" target="_blank">{{ sweep.txid_str }}</a></td>
       <td>{{ sweep.amount_sat|intcomma }}</td>
-      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
+      <td>{% if sweep.witness_type == 0 %}Unknown{% elif sweep.witness_type == 1 %}Commitment Time Lock{% elif sweep.witness_type == 2 %}Commitment No Delay{% elif sweep.witness_type == 3 %}Commitment Revoke{% elif sweep.witness_type == 4 %}HTLC Offered Revoke{% elif sweep.witness_type == 5 %}HTLC Accepted Revoke{% elif sweep.witness_type == 6 %}HTLC Offered Timeout Second Level{% elif sweep.witness_type == 8 %}HTLC Offered Remote Timeout{% elif sweep.witness_type == 13 %}Commitment Anchor{% else %}{{ sweep.witness_type }}{% endif %}</td>
       <td>{% if sweep.requested_sat_per_vbyte == 0 %}---{% else %}{{ sweep.requested_sat_per_vbyte|intcomma }}{% endif %}</td>
       <td>{{ sweep.sat_per_vbyte|intcomma }}</td>
       <td>{{ sweep.requested_conf_target|intcomma }}</td>
       <td>{{ sweep.broadcast_attempts|intcomma }}</td>
       <td>{{ sweep.next_broadcast_height|intcomma }}</td>
       <td>{% if sweep.force %}Yes{% else %}No{% endif %}</td>
+      <td>
+          <form onsubmit="bumpFee(this,'{{ sweep.txid_str }}','{{ sweep.txid_index }}'); return false">
+            <span style="float:none" class="input" data-unit="sats/vbyte" title="Fee bump an unconfirmed tx">
+              <input style="width:225px" id="target_fee" type="number" min="1" max="1000" placeholder="New Fee Rate" name="target_fee">
+            </span>
+          </form>
+      </td>
     </tr>
     {% endfor %}
   </table>
@@ -117,23 +132,30 @@
     showBannerMsg('Fee rate for tx '+txid, target_fee)
     form.innerHTML = 'Updating...'
   }
-  function openForm(){
-    byId("tx").style.display = "block";
-    byId("open").style.display = "none";
+  function openForm(form){
+    byId(form).style.display = "block";
+    byId("openTX").style.display = "none";
+    byId("openUTXOs").style.display = "none";
   }
-  function closeForm(){
-    byId("open").style.display = "block";
+  function closeForms(){
     byId("tx").style.display = "none";
+    byId("utxos").style.display = "none";
+    byId("openTX").style.display = "block";
+    byId("openUTXOs").style.display = "block";
   }
   function broadcastTx(){
     tx_data = byId("raw_tx").value
     byId("raw_tx").value = ''
     Sync.POST('broadcast_tx', {body:{"raw_tx":tx_data}}, returnMsg)
   }
+  function consolidateUTXOs(){
+    desired = Number(byId("desiredUTXOs").value)
+    Sync.POST('consolidate', {body:{"sat_per_vbyte":desired}}, returnMsg)
+  }
   function returnMsg(msg){
     if(msg.error) showBannerMsg('', msg.error, true)
     if(msg.message) showBannerMsg('', msg.message, true)
-    closeForm()
+    closeForms()
   }
   function calcForm(){
     byId("calc").style.display = "block";

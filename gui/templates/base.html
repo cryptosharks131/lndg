@@ -57,7 +57,7 @@
       }
     )
     const wire_failures = "0|1|2|3|4|5|6|Expiry Too Soon|8|9|10|Amount Below Minimum|Fee Insufficient|13|14|Temporary Channel Failure|16|17|Unknown Next Peer|19|20|21|Expiry Too Far".split('|')
-    const failure_details = "0|---|2|3|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
+    const failure_details = "0|---|2|Link Not Eligible|4|HTLC Exceeds Max|Insufficient Balance|7|8|9|10|11|12|Invoice Not Open|14|15|16|17|18|19|Invalid Keysend|21|Circular Route".split('|')
     const failedHTLCs_template = {
       "timestamp": htlc => ({innerHTML: formatDate(htlc.timestamp), title: adjustTZ(htlc.timestamp) }),
       "chan_id_in": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_in}" target="_blank">${(BigInt(htlc.chan_id_in)>>40n)+'x'+(BigInt(htlc.chan_id_in)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_in) & BigInt('0xFFFF'))}</a>`}),
@@ -69,7 +69,7 @@
       "chan_out_alias": htlc => ({innerHTML: `<a href="/failed_htlcs?=${htlc.chan_id_out}_O" target="_blank">${htlc.chan_out_alias || htlc.chan_id_out}</a>`}),
       "chan_id_out": htlc => ({innerHTML: `<a href="/channel?=${htlc.chan_id_out}" target="_blank">${(BigInt(htlc.chan_id_out)>>40n)+'x'+(BigInt(htlc.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(htlc.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
       "missed_fee": htlc => ({innerHTML: parseFloat(htlc.missed_fee.toFixed(3)).toLocaleString()}),
-      "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : wire_failures[htlc.wire_failure]}),
+      "wire_failure": htlc => ({innerHTML: htlc.wire_failure > wire_failures.length ? htlc.wire_failure : `${wire_failures[htlc.wire_failure]}${htlc.wire_failure===12?` (${Math.ceil(htlc.missed_fee/htlc.amount*1000000)})`:''}`}),
       "failure_detail": htlc => ({innerHTML: htlc.failure_detail > failure_details.length ? htlc.failure_detail : failure_details[htlc.failure_detail]}),
     }
     const peer_events_template = {
@@ -114,7 +114,7 @@
         <center><button id="toggleTheme" onclick="toggleTheme()">{% if request.COOKIES.darkmode == 'true' %}Light{%else%}Dark{% endif %} Theme</button></center>
       </div>
       <div class="w3-container w3-padding-small">
-        <center>LNDg v1.8.0</center>
+        <center>LNDg v1.9.0</center>
         <center><a href="{% url 'logout' %}">Logout</a></center>
       </div>
     </div>
@@ -129,6 +129,7 @@
       document.cookie = `darkmode=${darkMode};max-age=34560000`
       byId('toggleTheme').innerHTML = `${darkMode ? 'Light' : 'Dark'} Theme`
     }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => e.matches ^ darkMode ? toggleTheme() : '')
     document.querySelectorAll(".table").forEach(table =>
       table.addEventListener("scroll", function (evt) {
         const el = evt.currentTarget, sT = el.scrollTop;
@@ -154,7 +155,7 @@
 
     async function auto_refresh(async_callback) {
       await sleep(21000)
-      while(document.hidden || document.cookie.includes('refresh=false')) {
+      while(document.hidden || document.cookie.includes('refresh=false') || document.activeElement.nodeName == "INPUT" || document.querySelectorAll('tr:hover').length === 1) {
         await sleep(100)
       }
       await async_callback()

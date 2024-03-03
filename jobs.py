@@ -305,20 +305,25 @@ def update_channels(stub):
                 if db_channel.remote_max_htlc_msat != remote_policy.max_htlc_msat:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=db_channel.remote_max_htlc_msat, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
-        except:
-            old_fee_rate = None
-            db_channel.local_base_fee = -1 if db_channel.local_base_fee is None else db_channel.local_base_fee
-            db_channel.local_fee_rate = -1 if db_channel.local_fee_rate is None else db_channel.local_fee_rate
-            db_channel.local_cltv = -1 if db_channel.local_cltv is None else db_channel.local_cltv
-            db_channel.local_disabled = False if db_channel.local_disabled is None else db_channel.local_disabled
-            db_channel.local_min_htlc_msat = -1 if db_channel.local_min_htlc_msat is None else db_channel.local_min_htlc_msat
-            db_channel.local_max_htlc_msat = -1 if db_channel.local_max_htlc_msat is None else db_channel.local_max_htlc_msat
-            db_channel.remote_base_fee = -1 if db_channel.remote_base_fee is None else db_channel.remote_base_fee
-            db_channel.remote_fee_rate = -1 if db_channel.remote_fee_rate is None else db_channel.remote_fee_rate
-            db_channel.remote_cltv = -1 if db_channel.remote_cltv is None else db_channel.remote_cltv
-            db_channel.remote_disabled = False if db_channel.remote_disabled is None else db_channel.remote_disabled
-            db_channel.remote_min_htlc_msat = -1 if db_channel.remote_min_htlc_msat is None else db_channel.remote_min_htlc_msat
-            db_channel.remote_max_htlc_msat = -1 if db_channel.remote_max_htlc_msat is None else db_channel.remote_max_htlc_msat
+        except Exception as e: # LND has not found the channel on the graph
+            print(f"{datetime.now().strftime('%c')} : [Data] : Error getting graph data for channel {db_channel.chan_id}: {str(e)}")
+            if pending_channel: # skip adding new channel to the list, LND may not have added to the graph yet
+                print(f"{datetime.now().strftime('%c')} : [Data] : Waiting for pending channel {db_channel.chan_id} to be added to the graph...")
+                continue 
+            else:
+                old_fee_rate = None
+                db_channel.local_base_fee = -1 if db_channel.local_base_fee is None else db_channel.local_base_fee
+                db_channel.local_fee_rate = -1 if db_channel.local_fee_rate is None else db_channel.local_fee_rate
+                db_channel.local_cltv = -1 if db_channel.local_cltv is None else db_channel.local_cltv
+                db_channel.local_disabled = False if db_channel.local_disabled is None else db_channel.local_disabled
+                db_channel.local_min_htlc_msat = -1 if db_channel.local_min_htlc_msat is None else db_channel.local_min_htlc_msat
+                db_channel.local_max_htlc_msat = -1 if db_channel.local_max_htlc_msat is None else db_channel.local_max_htlc_msat
+                db_channel.remote_base_fee = -1 if db_channel.remote_base_fee is None else db_channel.remote_base_fee
+                db_channel.remote_fee_rate = -1 if db_channel.remote_fee_rate is None else db_channel.remote_fee_rate
+                db_channel.remote_cltv = -1 if db_channel.remote_cltv is None else db_channel.remote_cltv
+                db_channel.remote_disabled = False if db_channel.remote_disabled is None else db_channel.remote_disabled
+                db_channel.remote_min_htlc_msat = -1 if db_channel.remote_min_htlc_msat is None else db_channel.remote_min_htlc_msat
+                db_channel.remote_max_htlc_msat = -1 if db_channel.remote_max_htlc_msat is None else db_channel.remote_max_htlc_msat
         # Check for pending settings to be applied
         if pending_channel:
             if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:

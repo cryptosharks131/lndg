@@ -344,7 +344,11 @@
   </table>
 </div>
 <div id="rebalancerDiv">
-  {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title='<a href="/rebalancing" target="_blank">Rebalance Requests</a>' %}
+{% autoescape off %}
+  {% with rebal_url='<a href="/rebalances?last_hop_pubkey='|add:channel.remote_pubkey|add:'" target:"_blank">'|add:channel.alias|add:' Rebalances</a>'%}
+    {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title=rebal_url %}
+  {% endwith %}
+{% endautoescape %}
 </div>
 <div id="paymentsDiv" class="w3-container w3-padding-small">
   <h2>Last 5 <a href="/payments" target="_blank">Payments Sent</a></h2>
@@ -376,12 +380,12 @@
     <tr>
       <th>Created</th>
       <th>Settled</th>
-      <th width=25%>Payment Hash</th>
       <th>Value</th>
       <th>Amount Paid</th>
       <th>State</th>
       <th>Channel In Alias</th>
-      <th width=10%>Channel In</th>
+      <th>Channel In</th>
+      <th>Hash</th>
       <th><a href="/keysends" target="_blank">Keysend</a></th>
     </tr>
     <tfoot id="loadMoreInvoices">
@@ -555,8 +559,9 @@
       return
     }
     const tableBody = invoicesTable.querySelector("tbody")
+    const renderer = use(invoices_template)
     for (inv of invoices){
-      tableBody.appendChild(use(invoices_template).render(inv))
+      tableBody.appendChild(renderer.render(inv))
     }
   }
   async function loadFailedHTLCs(){
