@@ -231,7 +231,7 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
-            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            logfile = '/var/log/lndg-controller.log'
             file_size = path.getsize(logfile)-2
             if file_size == 0:
                 logs = ['Logs are empty....']
@@ -1586,26 +1586,6 @@ def connect_peer_form(request):
     return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def new_address_form(request):
-    if request.method == 'POST':
-        try:
-            stub = lnrpc.LightningStub(lnd_connect())
-            version = stub.GetInfo(ln.GetInfoRequest()).version
-            # Verify sufficient version to handle p2tr address creation
-            if float(version[:4]) >= 0.15:
-                response = stub.NewAddress(ln.NewAddressRequest(type=4))
-            else:
-                response = stub.NewAddress(ln.NewAddressRequest(type=0))
-            messages.success(request, 'Deposit Address: ' + str(response.address))
-        except Exception as e:
-            error = str(e)
-            details_index = error.find('details =') + 11
-            debug_error_index = error.find('debug_error_string =') - 3
-            error_msg = error[details_index:debug_error_index]
-            messages.error(request, 'Address request failed! Error: ' + error_msg)
-    return redirect('home')
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def add_invoice_form(request):
     if request.method == 'POST':
         form = AddInvoiceForm(request.POST)
@@ -2584,6 +2564,15 @@ def add_invoice(request):
     else:
         return Response({'error': 'Invalid request!'})
 
+def get_new_address(stub, legacy=False):
+    version = stub.GetInfo(ln.GetInfoRequest()).version
+    # Verify sufficient version to handle p2tr address creation
+    if float(version[:4]) >= 0.15 and not legacy:
+        response = stub.NewAddress(ln.NewAddressRequest(type=4))
+    else:
+        response = stub.NewAddress(ln.NewAddressRequest(type=0))
+    return response
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def new_address(request):
@@ -2591,15 +2580,7 @@ def new_address(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect())
-            if serializer.validated_data['legacy'] == True:
-                response = stub.NewAddress(ln.NewAddressRequest(type=0))
-            else:
-                # Verify sufficient version to handle p2tr address creation
-                version = stub.GetInfo(ln.GetInfoRequest()).version
-                if float(version[:4]) >= 0.15:
-                    response = stub.NewAddress(ln.NewAddressRequest(type=4))
-                else:
-                    response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            response = get_new_address(stub, legacy=serializer.validated_data['legacy'])
             return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
         except Exception as e:
             error = str(e)
@@ -2608,7 +2589,26 @@ def new_address(request):
             error_msg = error[details_index:debug_error_index]
             return Response({'error': 'Address creation failed! Error: ' + error_msg})
     else:
-        return Response({'error': 'Invalid request!'})
+        return Response({'error': 'Invalid request!'}, status=400)
+
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def consolidate_utxos(request):
+    serializer = ConsolidateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            self_addr = get_new_address(stub).address
+            txid = stub.SendCoins(ln.SendCoinsRequest(addr=self_addr, send_all=True, sat_per_vbyte=serializer.validated_data['sat_per_vbyte'])).txid
+            return Response({'message': f'Successfully consolidated UXTOs: {txid}', 'txid':txid})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Failed to consolidate utxos! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'}, status=400)
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
