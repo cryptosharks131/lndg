@@ -684,8 +684,32 @@ def chart(request):
     payments = Payments.objects.filter(status=2).annotate(dt=TruncDay('creation_date')).values('dt').annotate(cost=Sum('fee', output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Value(0))
     invoices = Invoices.objects.filter(state=1, is_revenue=True).annotate(dt=TruncDay('settle_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('amt_paid', output_field=FloatField()), onchain=Value(0))
     forwards = Forwards.objects.annotate(dt=TruncDay('forward_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('fee', output_field=FloatField()), onchain=Value(0))
-    onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('amount'))
-    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain).values('dt', 'cost', 'revenue', 'onchain'))
+    onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('fee'))
+    
+    # Estimate blockchain timing parameters
+    first_record = Onchain.objects.order_by('time_stamp').first()
+    first_date = first_record.time_stamp
+    first_block = first_record.block_height
+    last_record = Onchain.objects.order_by('time_stamp').last()
+    last_date = last_record.time_stamp
+    last_block = last_record.block_height
+    time_interval_per_block = timedelta(minutes=10)
+    if last_block > first_block:
+        time_interval_per_block =  (last_date - first_date) / (last_block - first_block) 
+    offset = first_date - first_block * time_interval_per_block
+    # Convert close_height to datetime
+    datetime_from_blocks = TruncDay(
+        ExpressionWrapper(
+            offset
+            + ExpressionWrapper(
+                F('close_height') * time_interval_per_block,
+                output_field=DurationField(),
+            ),
+            output_field=DateTimeField()
+        )
+    )
+    closures = Closures.objects.annotate(dt=datetime_from_blocks).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('closing_costs'))
+    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain, closures).values('dt', 'cost', 'revenue', 'onchain'))
     results = balance.groupby('dt').sum().reset_index().sort_values('dt')
     return Response(results.to_dict(orient='records'))
 
