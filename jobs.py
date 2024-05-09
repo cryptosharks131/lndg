@@ -169,7 +169,9 @@ def update_channels(stub):
     chan_list = []
     channels = stub.ListChannels(ln.ListChannelsRequest()).channels
     PendingHTLCs.objects.all().delete()
-    block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
+    get_info = stub.GetInfo(ln.GetInfoRequest())
+    block_height = get_info.block_height
+    version = get_info.version
     for channel in channels:
         if Channels.objects.filter(chan_id=channel.chan_id).exists():
             #Update the channel record with the most current data
@@ -265,6 +267,16 @@ def update_channels(stub):
             db_channel.local_disabled = local_policy.disabled
             db_channel.local_min_htlc_msat = local_policy.min_htlc
             db_channel.local_max_htlc_msat = local_policy.max_htlc_msat
+            if float(version[:4]) >= 0.18:
+                try:
+                    db_channel.local_inbound_base_fee = local_policy.inbound_fee_base_msat
+                    db_channel.local_inbound_fee_rate = local_policy.inbound_fee_rate_milli_msat
+                except:
+                    db_channel.local_inbound_base_fee = 0
+                    db_channel.local_inbound_fee_rate = 0
+            else:
+                db_channel.local_inbound_base_fee = 0
+                db_channel.local_inbound_fee_rate = 0
             if db_channel.remote_cltv == -1:
                 PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=None, new_value=remote_policy.fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_base_fee = remote_policy.fee_base_msat
@@ -281,6 +293,18 @@ def update_channels(stub):
                 db_channel.remote_min_htlc_msat = remote_policy.min_htlc
                 PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=None, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
+                if float(version[:4]) >= 0.18:
+                    try:
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingBaseFee', old_value=None, new_value=remote_policy.inbound_fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                        db_channel.remote_inbound_base_fee = remote_policy.inbound_fee_base_msat
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingFeeRate', old_value=None, new_value=remote_policy.inbound_fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                        db_channel.remote_inbound_fee_rate = remote_policy.inbound_fee_rate_milli_msat
+                    except:
+                        db_channel.remote_inbound_base_fee = 0
+                        db_channel.remote_inbound_fee_rate = 0
+                else:
+                    db_channel.remote_inbound_base_fee = 0
+                    db_channel.remote_inbound_fee_rate = 0
             else:
                 if db_channel.remote_base_fee != remote_policy.fee_base_msat:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='BaseFee', old_value=db_channel.remote_base_fee, new_value=remote_policy.fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
@@ -305,6 +329,18 @@ def update_channels(stub):
                 if db_channel.remote_max_htlc_msat != remote_policy.max_htlc_msat:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=db_channel.remote_max_htlc_msat, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
+                if float(version[:4]) >= 0.18:
+                    try:
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingBaseFee', old_value=db_channel.remote_inbound_base_fee, new_value=remote_policy.inbound_fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                        db_channel.remote_inbound_base_fee = remote_policy.inbound_fee_base_msat
+                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingFeeRate', old_value=db_channel.remote_inbound_fee_rate, new_value=remote_policy.inbound_fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                        db_channel.remote_inbound_fee_rate = remote_policy.inbound_fee_rate_milli_msat
+                    except:
+                        db_channel.remote_inbound_base_fee = 0
+                        db_channel.remote_inbound_fee_rate = 0
+                else:
+                    db_channel.remote_inbound_base_fee = 0
+                    db_channel.remote_inbound_fee_rate = 0
         except Exception as e: # LND has not found the channel on the graph
             print(f"{datetime.now().strftime('%c')} : [Data] : Error getting graph data for channel {db_channel.chan_id}: {str(e)}")
             if pending_channel: # skip adding new channel to the list, LND may not have added to the graph yet
