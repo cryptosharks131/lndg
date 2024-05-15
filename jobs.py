@@ -151,16 +151,17 @@ def update_forwards(stub):
     for forward in forwards:
         inbound_channel = Channels.objects.get(chan_id=forward.chan_id_in) if Channels.objects.filter(chan_id=forward.chan_id_in).exists() else None
         outbound_channel = Channels.objects.get(chan_id=forward.chan_id_out) if Channels.objects.filter(chan_id=forward.chan_id_out).exists() else None
+        forward_datetime = datetime.fromtimestamp(forward.timestamp)
         amt_in_msat = forward.amt_in_msat
         amt_out_msat = forward.amt_out_msat
-        out_fee_msat = int((amt_out_msat * (outbound_channel.local_fee_rate/1000000)) + outbound_channel.local_base_fee)
-        if forward.fee_msat < out_fee_msat:
-            in_fee_msat = out_fee_msat - forward.fee_msat
-        else:
-            in_fee_msat = 0
+        in_fee_msat = 0
+        if outbound_channel and outbound_channel.fees_updated < forward_datetime:
+            out_fee_msat = int((amt_out_msat * (outbound_channel.local_fee_rate/1000000)) + outbound_channel.local_base_fee)
+            if forward.fee_msat < out_fee_msat:
+                in_fee_msat = out_fee_msat - forward.fee_msat
         incoming_peer_alias = (inbound_channel.remote_pubkey[:12] if inbound_channel.alias == '' else inbound_channel.alias) if inbound_channel else forward.peer_alias_in
         outgoing_peer_alias = (outbound_channel.remote_pubkey[:12] if outbound_channel.alias == '' else outbound_channel.alias) if outbound_channel else forward.peer_alias_out
-        Forwards(forward_date=datetime.fromtimestamp(forward.timestamp), chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=amt_in_msat, amt_out_msat=amt_out_msat, fee=round(forward.fee_msat/1000, 3), inbound_fee=round(in_fee_msat/1000, 3)).save()
+        Forwards(forward_date=forward_datetime, chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=amt_in_msat, amt_out_msat=amt_out_msat, fee=round(forward.fee_msat/1000, 3), inbound_fee=round(in_fee_msat/1000, 3)).save()
 
 def disconnectpeer(stub, peer):
     try:
