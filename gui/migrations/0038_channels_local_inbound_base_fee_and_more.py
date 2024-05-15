@@ -34,4 +34,10 @@ class Migration(migrations.Migration):
             field=models.IntegerField(default=0),
             preserve_default=False,
         ),
+        migrations.AddField(
+            model_name='forwards',
+            name='inbound_fee',
+            field=models.FloatField(default=0),
+            preserve_default=False,
+        ),
     ]

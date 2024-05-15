@@ -60,6 +60,7 @@ class Forwards(models.Model):
     amt_in_msat = models.BigIntegerField()
     amt_out_msat = models.BigIntegerField()
     fee = models.FloatField()
+    inbound_fee = models.FloatField()
     class Meta:
         app_label = 'gui'
 
