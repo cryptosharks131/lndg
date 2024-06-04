@@ -1770,13 +1770,13 @@ def update_channel(request):
                 db_channel.save()
                 Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
                 messages.success(request, 'Fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
-            if update_target == 12:
+            elif update_target == 12:
                 stub = lnrpc.LightningStub(lnd_connect())
                 version = stub.GetInfo(ln.GetInfoRequest()).version
                 if float(version[:4]) >= 0.18:
                     channel_point = point(db_channel)
                     inbound_fee_rate = db_channel.local_inbound_fee_rate if db_channel.local_inbound_fee_rate else 0
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_base_fee_msat=target, inbound_fee_rate_ppm=inbound_fee_rate))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=target, fee_rate_ppm=inbound_fee_rate)))
                     db_channel.local_inbound_base_fee = target
                     db_channel.save()
                     messages.success(request, 'Inbound base fee for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
@@ -1788,7 +1788,7 @@ def update_channel(request):
                 if float(version[:4]) >= 0.18:
                     channel_point = point(db_channel)
                     inbound_base_fee = db_channel.local_inbound_base_fee if db_channel.local_inbound_base_fee else 0
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_base_fee_msat=inbound_base_fee, inbound_fee_rate_ppm=target))
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=inbound_base_fee, fee_rate_ppm=target)))
                     db_channel.local_inbound_fee_rate = target
                     db_channel.save()
                     messages.success(request, 'Inbound fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
@@ -1948,7 +1948,7 @@ def update_setting(request):
                     db_channel.local_base_fee = target
                     db_channel.save()
                 messages.success(request, 'Base fee for all channels updated to a value of: ' + str(target))
-            if key == 'ALL-iRate':
+            elif key == 'ALL-iRate':
                 target = int(value)
                 stub = lnrpc.LightningStub(lnd_connect())
                 version = stub.GetInfo(ln.GetInfoRequest()).version
@@ -1957,7 +1957,7 @@ def update_setting(request):
                     for db_channel in channels:
                         channel_point = point(db_channel)
                         inbound_base_fee = db_channel.local_inbound_base_fee if db_channel.local_inbound_base_fee else 0
-                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_base_fee_msat=inbound_base_fee, inbound_fee_rate_ppm=target))
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=inbound_base_fee, fee_rate_ppm=target)))
                         db_channel.local_inbound_fee_rate = target
                         db_channel.save()
                     messages.success(request, 'Inbound fee rate for all open channels updated to a value of: ' + str(target))
@@ -1972,7 +1972,7 @@ def update_setting(request):
                     for db_channel in channels:
                         channel_point = point(db_channel)
                         inbound_fee_rate = db_channel.local_inbound_fee_rate if db_channel.local_inbound_fee_rate else 0
-                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_base_fee_msat=target, inbound_fee_rate_ppm=inbound_fee_rate))
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=target, fee_rate_ppm=inbound_fee_rate)))
                         db_channel.local_inbound_base_fee = target
                         db_channel.save()
                     messages.success(request, 'Inbound base fee for all channels updated to a value of: ' + str(target)) 
@@ -2886,8 +2886,7 @@ def chan_policy(request):
                 kwargs = {'chan_point':channel_point, 'base_fee_msat':base_fee_msat, 'fee_rate':fee_rate, 'time_lock_delta':time_lock_delta, 'min_htlc_msat_specified':True, 'min_htlc_msat':min_htlc_msat, 'max_htlc_msat':max_htlc_msat}
                 if serializer.validated_data['inbound_base_fee'] or serializer.validated_data['inbound_fee_rate']:
                     if float(version[:4]) >= 0.18:
-                        kwargs['inbound_base_fee_msat'] = inbound_base_fee_msat if inbound_base_fee_msat else 0
-                        kwargs['inbound_fee_rate_ppm'] = inbound_fee_rate if inbound_fee_rate else 0
+                        kwargs['inbound_fee'] = ln.InboundFee(base_fee_msat = inbound_base_fee_msat if inbound_base_fee_msat else 0, fee_rate_ppm = inbound_fee_rate if inbound_fee_rate else 0)
                     else:
                         return Response({'error': f'LND version too low to set inbound fees, update to v0.18+'})
                 stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**kwargs))
