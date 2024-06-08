@@ -338,14 +338,18 @@ def update_channels(stub):
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MaxHTLC', old_value=db_channel.remote_max_htlc_msat, new_value=remote_policy.max_htlc_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_max_htlc_msat = remote_policy.max_htlc_msat
                 if float(version[:4]) >= 0.18:
-                    try:
-                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingBaseFee', old_value=db_channel.remote_inbound_base_fee, new_value=remote_policy.inbound_fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
-                        db_channel.remote_inbound_base_fee = remote_policy.inbound_fee_base_msat
-                        PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingFeeRate', old_value=db_channel.remote_inbound_fee_rate, new_value=remote_policy.inbound_fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
-                        db_channel.remote_inbound_fee_rate = remote_policy.inbound_fee_rate_milli_msat
-                    except:
-                        db_channel.remote_inbound_base_fee = 0
-                        db_channel.remote_inbound_fee_rate = 0
+                    if db_channel.remote_inbound_base_fee != remote_policy.inbound_fee_base_msat:
+                        try:
+                            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingBaseFee', old_value=db_channel.remote_inbound_base_fee, new_value=remote_policy.inbound_fee_base_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                            db_channel.remote_inbound_base_fee = remote_policy.inbound_fee_base_msat
+                        except:
+                            db_channel.remote_inbound_base_fee = 0
+                    if db_channel.remote_inbound_fee_rate != remote_policy.inbound_fee_rate_milli_msat:
+                        try:
+                            PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='IncomingFeeRate', old_value=db_channel.remote_inbound_fee_rate, new_value=remote_policy.inbound_fee_rate_milli_msat, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                            db_channel.remote_inbound_fee_rate = remote_policy.inbound_fee_rate_milli_msat
+                        except:
+                            db_channel.remote_inbound_fee_rate = 0
                 else:
                     db_channel.remote_inbound_base_fee = 0
                     db_channel.remote_inbound_fee_rate = 0
