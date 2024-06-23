@@ -27,8 +27,8 @@
       "amt_out": f => ({innerHTML: (f.amt_out > 1000 ? f.amt_out.intcomma() : f.amt_out) + ` <small class="w3-round w3-border-small w3-border-grey w3-tiny">+${f.fee.intcomma().toLocaleString()}</small>`, style: {paddingLeft: "0px", width: "160px"} }),
       "chan_out_alias": f => ({innerHTML: f.chan_out_alias || f.chan_id_out}),
       "chan_id_out": f => ({innerHTML: `<a href="/channel?=${f.chan_id_out}" target="_blank">${(BigInt(f.chan_id_out)>>40n)+'x'+(BigInt(f.chan_id_out)>>16n & BigInt('0xFFFFFF'))+'x'+(BigInt(f.chan_id_out) & BigInt('0xFFFF'))}</a>`}),
-      "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString()}),
-      "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString()}),
+      "fee": f => ({innerHTML: parseFloat(f.fee.toFixed(3)).toLocaleString() + (f.inbound_fee > 0 ? ` <small class="w3-round w3-border-small w3-border-grey w3-tiny">-${f.inbound_fee.toLocaleString()}</small>` : ``)}),
+      "ppm": f => ({innerHTML: parseInt(f.ppm.toFixed(0)).toLocaleString() + (f.inbound_fee > 0 ? ` <small class="w3-round w3-border-small w3-border-grey w3-tiny">-${((f.inbound_fee/(f.inbound_fee+f.fee))*100).intcomma().toLocaleString()}%</small>` : ``)}),
     }
     let {fee, ppm} = routed_template
     const payments_template = Object.assign({}, {

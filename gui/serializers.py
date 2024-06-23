@@ -155,6 +155,8 @@ class UpdateChanPolicy(serializers.Serializer):
     chan_id = serializers.CharField(max_length=20)
     base_fee = serializers.IntegerField(required=False, default=None)
     fee_rate = serializers.IntegerField(required=False, default=None)
+    inbound_base_fee = serializers.IntegerField(required=False, default=None)
+    inbound_fee_rate = serializers.IntegerField(required=False, default=None)
     disabled = serializers.IntegerField(required=False, default=None)
     cltv = serializers.IntegerField(required=False, default=None)
     min_htlc = serializers.FloatField(required=False, default=None)

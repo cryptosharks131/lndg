@@ -84,6 +84,8 @@ updates_channel_codes = [
     (9, 'cltv'),
     (10, 'min_htlc'),
     (11, 'max_htlc'),
+    (12, 'inbound_base_fee'),
+    (13, 'inbound_fee_rate'),
 ]
 
 class UpdateChannel(forms.Form):
