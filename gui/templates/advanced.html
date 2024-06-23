@@ -23,6 +23,20 @@
             <input type="hidden" name="key" value="ALL-oBase">
           </form>
         </td>
+        <td title="Update all channel inbound fee rates">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input data-tag="inbound" style="text-align:center" id="value" type="number" min="-100000" max="0" name="value" value="">
+            <input type="hidden" name="key" value="ALL-iRate">
+          </form>
+        </td>
+        <td title="Update all channel inbound base fees">
+          <form action="/update_setting/" method="post">
+            {% csrf_token %}
+            <input data-tag="inbound" style="text-align:center" id="value" type="number" min="-100000000" max="0" name="value" value="">
+            <input type="hidden" name="key" value="ALL-iBase">
+          </form>
+        </td>
         <td title="Update all channel CLTVs">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -37,7 +51,7 @@
             <input type="hidden" name="key" value="ALL-minHTLC">
           </form>
         </td>
-        <th colspan="3"></th>
+        <th colspan="5"></th>
         <td title="Update all channel AR amount amounts">
           <form action="/update_setting/" method="post">
             {% csrf_token %}
@@ -83,17 +97,21 @@
         <th>Channel State</th>
         <th>oRate</th>
         <th>oBase</th>
+        <th>iRate</th>
+        <th>iBase</th>
         <th>oCLTV</th>
         <th>minHTLC</th>
         <th>maxHTLC</th>
-        <th onclick="sortTable(event.target, 11, 'int', 1)">iRate</th>
-        <th onclick="sortTable(event.target, 12, 'int', 1)">iBase</th>
+        <th onclick="sortTable(event.target, 13, 'int', 1)">Peer iRate</th>
+        <th onclick="sortTable(event.target, 14, 'int', 1)">Peer iBase</th>
+        <th onclick="sortTable(event.target, 15, 'int', 1)">Peer oRate</th>
+        <th onclick="sortTable(event.target, 16, 'int', 1)">Peer oBase</th>
         <th title="When AR is ENABLED for the channel, the size of the rebalance attempts that should be tried during attempts to refill the channel.">Target Amt</th>
         <th title="When AR is ENABLED, the maximum percentage amount of the local fee rate that can be used for the max rebalancing cost.">Max Cost %</th>
         <th title="When AR is NOT ENABLED for the channel, keep pushing OUT the channel until its outbound liquidity falls below the oTarget%.">oTarget%</th>
         <th title="When AR is ENABLED for the channel, keep pulling IN to the channel until its inbound liquidity falls below the iTarget%.">iTarget%</th>
         <th title="When AR is ENABLED it will refill the channel with outbound liquidity.">AR</th>
-        <th onclick="sortTable(event.target, 18, 'String', 1)">Active</th>
+        <th onclick="sortTable(event.target, 22, 'String', 1)">Active</th>
       </tr>
       {% for channel in channels %}
       <tr>
@@ -139,6 +157,22 @@
         <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
+            <input data-tag="inbound" style="text-align:center" id="target" type="number" min="-100000" max="0" name="target" value="{{ channel.local_inbound_fee_rate }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="13">
+          </form>
+        </td>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input data-tag="inbound" style="text-align:center" id="target" type="number" min="-100000000" max="0" name="target" value="{{ channel.local_inbound_base_fee }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="12">
+          </form>
+        </td>
+        <td {% if channel.local_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% elif channel.private == True %}style="background-color: rgba(110,118,129,0.4)"{% endif %}>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
             <input style="text-align:center" id="target" type="number" min="18" max="1000" name="target" value="{{ channel.local_cltv }}">
             <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
             <input type="hidden" name="update_target" value="9">
@@ -160,6 +194,8 @@
             <input type="hidden" name="update_target" value="11">
           </form>
         </td>
+        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_inbound_fee_rate|intcomma }}</td>
+        <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_inbound_base_fee|intcomma }}</td>
         <td title="Fee Ratio: {{ channel.fee_ratio }}%" {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_fee_rate|intcomma }}</td>
         <td {% if channel.remote_disabled == True %}style="background-color: rgba(248,81,73,0.15);"{% endif %}>{{ channel.remote_base_fee|intcomma }}</td>
         <td>
@@ -218,4 +254,15 @@
 {% if local_settings %}
 {% include 'local_settings.html' with settings=local_settings title='Update Local' %}
 {% endif %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const node_info = await GET('node_info', {data: {limit:1}})
+    if (parseFloat(node_info.version.substring(0, 4)) <= 0.17){
+      let inputs = document.querySelectorAll('input[data-tag="inbound"]')
+      inputs.forEach(function(input) {
+          input.disabled = true
+      })
+    }
+  })
+</script>
 {% endblock %}
