@@ -345,7 +345,7 @@
 </div>
 <div id="rebalancerDiv">
 {% autoescape off %}
-  {% with rebal_url='<a href="/rebalances?last_hop_pubkey='|add:channel.remote_pubkey|add:'" target:"_blank">'|add:channel.alias|add:' Rebalances</a>'%}
+  {% with rebal_url='<a href="/rebalances?last_hop_pubkey='|add:channel.remote_pubkey|add:'" target:"_blank"> Rebalances</a>'%}
     {% include 'rebalances_table.html' with count=5 last_hop_pubkey=channel.remote_pubkey load_count=5 title=rebal_url %}
   {% endwith %}
 {% endautoescape %}

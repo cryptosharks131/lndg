@@ -231,7 +231,7 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
-            logfile = '/var/log/lndg-controller.log' if path.isfile('/var/log/lndg-controller.log') else 'data/lndg-controller.log'
+            logfile = '/var/log/lndg-controller.log'
             file_size = path.getsize(logfile)-2
             if file_size == 0:
                 logs = ['Logs are empty....']
@@ -1586,26 +1586,6 @@ def connect_peer_form(request):
     return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def new_address_form(request):
-    if request.method == 'POST':
-        try:
-            stub = lnrpc.LightningStub(lnd_connect())
-            version = stub.GetInfo(ln.GetInfoRequest()).version
-            # Verify sufficient version to handle p2tr address creation
-            if float(version[:4]) >= 0.15:
-                response = stub.NewAddress(ln.NewAddressRequest(type=4))
-            else:
-                response = stub.NewAddress(ln.NewAddressRequest(type=0))
-            messages.success(request, 'Deposit Address: ' + str(response.address))
-        except Exception as e:
-            error = str(e)
-            details_index = error.find('details =') + 11
-            debug_error_index = error.find('debug_error_string =') - 3
-            error_msg = error[details_index:debug_error_index]
-            messages.error(request, 'Address request failed! Error: ' + error_msg)
-    return redirect('home')
-
-@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def add_invoice_form(request):
     if request.method == 'POST':
         form = AddInvoiceForm(request.POST)
@@ -1790,6 +1770,30 @@ def update_channel(request):
                 db_channel.save()
                 Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
                 messages.success(request, 'Fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
+            elif update_target == 12:
+                stub = lnrpc.LightningStub(lnd_connect())
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                if float(version[:4]) >= 0.18:
+                    channel_point = point(db_channel)
+                    inbound_fee_rate = db_channel.local_inbound_fee_rate if db_channel.local_inbound_fee_rate else 0
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=target, fee_rate_ppm=inbound_fee_rate)))
+                    db_channel.local_inbound_base_fee = target
+                    db_channel.save()
+                    messages.success(request, 'Inbound base fee for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
+                else:
+                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')
+            elif update_target == 13:
+                stub = lnrpc.LightningStub(lnd_connect())
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                if float(version[:4]) >= 0.18:
+                    channel_point = point(db_channel)
+                    inbound_base_fee = db_channel.local_inbound_base_fee if db_channel.local_inbound_base_fee else 0
+                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=inbound_base_fee, fee_rate_ppm=target)))
+                    db_channel.local_inbound_fee_rate = target
+                    db_channel.save()
+                    messages.success(request, 'Inbound fee rate for channel ' + str(db_channel.alias) + ' (' + str(db_channel.chan_id) + ') updated to a value of: ' + str(target))
+                else:
+                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')
             elif update_target == 2:
                 db_channel.ar_amt_target = target
                 db_channel.save()
@@ -1944,6 +1948,36 @@ def update_setting(request):
                     db_channel.local_base_fee = target
                     db_channel.save()
                 messages.success(request, 'Base fee for all channels updated to a value of: ' + str(target))
+            elif key == 'ALL-iRate':
+                target = int(value)
+                stub = lnrpc.LightningStub(lnd_connect())
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                if float(version[:4]) >= 0.18:                
+                    channels = Channels.objects.filter(is_open=True)
+                    for db_channel in channels:
+                        channel_point = point(db_channel)
+                        inbound_base_fee = db_channel.local_inbound_base_fee if db_channel.local_inbound_base_fee else 0
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=inbound_base_fee, fee_rate_ppm=target)))
+                        db_channel.local_inbound_fee_rate = target
+                        db_channel.save()
+                    messages.success(request, 'Inbound fee rate for all open channels updated to a value of: ' + str(target))
+                else:
+                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')                    
+            elif key == 'ALL-iBase':
+                target = int(value)
+                stub = lnrpc.LightningStub(lnd_connect())
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                if float(version[:4]) >= 0.18:                  
+                    channels = Channels.objects.filter(is_open=True)
+                    for db_channel in channels:
+                        channel_point = point(db_channel)
+                        inbound_fee_rate = db_channel.local_inbound_fee_rate if db_channel.local_inbound_fee_rate else 0
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=target, fee_rate_ppm=inbound_fee_rate)))
+                        db_channel.local_inbound_base_fee = target
+                        db_channel.save()
+                    messages.success(request, 'Inbound base fee for all channels updated to a value of: ' + str(target)) 
+                else:
+                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')                                   
             elif key == 'ALL-CLTV':
                 target = int(value)
                 stub = lnrpc.LightningStub(lnd_connect())
@@ -2405,6 +2439,7 @@ def node_info(request):
     except:
         db_size = 0
     return Response({
+        'version': node_info.version,
         'num_peers': node_info.num_peers,
         'synced_to_graph': node_info.synced_to_graph,
         'synced_to_chain': node_info.synced_to_chain,
@@ -2584,6 +2619,15 @@ def add_invoice(request):
     else:
         return Response({'error': 'Invalid request!'})
 
+def get_new_address(stub, legacy=False):
+    version = stub.GetInfo(ln.GetInfoRequest()).version
+    # Verify sufficient version to handle p2tr address creation
+    if float(version[:4]) >= 0.15 and not legacy:
+        response = stub.NewAddress(ln.NewAddressRequest(type=4))
+    else:
+        response = stub.NewAddress(ln.NewAddressRequest(type=0))
+    return response
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def new_address(request):
@@ -2591,15 +2635,7 @@ def new_address(request):
     if serializer.is_valid():
         try:
             stub = lnrpc.LightningStub(lnd_connect())
-            if serializer.validated_data['legacy'] == True:
-                response = stub.NewAddress(ln.NewAddressRequest(type=0))
-            else:
-                # Verify sufficient version to handle p2tr address creation
-                version = stub.GetInfo(ln.GetInfoRequest()).version
-                if float(version[:4]) >= 0.15:
-                    response = stub.NewAddress(ln.NewAddressRequest(type=4))
-                else:
-                    response = stub.NewAddress(ln.NewAddressRequest(type=0))
+            response = get_new_address(stub, legacy=serializer.validated_data['legacy'])
             return Response({'message': 'Retrieved new deposit address!', 'data':str(response.address)})
         except Exception as e:
             error = str(e)
@@ -2608,7 +2644,26 @@ def new_address(request):
             error_msg = error[details_index:debug_error_index]
             return Response({'error': 'Address creation failed! Error: ' + error_msg})
     else:
-        return Response({'error': 'Invalid request!'})
+        return Response({'error': 'Invalid request!'}, status=400)
+
+@api_view(['POST'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def consolidate_utxos(request):
+    serializer = ConsolidateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            self_addr = get_new_address(stub).address
+            txid = stub.SendCoins(ln.SendCoinsRequest(addr=self_addr, send_all=True, sat_per_vbyte=serializer.validated_data['sat_per_vbyte'])).txid
+            return Response({'message': f'Successfully consolidated UXTOs: {txid}', 'txid':txid})
+        except Exception as e:
+            error = str(e)
+            details_index = error.find('details =') + 11
+            debug_error_index = error.find('debug_error_string =') - 3
+            error_msg = error[details_index:debug_error_index]
+            return Response({'error': 'Failed to consolidate utxos! Error: ' + error_msg})
+    else:
+        return Response({'error': 'Invalid request!'}, status=400)
 
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
@@ -2818,14 +2873,23 @@ def chan_policy(request):
         channel_point = point(db_channel)
         return_response = {}
         try:
-            if serializer.validated_data['base_fee'] is not None or serializer.validated_data['fee_rate'] is not None or serializer.validated_data['cltv'] is not None or serializer.validated_data['min_htlc'] is not None or serializer.validated_data['max_htlc'] is not None:
+            if serializer.validated_data['base_fee'] is not None or serializer.validated_data['fee_rate'] is not None or serializer.validated_data['cltv'] is not None or serializer.validated_data['min_htlc'] is not None or serializer.validated_data['max_htlc'] is not None or serializer.validated_data['inbound_base_fee'] is not None or serializer.validated_data['inbound_fee_rate'] is not None:
                 base_fee_msat = serializer.validated_data['base_fee'] if serializer.validated_data['base_fee'] is not None else db_channel.local_base_fee
                 fee_rate = (serializer.validated_data['fee_rate']/1000000) if serializer.validated_data['fee_rate'] is not None else (db_channel.local_fee_rate/1000000)
+                inbound_base_fee_msat = serializer.validated_data['inbound_base_fee'] if serializer.validated_data['inbound_base_fee'] is not None else db_channel.local_inbound_base_fee
+                inbound_fee_rate = serializer.validated_data['inbound_fee_rate'] if serializer.validated_data['inbound_fee_rate'] is not None else db_channel.local_inbound_fee_rate
                 time_lock_delta = serializer.validated_data['cltv'] if serializer.validated_data['cltv'] is not None else db_channel.local_cltv
                 min_htlc_msat = int(serializer.validated_data['min_htlc']*1000) if serializer.validated_data['min_htlc'] is not None else db_channel.local_min_htlc_msat
                 max_htlc_msat = int(serializer.validated_data['max_htlc']*1000) if serializer.validated_data['max_htlc'] is not None else db_channel.local_max_htlc_msat
                 stub = lnrpc.LightningStub(lnd_connect())
-                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=base_fee_msat, fee_rate=fee_rate, time_lock_delta=time_lock_delta, min_htlc_msat_specified=True, min_htlc_msat=min_htlc_msat, max_htlc_msat=max_htlc_msat))               
+                version = stub.GetInfo(ln.GetInfoRequest()).version
+                kwargs = {'chan_point':channel_point, 'base_fee_msat':base_fee_msat, 'fee_rate':fee_rate, 'time_lock_delta':time_lock_delta, 'min_htlc_msat_specified':True, 'min_htlc_msat':min_htlc_msat, 'max_htlc_msat':max_htlc_msat}
+                if serializer.validated_data['inbound_base_fee'] or serializer.validated_data['inbound_fee_rate']:
+                    if float(version[:4]) >= 0.18:
+                        kwargs['inbound_fee'] = ln.InboundFee(base_fee_msat = inbound_base_fee_msat if inbound_base_fee_msat else 0, fee_rate_ppm = inbound_fee_rate if inbound_fee_rate else 0)
+                    else:
+                        return Response({'error': f'LND version too low to set inbound fees, update to v0.18+'})
+                stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(**kwargs))
                 if serializer.validated_data['base_fee'] is not None:
                     db_channel.local_base_fee = serializer.validated_data['base_fee']
                     db_channel.save()
@@ -2837,6 +2901,14 @@ def chan_policy(request):
                     db_channel.save()
                     return_response['fee_rate'] = serializer.validated_data['fee_rate']
                     Autofees(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, setting=(f"Manual"), old_value=old_fee_rate, new_value=db_channel.local_fee_rate).save()
+                if serializer.validated_data['inbound_base_fee'] is not None:
+                    db_channel.local_inbound_base_fee = serializer.validated_data['inbound_base_fee']
+                    db_channel.save()
+                    return_response['inbound_base_fee'] = serializer.validated_data['inbound_base_fee']
+                if serializer.validated_data['inbound_fee_rate'] is not None:
+                    db_channel.local_inbound_fee_rate = serializer.validated_data['inbound_fee_rate']
+                    db_channel.save()
+                    return_response['inbound_fee_rate'] = serializer.validated_data['inbound_fee_rate']
                 if serializer.validated_data['cltv'] is not None:
                     db_channel.local_cltv = serializer.validated_data['cltv']
                     db_channel.save()
