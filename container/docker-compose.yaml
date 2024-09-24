@@ -4,7 +4,9 @@ services:
     volumes:
       - /root/.lnd:/root/.lnd:ro
       - /root/lndg/data:/app/data:rw
+      - /root/lndg/data/lndg-controller.log:/var/log/lndg-controller.log:rw
     command:
+      - sh
       - -c
       - python initialize.py -net 'mainnet' -rpc 'localhost:10009' -wn && python controller.py runserver 0.0.0.0:8000 > /var/log/lndg-controller.log 2>&1
     ports:
