@@ -372,6 +372,10 @@ def update_channels(stub):
                 db_channel.remote_disabled = False if db_channel.remote_disabled is None else db_channel.remote_disabled
                 db_channel.remote_min_htlc_msat = -1 if db_channel.remote_min_htlc_msat is None else db_channel.remote_min_htlc_msat
                 db_channel.remote_max_htlc_msat = -1 if db_channel.remote_max_htlc_msat is None else db_channel.remote_max_htlc_msat
+                db_channel.local_inbound_base_fee = -1 if db_channel.local_inbound_base_fee is None else db_channel.local_inbound_base_fee
+                db_channel.local_inbound_fee_rate = -1 if db_channel.local_inbound_fee_rate is None else db_channel.local_inbound_fee_rate
+                db_channel.remote_inbound_base_fee = -1 if db_channel.remote_inbound_base_fee is None else db_channel.remote_inbound_base_fee
+                db_channel.remote_inbound_fee_rate = -1 if db_channel.remote_inbound_fee_rate is None else db_channel.remote_inbound_fee_rate
         # Check for pending settings to be applied
         if pending_channel:
             if pending_channel.local_base_fee or pending_channel.local_fee_rate or pending_channel.local_cltv:
