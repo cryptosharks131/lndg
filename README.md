@@ -30,7 +30,7 @@ services:
     build: .
     volumes:
       - /home/<user>/.lnd:/root/.lnd:ro
-      - /home/<user>/<path-to>/lndg/data:/lndg/data:rw
+      - /home/<user>/<path-to>/lndg/data:/app/data:rw
     command:
       - sh
       - -c
