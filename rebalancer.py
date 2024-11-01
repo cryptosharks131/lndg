@@ -354,7 +354,7 @@ async def async_queue_manager(rebalancer_queue):
                     scheduled_rebalances.append(rebalance.id)
                     await rebalancer_queue.put(rebalance)
             elif rebalancer_queue.qsize() == 0 and len(active_rebalances) == 0:
-                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stoping the rebalancer...")
+                print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Queue is still empty, stopping the rebalancer...")
                 shutdown_rebalancer = True
                 return
             await asyncio.sleep(30)
