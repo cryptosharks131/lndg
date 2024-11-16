@@ -75,7 +75,7 @@ docker system prune -f
 
 ### Step 2 - Setup Backend Controller For Data, Automated Rebalancing, HTLC Stream Data and p2p-trade-secrets
 
-The file `controller.py` orchastrates the services needed to update the backend database with the most up-to-date information, rebalance any channels based on your LNDg dashboard settings, listen for any failure events in your HTLC stream and serves the p2p trade secrets.
+The file `controller.py` orchestrates the services needed to update the backend database with the most up-to-date information, rebalance any channels based on your LNDg dashboard settings, listen for any failure events in your HTLC stream and serves the p2p trade secrets.
 
 **Recommended Setup with Supervisord (least setup) or Systemd (most compatible):**
 
