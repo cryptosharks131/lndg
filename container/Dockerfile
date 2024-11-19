@@ -26,6 +26,6 @@ EXPOSE $LNDG_PORT
 
 VOLUME [ "/lnd", "/lndg/data" ]
 
-USER lndg
+USER 1000
 
 ENTRYPOINT [ "scripts/entrypoint.sh" ]
