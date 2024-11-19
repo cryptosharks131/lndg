@@ -1,7 +1,7 @@
 FROM python:3-slim
 
 ARG LNDG_PORT=8000
-ARG SUPERVISOR=1
+ARG SUPERVISOR=0
 ENV PYTHONUNBUFFERED 1
 
 # Add group abnd user to run rootless

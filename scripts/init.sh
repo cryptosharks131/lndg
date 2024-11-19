@@ -2,7 +2,7 @@
 
 # This init script runs when the container start, as rootless
 
-LNDG_SUPERVISOR=${LNDG_SUPERVISOR:-1}
+LNDG_SUPERVISOR=${LNDG_SUPERVISOR:-0}
 LNDG_NETWORK=${LNDG_NETWORK:-mainnet}
 LNDG_SERVER=${LNDG_SERVER:-localhost:10009}
 
