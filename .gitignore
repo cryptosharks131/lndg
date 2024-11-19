@@ -1,3 +1,5 @@
+.env*
+!.env-example
 __pycache__
 db.sqlite3
 lndg/settings.py
@@ -10,3 +12,11 @@ gui/static/admin
 gui/static/rest_framework
 data/
 .DS_Store
+container
+doc
+scripts
+.github
+.git
+!scripts/entrypoint.sh
+!scripts/init.sh
+!scripts/suinit.sh
