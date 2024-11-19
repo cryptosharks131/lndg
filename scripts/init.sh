@@ -12,7 +12,7 @@ if [ "$LNDG_SUPERVISOR" -eq "1" ]; then
     echo "Initializing with supervisor running as lndg user"
     python initialize.py \
         -net $LNDG_NETWORK \
-        -server $LNDG_SERVER \
+        -rpc $LNDG_SERVER \
         --docker \
         --supervisord \
         --sduser lndg
@@ -20,6 +20,6 @@ else
     echo "Initializing without supervisor"
     python initialize.py \
         -net $LNDG_NETWORK \
-        -server $LNDG_SERVER \
+        -rpc $LNDG_SERVER \
         --docker
 fi
