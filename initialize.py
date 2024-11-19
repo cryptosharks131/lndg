@@ -218,11 +218,11 @@ stdout_logfile = /var/log/lndg-controller.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
 ''' % (sduser, supervisord_secret, supervisord_secret, BASE_DIR)
-    if Path("/usr/local/supervisord.conf").exists():
+    if Path("supervisord.conf").exists():
         print('A supervisord settings file already exist, skipping creation...')
         return
     try:
-        with open("/usr/local/supervisord.conf", "w") as f:
+        with open("supervisord.conf", "w") as f:
             f.write(supervisord_settings_file)
     except Exception as e:
         print('Error creating the settings file: ', str(e))

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-LNDG_SUPERVISOR=${LNDG_SUPERVISOR:-0}
+LNDG_SUPERVISOR=${LNDG_SUPERVISOR:-1}
 
 # This init script runs when the image is created, as root
 touch /var/log/supervisord.log
