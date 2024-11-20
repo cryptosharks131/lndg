@@ -7,9 +7,10 @@ build_image:
     echo "Building image $IMAGE:$VERSION"
 
     docker build \
+        --progress=plain \
         -t $IMAGE:$VERSION \
         -t $IMAGE:latest \
-        --build-arg SUPERVISOR=0 \
+        --build-arg SUPERVISOR=1 \
         -f container/Dockerfile \
         .
     docker images | grep lndg
