@@ -295,7 +295,7 @@ def update_channels(stub):
                 else:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_disabled = remote_policy.disabled
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=None, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CLTV', old_value=None, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_cltv = remote_policy.time_lock_delta
                 PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=None, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_min_htlc_msat = remote_policy.min_htlc
@@ -329,7 +329,7 @@ def update_channels(stub):
                         PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_disabled = remote_policy.disabled
                 if db_channel.remote_cltv != remote_policy.time_lock_delta:
-                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CLTV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_cltv = remote_policy.time_lock_delta
                 if db_channel.remote_min_htlc_msat != remote_policy.min_htlc:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=db_channel.remote_min_htlc_msat, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
