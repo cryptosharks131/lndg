@@ -34,7 +34,7 @@ table {border-radius: 10px} table th{background-color: #f0f0f5;} table tbody tr 
 th{position:sticky;overflow: hidden;top:0px;z-index:10}tr:first-child th:first-child{border-radius: 10px 0 0 0}tr:first-child th:last-child{border-radius: 0 10px 0 0}tr:last-child td:first-child{border-radius: 0 0 0 10px}tr:last-child td:last-child{border-radius: 0 0 10px 0}
 .w3-bordered tr,.w3-table-all tr{border-bottom:1px solid #ddd}.w3-striped tbody tr:nth-child(even){background-color:#f1f1f1}
 .w3-table,.w3-table-all{border-spacing:0;width:100%;display:table}.w3-table-all{border:1px solid #ccc}
-.w3-hoverable tbody tr:hover,.w3-ul.w3-hoverable li:hover{background-color:#ccc}.w3-centered tr th,.w3-centered tr td{text-align:center}
+.w3-hoverable tbody tr:hover,.w3-ul.w3-hoverable li:hover{background-color:#ccc !important}.w3-centered tr th,.w3-centered tr td{text-align:center}
 .w3-table td,.w3-table th,.w3-table-all td,.w3-table-all th{padding:8px 8px;display:table-cell;text-align:left;vertical-align:top}
 .w3-table th:first-child,.w3-table td:first-child,.w3-table-all th:first-child,.w3-table-all td:first-child{padding-left:16px}
 .w3-btn,.w3-button{border:none;display:inline-block;padding:8px 16px;vertical-align:middle;overflow:hidden;text-decoration:none;color:inherit;background-color:inherit;text-align:center;cursor:pointer;white-space:nowrap}
