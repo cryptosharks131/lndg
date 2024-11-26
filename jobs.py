@@ -146,8 +146,18 @@ def update_invoice(stub, invoice, db_invoice):
     db_invoice.save()
 
 def update_forwards(stub):
-    records = Forwards.objects.count()
-    forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records, num_max_events=100)).forwarding_events
+    latest_forward = Forwards.objects.order_by('-forward_date', '-id').first()
+    start_time = int(latest_forward.forward_date.timestamp()) if latest_forward else 1420070400
+    processed_count = Forwards.objects.filter(forward_date=latest_forward.forward_date).count() if latest_forward else 0
+    response = stub.ForwardingHistory(ln.ForwardingHistoryRequest(
+        start_time=start_time,
+        index_offset=processed_count,
+        num_max_events=1000
+    ))
+    forwards = response.forwarding_events
+    if not forwards:
+        return
+    new_forwards = []
     for forward in forwards:
         inbound_channel = Channels.objects.get(chan_id=forward.chan_id_in) if Channels.objects.filter(chan_id=forward.chan_id_in).exists() else None
         outbound_channel = Channels.objects.get(chan_id=forward.chan_id_out) if Channels.objects.filter(chan_id=forward.chan_id_out).exists() else None
@@ -156,12 +166,23 @@ def update_forwards(stub):
         amt_out_msat = forward.amt_out_msat
         in_fee_msat = 0
         if outbound_channel and outbound_channel.fees_updated < forward_datetime:
-            out_fee_msat = int((amt_out_msat * (outbound_channel.local_fee_rate/1000000)) + outbound_channel.local_base_fee)
+            out_fee_msat = int((amt_out_msat * (outbound_channel.local_fee_rate / 1000000)) + outbound_channel.local_base_fee)
             if forward.fee_msat < out_fee_msat:
                 in_fee_msat = out_fee_msat - forward.fee_msat
         incoming_peer_alias = (inbound_channel.remote_pubkey[:12] if inbound_channel.alias == '' else inbound_channel.alias) if inbound_channel else forward.peer_alias_in
         outgoing_peer_alias = (outbound_channel.remote_pubkey[:12] if outbound_channel.alias == '' else outbound_channel.alias) if outbound_channel else forward.peer_alias_out
-        Forwards(forward_date=forward_datetime, chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=amt_in_msat, amt_out_msat=amt_out_msat, fee=round(forward.fee_msat/1000, 3), inbound_fee=round(in_fee_msat/1000, 3)).save()
+        new_forwards.append(Forwards(
+            forward_date=forward_datetime,
+            chan_id_in=forward.chan_id_in,
+            chan_id_out=forward.chan_id_out,
+            chan_in_alias=incoming_peer_alias,
+            chan_out_alias=outgoing_peer_alias,
+            amt_in_msat=amt_in_msat,
+            amt_out_msat=amt_out_msat,
+            fee=round(forward.fee_msat / 1000, 3),
+            inbound_fee=round(in_fee_msat / 1000, 3)
+        ))
+    Forwards.objects.bulk_create(new_forwards)
 
 def disconnectpeer(stub, peer):
     try:
