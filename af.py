@@ -62,9 +62,9 @@ def main(channels):
             forwards_df_in_1d_sum = DataFrame.from_records(forwards_1d.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
             if forwards.exists():
                 forwards_df_in_7d_sum = DataFrame.from_records(forwards.values('chan_id_in').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_in')
-                forwards_df_in_7d_sum = merge(forwards_df_in_7d_sum, channels_df[['chan_id', 'remote_pubkey']], left_on='chan_id_in', right_on='chan_id', how='left').groupby('remote_pubkey').sum()
+                forwards_df_in_7d_sum = merge(forwards_df_in_7d_sum, channels_df[['chan_id', 'remote_pubkey']], left_on='chan_id_in', right_on='chan_id', how='left')
                 forwards_df_out_7d_sum = DataFrame.from_records(forwards.values('chan_id_out').annotate(amt_out_msat=Sum('amt_out_msat'), fee=Sum('fee')), 'chan_id_out')
-                forwards_df_out_7d_sum = merge(forwards_df_out_7d_sum, channels_df[['chan_id', 'remote_pubkey']], left_on='chan_id_out', right_on='chan_id', how='left').groupby('remote_pubkey').sum()
+                forwards_df_out_7d_sum = merge(forwards_df_out_7d_sum, channels_df[['chan_id', 'remote_pubkey']], left_on='chan_id_out', right_on='chan_id', how='left')
             else:
                 forwards_df_in_7d_sum = DataFrame()
                 forwards_df_out_7d_sum = DataFrame()
@@ -104,8 +104,8 @@ def main(channels):
 
         # Excess Liquidity
         excess_df = autofees_df[autofees_df['out_percent'] >= excess_limit].copy()
-        excess_df['revenue_7day'] = merge(excess_df, forwards_df_out_7d_sum[['fee']], on='remote_pubkey', how='left')['fee'].fillna(0).astype(int)
-        excess_df['revenue_assist_7day'] = merge(excess_df, forwards_df_in_7d_sum[['fee']], on='remote_pubkey', how='left')['fee'].fillna(0).astype(int)
+        excess_df['revenue_7day'] = 0 if forwards_df_out_7d_sum.empty else merge(excess_df, forwards_df_out_7d_sum.groupby('remote_pubkey').sum('fee')[['fee']], on='remote_pubkey', how='left')['fee'].fillna(0).astype(int)
+        excess_df['revenue_assist_7day'] = 0 if forwards_df_in_7d_sum.empty else merge(excess_df, forwards_df_in_7d_sum.groupby('remote_pubkey').sum('fee')[['fee']], on='remote_pubkey', how='left')['fee'].fillna(0).astype(int)
         # DECREASE IF (assisting channel or stagnant liq)
         excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if row['net_routed_7day'] < 0 and row['revenue_assist_7day'] > (row['revenue_7day']*10) else row['local_fee_rate'], axis=1)
         excess_df['new_rate'] = excess_df.apply(lambda row: row['local_fee_rate']-(5*multiplier) if (row['amt_routed_in_7day']+row['amt_routed_out_7day']) == 0 else row['new_rate'], axis=1)
