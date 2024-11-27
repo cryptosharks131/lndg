@@ -218,11 +218,11 @@ stdout_logfile = /var/log/lndg-controller.log
 stdout_logfile_maxbytes = 150MB
 stdout_logfile_backups = 15
 ''' % (sduser, supervisord_secret, supervisord_secret, BASE_DIR)
-    if Path("/usr/local/supervisord.conf").exists():
+    if Path("supervisord.conf").exists():
         print('A supervisord settings file already exist, skipping creation...')
         return
     try:
-        with open("/usr/local/supervisord.conf", "w") as f:
+        with open("supervisord.conf", "w") as f:
             f.write(supervisord_settings_file)
     except Exception as e:
         print('Error creating the settings file: ', str(e))
@@ -253,7 +253,7 @@ def initialize_django(adminuser, adminpw):
                 'rest_framework',
                 'gui',
             ],
-            STATIC_URL = 'static/', 
+            STATIC_URL = 'static/',
             STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
         )
         django.setup()
@@ -290,7 +290,7 @@ def main():
     parser.add_argument('-rpc', '--rpcserver', help = 'Server address to use for rpc communications with LND', default='localhost:10009')
     parser.add_argument('-maxmsg', '--maxmessage', help = 'Maximum message size for grpc communications (MB)', default='35')
     parser.add_argument('-sd', '--supervisord', help = 'Setup supervisord to run jobs/rebalancer background processes', action='store_true')
-    parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='root')
+    parser.add_argument('-sdu', '--sduser', help = 'Configure supervisord with a non-root user', default='lndg')
     parser.add_argument('-wn', '--whitenoise', help = 'Add whitenoise middleware (docker requirement for static files)', action='store_true')
     parser.add_argument('-d', '--docker', help = 'Single option for docker container setup (supervisord + whitenoise)', action='store_true')
     parser.add_argument('-dx', '--debug', help = 'Setup the django site in debug mode', action='store_true')

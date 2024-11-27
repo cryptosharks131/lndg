@@ -51,7 +51,7 @@
         const input = document.createElement("button")
         if (rebalance.status != 0){
           input.innerHTML = "🔂"
-          input.title="Repeat this request" 
+          input.title="Repeat this request"
           input.onclick = async function(){
             const {value, fee_limit, outgoing_chan_ids, last_hop_pubkey, duration, target_alias, manual} = rebalance
             if (last_hop_pubkey.length === 0){
@@ -62,22 +62,22 @@
             const response = await POST('rebalancer', {body: new_rebal})
             const table = input.parentElement.parentElement.parentElement
             table.prepend(use(transformations).render(response))
-          } 
+          }
         }
         else {
           input.innerHTML = "❌"
-          input.title="Cancel this request" 
+          input.title="Cancel this request"
           input.onclick = async function(){
             const response = await PUT(`rebalancer/${rebalance.id}`, {body: {status: 499}})
-            
+
             const table = input.parentElement.parentElement.parentElement
             const index = input.parentElement.parentElement.rowIndex -1
             table.deleteRow(index)
             use(transformations).render(response, table.insertRow(index))
           }
-        } 
+        }
         return {innerHTML: input}
-      } 
+      }
     };
     async function buildTable(){
       const res = await GET('rebalancer', {data: {limit: '{{count}}', status: '{{status}}', payment_hash: '{{payment_hash}}', last_hop_pubkey: '{% if last_hop_pubkey %}{{last_hop_pubkey}}{%else%}{{request.GET.last_hop_pubkey}}{%endif%}' }})

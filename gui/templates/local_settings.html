@@ -1,7 +1,7 @@
 <div class="w3-container w3-padding-small">
     <form action="/update_settings/" method="post">
       {% csrf_token %}
-    <h2>{% if url %}<a href='/{{url}}' target='_blank'>{{title}}</a>{% else %}{{title}}{% endif %} Settings</h2>
+    <h2>{% if url %}<a href='/{{url}}' target='_self'>{{title}}</a>{% else %}{{title}}{% endif %} Settings</h2>
     <div class="w3-container">
       <div class="w3-row-padding w3-container">
         {% for sett in settings %}
@@ -17,7 +17,7 @@
           <div class="w3-col input" data-unit="{{sett.unit}}">
             <input class="w3-col" id="{{sett.form_id}}" name="{{sett.form_id}}" {% if sett.min %}min="{{sett.min}}" step="{{sett.min}}"{% endif %} {% if sett.max %}max="{{sett.max}}" type="number"{% endif %} value="{{sett.value}}"/>
           </div>
-          {% endif %}        
+          {% endif %}
         </div>
         {% endif %}
         {% endfor %}

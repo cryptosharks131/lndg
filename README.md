@@ -29,8 +29,8 @@ services:
   lndg:
     build: .
     volumes:
-      - /home/<user>/.lnd:/root/.lnd:ro
-      - /home/<user>/<path-to>/lndg/data:/app/data:rw
+      - /home/<user>/.lnd:/lndg/.lnd:ro
+      - /home/<user>/<path-to>/lndg/data:/lndg/data:rw
     command:
       - sh
       - -c
@@ -45,7 +45,7 @@ docker-compose up -d
 # Retrieve the admin password for login
 nano data/lndg-admin.txt
 ```
-- **This example configuration will host LNDg at http://0.0.0.0:8889. Use the machine IP to reach the LNDg instance.**  
+- **This example configuration will host LNDg at http://0.0.0.0:8889. Use the machine IP to reach the LNDg instance.**
 - **Log in to LNDg using the provided password and the username `lndg-admin`.**
 
 ### Updating
@@ -121,7 +121,7 @@ To restart the uWSGI service, use the following command:
 
 ```bash
 sudo systemctl restart uwsgi.service
-``` 
+```
 
 ### Postgres
 Optionally, you may chose to run LNDg using a postgres database instead of the default sqlite3.
@@ -173,7 +173,7 @@ LNDg will automatically act upon the suggestions it makes on the Suggests AR Act
 LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.
 
 ### API Backend
-The following data can be accessed at the /api endpoint:  
+The following data can be accessed at the /api endpoint:
 `payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings` `pendinghtlcs` `failedhtlcs`
 
 ### Peer Reconnection
@@ -183,15 +183,15 @@ LNDg will automatically try to resolve any channels that are seen as inactive, n
 ### Here are some additional notes to help you get started using Auto-Fees (AF).
 LNDg can update your fees on a channel every 24 hours (default) if there is a suggestion listed on the fee rates page. You must make sure the `AF-Enabled` setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
 
-You can customize some settings of AF by updating the following settings:  
-`AF-FailedHTLCs` - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)  
-`AF-Increment` - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value  
-`AF-MaxRate` - The maximum fee rate in which we can adjust to  
-`AF-MinRate` - The minimum fee rate in which we can adjust to  
-`AF-Multiplier` - Multiplier to increase incremental movements, the larger the multiplier, the larger the incremental moves  
-`AF-UpdateHours` - Change the number of hours that must pass since the last fee rate change before AF may adjust the fee rate again  
-`AF-LowLiqLimit` - The liquidity (%) a channel must drop below before running the `Low Liquidity` fee algorithm  
-`AF-ExcessLimit` - The liquidity (%) a channel must go above before running the `Excess Liquidity` fee algorithm  
+You can customize some settings of AF by updating the following settings:
+`AF-FailedHTLCs` - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)
+`AF-Increment` - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value
+`AF-MaxRate` - The maximum fee rate in which we can adjust to
+`AF-MinRate` - The minimum fee rate in which we can adjust to
+`AF-Multiplier` - Multiplier to increase incremental movements, the larger the multiplier, the larger the incremental moves
+`AF-UpdateHours` - Change the number of hours that must pass since the last fee rate change before AF may adjust the fee rate again
+`AF-LowLiqLimit` - The liquidity (%) a channel must drop below before running the `Low Liquidity` fee algorithm
+`AF-ExcessLimit` - The liquidity (%) a channel must go above before running the `Excess Liquidity` fee algorithm
 
 AF Notes:
 1. AF changes only trigger after `AF-UpdateHours` hours of no fee updates via LNDg
@@ -225,20 +225,20 @@ Additional customization options:
 6. `AR-Workers` - Define how many parallel rebalances to spin up at once. (default=1)
 
 #### Steps to start the Auto-Rebalancer:
-1. Update Channel Specific Settings  
-  a. Go to Active Channels section  
-  b. Find the channels you would like to activate for rebalancing (this refills its outbound)  
-  c. On far right column Click the Enable button to activate rebalancing  
-  d. The dashboard will refresh and show AR-Target 100%  
-  e. Adjust the AR-Target to desired % of liquidity you want to keep on remote INBOUND side. Example select 0.60 if you want 60% of the channel capacity on Remote/INBOUND side  which would mean that there is 40% on Local/OUTBOUND side  
-  f. Hit Enter  
-  g. Dashboard will refresh in the browser  
-  h. Make sure you enable all channels that are valuable outbound routes for you to ensure they are not used for filling up routes you have targeted (you can enable and target 100% in order to avoid any action on this channel from the rebalancer)  
+1. Update Channel Specific Settings
+  a. Go to Active Channels section
+  b. Find the channels you would like to activate for rebalancing (this refills its outbound)
+  c. On far right column Click the Enable button to activate rebalancing
+  d. The dashboard will refresh and show AR-Target 100%
+  e. Adjust the AR-Target to desired % of liquidity you want to keep on remote INBOUND side. Example select 0.60 if you want 60% of the channel capacity on Remote/INBOUND side  which would mean that there is 40% on Local/OUTBOUND side
+  f. Hit Enter
+  g. Dashboard will refresh in the browser
+  h. Make sure you enable all channels that are valuable outbound routes for you to ensure they are not used for filling up routes you have targeted (you can enable and target 100% in order to avoid any action on this channel from the rebalancer)
 
-2. Update Global Settings  
-  a. Go to section Update Auto Rebalancer Settings  
-  b. Select the global settings (sample below):  
-  c. Click OK button to submit  
+2. Update Global Settings
+  a. Go to section Update Auto Rebalancer Settings
+  b. Select the global settings (sample below):
+  c. Click OK button to submit
   d. Once enabled is set to 1 in the global settings - the rebalancer will become active
   ```
   Enabled: 1
@@ -248,9 +248,9 @@ Additional customization options:
   Global Max Fee Rate (ppm): 500
   Max Cost (%): 0.6
   ```
-3. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
+3. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.
 
-If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire), enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.  
+If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire), enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.
 
 ## Preview Screens
 ### Main Dashboard
@@ -283,4 +283,3 @@ If you want a channel not to be picked for rebalancing (i.e. it is already full 
 
 ### View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
 ![image](https://user-images.githubusercontent.com/38626122/134045287-086d56e3-5959-4f5f-a06e-cb6d2ac4957c.png)
-
