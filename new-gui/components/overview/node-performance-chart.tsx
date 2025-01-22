@@ -20,21 +20,21 @@ import {
 
 import { formatNumber } from "@/lib/formatter"
 const chartData = [
-    { date: "01/13", profit: 186, outbound: 80, utilization: 70 },
-    { date: "01/14", profit: 305, outbound: 200, utilization: 72 },
-    { date: "01/15", profit: 237, outbound: 120, utilization: 60 },
-    { date: "01/16", profit: 73, outbound: 190, utilization: 55 },
-    { date: "01/17", profit: 209, outbound: 130, utilization: 68 },
-    { date: "01/18", profit: 214, outbound: 140, utilization: 79 },
+    { date: "01/13", profit: 186, profitOnChain: 80, utilization: 70 },
+    { date: "01/14", profit: 305, profitOnChain: 200, utilization: 72 },
+    { date: "01/15", profit: 237, profitOnChain: 120, utilization: 60 },
+    { date: "01/16", profit: 73, profitOnChain: 190, utilization: 55 },
+    { date: "01/17", profit: 209, profitOnChain: 130, utilization: 68 },
+    { date: "01/18", profit: 214, profitOnChain: 140, utilization: 79 },
 ]
 
 const chartConfig = {
     profit: {
-        label: "Profit (ppm)",
+        label: "⚡ Profit/Outbound (ppm)",
         color: "hsl(var(--chart-1))",
     },
-    outbound: {
-        label: "Outbound (ppm)",
+    profitOnChain: {
+        label: "⛓️ Profit/Outbound  (ppm)",
         color: "hsl(var(--chart-2))",
     },
     utilization: {
@@ -91,7 +91,7 @@ export function NodePerformanceChart() {
                                 r: 6,
                             }}
                             yAxisId="left"
-                            name="Profit"
+
 
                         >
                             <LabelList
@@ -103,18 +103,18 @@ export function NodePerformanceChart() {
                             />
                         </Line>
                         <Line
-                            dataKey="outbound"
+                            dataKey="profitOnChain"
                             type="linear"
-                            stroke="var(--color-outbound)"
+                            stroke="var(--color-profitOnChain)"
                             strokeWidth={2}
                             dot={{
-                                fill: "var(--color-outbound)",
+                                fill: "var(--color-profitOnChain)",
                             }}
                             activeDot={{
                                 r: 6,
                             }}
                             yAxisId="left"
-                            name="Outbound"
+
 
                         >
                             <LabelList
@@ -138,7 +138,6 @@ export function NodePerformanceChart() {
                                 r: 6,
                             }}
                             yAxisId="right"
-                            name="Outbount Utilization"
                         >
                             <LabelList
                                 position="top"

@@ -18,31 +18,25 @@ import {
     ChartTooltipContent,
 } from "@/components/ui/chart"
 import { formatNumber } from "@/lib/formatter"
-const chartData = [
-    { date: "01/13", earned: 111, paid: 33, onchain: 0 },
-    { date: "01/14", earned: 121, paid: 78, onchain: 0 },
-    { date: "01/15", earned: 114, paid: 77, onchain: 5010 },
-    { date: "01/16", earned: 411, paid: 99, onchain: 0 },
-    { date: "01/17", earned: 188, paid: 58, onchain: 0 },
-    { date: "01/18", earned: 255, paid: 111, onchain: 0 },
-]
+import { FeesChartData } from "@/lib/definitions"
+
 
 const chartConfig = {
     earned: {
-        label: "Fees Earned (ppm)",
+        label: "Fees Earned (sats)",
         color: "hsl(var(--chart-1))",
     },
     paid: {
-        label: "Fees Paid (ppm)",
+        label: "Fees Paid (sats)",
         color: "hsl(var(--chart-2))",
     },
     onchain: {
-        label: "On-Chain Fees (%)",
+        label: "On-Chain Fees (sats)",
         color: "hsl(var(--chart-3))",
     },
 } satisfies ChartConfig
 
-export function FeesChart() {
+export function FeesChart({ chartData }: { chartData: FeesChartData[] }) {
     return (
         <Card>
             <CardHeader>

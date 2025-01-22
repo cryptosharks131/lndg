@@ -27,6 +27,13 @@ export type FormState =
   | undefined
 
 
+  export interface DecodedPayloadType {
+    token_type: string;
+    exp: number;
+    iat: number;
+    jti: string;
+    user_id: number;
+  }
 
 export interface BalancesApiData {
 
@@ -144,4 +151,85 @@ export interface LiquidityChartData {
   status: string;
   value: number;
   fill: string;
+}
+
+export interface ForwardData {
+  url: string;
+  id: number;
+  forward_date: string; // ISO 8601 date
+  chan_id_in: string;
+  chan_id_out: string;
+  chan_in_alias: string;
+  chan_out_alias: string;
+  amt_in_msat: number;
+  amt_out_msat: number;
+  fee: number;
+  inbound_fee: number;
+}
+
+export interface UnaggregatedData {
+  date: string; // Format: YYYY-MM-DD
+  value: number;
+}
+export interface AggregatedData {
+  date: string; // Format: YYYY-MM-DD
+  value: number;
+}
+
+export interface ForwardsDataApi {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ForwardData[];
+}
+
+
+
+export interface OnChainTransaction {
+  url: string;
+  tx_hash: string;
+  amount: number;
+  block_hash: string;
+  block_height: number;
+  time_stamp: string; // ISO 8601 date
+  fee: number;
+  label: string;
+}
+
+export interface OnChainDataApi {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: OnChainTransaction[];
+}
+
+export interface Payment {
+  url: string;
+  id: number;
+  payment_hash: string;
+  creation_date: string; // ISO 8601 date
+  value: number;
+  fee: number;
+  status: number;
+  index: number;
+  chan_out: string;
+  chan_out_alias: string;
+  keysend_preimage: string | null;
+  message: string | null;
+  cleaned: boolean;
+  rebal_chan: string | null;
+}
+
+export interface PaymentsDataApi {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Payment[];
+}
+
+export interface FeesChartData {
+  date: string; // Format: YYYY-MM-DD
+  earned: number;
+  paid: number;
+  onchain: number;
 }

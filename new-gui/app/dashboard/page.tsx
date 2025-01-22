@@ -5,7 +5,7 @@ import { LiquidityChart } from "@/components/overview/liquidity-chart";
 import { NodePerformanceChart } from "@/components/overview/node-performance-chart";
 import { RoutedChart } from "@/components/overview/routed-chart";
 
-import { fetchBalancesChartData, fetchChannelsChartData } from "@/lib/data/data"
+import { fetchBalancesChartData, fetchChannelsChartData, fetchFeeChartData } from "@/lib/data/data"
 import { Suspense } from "react";
 
 
@@ -13,6 +13,7 @@ export default async function Page() {
 
     const balanceChartData = await fetchBalancesChartData()
     const { ChannelsChartData, LiquidityChartData } = await fetchChannelsChartData()
+    const feesChartData = await fetchFeeChartData()
     // console.log(balanceChartData)
 
 
@@ -31,7 +32,7 @@ export default async function Page() {
                 <NodePerformanceChart />
             </div>
             <div className="col-span-6">
-                <FeesChart />
+                <FeesChart chartData={feesChartData} />
             </div>
             <div className="col-span-12">
                 <RoutedChart />
