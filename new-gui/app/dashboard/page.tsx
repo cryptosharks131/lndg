@@ -5,38 +5,39 @@ import { LiquidityChart } from "@/components/overview/liquidity-chart";
 import { NodePerformanceChart } from "@/components/overview/node-performance-chart";
 import { RoutedChart } from "@/components/overview/routed-chart";
 
-import { fetchBalancesChartData, fetchChannelsChartData, fetchFeeChartData } from "@/lib/data/data"
-import { Suspense } from "react";
-
+import {
+  fetchBalancesChartData,
+  fetchChannelsChartData,
+  fetchFeeChartData,
+} from "@/lib/data/data";
 
 export default async function Page() {
+  const balanceChartData = await fetchBalancesChartData();
+  const { ChannelsChartData, LiquidityChartData } =
+    await fetchChannelsChartData();
+  const feesChartData = await fetchFeeChartData();
+  // console.log(balanceChartData)
 
-    const balanceChartData = await fetchBalancesChartData()
-    const { ChannelsChartData, LiquidityChartData } = await fetchChannelsChartData()
-    const feesChartData = await fetchFeeChartData()
-    // console.log(balanceChartData)
-
-
-    return (
-        <div className="grid grid-cols-12 gap-5">
-            <div className="col-span-4">
-                <BalancesChart chartData={balanceChartData} />
-            </div>
-            <div className="col-span-4">
-                <ActiveChannelsChart chartData={ChannelsChartData} />
-            </div>
-            <div className="col-span-4">
-                <LiquidityChart chartData={LiquidityChartData} />
-            </div>
-            <div className="col-span-6">
-                <NodePerformanceChart />
-            </div>
-            <div className="col-span-6">
-                <FeesChart chartData={feesChartData} />
-            </div>
-            <div className="col-span-12">
-                <RoutedChart />
-            </div>
-        </div>
-    )
+  return (
+    <div className="grid grid-cols-12 gap-5">
+      <div className="col-span-4">
+        <BalancesChart chartData={balanceChartData} />
+      </div>
+      <div className="col-span-4">
+        <ActiveChannelsChart chartData={ChannelsChartData} />
+      </div>
+      <div className="col-span-4">
+        <LiquidityChart chartData={LiquidityChartData} />
+      </div>
+      <div className="col-span-6">
+        <NodePerformanceChart />
+      </div>
+      <div className="col-span-6">
+        <FeesChart chartData={feesChartData} />
+      </div>
+      <div className="col-span-12">
+        <RoutedChart />
+      </div>
+    </div>
+  );
 }
