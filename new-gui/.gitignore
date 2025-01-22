@@ -1,18 +1,4 @@
-__pycache__
-db.sqlite3
-lndg/settings.py
-frontend
-node_modules
-lndg-admin.txt
-.vscode
-.vs
-gui/static/admin
-gui/static/rest_framework
-data/
-.env
-
-
-# Added gitignore for node and nextjs
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
 /node_modules

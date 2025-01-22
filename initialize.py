@@ -320,7 +320,7 @@ def main():
     nologinrequired = args.nologinrequired
     force_new = args.force
     lnd_tls_path = args.tlscert if args.tlscert else lnd_dir_path + '/tls.cert'
-    lnd_macaroon_path = args.macaroon if args.macaroon else lnd_dir_path + '/data/chain/bitcoin/' + lnd_network + '/admin.macaroon'
+    lnd_macaroon_path = args.macaroon if args.macaroon else "/Users/ankitsingh/.polar/networks/1/volumes/lnd/bob/data/chain/bitcoin/regtest/admin.macaroon"
     lnd_database_path = args.lnddatabase if args.lnddatabase else lnd_dir_path + '/data/graph/' + lnd_network + '/channel.db'
     cookie_age = int(args.sessioncookieage)
     if docker:

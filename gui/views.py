@@ -302,6 +302,7 @@ def peers(request):
     else:
         return redirect('home')
 
+
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def balances(request):
     if request.method == 'GET':
