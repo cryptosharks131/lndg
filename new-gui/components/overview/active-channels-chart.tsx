@@ -19,11 +19,13 @@ import {
     ChartTooltipContent,
 } from "@/components/ui/chart"
 import React from "react"
-const chartData = [
-    { status: "activeChannels", value: 9, fill: "var(--color-activeChannels)" },
-    { status: "inactiveChannels", value: 1, fill: "var(--color-inactiveChannels)" }
+import { ChannelsChartData } from "@/lib/definitions"
 
-]
+// const chartData = [
+//     { status: "activeChannels", value: 9, fill: "var(--color-activeChannels)" },
+//     { status: "inactiveChannels", value: 1, fill: "var(--color-inactiveChannels)" }
+
+// ]
 
 const chartConfig = {
     inactiveChannels: {
@@ -36,7 +38,7 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function ActiveChannelsChart() {
+export function ActiveChannelsChart({ chartData }: { chartData: ChannelsChartData[] }) {
     const totalChannels = React.useMemo(() => {
         return chartData.reduce((acc, curr) => acc + curr.value, 0)
     }, [])

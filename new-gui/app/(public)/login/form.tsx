@@ -12,7 +12,7 @@ export function LoginForm() {
     const [state, action, pending] = useActionState(login, undefined);
 
     return (
-        <form action={action}>
+        <form action={action} autoComplete='on'>
             <div className="flex flex-col gap-2">
                 <div>
                     <Label htmlFor="username">User Name</Label>

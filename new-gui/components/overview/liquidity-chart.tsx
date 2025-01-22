@@ -19,22 +19,18 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from "@/components/ui/chart"
+import { LiquidityChartData } from "@/lib/definitions"
 
-type ChartData = {
-    status: string;
-    value: number;
-    fill: string;
-};
 
 // Sample chart data
-const chartData: ChartData[] = [
-    { status: "inbound", value: 20000000, fill: "var(--color-inbound)" },
-    { status: "outbound", value: 100000000, fill: "var(--color-outbound)" },
-    { status: "unsettled", value: 500000, fill: "var(--color-unsettled)" },
-];
+// const chartData: LiquidtyChartData[] = [
+//     { status: "inbound", value: 20000000, fill: "var(--color-inbound)" },
+//     { status: "outbound", value: 100000000, fill: "var(--color-outbound)" },
+//     { status: "unsettled", value: 500000, fill: "var(--color-unsettled)" },
+// ];
 
 // Function to calculate the liquidity ratio
-const calculateLiquidityRatio = (data: ChartData[]): number => {
+const calculateLiquidityRatio = (data: LiquidityChartData[]): number => {
     const inbound = data.find(item => item.status === "inbound")?.value ?? 0;
     const outbound = data.find(item => item.status === "outbound")?.value ?? 1; // Default to 1 to avoid division by zero
     return inbound / outbound;
@@ -42,7 +38,7 @@ const calculateLiquidityRatio = (data: ChartData[]): number => {
 
 
 const chartConfig = {
-    liquidty: {
+    liquidity: {
         label: "Liquidity",
     },
     outbound: {
@@ -59,7 +55,7 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function LiquidityChart() {
+export function LiquidityChart({ chartData }: { chartData: LiquidityChartData[] }) {
     const liquidityRatio = calculateLiquidityRatio(chartData);
 
     return (
