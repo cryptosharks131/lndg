@@ -9,6 +9,7 @@ import {
   fetchBalancesChartData,
   fetchChannelsChartData,
   fetchFeeChartData,
+  fetchRoutedChartData
 } from "@/lib/data";
 
 export default async function Page() {
@@ -16,6 +17,7 @@ export default async function Page() {
   const { ChannelsChartData, LiquidityChartData } =
     await fetchChannelsChartData();
   const feesChartData = await fetchFeeChartData();
+  const routedChartData = await fetchRoutedChartData();
   // console.log(balanceChartData)
 
   return (
@@ -36,7 +38,7 @@ export default async function Page() {
         <FeesChart chartData={feesChartData} />
       </div>
       <div className="col-span-12">
-        <RoutedChart />
+        <RoutedChart chartData={routedChartData} />
       </div>
     </div>
   );

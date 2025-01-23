@@ -14,7 +14,7 @@ import {
   AggregatedData,
 } from "./definitions";
 import { verifySession } from "@/app/auth/sessions";
-import { AggregatedValueByDay, getLast7Days } from "./utils";
+import { AggregatedValueByDay, getLastNumDays } from "./utils";
 
 export async function getDataFromApi(apiEndPoint: string) {
   const API_URL = process.env.API_URL;
@@ -146,7 +146,7 @@ export async function fetchFeeChartData() {
 
   const feesChartDataDict: { [date: string]: FeesChartData } = {};
 
-  for (const date of getLast7Days()) {
+  for (const date of getLastNumDays(7)) {
     feesChartDataDict[date] = {
       date,
       earned: 0,
@@ -176,6 +176,44 @@ export async function fetchFeeChartData() {
 
   return feesChartData;
 }
+
+
+export async function fetchRoutedChartData() {
+
+  const forwardsData: ForwardsDataApi = await getDataFromApi("forwards");
+
+
+  const forwardsDataRaw: UnaggregatedData[] = forwardsData.results.map(
+    (forward) => ({
+      date: forward.forward_date,
+      value: forward.amt_out_msat,
+    }),
+  );
+
+  const forwardsByDay: AggregatedData[] = AggregatedValueByDay(forwardsDataRaw);
+
+  const routedChartData = forwardsByDay.sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+  console.log(routedChartData)
+  return routedChartData
+  
+}
+
+// export async function fetchNodePerformanceChartData() {
+
+//   const forwardsData: ForwardsDataApi = await getDataFromApi("forwards");
+
+//   const onchainData: OnChainDataApi = await getDataFromApi("onchain");
+
+//   const paymentsData: PaymentsDataApi = await getDataFromApi("payments");
+
+
+
+ 
+// } 
+
+
 
 // all the money made = revenue
 // all the money spent = cost

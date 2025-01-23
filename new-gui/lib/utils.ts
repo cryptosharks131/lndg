@@ -46,9 +46,9 @@ export function AggregatedValueByDay(
 }
 
 
-export const getLast7Days = () => {
+export const getLastNumDays = (num: number) => {
 
-  const Last7Days = Array.from({ length: 7 }, (_, i) => {
+  const Last7Days = Array.from({ length: num }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - i);
     return date.toISOString().split("T")[0];
@@ -56,4 +56,5 @@ export const getLast7Days = () => {
   )
   return Last7Days
 
-} 
+}
+
