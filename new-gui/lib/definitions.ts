@@ -18,12 +18,12 @@ export const SigninFormSchema = z.object({
 
 export type FormState =
   | {
-      errors?: {
-        username?: string[];
-        password?: string[];
-      };
-      message?: string;
-    }
+    errors?: {
+      username?: string[];
+      password?: string[];
+    };
+    message?: string;
+  }
   | undefined;
 
 export interface DecodedPayloadType {

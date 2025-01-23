@@ -44,3 +44,16 @@ export function AggregatedValueByDay(
     value,
   }));
 }
+
+
+export const getLast7Days = () => {
+
+  const Last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    return date.toISOString().split("T")[0];
+  }
+  )
+  return Last7Days
+
+} 

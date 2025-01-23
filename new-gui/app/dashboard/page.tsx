@@ -9,7 +9,7 @@ import {
   fetchBalancesChartData,
   fetchChannelsChartData,
   fetchFeeChartData,
-} from "@/lib/data/data";
+} from "@/lib/data";
 
 export default async function Page() {
   const balanceChartData = await fetchBalancesChartData();
