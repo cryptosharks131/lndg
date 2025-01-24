@@ -226,12 +226,15 @@ export interface FeesChartData {
   onchain: number;
 }
 
-export interface PerformanceStats {
-  lineItem: string;
-  description: string;
-  "1 Day": number | { stats: number; ppm: number };
-  "7 Day": number | { stats: number; ppm: number };
-  "30 Day": number | { stats: number; ppm: number };
-  "90 Day": number | { stats: number; ppm: number };
-  Lifetime: number | { stats: number; ppm: number };
+export interface ProfitabilityStats {
+  date: string; // Format: YYYY-MM-DD
+  paymentsRouted: number; // Number of payments routed
+  valueRouted: number; // Total value routed
+  revenue: number; // Total revenue generated
+  onchainCosts: number; // Total on-chain costs
+  offchainCost: number; // Total off-chain costs
+  offchainCostPpm: number; // Off-chain cost per million
+  percentCosts: number; // Percentage of costs relative to revenue
+  profit: number; // Total profit
+  profitPpm: number; // Profit per million
 }

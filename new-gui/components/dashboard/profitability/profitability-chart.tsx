@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { useState } from "react"
+import { LineChart, Line, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import {
     Card,
@@ -25,6 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { formatNumber } from "@/lib/formatter"
 
 
 const chartData = [
@@ -1111,25 +1112,22 @@ const chartData = [
 ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),)
 
 const chartConfig = {
-    visitors: {
-        label: "Visitors",
-    },
     revenue: {
         label: "Revenue (sats)",
-        color: "hsl(var(--chart-2))",
+        color: "hsl(var(--chart-1))",
     },
     offchainCosts: {
         label: "Off-Chain Costs (sats)",
-        color: "hsl(var(--chart-5))",
+        color: "hsl(var(--chart-2))",
     },
     onchain: {
         label: "On-Chain (stats)",
-        color: "hsl(var(--chart-1))",
+        color: "hsl(var(--chart-3))",
     },
 } satisfies ChartConfig
 
 export function ProfitabilityChart() {
-    const [timeRange, setTimeRange] = React.useState("90d")
+    const [timeRange, setTimeRange] = useState("180d")
 
     const filteredData = chartData.filter((item) => {
         const date = new Date(item.date)
@@ -1189,11 +1187,32 @@ export function ProfitabilityChart() {
                     config={chartConfig}
                     className="aspect-auto h-96 w-full"
                 >
-                    <BarChart accessibilityLayer data={filteredData} >
+                    <LineChart accessibilityLayer data={filteredData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
 
                         <CartesianGrid vertical={false} />
-                        <YAxis yAxisId="left" orientation="left" hide />
-                        <YAxis yAxisId="right" orientation="right" hide />
+                        <YAxis
+                            yAxisId="left"
+                            orientation="left"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={0}
+                            tickCount={10}
+                            minTickGap={32}
+                            label={{ value: 'On-Chain (sats)', angle: -90, position: "left", style: { textAnchor: 'middle' } }}
+                            tickFormatter={formatNumber}
+                        />
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={0}
+                            tickCount={10}
+                            minTickGap={32}
+                            label={{ value: 'Revenue and Off-Chain Costs (sats)', angle: 90, position: "right", style: { textAnchor: 'middle' } }}
+                            tickFormatter={formatNumber}
+                        />
+
 
                         <XAxis
                             dataKey="date"
@@ -1225,35 +1244,29 @@ export function ProfitabilityChart() {
                             }
                         />
                         <ChartLegend content={<ChartLegendContent />} />
-                        <Bar
+                        <Line
                             dataKey="onchain"
-                            type="linear"
+                            type="natural"
                             fill="var(--color-onchain)"
                             yAxisId="left"
-                            radius={10}
                         />
-                        <Bar
+                        <Line
                             dataKey="offchainCosts"
-                            type="linear"
+                            type="natural"
                             fill="var(--color-offchainCosts)"
                             stroke="var(--color-offchainCosts)"
                             yAxisId="right"
-                            radius={10}
                         />
-                        <Bar
+                        <Line
                             dataKey="revenue"
-                            type="linear"
+                            type="natural"
                             fill="var(--color-revenue)"
                             stroke="var(--color-revenue)"
                             yAxisId="right"
-                            radius={10}
-
                         />
-
-                        <ChartLegend content={<ChartLegendContent />} />
-                    </BarChart>
+                    </LineChart>
                 </ChartContainer>
             </CardContent>
-        </Card>
+        </Card >
     )
 }

@@ -45,7 +45,7 @@ const chartConfig = {
     color: "hsl(var(--chart-2))",
   },
   utilization: {
-    label: "Onboard Utilization (%)",
+    label: "Outbound Utilization (%)",
     color: "hsl(var(--chart-3))",
   },
 } satisfies ChartConfig;
