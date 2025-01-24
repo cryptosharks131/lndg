@@ -2185,59 +2185,98 @@ const chartConfig = {
     paymentsRouted: { label: "Payments Routed (count)", color: "hsl(var(--chart-3))", axis: "right" },
 } satisfies ChartConfig
 
-export function ProfitabilityStatsChart() {
+export function ProfitabilityStatsChartAgg() {
 
     const [timeRange, setTimeRange] = useState("180d")
 
-    const filteredData = statsData.filter((data) => {
-        const date = new Date(data.date)
-        const referenceDate = new Date()
-        let daysToSubtract = 180
-        if (timeRange === "90d") {
-            daysToSubtract = 90
-        } else if (timeRange === "60d") {
-            daysToSubtract = 60
-        } else if (timeRange === "30d") {
-            daysToSubtract = 30
-        } else if (timeRange === "7d") {
-            daysToSubtract = 7
-        }
-        const startDate = new Date(referenceDate)
-        startDate.setDate(startDate.getDate() - daysToSubtract)
-        return date >= startDate
-    })
+    const aggregateData = (statsData: any[], timeRange: string) => {
+        const filteredData = statsData.filter((data) => {
+            const date = new Date(data.date);
+            const referenceDate = new Date();
+            let daysToSubtract = 180;
+
+            if (timeRange === "90d") {
+                daysToSubtract = 90;
+            } else if (timeRange === "60d") {
+                daysToSubtract = 60;
+            } else if (timeRange === "30d") {
+                daysToSubtract = 30;
+            } else if (timeRange === "7d") {
+                daysToSubtract = 7;
+            }
+
+            const startDate = new Date(referenceDate);
+            startDate.setDate(startDate.getDate() - daysToSubtract);
+            return date >= startDate;
+        });
+
+        // Helper function to get the grouping key
+        const getGroupingKey = (date: Date) => {
+            if (timeRange === "180d" || timeRange === "90d" || timeRange === "60d") {
+                // Group by week (ISO week number)
+                const startOfWeek = new Date(date);
+                startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Start of the week (Sunday)
+                return startOfWeek.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+            } else {
+                // Group by day
+                date = new Date(date);
+                return date.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+            }
+        };
+
+        // Aggregate the data
+        const aggregatedData = filteredData.reduce((acc, data) => {
+
+            const date = getGroupingKey(data.date);
+
+            if (!acc[date]) {
+                acc[date] = {
+                    date: date,
+                    offchainCost: 0,
+                    offchainCostPpm: 0,
+                    onchainCosts: 0,
+                    percentCosts: 0,
+                    profit: 0,
+                    profitPpm: 0,
+                    paymentsRouted: 0,
+                    valueRouted: 0,
+                    revenue: 0,
+                    count: 0, // For averaging percentCosts
+                };
+            }
+
+            // Accumulate values
+            acc[date].offchainCost += data.offchainCost;
+            acc[date].offchainCostPpm += data.offchainCostPpm;
+            acc[date].onchainCosts += data.onchainCosts;
+            acc[date].percentCosts += data.percentCosts;
+            acc[date].profit += data.profit;
+            acc[date].profitPpm += data.profitPpm;
+            acc[date].paymentsRouted += data.paymentsRouted;
+            acc[date].valueRouted += data.valueRouted;
+            acc[date].revenue += data.revenue;
+            acc[date].count += 1;
+
+            return acc;
+        }, {});
 
 
-    const sumOfFilteredData = filteredData.reduce((acc, data, index, array) => {
-        acc.offchainCost += data.offchainCost;
-        acc.offchainCostPpm += data.offchainCostPpm
-        acc.onchainCosts += data.onchainCosts;
-        acc.percentCosts += data.percentCosts;
-        acc.profit += data.profit;
-        acc.profitPpm += data.profitPpm;
-        acc.paymentsRouted += data.paymentsRouted;
-        acc.valueRouted += data.valueRouted;
-        acc.revenue += data.revenue;
-        // Calculate the average of percentCosts on the last iteration
-        if (index === array.length - 1) {
-            return {
-                ...acc,
-                percentCosts: acc.percentCosts / array.length,
-            };
-        }
-        return acc
-    }, {
-        offchainCost: 0,
-        offchainCostPpm: 0,
-        onchainCosts: 0,
-        percentCosts: 0,
-        profit: 0,
-        profitPpm: 0,
-        paymentsRouted: 0,
-        valueRouted: 0,
-        revenue: 0,
-    });
-
+        // Convert the aggregated object into an array and calculate averages
+        return Object.values(aggregatedData).map((group: any) => ({
+            date: group.date,
+            offchainCost: group.offchainCost,
+            offchainCostPpm: group.offchainCostPpm / group.count, // Average offchainCosts ppm
+            onchainCosts: group.onchainCosts,
+            percentCosts: group.percentCosts / group.count, // Average percentCosts
+            profit: group.profit,
+            profitPpm: group.profitPpm / group.count, // Average profit ppm
+            paymentsRouted: group.paymentsRouted,
+            valueRouted: group.valueRouted,
+            revenue: group.revenue,
+        }));
+    };
+    const aggregatedData = aggregateData(statsData, timeRange);
+    console.log(aggregatedData)
 
 
     return (
@@ -2283,7 +2322,7 @@ export function ProfitabilityStatsChart() {
                         config={chartConfig}
                         className="aspect-auto h-96 w-full"
                     >
-                        <LineChart accessibilityLayer data={filteredData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                        <LineChart accessibilityLayer data={aggregatedData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
 
                             <CartesianGrid vertical={false} />
                             <YAxis
@@ -2359,83 +2398,6 @@ export function ProfitabilityStatsChart() {
                         </LineChart>
                     </ChartContainer>
                 </CardContent>
-                <CardFooter>
-                    <div className="grid grid-cols-9 gap-2">
-                        <Card>
-                            <CardHeader>
-                                Profit
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.profit.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Profit (ppm)
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.profitPpm.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Off-Chain Costs
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.offchainCost.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Off-Chain Costs (ppm)
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.offchainCostPpm.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                On-Chain Costs
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.onchainCosts.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Percent Costs
-                            </CardHeader>
-                            <CardContent>
-                                {(sumOfFilteredData.percentCosts * 100).toFixed(2)}%
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Payments Routed
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.paymentsRouted.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Value Routed
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.valueRouted.toLocaleString()}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                Revenue
-                            </CardHeader>
-                            <CardContent>
-                                {sumOfFilteredData.revenue.toLocaleString()}
-                            </CardContent>
-                        </Card>
-
-                    </div>
-                </CardFooter>
             </Card>
 
         </>

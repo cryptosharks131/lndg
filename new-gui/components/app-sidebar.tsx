@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BookOpen, Bot, Settings2, SquareTerminal, Zap } from "lucide-react";
+import { BookOpen, Bot, ChartNoAxesCombined, Settings2, Zap } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -32,7 +32,7 @@ const data = {
     {
       title: "Dashboard",
       url: "/dashboard",
-      icon: SquareTerminal,
+      icon: ChartNoAxesCombined,
       isActive: true,
     },
     {

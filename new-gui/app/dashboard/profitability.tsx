@@ -1,5 +1,6 @@
 import { ProfitabilityChart } from "@/components/dashboard/profitability/profitability-chart";
-import { ProfitabilityStats } from "@/components/dashboard/profitability/profitability-stats";
+import { ProfitabilityStatsChart } from "@/components/dashboard/profitability/profitability-stats";
+import { ProfitabilityStatsChartAgg } from "@/components/dashboard/profitability/profitability-stats-agg";
 
 export default function ProfitabilitySection() {
   return (
@@ -8,7 +9,10 @@ export default function ProfitabilitySection() {
         <ProfitabilityChart />
       </div>
       <div className="col-span-12">
-        <ProfitabilityStats />
+        <ProfitabilityStatsChart />
+      </div>
+      <div className="col-span-12">
+        <ProfitabilityStatsChartAgg />
       </div>
     </div>
   );

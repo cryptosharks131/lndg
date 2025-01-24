@@ -18,6 +18,7 @@ import {
 import OverviewSection from "@/app/dashboard/overview";
 import ProfitabilitySection from "@/app/dashboard/profitability"
 import PerformanceSection from "@/app/dashboard/performance"
+import { refreshSessionTokens } from "../auth/sessions"
 
 
 export default async function DashboardPage() {

@@ -34,6 +34,11 @@ export interface DecodedPayloadType {
   user_id: number;
 }
 
+export interface SessionTokens {
+  accessToken?: string;
+  refreshToken?: string;
+}
+
 export interface BalancesApiData {
   total_balance: number;
   offchain_balance: number;

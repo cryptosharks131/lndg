@@ -5,26 +5,48 @@ import { redirect } from "next/navigation";
 
 import type { SessionPayload } from "@/app/auth/definitions";
 import { jwtDecode } from "@/lib/utils";
+import { SessionTokens } from "@/lib/definitions";
 
 const API_URL = process.env.API_URL;
 
+
+
+
+export async function getSession(): Promise<SessionTokens> {
+  const cookieStore = await cookies();
+  // console.log("accessToken:", cookieStore.get("accessToken")?.value)
+  // console.log("refreshToken:", cookieStore.get("refreshToken")?.value)
+
+  return {
+    accessToken: cookieStore.get("accessToken")?.value,
+    refreshToken: cookieStore.get("refreshToken")?.value
+  };
+}
+
+
 export async function createSession(sessionPayload: SessionPayload) {
-  const decoded = jwtDecode(sessionPayload.accessToken);
+  const cookieStore = await cookies();
 
-  const expiresAt: number = decoded.exp * 1000;
+  // Validate payload structure
+  if (!sessionPayload?.accessToken || !sessionPayload?.refreshToken) {
+    throw new Error("Invalid session payload");
+  }
 
-  // Set tokens as HTTP-only cookies
-  (await cookies()).set("accessToken", sessionPayload.accessToken, {
+  const accessDecoded = jwtDecode(sessionPayload.accessToken);
+  const refreshDecoded = jwtDecode(sessionPayload.refreshToken);
+
+  cookieStore.set("accessToken", sessionPayload.accessToken, {
     httpOnly: true,
-    secure: true,
-    expires: expiresAt,
+    secure: process.env.NODE_ENV === "production",
+    expires: new Date(accessDecoded.exp * 1000),
     sameSite: "lax",
     path: "/",
   });
-  (await cookies()).set("refreshToken", sessionPayload.refreshToken, {
+
+  cookieStore.set("refreshToken", sessionPayload.refreshToken, {
     httpOnly: true,
-    secure: true,
-    expires: expiresAt,
+    secure: process.env.NODE_ENV === "production",
+    expires: new Date(refreshDecoded.exp * 1000),
     sameSite: "lax",
     path: "/",
   });
@@ -32,49 +54,35 @@ export async function createSession(sessionPayload: SessionPayload) {
   redirect("/dashboard");
 }
 
-export async function refreshSession() {
-  const refreshToken = (await cookies()).get("refreshToken")?.value;
-  // console.log(refreshToken)
 
-  const res = await fetch(`${API_URL}/api/token/refresh/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh: refreshToken }),
-  });
+export async function refreshSessionTokens(refreshToken: string) {
+  try {
+    const res = await fetch(`${API_URL}/api/token/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
 
-  if (!res.ok) {
-    throw new Error("Failed to refresh token");
-  }
+    if (!res.ok) return null;
 
-  const { access } = await res.json();
 
-  const decoded = jwtDecode(access);
+    const { access } = await res.json();
+    // console.log("access:", access)
 
-  const expiresAt: number = decoded.exp * 1000;
-
-  // Update the access token in cookies
-
-  (await cookies()).set("accessToken", access, {
-    httpOnly: true,
-    secure: true,
-    expires: expiresAt,
-    sameSite: "lax",
-    path: "/",
-  });
-
-  if (refreshToken) {
-    (await cookies()).set("refreshToken", refreshToken, {
+    const cookieStore = await cookies();
+    const accessDecoded = jwtDecode(access);
+    cookieStore.set("accessToken", access, {
       httpOnly: true,
-      secure: true,
-      expires: expiresAt,
+      secure: process.env.NODE_ENV === "production",
+      expires: new Date(accessDecoded.exp * 1000),
       sameSite: "lax",
       path: "/",
     });
-  } else {
-    console.log("refresh token not found");
+    return { access };
+  } catch (error) {
+    console.error("Token refresh failed:", error);
+    return null;
   }
-
-  return { success: true };
 }
 
 export async function verifySession() {
@@ -91,4 +99,16 @@ export async function deleteSession() {
   const cookieStore = await cookies();
   cookieStore.delete("accessToken");
   cookieStore.delete("refreshToken");
+}
+
+
+export async function isTokenExpiringSoon(token: string, bufferSeconds: number = 60): Promise<boolean> {
+  try {
+    const { exp } = jwtDecode(token);
+    const now = Date.now() / 1000;
+    // console.log(exp, now, exp - now < bufferSeconds)
+    return exp - now < bufferSeconds;
+  } catch {
+    return true;
+  }
 }
