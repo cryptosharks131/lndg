@@ -31,67 +31,53 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/",
+      url: "/dashboard",
       icon: SquareTerminal,
       isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/",
-        },
-        {
-          title: "Performance",
-          url: "/performance",
-        },
-        {
-          title: "Financials",
-          url: "/financials",
-        },
-      ],
     },
     {
       title: "Channels and Peers",
-      url: "/peers",
+      url: "/dashboard/peers",
       icon: Bot,
       items: [
         {
           title: "Channel Closures",
-          url: "/channel-closures",
+          url: "/dashboard/channel-closures",
         },
         {
           title: "Peers",
-          url: "/peers",
+          url: "/dashboard/peers",
         },
         {
           title: "Peer Events",
-          url: "/peer-events",
+          url: "/dashboard/peer-events",
         },
       ],
     },
     {
       title: "Financials",
-      url: "/financials",
+      url: "/dashboard/financials",
       icon: BookOpen,
       items: [
         {
           title: "Auto-Rate",
-          url: "/auto-rate",
+          url: "/dashboard/auto-rate",
         },
         {
           title: "Fee Rates",
-          url: "/fee-rates",
+          url: "/dashboard/fee-rates",
         },
         {
           title: "Trades",
-          url: "/trades",
+          url: "/dashboard/trades",
         },
         {
           title: "Key Sends",
-          url: "/key-sends",
+          url: "/dashboard/key-sends",
         },
         {
           title: "Rebalancing",
-          url: "/rebalancing",
+          url: "/dashboard/rebalancing",
         },
       ],
     },
@@ -102,23 +88,23 @@ const data = {
       items: [
         {
           title: "Towers",
-          url: "/towers",
+          url: "/dashboard/towers",
         },
         {
           title: "Batching",
-          url: "/batching",
+          url: "/dashboard/batching",
         },
         {
           title: "Fee Logs",
-          url: "/fee-logs",
+          url: "/dashboard/fee-logs",
         },
         {
           title: "Advanced Settings",
-          url: "/advanced-settings",
+          url: "/dashboard/advanced-settings",
         },
         {
           title: "Logs",
-          url: "/logs",
+          url: "/dashboard/logs",
         },
       ],
     },

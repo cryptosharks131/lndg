@@ -225,3 +225,13 @@ export interface FeesChartData {
   paid: number;
   onchain: number;
 }
+
+export interface PerformanceStats {
+  lineItem: string;
+  description: string;
+  "1 Day": number | { stats: number; ppm: number };
+  "7 Day": number | { stats: number; ppm: number };
+  "30 Day": number | { stats: number; ppm: number };
+  "90 Day": number | { stats: number; ppm: number };
+  Lifetime: number | { stats: number; ppm: number };
+}

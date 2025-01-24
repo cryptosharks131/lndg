@@ -1,45 +1,43 @@
-import { ActiveChannelsChart } from "@/components/overview/active-channels-chart";
-import { BalancesChart } from "@/components/overview/balances-chart";
-import { FeesChart } from "@/components/overview/fee-chart";
-import { LiquidityChart } from "@/components/overview/liquidity-chart";
-import { NodePerformanceChart } from "@/components/overview/node-performance-chart";
-import { RoutedChart } from "@/components/overview/routed-chart";
-
+import { Button } from "@/components/ui/button"
 import {
-  fetchBalancesChartData,
-  fetchChannelsChartData,
-  fetchFeeChartData,
-  fetchRoutedChartData
-} from "@/lib/data";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import OverviewSection from "@/app/dashboard/overview";
+import ProfitabilitySection from "@/app/dashboard/profitability"
+import PerformanceSection from "@/app/dashboard/performance"
 
-export default async function Page() {
-  const balanceChartData = await fetchBalancesChartData();
-  const { ChannelsChartData, LiquidityChartData } =
-    await fetchChannelsChartData();
-  const feesChartData = await fetchFeeChartData();
-  const routedChartData = await fetchRoutedChartData();
-  // console.log(balanceChartData)
+
+export default async function DashboardPage() {
 
   return (
-    <div className="grid grid-cols-12 gap-5">
-      <div className="col-span-4">
-        <BalancesChart chartData={balanceChartData} />
-      </div>
-      <div className="col-span-4">
-        <ActiveChannelsChart chartData={ChannelsChartData} />
-      </div>
-      <div className="col-span-4">
-        <LiquidityChart chartData={LiquidityChartData} />
-      </div>
-      <div className="col-span-6">
-        <NodePerformanceChart />
-      </div>
-      <div className="col-span-6">
-        <FeesChart chartData={feesChartData} />
-      </div>
-      <div className="col-span-12">
-        <RoutedChart chartData={routedChartData} />
-      </div>
-    </div>
+    <Tabs defaultValue="overview">
+      <TabsList className="grid w-full grid-cols-3 mb-4">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="performance">Performance</TabsTrigger>
+        <TabsTrigger value="profitability">Profitability</TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview">
+        <OverviewSection />
+      </TabsContent>
+      <TabsContent value="performance">
+        <PerformanceSection />
+      </TabsContent>
+      <TabsContent value="profitability">
+        <ProfitabilitySection />
+      </TabsContent>
+    </Tabs>
   );
 }

@@ -144,6 +144,10 @@ export async function fetchFeeChartData() {
   const paymentsByDay: AggregatedData[] = AggregatedValueByDay(paymentsDataRaw);
 
 
+  // console.log(paymentsByDay)
+  // console.log(onchainByDay)
+  // console.log(forwardsByDay)
+
   const feesChartDataDict: { [date: string]: FeesChartData } = {};
 
   for (const date of getLastNumDays(7)) {
@@ -155,20 +159,29 @@ export async function fetchFeeChartData() {
     };
   }
 
+  // console.log(feesChartDataDict)
 
   const mergeData = (
     data: AggregatedData[],
     key: "earned" | "paid" | "onchain",
   ) => {
     data.forEach((entry) => {
-      feesChartDataDict[entry.date][key] = entry.value ?? 0; // Use value for all datasets
+      if (entry.date in feesChartDataDict) {
+        feesChartDataDict[entry.date][key] = entry.value ?? 0; 
+      }
     });
   };
 
   // Merge each dataset into the combined object
   mergeData(forwardsByDay, "earned");
+  // console.log(feesChartDataDict)
+
   mergeData(paymentsByDay, "paid");
+  // console.log(feesChartDataDict)
+
   mergeData(onchainByDay, "onchain");
+  // console.log(feesChartDataDict)
+
 
   const feesChartData = Object.values(feesChartDataDict).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -195,7 +208,7 @@ export async function fetchRoutedChartData() {
   const routedChartData = forwardsByDay.sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
-  console.log(routedChartData)
+  // console.log(routedChartData)
   return routedChartData
   
 }

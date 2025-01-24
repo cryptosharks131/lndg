@@ -38,6 +38,9 @@ export default async function middleware(req: NextRequest) {
 
   // 4. Redirect
 
+  // deactivating for dev env 
+
+
   if (isProtectedRoute && !isAuth) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
@@ -62,11 +65,11 @@ export default async function middleware(req: NextRequest) {
     const decoded = jwtDecode(accessToken); // This function decodes JWT, no libraries needed
     // console.log(decoded)
     // Check if the access token has expired (check exp timestamp)
-    console.log(
-      decoded.exp * 1000,
-      Date.now(),
-      decoded.exp * 1000 < Date.now(),
-    );
+    // console.log(
+    //   decoded.exp * 1000,
+    //   Date.now(),
+    //   decoded.exp * 1000 < Date.now(),
+    // );
     // if token is expired, then return to login
 
     if (decoded.exp * 1000 < Date.now()) {

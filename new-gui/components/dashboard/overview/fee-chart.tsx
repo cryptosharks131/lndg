@@ -24,33 +24,25 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-
 import { formatNumber } from "@/lib/formatter";
-const chartData = [
-  { date: "01/13", profit: 186, profitOnChain: 80, utilization: 70 },
-  { date: "01/14", profit: 305, profitOnChain: 200, utilization: 72 },
-  { date: "01/15", profit: 237, profitOnChain: 120, utilization: 60 },
-  { date: "01/16", profit: 73, profitOnChain: 190, utilization: 55 },
-  { date: "01/17", profit: 209, profitOnChain: 130, utilization: 68 },
-  { date: "01/18", profit: 214, profitOnChain: 140, utilization: 79 },
-];
+import { FeesChartData } from "@/lib/definitions";
 
 const chartConfig = {
-  profit: {
-    label: "⚡ Profit/Outbound (ppm)",
+  earned: {
+    label: "Fees Earned (sats)",
     color: "hsl(var(--chart-1))",
   },
-  profitOnChain: {
-    label: "⛓️ Profit/Outbound  (ppm)",
+  paid: {
+    label: "Fees Paid (sats)",
     color: "hsl(var(--chart-2))",
   },
-  utilization: {
-    label: "Onboard Utilization (%)",
+  onchain: {
+    label: "On-Chain Fees (sats)",
     color: "hsl(var(--chart-3))",
   },
 } satisfies ChartConfig;
 
-export function NodePerformanceChart() {
+export function FeesChart({ chartData }: { chartData: FeesChartData[] }) {
   return (
     <Card>
       <CardHeader>
@@ -78,8 +70,14 @@ export function NodePerformanceChart() {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 5)}
-              hide
+              minTickGap={32}
+              tickFormatter={(value) => {
+                const date = new Date(value)
+                return date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })
+              }}
             />
             <ChartTooltip
               cursor={false}
@@ -88,12 +86,12 @@ export function NodePerformanceChart() {
             <ChartLegend content={<ChartLegendContent />} />
 
             <Line
-              dataKey="profit"
+              dataKey="earned"
               type="linear"
-              stroke="var(--color-profit)"
+              stroke="var(--color-earned)"
               strokeWidth={2}
               dot={{
-                fill: "var(--color-profit)",
+                fill: "var(--color-earned)",
               }}
               activeDot={{
                 r: 6,
@@ -109,12 +107,12 @@ export function NodePerformanceChart() {
               />
             </Line>
             <Line
-              dataKey="profitOnChain"
+              dataKey="paid"
               type="linear"
-              stroke="var(--color-profitOnChain)"
+              stroke="var(--color-paid)"
               strokeWidth={2}
               dot={{
-                fill: "var(--color-profitOnChain)",
+                fill: "var(--color-paid)",
               }}
               activeDot={{
                 r: 6,
@@ -130,17 +128,18 @@ export function NodePerformanceChart() {
               />
             </Line>
             <Line
-              dataKey="utilization"
+              dataKey="onchain"
               type="linear"
-              stroke="var(--color-utilization)"
+              stroke="var(--color-onchain)"
               strokeWidth={2}
               dot={{
-                fill: "var(--color-utilization)",
+                fill: "var(--color-onchain)",
               }}
               activeDot={{
                 r: 6,
               }}
               yAxisId="right"
+              name="onchain"
             >
               <LabelList
                 position="top"
