@@ -77,6 +77,11 @@ export async function fetchChannelsChartData() {
     },
   ];
 
+  // Filter out active and open channels
+  data.results = data.results.filter(
+    (channel) => channel.is_active && channel.is_open,
+  );
+
   const LiquidityChartData: LiquidityChartData[] = [
     {
       status: "outbound",
