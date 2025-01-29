@@ -324,3 +324,7 @@ export async function fetchNodePerformanceChartData() {
 // http://localhost:8000/api/onchain/
 // http://localhost:8000/api/closures/
 // http://localhost:8000/api/invoices/
+
+// value routed is sum of amount in forwards
+// profit ppm = profit / total value routed
+// percent cost is payments / revenue 

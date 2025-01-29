@@ -77,15 +77,18 @@ export function BalancesChart({
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="value" layout="vertical" radius={5}>
+            <Bar dataKey="value" layout="vertical" radius={5}
+              stackId="a"
+            >
               <LabelList
-                position="right"
+                position="insideLeft"
                 offset={12}
                 className="fill-white"
                 fontSize={12}
                 formatter={formatNumber}
               />
             </Bar>
+
           </BarChart>
         </ChartContainer>
       </CardContent>
