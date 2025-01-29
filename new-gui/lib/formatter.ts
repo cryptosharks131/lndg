@@ -1,4 +1,6 @@
-// formatter function to properly display numbers
-export function formatNumber(value: number) {
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+export function formatNumber(value: number): string {
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 }

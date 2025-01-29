@@ -18,8 +18,9 @@ export function LoginForm() {
             id="username"
             name="username"
             placeholder="lndg-admin"
-            type="username"
+            type="text"
             defaultValue="lndg-admin"
+            autoComplete="username"
           />
           {state?.errors?.username && (
             <p className="text-sm text-red-500">{state.errors.username}</p>
@@ -29,7 +30,12 @@ export function LoginForm() {
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
           </div>
-          <Input id="password" type="password" name="password" />
+          <Input
+            id="password"
+            type="password"
+            name="password"
+            autoComplete="password"
+          />
           {state?.errors?.password && (
             <p className="text-sm text-red-500">{state.errors.password}</p>
           )}

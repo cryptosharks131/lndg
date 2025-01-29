@@ -2208,7 +2208,7 @@ export function ProfitabilityStatsChart() {
     })
 
 
-    const sumOfFilteredData = filteredData.reduce((acc, data, index, array) => {
+    const aggregatedData = filteredData.reduce((acc, data, index, array) => {
         acc.offchainCost += data.offchainCost;
         acc.offchainCostPpm += data.offchainCostPpm
         acc.onchainCosts += data.onchainCosts;
@@ -2366,7 +2366,7 @@ export function ProfitabilityStatsChart() {
                                 Profit
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.profit.toLocaleString()}
+                                {aggregatedData.profit.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2374,7 +2374,7 @@ export function ProfitabilityStatsChart() {
                                 Profit (ppm)
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.profitPpm.toLocaleString()}
+                                {aggregatedData.profitPpm.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2382,7 +2382,7 @@ export function ProfitabilityStatsChart() {
                                 Off-Chain Costs
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.offchainCost.toLocaleString()}
+                                {aggregatedData.offchainCost.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2390,7 +2390,7 @@ export function ProfitabilityStatsChart() {
                                 Off-Chain Costs (ppm)
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.offchainCostPpm.toLocaleString()}
+                                {aggregatedData.offchainCostPpm.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2398,7 +2398,7 @@ export function ProfitabilityStatsChart() {
                                 On-Chain Costs
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.onchainCosts.toLocaleString()}
+                                {aggregatedData.onchainCosts.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2406,7 +2406,7 @@ export function ProfitabilityStatsChart() {
                                 Percent Costs
                             </CardHeader>
                             <CardContent>
-                                {(sumOfFilteredData.percentCosts * 100).toFixed(2)}%
+                                {(aggregatedData.percentCosts * 100).toFixed(2)}%
                             </CardContent>
                         </Card>
                         <Card>
@@ -2414,7 +2414,7 @@ export function ProfitabilityStatsChart() {
                                 Payments Routed
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.paymentsRouted.toLocaleString()}
+                                {aggregatedData.paymentsRouted.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2422,7 +2422,7 @@ export function ProfitabilityStatsChart() {
                                 Value Routed
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.valueRouted.toLocaleString()}
+                                {aggregatedData.valueRouted.toLocaleString()}
                             </CardContent>
                         </Card>
                         <Card>
@@ -2430,7 +2430,7 @@ export function ProfitabilityStatsChart() {
                                 Revenue
                             </CardHeader>
                             <CardContent>
-                                {sumOfFilteredData.revenue.toLocaleString()}
+                                {aggregatedData.revenue.toLocaleString()}
                             </CardContent>
                         </Card>
 
