@@ -88,6 +88,7 @@ urlpatterns = [
     path('api/pendingchannels/', views.pending_channels, name='pending-channels'),
     path('api/bumpfee/', views.bump_fee, name='bump-fee'),
     path('api/chart/', views.chart, name='chart'),
+    path('api/node-performance-chart/', views.node_performance_chart, name='node-performance-chart'),
     path('api/chanpolicy/', views.chan_policy, name='chan-policy'),
     path('api/broadcast_tx/', views.broadcast_tx, name='broadcast-tx'),
     path('api/node_info/', views.node_info, name='node-info'),

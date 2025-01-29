@@ -26,14 +26,8 @@ import {
 } from "@/components/ui/chart";
 
 import { formatNumber } from "@/lib/formatter";
-const chartData = [
-  { date: "01/13", profit: 186, profitOnChain: 80, utilization: 70 },
-  { date: "01/14", profit: 305, profitOnChain: 200, utilization: 72 },
-  { date: "01/15", profit: 237, profitOnChain: 120, utilization: 60 },
-  { date: "01/16", profit: 73, profitOnChain: 190, utilization: 55 },
-  { date: "01/17", profit: 209, profitOnChain: 130, utilization: 68 },
-  { date: "01/18", profit: 214, profitOnChain: 140, utilization: 79 },
-];
+import { NodePerformanceChartData } from "@/lib/definitions";
+
 
 const chartConfig = {
   profit: {
@@ -50,7 +44,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function NodePerformanceChart() {
+export function NodePerformanceChart({ chartData }: { chartData: NodePerformanceChartData[] }) {
   return (
     <Card>
       <CardHeader>

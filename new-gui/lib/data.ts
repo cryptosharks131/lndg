@@ -5,19 +5,23 @@ import {
   BalancesApiData,
   ChannelsChartData,
   LiquidityChartData,
-  ChannelsDataApi,
   FeesChartData,
   UnaggregatedData,
-  ForwardsDataApi,
-  OnChainDataApi,
-  PaymentsDataApi,
   AggregatedData,
+  Channel,
+  Payment,
+  Forward,
+  OnChainTransaction,
+  NodePerformanceChartData
 } from "./definitions";
 import { verifySession } from "@/app/auth/sessions";
-import { AggregatedValueByDay, getLastNumDays } from "./utils";
+import { AggregatedValueByDay, getLastNumDays, getPastDate } from "./utils";
 
-export async function getDataFromApi(apiEndPoint: string) {
-  const API_URL = process.env.API_URL;
+
+const API_URL = process.env.API_URL + "/api";
+
+export async function getDataFromApi(
+  apiURL: string, limit: number = 100, offset: number = 0, accumulate: boolean = false, startDate: { attribute: string, date: string } | false = false, endDate: { attribute: string, date: string } | false = false, results: any[] = []) {
 
   const { isAuth, accessToken } = await verifySession();
 
@@ -25,41 +29,60 @@ export async function getDataFromApi(apiEndPoint: string) {
     throw new Error("Unauthorized: No access token");
   }
 
-  const res = await fetch(`${API_URL}/api/${apiEndPoint}/`, {
+  let nextUrl = `${apiURL}/?limit=${limit}&offset=${offset}`;
+  if (startDate) {
+    nextUrl += `&${startDate.attribute}__gt=${encodeURIComponent(startDate.date)}`;
+  }
+  if (endDate) {
+    nextUrl += `&${endDate.attribute}__lt=${encodeURIComponent(endDate.date)}`;
+  }
+
+  const res = await fetch(nextUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!res.ok) {
     throw new Error("Failed to fetch protected data");
   }
-  const data = await res.json();
 
-  return data;
+  const data = await res.json();
+  results = [...results, ...data.results];
+
+  if (accumulate && data.next) {
+    return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, results);
+  }
+
+  return results;
 }
 
+
+
 export async function fetchBalancesChartData() {
-  const data = await getDataFromApi("balances");
+  const data: BalancesApiData[] = await getDataFromApi(`${API_URL}/balances`, 100, 0);
 
-  const balanceData: BalancesApiData = data.data;
+  const balanceChartData: BalancesChartData[] = Object.entries(data[0]).map((item) => ({
+    item: item[0],
+    value: item[1],
+    fill: `var(--color-${item[0]})`,
+  }))
 
-  const balanceChartData: BalancesChartData[] = Object.entries(balanceData).map(
-    ([key, value]) => ({
-      item: key,
-      value,
-      fill: `var(--color-${key})`,
-    }),
-  );
+
 
   return balanceChartData;
 }
 
 export async function fetchChannelsChartData() {
-  const data: ChannelsDataApi = await getDataFromApi("channels");
+  const channels: Channel[] = await getDataFromApi(`${API_URL}/channels`, 100, 0, true);
+
+  // Filter out active and open channels
+  const activeChannels = channels.filter(
+    (channel) => channel.is_active && channel.is_open,
+  );
 
   const ChannelsChartData: ChannelsChartData[] = [
     {
       status: "activeChannels",
-      value: data.results.reduce(
+      value: channels.reduce(
         (count, channel) =>
           channel.is_active && channel.is_open ? count + 1 : count,
         0,
@@ -68,7 +91,7 @@ export async function fetchChannelsChartData() {
     },
     {
       status: "inactiveChannels",
-      value: data.results.reduce(
+      value: channels.reduce(
         (count, channel) =>
           !channel.is_active && channel.is_open ? count + 1 : count,
         0,
@@ -77,15 +100,12 @@ export async function fetchChannelsChartData() {
     },
   ];
 
-  // Filter out active and open channels
-  data.results = data.results.filter(
-    (channel) => channel.is_active && channel.is_open,
-  );
+
 
   const LiquidityChartData: LiquidityChartData[] = [
     {
       status: "outbound",
-      value: data.results.reduce(
+      value: activeChannels.reduce(
         (sum, channel) => sum + channel.local_balance,
         0,
       ),
@@ -93,7 +113,7 @@ export async function fetchChannelsChartData() {
     },
     {
       status: "inbound",
-      value: data.results.reduce(
+      value: activeChannels.reduce(
         (sum, channel) => sum + channel.remote_balance,
         0,
       ),
@@ -101,7 +121,7 @@ export async function fetchChannelsChartData() {
     },
     {
       status: "unsettled",
-      value: data.results.reduce(
+      value: activeChannels.reduce(
         (sum, channel) => sum + channel.unsettled_balance,
         0,
       ),
@@ -113,15 +133,18 @@ export async function fetchChannelsChartData() {
 }
 
 export async function fetchFeeChartData() {
+
+  const sevenDaysAgo = getPastDate(7)
+
   // forwards api has all the "fees" earned so you can calculate the last 7 days worth of fees earned
-  const forwardsData: ForwardsDataApi = await getDataFromApi("forwards");
+  const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
   // onchain api has all the "fees" on chain so you can calculate the last 7 days worth of on chain fees
 
-  const onchainData: OnChainDataApi = await getDataFromApi("onchain");
+  const onchainData: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: sevenDaysAgo });
   // payments api has all the "fees" paid so you can calculate the last 7 days worth of fees paid
-  const paymentsData: PaymentsDataApi = await getDataFromApi("payments");
+  const paymentsData: Payment[] = await getDataFromApi(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: sevenDaysAgo });
 
-  const forwardsDataRaw: UnaggregatedData[] = forwardsData.results.map(
+  const forwardsDataRaw: UnaggregatedData[] = forwardsData.map(
     (forward) => ({
       date: forward.forward_date,
       value: forward.fee,
@@ -130,7 +153,7 @@ export async function fetchFeeChartData() {
 
   const forwardsByDay: AggregatedData[] = AggregatedValueByDay(forwardsDataRaw);
 
-  const onchainDataRaw: UnaggregatedData[] = onchainData.results.map(
+  const onchainDataRaw: UnaggregatedData[] = onchainData.map(
     (onchain) => ({
       date: onchain.time_stamp,
       value: onchain.fee,
@@ -139,7 +162,7 @@ export async function fetchFeeChartData() {
 
   const onchainByDay: AggregatedData[] = AggregatedValueByDay(onchainDataRaw);
 
-  const paymentsDataRaw: UnaggregatedData[] = paymentsData.results.map(
+  const paymentsDataRaw: UnaggregatedData[] = paymentsData.map(
     (payment) => ({
       date: payment.creation_date,
       value: payment.fee,
@@ -148,10 +171,6 @@ export async function fetchFeeChartData() {
 
   const paymentsByDay: AggregatedData[] = AggregatedValueByDay(paymentsDataRaw);
 
-
-  // console.log(paymentsByDay)
-  // console.log(onchainByDay)
-  // console.log(forwardsByDay)
 
   const feesChartDataDict: { [date: string]: FeesChartData } = {};
 
@@ -164,7 +183,6 @@ export async function fetchFeeChartData() {
     };
   }
 
-  // console.log(feesChartDataDict)
 
   const mergeData = (
     data: AggregatedData[],
@@ -172,21 +190,15 @@ export async function fetchFeeChartData() {
   ) => {
     data.forEach((entry) => {
       if (entry.date in feesChartDataDict) {
-        feesChartDataDict[entry.date][key] = entry.value ?? 0; 
+        feesChartDataDict[entry.date][key] = entry.value ?? 0;
       }
     });
   };
 
-  // Merge each dataset into the combined object
+
   mergeData(forwardsByDay, "earned");
-  // console.log(feesChartDataDict)
-
   mergeData(paymentsByDay, "paid");
-  // console.log(feesChartDataDict)
-
   mergeData(onchainByDay, "onchain");
-  // console.log(feesChartDataDict)
-
 
   const feesChartData = Object.values(feesChartDataDict).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -198,25 +210,88 @@ export async function fetchFeeChartData() {
 
 export async function fetchRoutedChartData() {
 
-  const forwardsData: ForwardsDataApi = await getDataFromApi("forwards");
+  const thirtyDaysAgo = getPastDate(30)
+
+  const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: thirtyDaysAgo });
 
 
-  const forwardsDataRaw: UnaggregatedData[] = forwardsData.results.map(
+
+
+  const forwardsDataRaw: UnaggregatedData[] = forwardsData.map(
     (forward) => ({
       date: forward.forward_date,
       value: forward.amt_out_msat,
     }),
   );
 
+
   const forwardsByDay: AggregatedData[] = AggregatedValueByDay(forwardsDataRaw);
 
-  const routedChartData = forwardsByDay.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
-  // console.log(routedChartData)
+
+  const routedChartData: AggregatedData[] = getLastNumDays(30).map((date) => {
+    const routed = forwardsByDay.find((forward) => forward.date === date)?.value ?? 0;
+    return (
+      { date: date, value: routed }
+    )
+  });
+
+
+  routedChartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+
   return routedChartData
-  
+
 }
+
+
+export async function fetchNodePerformanceChartData() {
+
+  const sevenDaysAgo = getPastDate(7)
+
+  const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
+
+  const onchainData: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: sevenDaysAgo });
+
+  const paymentsData: Payment[] = await getDataFromApi(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: sevenDaysAgo });
+
+  const balanceChartData = await fetchBalancesChartData();
+
+  const total_outbound = balanceChartData.find((item) => item.item === "offchain_balance")?.value ?? 1;
+
+  const earned: UnaggregatedData[] = forwardsData.map((forward) => ({ date: forward.forward_date, value: forward.fee }));
+  const earnedByDay: AggregatedData[] = AggregatedValueByDay(earned);
+
+  const offchain: UnaggregatedData[] = paymentsData.map((payment) => ({ date: payment.creation_date, value: payment.fee }));
+  const offchainByDay: AggregatedData[] = AggregatedValueByDay(offchain);
+
+  const onchain: UnaggregatedData[] = onchainData.map((onchain) => ({ date: onchain.time_stamp, value: onchain.fee }));
+
+  const costs: UnaggregatedData[] = [...offchain, ...onchain];
+  const costsByDay: AggregatedData[] = AggregatedValueByDay(costs);
+
+
+
+
+  const nodePerformanceChartData: NodePerformanceChartData[] = getLastNumDays(7).map((date) => {
+    const earnedValue = earnedByDay.find((entry) => entry.date === date)?.value ?? 0;
+    const offchainValue = offchainByDay.find((entry) => entry.date === date)?.value ?? 0;
+    const onchainValue = costsByDay.find((entry) => entry.date === date)?.value ?? 0;
+
+    return {
+      date,
+      profit: (earnedValue - offchainValue) * 1000000 / total_outbound,
+      profitOnChain: (earnedValue - onchainValue) * 1000000 / total_outbound,
+      utilization: earnedValue * 1000000 / total_outbound,
+    };
+  });
+
+  // sort ascending date 
+  nodePerformanceChartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return nodePerformanceChartData
+
+}
+
 
 // export async function fetchNodePerformanceChartData() {
 
@@ -227,13 +302,16 @@ export async function fetchRoutedChartData() {
 //   const paymentsData: PaymentsDataApi = await getDataFromApi("payments");
 
 
-
- 
 // } 
 
 
+// earned = forwards (in + out)
+// offchain fee = payments 
+// costs = offchain + onchain 
 
 // all the money made = revenue
+// byId(`profit_per_outbound_${ d }d`).innerHTML = '⚡${((earned - offchain.fee) * 1000000 / total_outbound).intcomma()}ₚₚₘ</span>
+// ⛓️${((earned - costs) * 1000000 / total_outbound).intcomma()}ₚₚₘ</span>`
 // all the money spent = cost
 // all profit = revenue - cost (Profit (sats))
 // all outbound (sat)

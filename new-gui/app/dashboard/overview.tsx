@@ -10,6 +10,7 @@ import {
     fetchBalancesChartData,
     fetchChannelsChartData,
     fetchFeeChartData,
+    fetchNodePerformanceChartData,
     fetchRoutedChartData
 } from "@/lib/data";
 
@@ -18,6 +19,10 @@ export default async function OverviewSection() {
     const { ChannelsChartData, LiquidityChartData } = await fetchChannelsChartData();
     const feesChartData = await fetchFeeChartData();
     const routedChartData = await fetchRoutedChartData();
+    const nodePerformanceChartData = await fetchNodePerformanceChartData();
+
+    // console.log(nodePerformanceChartData)
+
     return (
         <div className="grid grid-cols-12 gap-5">
             <div className="col-span-4">
@@ -30,7 +35,7 @@ export default async function OverviewSection() {
                 <LiquidityChart chartData={LiquidityChartData} />
             </div>
             <div className="col-span-6">
-                <NodePerformanceChart />
+                <NodePerformanceChart chartData={nodePerformanceChartData} />
             </div>
             <div className="col-span-6">
                 <FeesChart chartData={feesChartData} />

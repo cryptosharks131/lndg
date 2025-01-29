@@ -690,6 +690,17 @@ def chart(request):
     results = balance.groupby('dt').sum().reset_index().sort_values('dt')
     return Response(results.to_dict(orient='records'))
 
+@api_view(['GET'])
+@is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
+def node_performance_chart(request):
+    payments = Payments.objects.filter(status=2).annotate(dt=TruncDay('creation_date')).values('dt').annotate(cost=Sum('fee', output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Value(0))
+    invoices = Invoices.objects.filter(state=1, is_revenue=True).annotate(dt=TruncDay('settle_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('amt_paid', output_field=FloatField()), onchain=Value(0))
+    forwards = Forwards.objects.annotate(dt=TruncDay('forward_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('fee', output_field=FloatField()), onchain=Value(0))
+    onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('amount'))
+    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain).values('dt', 'cost', 'revenue', 'onchain'))
+    results = balance.groupby('dt').sum().reset_index().sort_values('dt')
+    return Response(results.to_dict(orient='records'))
+
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def channel(request):
     if request.method == 'GET':
@@ -2713,6 +2724,7 @@ def get_info(request):
 def api_balances(request):
     try:
         stub = lnrpc.LightningStub(lnd_connect())
+        print(stub)
         balances = stub.WalletBalance(ln.WalletBalanceRequest())
         pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
         limbo_balance = pending_channels.total_limbo_balance
@@ -2723,8 +2735,8 @@ def api_balances(request):
                 pending_open_balance += target_resp[i].channel.local_balance
         channels = Channels.objects.filter(is_open=1)
         offchain_balance = channels.aggregate(Sum('local_balance'))['local_balance__sum'] + channels.aggregate(Sum('pending_outbound'))['pending_outbound__sum'] + pending_open_balance + limbo_balance
-        target = {'total_balance':(balances.total_balance + offchain_balance),'offchain_balance':offchain_balance,'onchain_balance':balances.total_balance, 'confirmed_balance':balances.confirmed_balance, 'unconfirmed_balance':balances.unconfirmed_balance}
-        return Response({'message': 'success', 'data':target})
+        target = [{'total_balance':(balances.total_balance + offchain_balance),'offchain_balance':offchain_balance,'onchain_balance':balances.total_balance, 'confirmed_balance':balances.confirmed_balance, 'unconfirmed_balance':balances.unconfirmed_balance}]
+        return Response({'message': 'success', 'results':target})
     except Exception as e:
         error = str(e)
         details_index = error.find('details =') + 11

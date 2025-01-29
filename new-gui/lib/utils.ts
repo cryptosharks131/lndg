@@ -58,3 +58,8 @@ export const getLastNumDays = (num: number) => {
 
 }
 
+export function getPastDate(daysAgo) {
+  const pastDate = new Date();
+  pastDate.setDate(pastDate.getDate() - daysAgo);
+  return pastDate.toISOString().split('T')[0]; // Returns in "YYYY-MM-DD" format
+}

@@ -107,7 +107,7 @@ export function LiquidityChart({
                           y={viewBox.cy}
                           className="fill-foreground text-3xl font-bold"
                         >
-                          {liquidityRatio.toLocaleString()}
+                          {liquidityRatio.toLocaleString('en-US', { style: 'percent' })}
                         </tspan>
                         <tspan
                           x={viewBox.cx}

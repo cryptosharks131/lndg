@@ -79,13 +79,6 @@ export interface NodeInfoApiData {
   db_size: number;
 }
 
-export interface ChannelsDataApi {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: Channel[];
-}
-
 export interface Channel {
   url: string;
   chan_id: string;
@@ -152,7 +145,7 @@ export interface LiquidityChartData {
   fill: string;
 }
 
-export interface ForwardData {
+export interface Forward {
   url: string;
   id: number;
   forward_date: string; // ISO 8601 date
@@ -175,12 +168,6 @@ export interface AggregatedData {
   value: number;
 }
 
-export interface ForwardsDataApi {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: ForwardData[];
-}
 
 export interface OnChainTransaction {
   url: string;
@@ -191,13 +178,6 @@ export interface OnChainTransaction {
   time_stamp: string; // ISO 8601 date
   fee: number;
   label: string;
-}
-
-export interface OnChainDataApi {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: OnChainTransaction[];
 }
 
 export interface Payment {
@@ -215,13 +195,6 @@ export interface Payment {
   message: string | null;
   cleaned: boolean;
   rebal_chan: string | null;
-}
-
-export interface PaymentsDataApi {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: Payment[];
 }
 
 export interface FeesChartData {
@@ -243,3 +216,11 @@ export interface ProfitabilityStats {
   profit: number; // Total profit
   profitPpm: number; // Profit per million
 }
+
+export interface NodePerformanceChartData {
+  date: string;
+  profit: number;
+  profitOnChain: number;
+  utilization: number;
+
+} 
