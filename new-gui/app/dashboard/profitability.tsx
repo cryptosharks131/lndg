@@ -141,7 +141,7 @@ export default function ProfitabilitySection() {
         </div>
         {
           profitabilityStats.map((stat) => (
-            <div className="col-span-6" key={stat.name}>
+            <div className="col-span-6 lg:col-span-3" key={stat.name}>
               <ProfitabilityStat stat={stat}
               />
             </div>
