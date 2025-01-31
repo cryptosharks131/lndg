@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { ChartBrush, ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Brush, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { formatNumber } from "@/lib/formatter";
 import { ProfitabilityStats } from "@/lib/definitions";
 
@@ -2340,6 +2340,7 @@ export function ProfitabilityStatsChart() {
                                 }
                             />
                             <ChartLegend content={<ChartLegendContent />} />
+                            <Brush dataKey="date" height={15} stroke="black" className="bg-background" />
 
                             {Object.entries(chartConfig).map(([dataKey, { color, axis }]) => (
                                 <Line

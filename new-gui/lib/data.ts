@@ -12,10 +12,14 @@ import {
   Payment,
   Forward,
   OnChainTransaction,
-  NodePerformanceChartData
+  NodePerformanceChartData,
+  ProfitabilityStats
 } from "./definitions";
 import { verifySession } from "@/app/auth/sessions";
 import { AggregatedValueByDay, getLastNumDays, getPastDate } from "./utils";
+import { DateRange } from "react-day-picker";
+import { date } from "zod";
+import { format, subDays } from "date-fns";
 
 
 const API_URL = process.env.API_URL + "/api";
@@ -246,7 +250,9 @@ export async function fetchRoutedChartData() {
 
 export async function fetchNodePerformanceChartData() {
 
+
   const sevenDaysAgo = getPastDate(7)
+
 
   const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
 
@@ -258,8 +264,8 @@ export async function fetchNodePerformanceChartData() {
 
   const total_outbound = balanceChartData.find((item) => item.item === "offchain_balance")?.value ?? 1;
 
-  const earned: UnaggregatedData[] = forwardsData.map((forward) => ({ date: forward.forward_date, value: forward.fee }));
-  const earnedByDay: AggregatedData[] = AggregatedValueByDay(earned);
+  const revenue: UnaggregatedData[] = forwardsData.map((forward) => ({ date: forward.forward_date, value: forward.fee }));
+  const revenueByDay: AggregatedData[] = AggregatedValueByDay(revenue);
 
   const offchain: UnaggregatedData[] = paymentsData.map((payment) => ({ date: payment.creation_date, value: payment.fee }));
   const offchainByDay: AggregatedData[] = AggregatedValueByDay(offchain);
@@ -273,15 +279,15 @@ export async function fetchNodePerformanceChartData() {
 
 
   const nodePerformanceChartData: NodePerformanceChartData[] = getLastNumDays(7).map((date) => {
-    const earnedValue = earnedByDay.find((entry) => entry.date === date)?.value ?? 0;
+    const revenueValue = revenueByDay.find((entry) => entry.date === date)?.value ?? 0;
     const offchainValue = offchainByDay.find((entry) => entry.date === date)?.value ?? 0;
     const onchainValue = costsByDay.find((entry) => entry.date === date)?.value ?? 0;
 
     return {
       date,
-      profit: (earnedValue - offchainValue) * 1000000 / total_outbound,
-      profitOnChain: (earnedValue - onchainValue) * 1000000 / total_outbound,
-      utilization: earnedValue * 1000000 / total_outbound,
+      profit: (revenueValue - offchainValue) * 1000000 / total_outbound,
+      profitOnChain: (revenueValue - onchainValue) * 1000000 / total_outbound,
+      utilization: revenueValue * 1000000 / total_outbound,
     };
   });
 
@@ -292,39 +298,75 @@ export async function fetchNodePerformanceChartData() {
 
 }
 
+export async function fetchProfitabilityData(dateRange: DateRange = { to: new Date, from: subDays(new Date(), 30) }) {
 
-// export async function fetchNodePerformanceChartData() {
+  if (!dateRange.from || !dateRange.to) {
+    return []
+  }
 
-//   const forwardsData: ForwardsDataApi = await getDataFromApi("forwards");
-
-//   const onchainData: OnChainDataApi = await getDataFromApi("onchain");
-
-//   const paymentsData: PaymentsDataApi = await getDataFromApi("payments");
-
-
-// } 
+  // Helper function to format date as 'YYYY-MM-DD'
+  const formatDate = (date: Date) => format(date, "yyyy-MM-dd");
 
 
-// earned = forwards (in + out)
-// offchain fee = payments 
-// costs = offchain + onchain 
+  const ForwardsDataApi: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "forward_date", date: dateRange.to?.toISOString().split('T')[0] });
 
-// all the money made = revenue
-// byId(`profit_per_outbound_${ d }d`).innerHTML = '⚡${((earned - offchain.fee) * 1000000 / total_outbound).intcomma()}ₚₚₘ</span>
-// ⛓️${((earned - costs) * 1000000 / total_outbound).intcomma()}ₚₚₘ</span>`
-// all the money spent = cost
-// all profit = revenue - cost (Profit (sats))
-// all outbound (sat)
-// profit (ppm) = all profit/all outbound
+  const forwardsDataRaw = ForwardsDataApi.map(
+    (forward) => ({
+      date: formatDate(new Date(forward.forward_date)),
+      revenue: forward.fee,
+      valueRouted: forward.amt_out_msat / 1000
+    }),
+  );
 
-// total routed / outbound = outbound util
 
-// http://localhost:8000/api/forwards/
-// http://localhost:8000/api/payments/
-// http://localhost:8000/api/onchain/
-// http://localhost:8000/api/closures/
-// http://localhost:8000/api/invoices/
+  const OnChainDataApi: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "time_stamp", date: dateRange.to?.toISOString().split('T')[0] });
 
-// value routed is sum of amount in forwards
-// profit ppm = profit / total value routed
-// percent cost is payments / revenue 
+  const OnChainDataRaw = OnChainDataApi.map(
+    (onchain) => ({
+      date: formatDate(new Date(onchain.time_stamp)),
+      onchainCosts: onchain.fee
+    }),
+  );
+
+  const PaymentsDataApi: Payment[] = await getDataFromApi(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] });
+
+  const PaymentsDataRaw = PaymentsDataApi.map(
+    (payment) => ({
+      date: formatDate(new Date(payment.creation_date)),
+      offchainCost: payment.fee
+    }),
+  );
+
+  // get number of days from dateRange.to to dateRange.from
+  const numDays = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+
+  const profitabilityStatsData: ProfitabilityStats[] = getLastNumDays(numDays).map((date) => {
+    const revenue = forwardsDataRaw.filter((forward) => forward.date === date).reduce((acc, forward) => acc + forward.revenue, 0);
+    const valueRouted = forwardsDataRaw.filter((forward) => forward.date === date).reduce((acc, forward) => acc + forward.valueRouted, 0);
+    const onchainCosts = OnChainDataRaw.filter((onchain) => onchain.date === date).reduce((acc, onchain) => acc + onchain.onchainCosts, 0);
+    const offchainCost = PaymentsDataRaw.filter((payment) => payment.date === date).reduce((acc, payment) => acc + payment.offchainCost, 0);
+    const offchainCostPpm = valueRouted ? offchainCost * 1000000 / valueRouted : 0;
+    const percentCosts = revenue ? (onchainCosts + offchainCost) / revenue : 0;
+    // const profit = revenue - onchainCosts - offchainCost;
+    const profit = revenue - offchainCost;
+    const profitPpm = valueRouted ? profit * 1000000 / valueRouted : 0;
+
+    return {
+      date,
+      paymentsRouted: forwardsDataRaw.filter((forward) => forward.date === date).length,
+      valueRouted,
+      revenue,
+      onchainCosts,
+      offchainCost,
+      offchainCostPpm,
+      percentCosts,
+      profit,
+      profitPpm
+    };
+  });
+
+  profitabilityStatsData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return profitabilityStatsData
+
+}
