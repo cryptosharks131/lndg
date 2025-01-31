@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge";
 import {
   AggregatedData,
   DecodedPayloadType,
+  Stat,
   UnaggregatedData,
 } from "./definitions";
 
@@ -58,8 +59,28 @@ export const getLastNumDays = (num: number) => {
 
 }
 
-export function getPastDate(daysAgo) {
+export function getPastDate(daysAgo: number) {
   const pastDate = new Date();
   pastDate.setDate(pastDate.getDate() - daysAgo);
   return pastDate.toISOString().split('T')[0]; // Returns in "YYYY-MM-DD" format
+}
+
+
+export function aggregateStatData(stat: Stat): number {
+  const values = stat.data.map(d => d.value);
+
+  switch (stat.aggregationType) {
+    case "min":
+      return Math.min(...values);
+    case "max":
+      return Math.max(...values);
+    case "sum":
+      return values.reduce((acc, val) => acc + val, 0);
+    case "avg":
+      return values.length > 0 ? values.reduce((acc, val) => acc + val, 0) / values.length : 0;
+    case "count":
+      return values.length;
+    default:
+      throw new Error("Invalid aggregation type");
+  }
 }

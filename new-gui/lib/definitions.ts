@@ -223,4 +223,12 @@ export interface NodePerformanceChartData {
   profitOnChain: number;
   utilization: number;
 
-} 
+}
+
+export interface Stat {
+  name: string;
+  description: string;
+  color: string;
+  data: AggregatedData[]
+  aggregationType: "min" | "max" | "sum" | "avg" | "count"
+}

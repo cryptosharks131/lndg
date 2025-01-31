@@ -121,7 +121,7 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                                                 day: "numeric",
                                             })
                                         }}
-                                        indicator="dot"
+                                        indicator="dashed"
                                     />
                                 }
                             />
@@ -132,7 +132,7 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                                 <Line
                                     key={dataKey}
                                     dataKey={dataKey}
-                                    type="linear"
+                                    type="monotone"
                                     yAxisId={axis}
                                     stroke={color}
                                     dot={false}
