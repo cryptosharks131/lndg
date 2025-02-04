@@ -1,5 +1,9 @@
 "use client";
 
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+
+
 import {
   BadgeCheck,
   Bell,
@@ -29,6 +33,7 @@ import {
 import { Button } from "./ui/button";
 import { ModeToggle } from "./mode-toggle";
 import { logout } from "@/app/auth/auth";
+import { useToast } from "@/hooks/use-toast";
 // import { useActionState } from "react"
 
 export function NavUser({
@@ -40,6 +45,24 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { toast } = useToast()
+
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -80,6 +103,10 @@ export function NavUser({
                   title="Copy Public Key"
                   onClick={() => {
                     navigator.clipboard.writeText(node.publicKey);
+                    toast({
+                      title: "Key Copied!",
+                      description: `Your public key is copied to clipboard`,
+                    });
                   }}
                 >
                   <ClipboardCopyIcon />
@@ -88,8 +115,8 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <ModeToggle />
+              <DropdownMenuItem onClick={() => { toggleTheme() }}>
+                <ModeToggle theme={theme} />
                 Switch Theme
               </DropdownMenuItem>
             </DropdownMenuGroup>

@@ -42,12 +42,12 @@ const chartConfig = {
     label: "Outbound",
     color: "hsl(var(--chart-1))",
   },
-  unsettled: {
-    label: "Unsettled",
-    color: "hsl(var(--chart-2))",
-  },
   inbound: {
     label: "Inbound",
+    color: "hsl(var(--chart-2))",
+  },
+  unsettled: {
+    label: "Unsettled",
     color: "hsl(var(--chart-3))",
   },
 } satisfies ChartConfig;

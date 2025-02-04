@@ -1,19 +1,30 @@
-export default function PerformanceSection() {
+import ChannelCard from "@/components/channel-card";
+import { fetchChannelsData } from "@/lib/data";
+import { Channel } from "@/lib/definitions";
+import { Suspense } from "react";
+
+
+export default async function PerformanceSection() {
+  try {
+    const channels: Channel[] = await fetchChannelsData()
+    console.log(channels.length)
+
+    if (!channels || channels.length === 0) {
+      return <div>No channels available</div>;
+    }
 
     return (
-        <section className="performance-section">
-            <div className="container">
-                <div className="performance-section__wrapper">
-                    <div className="performance-section__content">
-                        <h2 className="performance-section__title">Performance</h2>
-                        <p className="performance-section__text">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
-                    </div>
-                    <div className="performance-section__image">
-                        <img src="/images/performance.png" alt="Performance" />
-                    </div>
-                </div>
-            </div>
-        </section>
+      <Suspense fallback={<div>Loading...</div>}>
 
-    )
+        <div className="grid grid-cols-1 gap-4">
+          {channels.map((channel) => (
+            <ChannelCard key={channel.chan_id} channel={channel} />
+          ))}
+        </div>
+      </Suspense>
+    );
+  } catch (error) {
+    console.error('Error fetching channels:', error);
+    return <div>Error loading channels</div>;
+  }
 }

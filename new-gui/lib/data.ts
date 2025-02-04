@@ -370,3 +370,9 @@ export async function fetchProfitabilityData(dateRange: DateRange = { to: new Da
   return profitabilityStatsData
 
 }
+
+
+export async function fetchChannelsData() {
+  const channels: Channel[] = await getDataFromApi(`${API_URL}/channels/?is_open=true&private`, 100, 0, true);
+  return channels;
+}

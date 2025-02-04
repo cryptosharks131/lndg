@@ -17,14 +17,14 @@ import {
 } from "@/components/ui/tabs"
 import OverviewSection from "@/app/dashboard/overview";
 import ProfitabilitySection from "@/app/dashboard/profitability"
-import PerformanceSection from "@/app/dashboard/performance"
 import { refreshSessionTokens } from "../auth/sessions"
+import PerformanceSection from "./performance"
 
 
 export default async function DashboardPage() {
 
   return (
-    <Tabs defaultValue="overview">
+    <Tabs defaultValue="performance">
       <TabsList className="grid w-full grid-cols-3 mb-4">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="performance">Performance</TabsTrigger>

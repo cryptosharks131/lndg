@@ -27,13 +27,13 @@ import { ChannelsChartData } from "@/lib/definitions";
 // ]
 
 const chartConfig = {
-  inactiveChannels: {
-    label: "Inactive Channels",
-    color: "hsl(var(--chart-5))",
-  },
   activeChannels: {
     label: "Active Channels",
     color: "hsl(var(--chart-1))",
+  },
+  inactiveChannels: {
+    label: "Inactive Channels",
+    color: "hsl(var(--chart-3))",
   },
 } satisfies ChartConfig;
 

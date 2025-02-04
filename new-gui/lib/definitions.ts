@@ -232,3 +232,19 @@ export interface Stat {
   data: AggregatedData[]
   aggregationType: "min" | "max" | "sum" | "avg" | "count"
 }
+
+interface Node {
+  name: string;
+}
+
+interface Link {
+  source: number;
+  target: number;
+  value: number;
+  color?: string; // Optional since not all links have a color
+}
+
+export interface ChannelPerformanceSankeyChartData {
+  nodes: Node[];
+  links: Link[];
+}

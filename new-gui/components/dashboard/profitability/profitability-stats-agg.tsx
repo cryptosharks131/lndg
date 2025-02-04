@@ -38,31 +38,6 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                             Profitability Stats highlighted over various periods of time.
                         </CardDescription>
                     </div>
-                    {/* <Select value={timeRange} onValueChange={setTimeRange}>
-                        <SelectTrigger
-                            className="w-[160px] rounded-lg sm:ml-auto"
-                            aria-label="Select a value"
-                        >
-                            <SelectValue placeholder="Last 6 months" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem value="180d" className="rounded-lg">
-                                Last 6 months
-                            </SelectItem>
-                            <SelectItem value="90d" className="rounded-lg">
-                                Last 90 days
-                            </SelectItem>
-                            <SelectItem value="60d" className="rounded-lg">
-                                Last 60 days
-                            </SelectItem>
-                            <SelectItem value="30d" className="rounded-lg">
-                                Last 30 days
-                            </SelectItem>
-                            <SelectItem value="7d" className="rounded-lg">
-                                Last 7 days
-                            </SelectItem>
-                        </SelectContent>
-                    </Select> */}
                 </CardHeader>
                 <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
                     <ChartContainer
@@ -121,7 +96,7 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                                                 day: "numeric",
                                             })
                                         }}
-                                        indicator="dashed"
+                                        indicator="line"
                                     />
                                 }
                             />
