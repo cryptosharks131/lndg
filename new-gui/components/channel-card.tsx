@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import SankeyChart from "@/components/dashboard/performance/sankey-chart";
 import ChannelCardInformation from "@/components/dashboard/performance/channel-card-information";
 import {
@@ -9,7 +9,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
-import { fetchChannelsData } from "@/lib/data";
+
 import { Channel } from "@/lib/definitions";
 
 

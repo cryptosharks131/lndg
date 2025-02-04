@@ -1,6 +1,6 @@
 'use client'
 
-import { addDays, format, subDays } from "date-fns"
+import { subDays } from "date-fns"
 
 import { ProfitabilityStatsChartAgg } from "@/components/dashboard/profitability/profitability-stats-agg";
 import { DateRangePicker } from "@/components/date-range-picker";

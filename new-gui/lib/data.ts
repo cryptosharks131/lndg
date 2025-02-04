@@ -18,7 +18,6 @@ import {
 import { verifySession } from "@/app/auth/sessions";
 import { AggregatedValueByDay, getLastNumDays, getPastDate } from "./utils";
 import { DateRange } from "react-day-picker";
-import { date } from "zod";
 import { format, subDays } from "date-fns";
 
 

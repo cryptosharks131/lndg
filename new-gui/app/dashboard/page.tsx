@@ -1,14 +1,4 @@
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+
 import {
   Tabs,
   TabsContent,
@@ -17,7 +7,7 @@ import {
 } from "@/components/ui/tabs"
 import OverviewSection from "@/app/dashboard/overview";
 import ProfitabilitySection from "@/app/dashboard/profitability"
-import { refreshSessionTokens } from "../auth/sessions"
+
 import PerformanceSection from "./performance"
 
 

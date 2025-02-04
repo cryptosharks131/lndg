@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Progress } from "@/components/ui/progress"
-import { CircleArrowOutDownRight, CircleArrowOutUpRight, HardDriveDownload, HardDriveUpload } from "lucide-react"
+import { CircleArrowOutDownRight, CircleArrowOutUpRight, } from "lucide-react"
 
 export default function ChannelBalanceChart({ channelInbound, channelOutbound, channelCapacity }:
     { channelInbound: number, channelOutbound: number, channelCapacity: number }
@@ -11,7 +11,7 @@ export default function ChannelBalanceChart({ channelInbound, channelOutbound, c
     useEffect(() => {
         const timer = setTimeout(() => setProgress(channelInbound / (channelInbound + channelOutbound) * 100), 500)
         return () => clearTimeout(timer)
-    }, [progress])
+    }, [progress, channelInbound, channelOutbound])
 
     return (
         <>

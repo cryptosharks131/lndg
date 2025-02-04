@@ -16,7 +16,7 @@ export default function SankeyChartNode({
     width: number,
     height: number,
     index: number,
-    payload: any,
+    payload: { name: string, value: number },
     containerWidth: number
 }) {
     const isOut = x + width + 6 > containerWidth;
@@ -45,7 +45,7 @@ export default function SankeyChartNode({
 
 
             >
-                {`${payload.value}k`}
+                {`${payload.value.toLocaleString()}`}
             </text>
         </Layer >
     );

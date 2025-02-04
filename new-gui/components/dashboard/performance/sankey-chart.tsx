@@ -1,12 +1,12 @@
 
 
-import { Layer, Rectangle, Sankey, Tooltip } from "recharts";
+import { Sankey, Tooltip } from "recharts";
 
 
 import SankeyChartNode from "@/components/dashboard/performance/sankey-chart-node"
 import SankeyChartLink from "@/components/dashboard/performance/sankey-chart-link"
 
-import { ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { ChartConfig, ChartContainer } from "@/components/ui/chart";
 import { ChannelPerformanceSankeyChartData } from "@/lib/definitions";
 
 const chartConfig = {
