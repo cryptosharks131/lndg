@@ -2,7 +2,7 @@
 
 import { subDays } from "date-fns"
 
-import { ProfitabilityStatsChartAgg } from "@/components/dashboard/profitability/profitability-stats-agg";
+import { ProfitabilityStatsChart } from "@/components/dashboard/profitability/profitability-stats-chart";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
@@ -129,6 +129,7 @@ export default function ProfitabilitySection() {
 
     },
     ]
+
   return (
     <>
       <div className="flex flex-row-reverse p-4">
@@ -137,7 +138,7 @@ export default function ProfitabilitySection() {
       </div>
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12">
-          <ProfitabilityStatsChartAgg chartData={profitabilityChartData} />
+          <ProfitabilityStatsChart chartData={profitabilityChartData} />
         </div>
         {
           profitabilityStats.map((stat) => (

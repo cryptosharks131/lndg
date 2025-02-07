@@ -25,9 +25,10 @@ export default function DashboardLayout({
               <Breadcrumbs />
             </div>
           </header>
-          <main className="m-4">{children}</main>
+          <main className="m-4 md:mx-4 xl:mx-16">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </div>
   );
 }
+

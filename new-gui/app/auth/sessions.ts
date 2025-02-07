@@ -87,8 +87,19 @@ export async function refreshSessionTokens(refreshToken: string) {
 
 export async function verifySession() {
   const accessToken = (await cookies()).get("accessToken")?.value;
+  const refreshToken = (await cookies()).get("refreshToken")?.value;
 
   if (!accessToken) {
+    redirect("/login");
+  }
+
+  const accessDecoded = jwtDecode(accessToken);
+  const isAccessTokenExpired = accessDecoded.exp < Date.now() / 1000;
+
+  if (isAccessTokenExpired && refreshToken) {
+    refreshSessionTokens(refreshToken)
+  }
+  else if (isAccessTokenExpired && !refreshToken) {
     redirect("/login");
   }
 

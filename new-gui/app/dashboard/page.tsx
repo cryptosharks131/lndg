@@ -14,8 +14,8 @@ import PerformanceSection from "./performance"
 export default async function DashboardPage() {
 
   return (
-    <Tabs defaultValue="performance">
-      <TabsList className="grid w-full grid-cols-3 mb-4">
+    <Tabs defaultValue="performance" className="">
+      <TabsList className="grid w-full grid-cols-3 mb-4  place-self-center">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="performance">Performance</TabsTrigger>
         <TabsTrigger value="profitability">Profitability</TabsTrigger>

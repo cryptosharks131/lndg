@@ -1,100 +1,104 @@
 'use client'
 
 import { Card, CardContent } from "@/components/ui/card";
-import SankeyChart from "@/components/dashboard/performance/sankey-chart";
 import ChannelCardInformation from "@/components/dashboard/performance/channel-card-information";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/components/ui/accordion"
-
 import { Channel } from "@/lib/definitions";
 
 
-const data0 = {
-    "nodes": [
-        {
-            "name": "alice",
-        },
-        {
-            "name": "susan"
-        },
-        {
-            "name": "dave"
-        },
-        {
-            "name": "carl"
-        },
-        {
-            "name": "erin"
-        }
-    ],
-    "links": [
-        {
-            "source": 0,
-            "target": 1,
-            "value": 3728.3,
-        },
-        {
-            "source": 0,
-            "target": 2,
-            "value": 354170
-        },
-        {
-            "source": 0,
-            "target": 3,
-            "value": 62429
-        },
-        {
-            "source": 0,
-            "target": 4,
-            "value": 291741
-        }
-    ],
+import { MenuItem, CustomContextMenu } from "@/components/custom-context-menu"
+import { ArrowBigDownDash, ArrowBigUpDash, Bitcoin, Bot, Copy, Scale, TrendingUpDown, ZapOff } from "lucide-react";
+import { copyPublicKey } from "@/lib/channel-actions";
+import { useToast } from "@/hooks/use-toast";
+
+
+const handleDeleteChannel = (channel: Channel) => {
+    console.log(`${channel.alias} with ${channel.short_chan_id} is scheduled for deletion`);
+    // Add API call or state update logic here
 };
+
+const menuItems = (channel: Channel, toast: ReturnType<typeof useToast>["toast"]): MenuItem[] => [
+    {
+        label: "Copy Public Key",
+        icon: <Copy size={14} />,
+        onClick: () => copyPublicKey(channel.alias, channel.remote_pubkey, toast),
+    },
+    { separator: true },
+    {
+        label: "Liquidity Management",
+        subItems: [
+            { icon: <Bot size={14} />, label: "Toggle AR", onClick: () => console.log("Increasing fees...") },
+            { separator: true },
+            { icon: <TrendingUpDown size={14} />, label: "Show Movement", onClick: () => console.log("Show Movement...") },
+            { icon: <Scale size={14} />, label: "Rebalance", onClick: () => console.log("Rebalancing...") },
+            { label: "Loop Out", onClick: () => console.log("Looping Out...") },
+            { label: "Loop In", onClick: () => console.log("Looping In...") }
+        ]
+    },
+    {
+        label: "Fee Management",
+        icon: <Bitcoin size={14} />,
+        subItems: [
+            { icon: <ArrowBigUpDash size={14} />, label: "Increase Fees", onClick: () => console.log("Increasing fees...") },
+            { icon: <ArrowBigDownDash size={14} />, label: "Decrease Fees", onClick: () => console.log("Decreasing fees...") }
+        ]
+    },
+    { separator: true },
+    { icon: <ZapOff size={14} />, label: "Close Channel", onClick: () => console.log("Closing channel...") },
+    { icon: <ZapOff size={14} className="stroke-destructive" />, label: "Force Close", onClick: () => console.log("Force closing channel...") },
+    { separator: true },
+];
 
 export default function ChannelCard({ channel }: { channel: Channel }) {
     // console.log(channels)
+    const { toast } = useToast()
+
     return (
         <>
             <Card key={channel.chan_id}>
-                <CardContent className="py-4">
-                    <Accordion type="multiple">
-                        <ChannelCardInformation
-                            channelAlias={channel.alias}
-                            channelPubkey={channel.remote_pubkey}
-                            channelChannelId={channel.short_chan_id}
-                            channelActive={channel.is_active && channel.is_open}
-                            channelInboundLiquidity={channel.local_balance}
-                            channelOutboundLiquidity={channel.remote_balance}
-                            channelCapacity={channel.capacity}
-                            iRate={channel.local_fee_rate}
-                            oRate={channel.remote_fee_rate}
-                            iBase={channel.local_base_fee}
-                            oBase={channel.remote_base_fee}
-                            iTargetPercent={channel.ar_in_target}
-                            oTargetPercent={channel.ar_out_target}
-                            autoRebalance={channel.auto_rebalance}
-                            unsettledBalance={channel.unsettled_balance}
-                        />
-                        <AccordionItem value="item-1">
-                            <AccordionTrigger>Volume Routed</AccordionTrigger>
-                            <AccordionContent>
-                                <SankeyChart chartData={data0} />
-                            </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="item-2">
-                            <AccordionTrigger>Rebalancing Costs</AccordionTrigger>
-                            <AccordionContent>
-                                <SankeyChart chartData={data0} />
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
+                <CustomContextMenu
+                    trigger={
+                        <>
+                            <CardContent className="py-4 w-full">
+                                <ChannelCardInformation
+                                    channelAlias={channel.alias}
+                                    channelChannelId={channel.short_chan_id}
+                                    channelPubkey={channel.remote_pubkey}
+                                    channelActive={channel.is_active}
+                                    channelInboundLiquidity={channel.remote_balance}
+                                    channelOutboundLiquidity={channel.local_balance}
+                                    channelCapacity={channel.capacity}
+                                    unsettledBalance={channel.unsettled_balance}
+                                    oRate={channel.local_fee_rate}
+                                    oBase={channel.local_base_fee}
+                                    iRate={channel.remote_fee_rate}
+                                    iBase={channel.remote_base_fee}
+                                    oTargetPercent={channel.ar_out_target}
+                                    iTargetPercent={channel.ar_in_target}
+                                    autoRebalance={channel.auto_rebalance}
+                                />
 
-                </CardContent >
+                            </CardContent >
+                        </>
+
+                    }
+                    menuItems={menuItems(channel, toast)}
+                />
             </Card >
+            {/* <Accordion type="multiple">
+                <AccordionItem value="item-1">
+                    <AccordionTrigger>Volume Routed</AccordionTrigger>
+                    <AccordionContent>
+                        <SankeyChart chartData={data0} />
+                    </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-2">
+                    <AccordionTrigger>Rebalancing Costs</AccordionTrigger>
+                    <AccordionContent>
+                        <SankeyChart chartData={data0} />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion> */}
+
         </>
 
     );

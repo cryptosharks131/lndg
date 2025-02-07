@@ -24,23 +24,23 @@ export default async function OverviewSection() {
     // console.log(nodePerformanceChartData)
 
     return (
-        <div className="grid grid-cols-12 gap-5">
-            <div className="col-span-4">
+        <div className="grid grid-cols-6 gap-5">
+            <div className="col-span-6 lg:col-span-2">
                 <BalancesChart chartData={balanceChartData} />
             </div>
-            <div className="col-span-4">
+            <div className="col-span-6 lg:col-span-2">
                 <ActiveChannelsChart chartData={ChannelsChartData} />
             </div>
-            <div className="col-span-4">
+            <div className="col-span-6 lg:col-span-2">
                 <LiquidityChart chartData={LiquidityChartData} />
             </div>
-            <div className="col-span-6">
+            <div className="col-span-6 lg:col-span-3">
                 <NodePerformanceChart chartData={nodePerformanceChartData} />
             </div>
-            <div className="col-span-6">
+            <div className="col-span-6 lg:col-span-3">
                 <FeesChart chartData={feesChartData} />
             </div>
-            <div className="col-span-12">
+            <div className="col-span-6 lg:col-span-6">
                 <RoutedChart chartData={routedChartData} />
             </div>
         </div>

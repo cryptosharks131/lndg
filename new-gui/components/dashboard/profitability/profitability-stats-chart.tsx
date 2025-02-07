@@ -21,7 +21,7 @@ const chartConfig = {
     profitPpm: { label: "Profit (ppm)", color: "hsl(var(--chart-2))", axis: "left" },
 } satisfies ChartConfig
 
-export function ProfitabilityStatsChartAgg({ chartData }: { chartData: ProfitabilityStats[] }) {
+export function ProfitabilityStatsChart({ chartData }: { chartData: ProfitabilityStats[] }) {
 
 
 
@@ -54,8 +54,10 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                                 tickMargin={0}
                                 tickCount={10}
                                 minTickGap={32}
+                                domain={[0, 'dataMax']}
                                 label={{ value: 'On-Chain (sats)', angle: -90, position: "left", style: { textAnchor: 'middle' } }}
                                 tickFormatter={formatNumber}
+                                hide
                             />
                             <YAxis
                                 yAxisId="right"
@@ -65,8 +67,10 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                                 tickMargin={0}
                                 tickCount={10}
                                 minTickGap={32}
+                                domain={[0, 'dataMax']}
                                 label={{ value: 'Revenue and Off-Chain Costs (sats)', angle: 90, position: "right", style: { textAnchor: 'middle' } }}
                                 tickFormatter={formatNumber}
+                                hide
                             />
 
 
@@ -99,7 +103,7 @@ export function ProfitabilityStatsChartAgg({ chartData }: { chartData: Profitabi
                                     />
                                 }
                             />
-                            <ChartLegend content={<ChartLegendContent />} />
+                            <ChartLegend content={<ChartLegendContent />} className="overflow-scroll md:overflow-hidden" />
 
 
                             {Object.entries(chartConfig).map(([dataKey, { color, axis }]) => (

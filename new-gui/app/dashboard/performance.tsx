@@ -7,7 +7,6 @@ import { Suspense } from "react";
 export default async function PerformanceSection() {
   try {
     const channels: Channel[] = await fetchChannelsData()
-    console.log(channels.length)
 
     if (!channels || channels.length === 0) {
       return <div>No channels available</div>;

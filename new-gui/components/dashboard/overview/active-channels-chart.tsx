@@ -64,8 +64,8 @@ export function ActiveChannelsChart({
               data={chartData}
               dataKey="value"
               nameKey="status"
-              innerRadius={60}
-              outerRadius={90}
+              innerRadius={45}
+              outerRadius={65}
               strokeWidth={5}
             >
               <Label

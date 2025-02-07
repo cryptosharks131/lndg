@@ -15,7 +15,7 @@ export default function ChannelBalanceChart({ channelInbound, channelOutbound, c
 
     return (
         <>
-            <div className="grid grid-cols-12 gap-2 w-96 place-content-between">
+            <div className="grid grid-cols-12 gap-2 w-auto place-content-between">
                 <div className="col-span-4 flex gap-1 place-self-start self-center  cursor-pointer" title="Inbound Liquidity">
                     <CircleArrowOutDownRight size={14} className="stroke-chart-1" />
                     <p className="text-chart-1 text-xs">

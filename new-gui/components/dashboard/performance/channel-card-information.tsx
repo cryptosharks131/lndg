@@ -1,9 +1,10 @@
 
 import { Separator } from "@/components/ui/separator"
 import ChannelBalanceChart from "@/components/channel-balance-progress"
-import { Bot, BotOff, CircleArrowOutDownRight, CircleArrowOutUpRight, CircleHelp, ClipboardCopyIcon, Copy } from "lucide-react"
+import { Bot, BotOff, Circle, CircleArrowOutDownRight, CircleArrowOutUpRight, CircleDashed, CircleDot, CircleDotDashed, CircleHelp, ClipboardCopyIcon, Copy, Orbit, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+
 
 
 export default function ChannelCardInformation({
@@ -41,74 +42,148 @@ export default function ChannelCardInformation({
         autoRebalance: boolean,
     }
 ) {
-
-    const { toast } = useToast()
     return (
-        <div className="my-4">
+        <div className="w-full">
+            <ChannelDescriptionContent channelAlias={channelAlias} channelChannelId={channelChannelId} channelPubkey={channelPubkey} channelActive={channelActive} channelInboundLiquidity={channelInboundLiquidity} channelOutboundLiquidity={channelOutboundLiquidity} channelCapacity={channelCapacity} />
+            <Separator orientation="horizontal" className="mb-2" />
             <div className="flex items-center justify-around">
-                {channelActive
-                    ? <div className="bg-green-500 rounded-full w-2 h-2 mr-4 cursor-pointer flex-none" title="Channel is Active" />
-                    : <div className="bg-red-500 rounded-full w-2 h-2 mr-4 cursor-pointer flex-none" title="Channel is Inactive" />}
-                <Separator orientation="vertical" />
-                <div className="grid gap-1 text-center sm:text-left grow">
-                    <div className="font-bold items-center text-base">{channelAlias}
-                        <Button
-                            variant={"ghost"}
-                            title="Copy Public Key"
-                            onClick={() => {
-                                navigator.clipboard.writeText(channelPubkey);
-                                toast({
-                                    title: "Key Copied!",
-                                    description: `Public Key for ${channelAlias} copied to clipboard`,
-                                });
-                            }}
-                            className="w-4 h-4"
-                        >
-                            <Copy size={28} />
-                        </Button>
-                    </div>
-                    <div className="text-small">
-                        {channelChannelId}
 
-                    </div>
-                </div>
                 <Separator orientation="vertical" />
-                <div className="grow">
-
-                    <ChannelBalanceChart channelInbound={channelInboundLiquidity} channelOutbound={channelOutboundLiquidity} channelCapacity={channelCapacity} />
-                </div>
+                <UnsettledBalance unsettledBalance={unsettledBalance} />
                 <Separator orientation="vertical" />
-                <div className="flex items-center gap-4 grow">
-                    <CircleHelp className="stroke-chart-3" />
-                    <p className="font-xs text-muted-foreground">Unsettled Balance: {unsettledBalance}</p>
-                </div>
+                <OutboundRate oRate={oRate} oBase={oBase} />
                 <Separator orientation="vertical" />
-                <div className="flex items-center gap-4 grow">
-                    <CircleArrowOutUpRight className="stroke-chart-2" />
-                    <div className="grid grid-cols-1">
-                        <p className="text-xs text-muted-foreground">Outbound Rate: {oRate} ppm</p>
-                        <p className="text-xs text-muted-foreground">Base: {oBase} msat</p>
-                    </div>
-                </div>
+                <InboundRate iRate={iRate} iBase={iBase} />
                 <Separator orientation="vertical" />
-                <div className="flex items-center gap-4 grow">
-                    <CircleArrowOutDownRight className="stroke-chart-1" />
-                    <div className="grid grid-cols-1">
-                        <p className="text-xs text-muted-foreground">Inbound Rate: {iRate} ppm</p>
-                        <p className="text-xs text-muted-foreground">Base: {iBase} msat</p>
-                    </div>
-                </div>
+                <Targets oTargetPercent={oTargetPercent} iTargetPercent={iTargetPercent} />
                 <Separator orientation="vertical" />
-                <div className="flex items-center gap-4 grow">
-                    <div className="grid grid-cols-1">
-                        <div className="text-xs text-muted-foreground">Outbound Target: {oTargetPercent}%</div>
-                        <div className="text-xs text-muted-foreground">Inbound Target: {iTargetPercent}%</div>
-                    </div>
-                </div>
-                <Separator orientation="vertical" />
-                <div className="text-xs text-muted-foreground flex-none" title="Auto Rebalance"> {autoRebalance ? <Bot className="stroke-green-500" /> : <BotOff className="stroke-red-500" />}</div>
+                <AutoRebalance autoRebalance={autoRebalance} />
             </div>
         </div >
 
+    )
+}
+
+
+
+const UnsettledBalance = ({ unsettledBalance }: { unsettledBalance: number }) =>
+(
+    <div className="flex items-center gap-4 grow">
+        <CircleHelp className="stroke-chart-3" />
+        <p className="font-xs text-muted-foreground">Unsettled Balance: {unsettledBalance}</p>
+    </div>
+)
+
+const OutboundRate = ({ oRate, oBase }: { oRate: number, oBase: number }) => (
+    <div className="flex items-center gap-4 grow">
+        <CircleArrowOutUpRight className="stroke-chart-2" />
+        <div className="grid grid-cols-1">
+            <p className="text-xs text-muted-foreground">Outbound Rate: {oRate} ppm</p>
+            <p className="text-xs text-muted-foreground">Base: {oBase} msat</p>
+        </div>
+    </div>
+)
+
+const InboundRate = ({ iRate, iBase }: { iRate: number, iBase: number }) => (
+    <div className="flex items-center gap-4 grow">
+        <CircleArrowOutDownRight className="stroke-chart-1" />
+        <div className="grid grid-cols-1">
+            <p className="text-xs text-muted-foreground">Inbound Rate: {iRate} ppm</p>
+            <p className="text-xs text-muted-foreground">Base: {iBase} msat</p>
+        </div>
+    </div>
+)
+
+const AutoRebalance = ({ autoRebalance }: { autoRebalance: boolean }) => (
+    <div className="text-xs text-muted-foreground flex-none" title="Auto Rebalance"> {autoRebalance ? <Bot className="stroke-primary" /> : <BotOff className="stroke-muted-foreground" />}</div>
+
+)
+
+const Targets = ({ oTargetPercent, iTargetPercent }: { oTargetPercent: number, iTargetPercent: number }) => (
+    <div className="flex items-center gap-4 grow">
+        <Target className="stroke-chart-5" />
+        <div className="grid grid-cols-1">
+            <div className="text-xs text-muted-foreground">Outbound Target: {oTargetPercent}%</div>
+            <div className="text-xs text-muted-foreground">Inbound Target: {iTargetPercent}%</div>
+        </div>
+    </div>
+)
+
+
+const ChannelDescriptionContent = ({ channelAlias, channelChannelId, channelPubkey, channelInboundLiquidity, channelOutboundLiquidity, channelCapacity, channelActive }: {
+    channelAlias: string,
+    channelChannelId: string,
+    channelPubkey: string,
+    channelInboundLiquidity: number,
+    channelOutboundLiquidity: number,
+    channelCapacity: number
+    channelActive: boolean
+}) => (
+    <div className="flex items-center justify-center">
+        <div className="grid gap-1 text-center sm:text-left pb-2 w-40 ">
+            <div className="font-bold items-center text-base">
+                {channelAlias}
+            </div>
+            <div className="text-small">
+                {channelChannelId}
+            </div>
+        </div>
+        <div className="mx-8 grow">
+            <ChannelBalanceChart channelInbound={channelInboundLiquidity} channelOutbound={channelOutboundLiquidity} channelCapacity={channelCapacity} />
+        </div>
+        <ChannelStatusCodes channelActive={channelActive} />
+    </div>
+)
+
+const ChannelStatusCodes = ({ channelActive }: { channelActive: boolean }) => {
+    return (
+
+        <div className="flex items-center">
+            {channelActive
+                ?
+                (<div title="Channel Active">
+                    <Orbit className="stroke-chart-2 cursor-pointer" />
+                </div>)
+                : (<div title="Channel Inactive">
+                    <Orbit className="stroke-destructive cursor-pointer" />
+                </div>)
+            }
+            <div title="Channel Pending Open">
+                <CircleDotDashed className="stroke-chart-4 cursor-pointer" />
+            </div>
+            <div title="Channel Open">
+                <CircleDot className="stroke-chart-2 cursor-pointer" />
+            </div>
+            <div title="Channel Pending Closed">
+                <CircleDashed className="stroke-chart-4 cursor-pointer" />
+            </div>
+            <div title="Channel Closed">
+                <Circle className="stroke-destructive cursor-pointer" />
+            </div>
+        </div>
+    )
+}
+
+const CopyPublicKey = ({ channelPubkey, channelAlias }: {
+    channelPubkey: string,
+    channelAlias: string,
+}
+) => {
+    const { toast } = useToast()
+    return (
+        <Button
+            variant={"ghost"}
+            title="Copy Public Key"
+            onClick={() => {
+                navigator.clipboard.writeText(channelPubkey);
+                toast({
+                    title: "Key Copied!",
+                    description: `Public Key for ${channelAlias} copied to clipboard`,
+                });
+            }}
+            className="w-4 h-4"
+        >
+            <Copy size={28} />
+        </Button>
     )
 }

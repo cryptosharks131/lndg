@@ -24,7 +24,15 @@ import { format, subDays } from "date-fns";
 const API_URL = process.env.API_URL + "/api";
 
 export async function getDataFromApi(
-  apiURL: string, limit: number = 100, offset: number = 0, accumulate: boolean = false, startDate: { attribute: string, date: string } | false = false, endDate: { attribute: string, date: string } | false = false, results: any[] = []) {
+  apiURL: string,
+  limit: number = 100,
+  offset: number = 0,
+  accumulate: boolean = false,
+  startDate: { attribute: string, date: string } | false = false,
+  endDate: { attribute: string, date: string } | false = false,
+  results: any[] = []
+) {
+
 
   const { isAuth, accessToken } = await verifySession();
 
@@ -302,6 +310,8 @@ export async function fetchProfitabilityData(dateRange: DateRange = { to: new Da
   if (!dateRange.from || !dateRange.to) {
     return []
   }
+
+  verifySession()
 
   // Helper function to format date as 'YYYY-MM-DD'
   const formatDate = (date: Date) => format(date, "yyyy-MM-dd");
