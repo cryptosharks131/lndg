@@ -33,7 +33,6 @@ export async function getDataFromApi(
   results: any[] = []
 ) {
 
-
   const { isAuth, accessToken } = await verifySession();
 
   if (!isAuth) {
@@ -55,9 +54,14 @@ export async function getDataFromApi(
   if (!res.ok) {
     throw new Error("Failed to fetch protected data");
   }
-
   const data = await res.json();
-  results = [...results, ...data.results];
+
+  if (data?.results?.length) {
+    results = [...results, ...data.results];
+  } else {
+    console.log("No results found:", data?.results);
+  }
+
 
   if (accumulate && data.next) {
     return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, results);
@@ -71,15 +75,20 @@ export async function getDataFromApi(
 export async function fetchBalancesChartData() {
   const data: BalancesApiData[] = await getDataFromApi(`${API_URL}/balances`, 100, 0);
 
-  const balanceChartData: BalancesChartData[] = Object.entries(data[0]).map((item) => ({
-    item: item[0],
-    value: item[1],
-    fill: `var(--color-${item[0]})`,
-  }))
+  try {
 
+    const balanceChartData: BalancesChartData[] = Object.entries(data[0]).map((item) => ({
+      item: item[0],
+      value: item[1],
+      fill: `var(--color-${item[0]})`,
+    }))
 
+    return balanceChartData;
 
-  return balanceChartData;
+  } catch (error) {
+    console.error("Error parsing balance data:", error);
+    return [];
+  }
 }
 
 export async function fetchChannelsChartData() {

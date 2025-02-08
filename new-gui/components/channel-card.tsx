@@ -7,7 +7,7 @@ import { Channel } from "@/lib/definitions";
 
 import { MenuItem, CustomContextMenu } from "@/components/custom-context-menu"
 import { ArrowBigDownDash, ArrowBigUpDash, Bitcoin, Bot, Copy, Scale, TrendingUpDown, ZapOff } from "lucide-react";
-import { copyPublicKey } from "@/lib/channel-actions";
+import { closeChannel, copyPublicKey } from "@/lib/channel-actions";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -16,41 +16,55 @@ const handleDeleteChannel = (channel: Channel) => {
     // Add API call or state update logic here
 };
 
-const menuItems = (channel: Channel, toast: ReturnType<typeof useToast>["toast"]): MenuItem[] => [
-    {
-        label: "Copy Public Key",
-        icon: <Copy size={14} />,
-        onClick: () => copyPublicKey(channel.alias, channel.remote_pubkey, toast),
-    },
-    { separator: true },
-    {
-        label: "Liquidity Management",
-        subItems: [
-            { icon: <Bot size={14} />, label: "Toggle AR", onClick: () => console.log("Increasing fees...") },
-            { separator: true },
-            { icon: <TrendingUpDown size={14} />, label: "Show Movement", onClick: () => console.log("Show Movement...") },
-            { icon: <Scale size={14} />, label: "Rebalance", onClick: () => console.log("Rebalancing...") },
-            { label: "Loop Out", onClick: () => console.log("Looping Out...") },
-            { label: "Loop In", onClick: () => console.log("Looping In...") }
-        ]
-    },
-    {
-        label: "Fee Management",
-        icon: <Bitcoin size={14} />,
-        subItems: [
-            { icon: <ArrowBigUpDash size={14} />, label: "Increase Fees", onClick: () => console.log("Increasing fees...") },
-            { icon: <ArrowBigDownDash size={14} />, label: "Decrease Fees", onClick: () => console.log("Decreasing fees...") }
-        ]
-    },
-    { separator: true },
-    { icon: <ZapOff size={14} />, label: "Close Channel", onClick: () => console.log("Closing channel...") },
-    { icon: <ZapOff size={14} className="stroke-destructive" />, label: "Force Close", onClick: () => console.log("Force closing channel...") },
-    { separator: true },
-];
-
 export default function ChannelCard({ channel }: { channel: Channel }) {
     // console.log(channels)
     const { toast } = useToast()
+
+    const menuItems = (channel: Channel, toast: ReturnType<typeof useToast>["toast"]): MenuItem[] => [
+        {
+            label: "Copy Public Key",
+            icon: <Copy size={14} />,
+            onClick: async () => {
+                const copy = await copyPublicKey(channel.alias, channel.remote_pubkey)
+                toast({ ...copy.toast });
+            }
+            ,
+        },
+        { separator: true },
+        {
+            label: "Liquidity Management",
+            subItems: [
+                { icon: <Bot size={14} />, label: "Toggle AR", onClick: () => console.log("Increasing fees...") },
+                { separator: true },
+                { icon: <TrendingUpDown size={14} />, label: "Show Movement", onClick: () => console.log("Show Movement...") },
+                { icon: <Scale size={14} />, label: "Rebalance", onClick: () => console.log("Rebalancing...") },
+                { label: "Loop Out", onClick: () => console.log("Looping Out...") },
+                { label: "Loop In", onClick: () => console.log("Looping In...") }
+            ]
+        },
+        {
+            label: "Fee Management",
+            icon: <Bitcoin size={14} />,
+            subItems: [
+                { icon: <ArrowBigUpDash size={14} />, label: "Increase Fees", onClick: () => console.log("Increasing fees...") },
+                { icon: <ArrowBigDownDash size={14} />, label: "Decrease Fees", onClick: () => console.log("Decreasing fees...") }
+            ]
+        },
+        { separator: true },
+        {
+            icon: <ZapOff size={14} />, label: "Close Channel", onClick: async () => {
+                const response = await closeChannel(channel, 1, false);
+                toast({ ...response.toast });
+            }
+        },
+        {
+            icon: <ZapOff size={14} className="stroke-destructive" />, label: "Force Close", onClick: async () => {
+                const response = await closeChannel(channel, 1, true);
+                toast({ ...response.toast });
+            }
+        },
+        { separator: true },
+    ];
 
     return (
         <>

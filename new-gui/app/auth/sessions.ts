@@ -9,9 +9,6 @@ import { SessionTokens } from "@/lib/definitions";
 
 const API_URL = process.env.API_URL;
 
-
-
-
 export async function getSession(): Promise<SessionTokens> {
   const cookieStore = await cookies();
   // console.log("accessToken:", cookieStore.get("accessToken")?.value)
