@@ -28,6 +28,19 @@ from requests import get
 from secrets import token_bytes
 from trade import create_trade_details
 import af
+import subprocess
+
+def get_remote_file_size():
+    try:
+        # Replace 'user', 'host', and '/path/to/channel.db' with your actual SSH user, host, and file path
+        command = "ssh admin@10.8.1.2 'du -b /home/admin/.lnd/data/graph/mainnet/channel.db  | cut -f1'"
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        file_size_bytes = int(result.stdout.strip())
+        return round(file_size_bytes * 0.000000001, 3)  # Convert bytes to gigabytes
+    except Exception as e:
+        # Handle exceptions (e.g., SSH connection issues)
+        print(f"Error retrieving remote file size: {e}")
+        return 0
 
 def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
@@ -2620,7 +2633,8 @@ def node_info(request):
             waiting_for_close.append(pending_item)
     limbo_balance -= pending_closing_balance
     try:
-        db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+        # db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+        db_size = get_remote_file_size()
     except:
         db_size = 0
     return Response({
