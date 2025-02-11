@@ -76,14 +76,6 @@ export function LiquidityChart({
             />
             <ChartLegend content={<ChartLegendContent />} />
 
-            <Legend
-              layout="vertical"
-              align="right"
-              verticalAlign="middle"
-              height={36}
-              color="white"
-            />
-
             <Pie
               data={chartData}
               dataKey="value"

@@ -37,9 +37,13 @@ const data = {
     },
     {
       title: "Channels and Peers",
-      url: "/dashboard/peers",
+      url: "/dashboard/channels",
       icon: Bot,
       items: [
+        {
+          title: "Channels",
+          url: "/dashboard/channels",
+        },
         {
           title: "Channel Closures",
           url: "/dashboard/channel-closures",
