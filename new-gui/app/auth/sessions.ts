@@ -21,10 +21,10 @@ export async function getSession(): Promise<SessionTokens> {
 }
 
 
-export async function createSession(sessionPayload: SessionPayload) {
+// New function just for setting tokens without redirect
+export async function updateSessionTokens(sessionPayload: SessionPayload) {
   const cookieStore = await cookies();
 
-  // Validate payload structure
   if (!sessionPayload?.accessToken || !sessionPayload?.refreshToken) {
     throw new Error("Invalid session payload");
   }
@@ -47,8 +47,12 @@ export async function createSession(sessionPayload: SessionPayload) {
     sameSite: "lax",
     path: "/",
   });
+}
 
-  redirect("/dashboard");
+
+export async function createSession(sessionPayload: SessionPayload) {
+  await updateSessionTokens(sessionPayload);
+  redirect("/dashboard");  // Only redirect on initial login
 }
 
 
@@ -62,19 +66,14 @@ export async function refreshSessionTokens(refreshToken: string) {
 
     if (!res.ok) return null;
 
-
     const { access } = await res.json();
-    // console.log("access:", access)
 
-    const cookieStore = await cookies();
-    const accessDecoded = jwtDecode(access);
-    cookieStore.set("accessToken", access, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      expires: new Date(accessDecoded.exp * 1000),
-      sameSite: "lax",
-      path: "/",
+    // Use updateSessionTokens instead of directly setting cookies
+    await updateSessionTokens({
+      accessToken: access,
+      refreshToken: refreshToken  // Keep existing refresh token
     });
+
     return { access };
   } catch (error) {
     console.error("Token refresh failed:", error);
