@@ -1,7 +1,10 @@
+
+
 import React, { Component } from "react";
 import { Layer } from "recharts";
 
-export default class SankeyChartLink extends Component<any, any> {
+
+export default class SankeyChartLink extends Component {
 
   state = {
     fill: "url(#linkGradient)"

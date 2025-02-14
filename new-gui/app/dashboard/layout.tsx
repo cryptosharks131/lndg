@@ -8,13 +8,15 @@ import {
 } from "@/components/ui/sidebar";
 import Breadcrumbs from "@/components/breadcrumbs";
 
+// export const experimental_ppr = true;
+
 export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <div>
+    <>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -28,7 +30,7 @@ export default function DashboardLayout({
           <main className="m-4 md:mx-4 xl:mx-16">{children}</main>
         </SidebarInset>
       </SidebarProvider>
-    </div>
+    </>
   );
 }
 

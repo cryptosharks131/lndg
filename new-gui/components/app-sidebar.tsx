@@ -34,11 +34,26 @@ const data = {
       url: "/dashboard",
       icon: ChartNoAxesCombined,
       isActive: true,
+      items: [
+        {
+          title: "Overview",
+          url: "/dashboard/",
+        },
+        {
+          title: "Channel Performance",
+          url: "/dashboard/performance",
+        },
+        {
+          title: "Node Profitability",
+          url: "/dashboard/profitability",
+        },
+      ]
     },
     {
       title: "Channels and Peers",
       url: "/dashboard/channels",
       icon: Bot,
+      isActive: true,
       items: [
         {
           title: "Channels",

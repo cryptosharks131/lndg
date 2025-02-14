@@ -23,15 +23,19 @@ import { format, subDays } from "date-fns";
 
 const API_URL = process.env.API_URL + "/api";
 
-export async function getDataFromApi(
+export async function getDataFromApi<T>(
   apiURL: string,
   limit: number = 100,
   offset: number = 0,
   accumulate: boolean = false,
   startDate: { attribute: string, date: string } | false = false,
   endDate: { attribute: string, date: string } | false = false,
-  results: any[] = []
-) {
+  results: T[] = []
+): Promise<T[]> {
+
+  // console.log(`working on api ${apiURL}`)
+
+  // const startTime = new Date().getTime();
 
   const { isAuth, accessToken } = await verifySession();
 
@@ -58,22 +62,34 @@ export async function getDataFromApi(
 
   if (data?.results?.length) {
     results = [...results, ...data.results];
-  } else {
-    console.log("No results found:", data?.results);
   }
-
 
   if (accumulate && data.next) {
     return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, results);
   }
 
+  // add delay 3  sec
+  // await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  // time elapsed
+  // const endTime = new Date().getTime();
+  // const timeElapsed = endTime - startTime;
+  // console.log(`finished fetching on api ${apiURL} and it took ${timeElapsed} ms`)
+
   return results;
+
 }
 
 
 
 export async function fetchBalancesChartData() {
   const data: BalancesApiData[] = await getDataFromApi(`${API_URL}/balances`, 100, 0);
+  // Check if data is valid and is an array with at least one element
+
+  if (!Array.isArray(data) || data.length === 0 || !data[0]) {
+    console.warn("No balance data available or invalid data received from API.");
+    return []; // Return empty array gracefully
+  }
 
   try {
 
@@ -99,7 +115,7 @@ export async function fetchChannelsChartData() {
     (channel) => channel.is_active && channel.is_open,
   );
 
-  const ChannelsChartData: ChannelsChartData[] = [
+  const channelsChartData: ChannelsChartData[] = [
     {
       status: "activeChannels",
       value: channels.reduce(
@@ -122,7 +138,7 @@ export async function fetchChannelsChartData() {
 
 
 
-  const LiquidityChartData: LiquidityChartData[] = [
+  const liquidityChartData: LiquidityChartData[] = [
     {
       status: "outbound",
       value: activeChannels.reduce(
@@ -149,7 +165,7 @@ export async function fetchChannelsChartData() {
     },
   ];
 
-  return { ChannelsChartData, LiquidityChartData };
+  return { channelsChartData, liquidityChartData };
 }
 
 export async function fetchFeeChartData() {
@@ -384,6 +400,7 @@ export async function fetchProfitabilityData(dateRange: DateRange = { to: new Da
   });
 
   profitabilityStatsData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
 
   return profitabilityStatsData
 

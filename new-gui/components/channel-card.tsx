@@ -11,11 +11,6 @@ import { closeChannel, copyPublicKey } from "@/lib/channel-actions";
 import { useToast } from "@/hooks/use-toast";
 
 
-const handleDeleteChannel = (channel: Channel) => {
-    console.log(`${channel.alias} with ${channel.short_chan_id} is scheduled for deletion`);
-    // Add API call or state update logic here
-};
-
 export default function ChannelCard({ channel }: { channel: Channel }) {
     // console.log(channels)
     const { toast } = useToast()

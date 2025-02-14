@@ -1,16 +1,14 @@
 
 import { Separator } from "@/components/ui/separator"
 import ChannelBalanceChart from "@/components/channel-balance-progress"
-import { Bot, BotOff, Circle, CircleArrowOutDownRight, CircleArrowOutUpRight, CircleDashed, CircleDot, CircleDotDashed, CircleHelp, ClipboardCopyIcon, Copy, Orbit, Target } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
+import { Bot, BotOff, Circle, CircleArrowOutDownRight, CircleArrowOutUpRight, CircleDashed, CircleDot, CircleDotDashed, CircleHelp, Orbit, Target } from "lucide-react"
+
 
 
 
 export default function ChannelCardInformation({
     channelAlias,
     channelChannelId,
-    channelPubkey,
     channelActive,
     channelInboundLiquidity,
     channelOutboundLiquidity,
@@ -27,7 +25,6 @@ export default function ChannelCardInformation({
     : {
         channelAlias: string,
         channelChannelId: string,
-        channelPubkey: string,
         channelActive: boolean,
         channelInboundLiquidity: number,
         channelOutboundLiquidity: number,
@@ -44,7 +41,7 @@ export default function ChannelCardInformation({
 ) {
     return (
         <div className="w-full">
-            <ChannelDescriptionContent channelAlias={channelAlias} channelChannelId={channelChannelId} channelPubkey={channelPubkey} channelActive={channelActive} channelInboundLiquidity={channelInboundLiquidity} channelOutboundLiquidity={channelOutboundLiquidity} channelCapacity={channelCapacity} />
+            <ChannelDescriptionContent channelAlias={channelAlias} channelChannelId={channelChannelId} channelActive={channelActive} channelInboundLiquidity={channelInboundLiquidity} channelOutboundLiquidity={channelOutboundLiquidity} channelCapacity={channelCapacity} />
             <Separator orientation="horizontal" className="mb-2" />
             <div className="flex items-center justify-around">
 
@@ -110,10 +107,9 @@ const Targets = ({ oTargetPercent, iTargetPercent }: { oTargetPercent: number, i
 )
 
 
-const ChannelDescriptionContent = ({ channelAlias, channelChannelId, channelPubkey, channelInboundLiquidity, channelOutboundLiquidity, channelCapacity, channelActive }: {
+const ChannelDescriptionContent = ({ channelAlias, channelChannelId, channelInboundLiquidity, channelOutboundLiquidity, channelCapacity, channelActive }: {
     channelAlias: string,
     channelChannelId: string,
-    channelPubkey: string,
     channelInboundLiquidity: number,
     channelOutboundLiquidity: number,
     channelCapacity: number
@@ -161,29 +157,5 @@ const ChannelStatusCodes = ({ channelActive }: { channelActive: boolean }) => {
                 <Circle className="stroke-destructive cursor-pointer" />
             </div>
         </div>
-    )
-}
-
-const CopyPublicKey = ({ channelPubkey, channelAlias }: {
-    channelPubkey: string,
-    channelAlias: string,
-}
-) => {
-    const { toast } = useToast()
-    return (
-        <Button
-            variant={"ghost"}
-            title="Copy Public Key"
-            onClick={() => {
-                navigator.clipboard.writeText(channelPubkey);
-                toast({
-                    title: "Key Copied!",
-                    description: `Public Key for ${channelAlias} copied to clipboard`,
-                });
-            }}
-            className="w-4 h-4"
-        >
-            <Copy size={28} />
-        </Button>
     )
 }

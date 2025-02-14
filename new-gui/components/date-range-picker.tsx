@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/popover"
 
 interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
-    date: DateRange | undefined;
+    dateRange: DateRange | undefined;
     onDateChange: (date: DateRange | undefined) => void;
 }
 
 export function DateRangePicker({
     className,
-    date,
+    dateRange,
     onDateChange
 }: DateRangePickerProps) {
     return (
@@ -35,21 +35,21 @@ export function DateRangePicker({
                         variant={"outline"}
                         className={cn(
                             "w-[300px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
+                            !dateRange && "text-muted-foreground"
                         )}
                     >
                         <CalendarIcon />
-                        {date?.from ? (
-                            date.to ? (
+                        {dateRange?.from ? (
+                            dateRange.to ? (
                                 <>
-                                    {format(date.from, "LLL dd, y")} -{" "}
-                                    {format(date.to, "LLL dd, y")}
+                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                    {format(dateRange.to, "LLL dd, y")}
                                 </>
                             ) : (
-                                format(date.from, "LLL dd, y")
+                                format(dateRange.from, "LLL dd, y")
                             )
                         ) : (
-                            <span>Pick a date</span>
+                            <span>Pick a Date Range</span>
                         )}
                     </Button>
                 </PopoverTrigger>
@@ -57,8 +57,8 @@ export function DateRangePicker({
                     <Calendar
                         initialFocus
                         mode="range"
-                        defaultMonth={date?.from}
-                        selected={date}
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
                         onSelect={onDateChange}
                         numberOfMonths={2}
                     />
