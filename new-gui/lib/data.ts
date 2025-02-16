@@ -45,10 +45,10 @@ export async function getDataFromApi<T>(
 
   let nextUrl = `${apiURL}/?limit=${limit}&offset=${offset}`;
   if (startDate) {
-    nextUrl += `&${startDate.attribute}__gt=${encodeURIComponent(startDate.date)}`;
+    nextUrl += `&${startDate.attribute}__gte=${encodeURIComponent(startDate.date)}`;
   }
   if (endDate) {
-    nextUrl += `&${endDate.attribute}__lt=${encodeURIComponent(endDate.date)}`;
+    nextUrl += `&${endDate.attribute}__lte=${encodeURIComponent(endDate.date)}`;
   }
 
   const res = await fetch(nextUrl, {
@@ -256,7 +256,7 @@ export async function fetchRoutedChartData() {
   const forwardsDataRaw: UnaggregatedData[] = forwardsData.map(
     (forward) => ({
       date: forward.forward_date,
-      value: forward.amt_out_msat,
+      value: forward.amt_out_msat / 1000,
     }),
   );
 
@@ -330,7 +330,7 @@ export async function fetchNodePerformanceChartData() {
 
 }
 
-export async function fetchProfitabilityData(dateRange: DateRange = { to: new Date, from: subDays(new Date(), 30) }) {
+export async function fetchProfitabilityData(dateRange: DateRange) {
 
   if (!dateRange.from || !dateRange.to) {
     return []
@@ -341,6 +341,7 @@ export async function fetchProfitabilityData(dateRange: DateRange = { to: new Da
   // Helper function to format date as 'YYYY-MM-DD'
   const formatDate = (date: Date) => format(date, "yyyy-MM-dd");
 
+  // console.log(dateRange)
 
   const ForwardsDataApi: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "forward_date", date: dateRange.to?.toISOString().split('T')[0] });
 

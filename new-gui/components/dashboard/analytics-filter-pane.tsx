@@ -12,12 +12,11 @@ import {
 } from "@/components/ui/sheet"
 import { Button } from "../ui/button"
 import { Label } from "../ui/label"
-import { Input } from "../ui/input"
 import { DateRangePicker } from "../date-range-picker"
 import { DateRange } from "react-day-picker"
 import { subDays } from "date-fns"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import ChannelSelector from "./channel-selector"
 
 
@@ -31,17 +30,32 @@ export default function AnalyticsFilterPane() {
         from: subDays(new Date(), 7),
         to: new Date(),
     })
-    function handleDateChange(dateRange: DateRange) {
+
+    useEffect(() => {
+        const from = searchParams.get('from');
+        const to = searchParams.get('to');
+        if (from && to) {
+            setDateRange({
+                from: new Date(from),
+                to: new Date(to),
+            })
+        }
+    }, [searchParams])
+
+    function handleDateChange(dateRange: DateRange | undefined) {
+        if (!dateRange) {
+            return null
+        }
         setDateRange(dateRange)
         console.log(dateRange)
         const params = new URLSearchParams(searchParams);
 
         if (dateRange?.from || dateRange?.to) {
             if (dateRange.from) {
-                params.set('from', dateRange.from.toISOString());
+                params.set('from', dateRange.from.toLocaleDateString());
             }
             if (dateRange.to) {
-                params.set('to', dateRange.to.toISOString());
+                params.set('to', dateRange.to.toLocaleDateString());
             }
         } else {
             params.delete('from');

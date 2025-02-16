@@ -1,14 +1,20 @@
-'use client'
-
 import { ProfitabilityStatsChart } from "@/components/dashboard/profitability/profitability-stats-chart";
 import { ProfitabilityStats, Stat } from "@/lib/definitions";
 import { ProfitabilityStat } from "@/components/dashboard/profitability/profitability-stat";
+import { fetchProfitabilityData } from "@/lib/data";
+import { DateRange } from "react-day-picker";
 
 
 
 
-export default function ProfitabilitySection({ profitabilityChartData }: { profitabilityChartData: ProfitabilityStats[] }) {
+export default async function ProfitabilitySection({ dateRange }: { dateRange: DateRange }) {
 
+
+  console.log(`fetching data from ${dateRange.from?.toDateString()} to ${dateRange.to?.toDateString()}`)
+  // console.log(dateRange)a
+
+  const profitabilityChartData: ProfitabilityStats[] = await fetchProfitabilityData(dateRange)
+  // console.log(profitabilityChartData)
   const profitabilityStats: Stat[] =
 
     [{
