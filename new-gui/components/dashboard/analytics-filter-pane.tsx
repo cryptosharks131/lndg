@@ -47,7 +47,7 @@ export default function AnalyticsFilterPane() {
             return null
         }
         setDateRange(dateRange)
-        console.log(dateRange)
+        // console.log(dateRange)
         const params = new URLSearchParams(searchParams);
 
         if (dateRange?.from || dateRange?.to) {
@@ -101,9 +101,9 @@ export default function AnalyticsFilterPane() {
                     </div>
                 </div>
                 <SheetFooter>
-                    <SheetClose asChild>
+                    {/* <SheetClose asChild>
                         <Button type="submit">Save changes</Button>
-                    </SheetClose>
+                    </SheetClose> */}
                 </SheetFooter>
             </SheetContent>
         </Sheet>

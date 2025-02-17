@@ -31,7 +31,7 @@ export function DateRangePicker({
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
-                        id="date"
+                        id="dateRange"
                         variant={"outline"}
                         className={cn(
                             "w-[300px] justify-start text-left font-normal",
@@ -49,7 +49,7 @@ export function DateRangePicker({
                                 format(dateRange.from, "LLL dd, y")
                             )
                         ) : (
-                            <span>Pick a Date Range</span>
+                            <span>Pick a date</span>
                         )}
                     </Button>
                 </PopoverTrigger>

@@ -53,9 +53,9 @@ export async function getDataFromApi<T>(
   for (const [key, value] of Object.entries(filters)) {
     nextUrl += `&${key}=${encodeURIComponent(value)}`;
   }
-  console.log(
-    "api should be calling this url" , nextUrl
-  )
+  // console.log(
+  //   "api should be calling this url" , nextUrl
+  // )
 
   const res = await fetch(nextUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -338,12 +338,12 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
   // Helper function to format date as 'YYYY-MM-DD'
   const formatDate = (date: Date) => {
     try {
-     const formattedDate = format(date, "yyyy-MM-dd")
-     return formattedDate
+      const formattedDate = format(date, "yyyy-MM-dd")
+      return formattedDate
     } catch {
       console.log("date conversion error", date)
     }
-       };
+  };
 
   // console.log(dateRange)
 
@@ -367,7 +367,7 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
     }),
   );
 
-  const paymentsDataApi: Payment[] = await getDataFromApi(`${API_URL}/payments`, 1000, 0, true, { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] }, { status: 2});
+  const paymentsDataApi: Payment[] = await getDataFromApi(`${API_URL}/payments`, 1000, 0, true, { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] }, { status: 2 });
   const paymentsDataRaw = paymentsDataApi.map(
     (payment) => ({
       date: formatDate(new Date(payment.creation_date)),
