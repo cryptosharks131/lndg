@@ -180,11 +180,16 @@ class OnchainSerializer(serializers.HyperlinkedModelSerializer):
         model = Onchain
         exclude = []
 
+import time
 class ClosuresSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
+    closure_date = serializers.SerializerMethodField()
     class Meta:
         model = Closures
         exclude = []
+    
+    def get_closure_date(self, obj): # TODO: update closure date
+        return time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime(1739752483-int(884116-int(obj.close_height))*10*60))
 
 class ResolutionsSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()

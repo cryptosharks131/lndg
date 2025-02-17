@@ -6,6 +6,7 @@ import {
   Stat,
   UnaggregatedData,
 } from "./definitions";
+import { DateRange } from "react-day-picker";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -49,15 +50,40 @@ export function AggregatedValueByDay(
 
 export const getLastNumDays = (num: number) => {
 
-  const Last7Days = Array.from({ length: num }, (_, i) => {
+  const LastNumDays = Array.from({ length: num }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - i);
     return date.toISOString().split("T")[0];
   }
   )
-  return Last7Days
+  return LastNumDays
 
 }
+
+export const getDaysFromDateRange = (dateRange: DateRange): string[] => {
+  const { from, to } = dateRange;
+
+  if (!from) {
+    throw new Error("The 'from' date is required.");
+  }
+
+  const days: string[] = [];
+  let currentDate = new Date(from);
+
+  while (!to || currentDate <= to) {
+    days.push(currentDate.toISOString().split("T")[0]);
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    if (!to && days.length > 365) {
+      // Prevent infinite loops if 'to' is undefined
+      throw new Error("The 'to' date is undefined, and the range exceeds 1 year.");
+    }
+  }
+
+  return days;
+};
+
+
 
 export function getPastDate(daysAgo: number) {
   const pastDate = new Date();

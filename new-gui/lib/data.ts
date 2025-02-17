@@ -13,10 +13,11 @@ import {
   Forward,
   OnChainTransaction,
   NodePerformanceChartData,
-  ProfitabilityStats
+  ProfitabilityStats,
+  Closure
 } from "./definitions";
 import { verifySession } from "@/app/auth/sessions";
-import { AggregatedValueByDay, getLastNumDays, getPastDate } from "./utils";
+import { AggregatedValueByDay, getDaysFromDateRange, getLastNumDays, getPastDate } from "./utils";
 import { DateRange } from "react-day-picker";
 import { format, subDays } from "date-fns";
 
@@ -28,15 +29,11 @@ export async function getDataFromApi<T>(
   limit: number = 100,
   offset: number = 0,
   accumulate: boolean = false,
-  startDate: { attribute: string, date: string } | false = false,
-  endDate: { attribute: string, date: string } | false = false,
+  startDate: { attribute: string; date: string } | false = false,
+  endDate: { attribute: string; date: string } | false = false,
+  filters: Record<string, string | number | boolean> = {}, // Additional filters
   results: T[] = []
 ): Promise<T[]> {
-
-  // console.log(`working on api ${apiURL}`)
-
-  // const startTime = new Date().getTime();
-
   const { isAuth, accessToken } = await verifySession();
 
   if (!isAuth) {
@@ -44,12 +41,21 @@ export async function getDataFromApi<T>(
   }
 
   let nextUrl = `${apiURL}/?limit=${limit}&offset=${offset}`;
+
   if (startDate) {
     nextUrl += `&${startDate.attribute}__gte=${encodeURIComponent(startDate.date)}`;
   }
   if (endDate) {
     nextUrl += `&${endDate.attribute}__lte=${encodeURIComponent(endDate.date)}`;
   }
+
+  // Append additional filters dynamically
+  for (const [key, value] of Object.entries(filters)) {
+    nextUrl += `&${key}=${encodeURIComponent(value)}`;
+  }
+  console.log(
+    "api should be calling this url" , nextUrl
+  )
 
   const res = await fetch(nextUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -58,28 +64,19 @@ export async function getDataFromApi<T>(
   if (!res.ok) {
     throw new Error("Failed to fetch protected data");
   }
+
   const data = await res.json();
 
-  if (data?.results?.length) {
-    results = [...results, ...data.results];
+  if (Array.isArray(data?.results)) {
+    results.push(...data.results);
   }
 
   if (accumulate && data.next) {
-    return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, results);
+    return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, filters, results);
   }
 
-  // add delay 3  sec
-  // await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  // time elapsed
-  // const endTime = new Date().getTime();
-  // const timeElapsed = endTime - startTime;
-  // console.log(`finished fetching on api ${apiURL} and it took ${timeElapsed} ms`)
-
   return results;
-
 }
-
 
 
 export async function fetchBalancesChartData() {
@@ -339,13 +336,20 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
   verifySession()
 
   // Helper function to format date as 'YYYY-MM-DD'
-  const formatDate = (date: Date) => format(date, "yyyy-MM-dd");
+  const formatDate = (date: Date) => {
+    try {
+     const formattedDate = format(date, "yyyy-MM-dd")
+     return formattedDate
+    } catch {
+      console.log("date conversion error", date)
+    }
+       };
 
   // console.log(dateRange)
 
-  const ForwardsDataApi: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "forward_date", date: dateRange.to?.toISOString().split('T')[0] });
-
-  const forwardsDataRaw = ForwardsDataApi.map(
+  const forwardsDataApi: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 1000, 0, true, { attribute: "forward_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "forward_date", date: dateRange.to?.toISOString().split('T')[0] });
+  // console.log(forwardsDataApi)
+  const forwardsDataRaw = forwardsDataApi.map(
     (forward) => ({
       date: formatDate(new Date(forward.forward_date)),
       revenue: forward.fee,
@@ -354,32 +358,37 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
   );
 
 
-  const OnChainDataApi: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "time_stamp", date: dateRange.to?.toISOString().split('T')[0] });
-
-  const OnChainDataRaw = OnChainDataApi.map(
+  const onChainDataApi: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 1000, 0, true, { attribute: "time_stamp", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "time_stamp", date: dateRange.to?.toISOString().split('T')[0] });
+  // console.log(onChainDataApi)
+  const onChainDataRaw = onChainDataApi.map(
     (onchain) => ({
       date: formatDate(new Date(onchain.time_stamp)),
       onchainCosts: onchain.fee
     }),
   );
 
-  const PaymentsDataApi: Payment[] = await getDataFromApi(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] });
-
-  const PaymentsDataRaw = PaymentsDataApi.map(
+  const paymentsDataApi: Payment[] = await getDataFromApi(`${API_URL}/payments`, 1000, 0, true, { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] }, { status: 2});
+  const paymentsDataRaw = paymentsDataApi.map(
     (payment) => ({
       date: formatDate(new Date(payment.creation_date)),
       offchainCost: payment.fee
     }),
   );
 
-  // get number of days from dateRange.to to dateRange.from
-  const numDays = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+  const closuresDataApi: Closure[] = await getDataFromApi(`${API_URL}/closures`, 1000, 0, true, { attribute: "closure_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "closure_date", date: dateRange.to?.toISOString().split('T')[0] });
+  const closuresDataRaw = closuresDataApi.map(
+    (closure) => ({
+      date: formatDate(new Date(closure.closure_date)),
+      closingCost: closure.closing_costs
+    }),
+  );
 
-  const profitabilityStatsData: ProfitabilityStats[] = getLastNumDays(numDays).map((date) => {
+
+  const profitabilityStatsData: ProfitabilityStats[] = getDaysFromDateRange(dateRange).map((date) => {
     const revenue = forwardsDataRaw.filter((forward) => forward.date === date).reduce((acc, forward) => acc + forward.revenue, 0);
     const valueRouted = forwardsDataRaw.filter((forward) => forward.date === date).reduce((acc, forward) => acc + forward.valueRouted, 0);
-    const onchainCosts = OnChainDataRaw.filter((onchain) => onchain.date === date).reduce((acc, onchain) => acc + onchain.onchainCosts, 0);
-    const offchainCost = PaymentsDataRaw.filter((payment) => payment.date === date).reduce((acc, payment) => acc + payment.offchainCost, 0);
+    const onchainCosts = onChainDataRaw.filter((onchain) => onchain.date === date).reduce((acc, onchain) => acc + onchain.onchainCosts, 0) + closuresDataRaw.filter((closure) => closure.date === date).reduce((acc, closure) => acc + closure.closingCost, 0);
+    const offchainCost = paymentsDataRaw.filter((payment) => payment.date === date).reduce((acc, payment) => acc + payment.offchainCost, 0);
     const offchainCostPpm = valueRouted ? offchainCost * 1000000 / valueRouted : 0;
     const percentCosts = revenue ? (onchainCosts + offchainCost) / revenue : 0;
     // const profit = revenue - onchainCosts - offchainCost;

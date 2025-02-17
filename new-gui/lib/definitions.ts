@@ -248,3 +248,23 @@ export interface ChannelPerformanceSankeyChartData {
   nodes: Node[];
   links: Link[];
 }
+
+export interface Closure {
+  url: string;
+  id: number;
+  closure_date: string;
+  chan_id: string;
+  funding_txid: string;
+  funding_index: number;
+  closing_tx: string;
+  remote_pubkey: string;
+  capacity: number;
+  close_height: number;
+  settled_balance: number;
+  time_locked_balance: number;
+  close_type: number;
+  open_initiator: number;
+  close_initiator: number;
+  resolution_count: number;
+  closing_costs: number;
+}
