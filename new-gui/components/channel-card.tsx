@@ -7,9 +7,31 @@ import { Channel } from "@/lib/definitions";
 
 import { MenuItem, CustomContextMenu } from "@/components/custom-context-menu"
 import { ArrowBigDownDash, ArrowBigUpDash, Bitcoin, Bot, Copy, Scale, TrendingUpDown, ZapOff } from "lucide-react";
-import { closeChannel, copyPublicKey } from "@/lib/channel-actions";
+import { closeChannel, ToastData } from "@/lib/channel-actions";
 import { useToast } from "@/hooks/use-toast";
 
+const copyPublicKey = async (channelAlias: string, key: string) => {
+    try {
+        console.log(channelAlias, key)
+        await navigator.clipboard.writeText(key);
+        const toast: ToastData = {
+            variant: "default",
+            title: "Key Copied!",
+            description: `Public Key ${key} for ${channelAlias} copied to clipboard`,
+        };
+        return { toast: toast }
+    } catch (err) {
+        console.log(err)
+        const toast: ToastData = {
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: `Failed to copy public key for ${channelAlias}: ${String(err)}`,
+        };
+        return { toast: toast }
+
+
+    }
+}
 
 export default function ChannelCard({ channel }: { channel: Channel }) {
     // console.log(channels)

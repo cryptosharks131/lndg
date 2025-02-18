@@ -4,29 +4,9 @@ import { verifySession } from "@/app/auth/sessions";
 import { ToastActionElement } from "@/components/ui/toast";
 import { Channel } from "./definitions";
 
-type ToastData = { title: string; description?: string; variant?: "destructive" | "default"; action?: ToastActionElement; }
+export type ToastData = { title: string; description?: string; variant?: "destructive" | "default"; action?: ToastActionElement; }
 
 const API_URL = process.env.API_URL;
-
-export const copyPublicKey = async (channelAlias: string, key: string): Promise<{ success: boolean; toast?: ToastData }> => {
-    try {
-        await navigator.clipboard.writeText(key);
-        const toast: ToastData = {
-            variant: "default",
-            title: "Key Copied!",
-            description: `Public Key ${key} for ${channelAlias} copied to clipboard`,
-        };
-        return { success: true, toast: toast }
-    } catch (err) {
-        const toast: ToastData = {
-            variant: "destructive",
-            title: "Uh oh! Something went wrong.",
-            description: `Failed to copy public key for ${channelAlias}: ${String(err)}`,
-        };
-        return { success: false, toast: toast }
-
-    }
-};
 
 // toggle rebalancer
 
