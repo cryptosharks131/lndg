@@ -16,7 +16,14 @@ export const SigninFormSchema = z.object({
     .trim(),
 });
 
-export type FormState =
+export const LoginFormSchema = z.object({
+  username: z
+    .string()
+    .min(2, { message: "Name must be at least 2 characters long." }),
+  password: z.string().min(1, { message: "Password field must not be empty." }),
+});
+
+export type LoginFormState =
   | {
     errors?: {
       username?: string[];
@@ -25,6 +32,11 @@ export type FormState =
     message?: string;
   }
   | undefined;
+
+export type SessionPayload = {
+  accessToken: string;
+  refreshToken: string;
+};
 
 export interface DecodedPayloadType {
   token_type: string;
@@ -268,3 +280,37 @@ export interface Closure {
   resolution_count: number;
   closing_costs: number;
 }
+
+
+export const OpenChannelFormSchema = z.object({
+  publicKey: z
+    .string()
+    .min(66, { message: "Public Key must be at least 66 characters long." })
+    .max(66, { message: "Public Key must be no longer than 66 characters" })
+    .regex(
+      /^[a-fA-F0-9]{66}$/,
+      "Invalid format. Expected a 66-character hexadecimal string."
+    ),
+  capacity: z.number().min(1, { message: "Capacity must not be empty" }),
+  fee: z.number().min(1, { message: "Fee must not be empty" }),
+});
+
+export interface OpenChannelFormData {
+  publicKey: string;
+  capacity: number;
+  fee: number;
+}
+
+export type OpenChannelFormState =
+  | {
+    errors?: {
+      success?: boolean;
+      publicKey?: string[];
+      capacity?: string[];
+      fee?: string[];
+    };
+    success?: boolean;
+    message?: string;
+    inputs?: OpenChannelFormData;
+  }
+  | undefined;

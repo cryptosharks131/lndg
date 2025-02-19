@@ -25,7 +25,6 @@ export default async function ProfitabilityPage(props: {
 
 
     return <>
-        <AnalyticsFilterPane />
         <Suspense key={to.toDateString() + from.toDateString()} fallback={<SkeletonProfitabilityChartSection />}>
             <ProfitabilitySection dateRange={dateRange} />
         </Suspense>

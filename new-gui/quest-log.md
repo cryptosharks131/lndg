@@ -20,15 +20,15 @@ This updated quest log provides hour estimates for a single developer with prior
   - [ ] 4.2: Develop contextual tooltips system (6-12 hours)
   - [ ] 4.3: Design simplified view for beginners (4-8 hours)
 - [ ] **Quest 5: Open Channel Modal (Medium - 3 points, 16-32 hours)**
-  - [ ] 5.1: Create modal UI (4-8 hours)
-  - [ ] 5.2: Add input fields for channel parameters (4-8 hours)
-  - [ ] 5.3: Implement input validation (4-8 hours)
-  - [ ] 5.4: Style the modal (2-4 hours)
+  - [x] 5.1: Create modal UI (4-8 hours)
+  - [x] 5.2: Add input fields for channel parameters (4-8 hours)
+  - [x] 5.3: Implement input validation (4-8 hours)
+  - [x] 5.4: Style the modal (2-4 hours)
 - [ ] **Quest 6: Open Channel API Integration (Medium - 3 points, 24-48 hours)**
-  - [ ] 6.1: Implement API call to open channel (8-16 hours)
-  - [ ] 6.2: Handle API responses (8-16 hours)
-  - [ ] 6.3: Implement loading indicators (4-8 hours)
-  - [ ] 6.4: Display notifications (4-8 hours)
+  - [x] 6.1: Implement API call to open channel (8-16 hours)
+  - [x] 6.2: Handle API responses (8-16 hours)
+  - [x] 6.3: Implement loading indicators (4-8 hours)
+  - [x] 6.4: Display notifications (4-8 hours)
 - [ ] **Quest 7: Channel List Update (Easy - 1 point, 8-16 hours)**
   - [ ] 7.1: Choose update mechanism (2-4 hours)
   - [ ] 7.2: Implement real-time updates (4-8 hours)

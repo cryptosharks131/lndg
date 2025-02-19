@@ -48,11 +48,11 @@ export default function ChannelCardInformation({
                 <Separator orientation="vertical" />
                 <UnsettledBalance unsettledBalance={unsettledBalance} />
                 <Separator orientation="vertical" />
-                <OutboundRate oRate={oRate} oBase={oBase} />
-                <Separator orientation="vertical" />
                 <InboundRate iRate={iRate} iBase={iBase} />
                 <Separator orientation="vertical" />
                 <Targets oTargetPercent={oTargetPercent} iTargetPercent={iTargetPercent} />
+                <Separator orientation="vertical" />
+                <OutboundRate oRate={oRate} oBase={oBase} />
                 <Separator orientation="vertical" />
                 <AutoRebalance autoRebalance={autoRebalance} />
             </div>

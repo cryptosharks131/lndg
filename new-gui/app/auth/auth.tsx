@@ -1,15 +1,15 @@
 "use server";
 
-import { FormState, LoginFormSchema } from "@/app/auth/definitions";
+import { LoginFormState, LoginFormSchema } from '@/lib/definitions'
 import { createSession, deleteSession } from "./sessions";
 import { redirect } from "next/navigation";
 
 const API_URL = process.env.API_URL;
 
 export async function login(
-  state: FormState,
+  state: LoginFormState,
   formData: FormData,
-): Promise<FormState> {
+): Promise<LoginFormState> {
   // 1. Validate form fields
 
   const validatedFields = LoginFormSchema.safeParse({

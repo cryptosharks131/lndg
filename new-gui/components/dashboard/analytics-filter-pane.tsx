@@ -18,6 +18,7 @@ import { subDays } from "date-fns"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import ChannelSelector from "./channel-selector"
+import { Filter } from "lucide-react"
 
 
 export default function AnalyticsFilterPane() {
@@ -67,7 +68,10 @@ export default function AnalyticsFilterPane() {
     return (
         <Sheet>
             <SheetTrigger asChild>
-                <Button variant="outline">Open</Button>
+                <Button variant="outline">
+                    <Filter />
+                    Filter
+                </Button>
             </SheetTrigger>
             <SheetContent>
                 <SheetHeader>
