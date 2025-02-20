@@ -11,7 +11,9 @@ import {
   labelPrevious,
   useDayPicker,
   type DayPickerProps,
+  type DateRange,
 } from "react-day-picker"
+
 
 export type CalendarProps = DayPickerProps & {
   /**
@@ -441,7 +443,6 @@ function MonthGrid({
     </table>
   )
 }
-
 function YearGrid({
   className,
   displayYears,
@@ -458,7 +459,10 @@ function YearGrid({
   setNavView: React.Dispatch<React.SetStateAction<NavView>>
   navView: NavView
 } & React.HTMLAttributes<HTMLDivElement>) {
-  const { goToMonth, selected } = useDayPicker()
+  const { goToMonth } = useDayPicker()
+
+  // Always return current month as fallback
+  const currentMonth = new Date().getMonth()
 
   return (
     <div className={cn("grid grid-cols-4 gap-y-2", className)} {...props}>
@@ -489,12 +493,7 @@ function YearGrid({
               variant="ghost"
               onClick={() => {
                 setNavView("days")
-                goToMonth(
-                  new Date(
-                    displayYears.from + i,
-                    (selected as Date | undefined)?.getMonth() ?? 0
-                  )
-                )
+                goToMonth(new Date(displayYears.from + i, currentMonth))
               }}
               disabled={navView === "years" ? isDisabled : undefined}
             >
