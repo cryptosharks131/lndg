@@ -20,13 +20,6 @@ import {
 } from "@/components/ui/chart";
 import { LiquidityChartData } from "@/lib/definitions";
 
-// Sample chart data
-// const chartData: LiquidtyChartData[] = [
-//     { status: "inbound", value: 20000000, fill: "var(--color-inbound)" },
-//     { status: "outbound", value: 100000000, fill: "var(--color-outbound)" },
-//     { status: "unsettled", value: 500000, fill: "var(--color-unsettled)" },
-// ];
-
 // Function to calculate the liquidity ratio
 const calculateLiquidityRatio = (data: LiquidityChartData[]): number => {
   const inbound = data.find((item) => item.status === "inbound")?.value ?? 0;

@@ -2172,6 +2172,8 @@ class InvoicesViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ForwardsFilter(FilterSet):
     chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')
+    chan_id_in = CharFilter(field_name='chan_id_in', lookup_expr='exact')
+    chan_id_out = CharFilter(field_name='chan_id_out', lookup_expr='exact')
     forward_date__lte = DateTimeFilter(field_name='forward_date', lookup_expr='lte')
     forward_date__gte = DateTimeFilter(field_name='forward_date', lookup_expr='gte')
     forward_date__lt = DateTimeFilter(field_name='forward_date', lookup_expr='lt')
@@ -2185,7 +2187,7 @@ class ForwardsFilter(FilterSet):
 
     class Meta:
         model = Forwards
-        fields = ['chan_in_or_out', 'forward_date__lte', 'forward_date__gte', 'forward_date__lt', 'forward_date__gt', 'id__lt']
+        fields = ['chan_in_or_out','chan_id_in','chan_id_out', 'forward_date__lte', 'forward_date__gte', 'forward_date__lt', 'forward_date__gt', 'id__lt']
 
 class ForwardsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []

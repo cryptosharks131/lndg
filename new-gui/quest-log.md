@@ -33,11 +33,11 @@ This updated quest log provides hour estimates for a single developer with prior
   - [ ] 7.1: Choose update mechanism (2-4 hours)
   - [ ] 7.2: Implement real-time updates (4-8 hours)
   - [ ] 7.3: Test updates (2-4 hours)
-- [ ] **Quest 8: Close Channel Functionality (Medium - 3 points, 16-32 hours)**
-  - [ ] 8.1: Add "Close Channel" option (4-8 hours)
-  - [ ] 8.2: Implement confirmation dialog (4-8 hours)
-  - [ ] 8.3: Implement API call to close (4-8 hours)
-  - [ ] 8.4: Update channel list (4-8 hours)
+- [x] **Quest 8: Close Channel Functionality (Medium - 3 points, 16-32 hours)**
+  - [x] 8.1: Add "Close Channel" option (4-8 hours)
+  - [x] 8.2: Implement confirmation dialog (4-8 hours)
+  - [x] 8.3: Implement API call to close (4-8 hours)
+  - [x] 8.4: Update channel list (4-8 hours)
 
 **Phase 2: Core Features & Enhancements**
 

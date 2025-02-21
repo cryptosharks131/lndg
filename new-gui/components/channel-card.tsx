@@ -93,7 +93,6 @@ export default function ChannelCard({ channel }: { channel: Channel }) {
                                 <ChannelCardInformation
                                     channelAlias={channel.alias}
                                     channelChannelId={channel.short_chan_id}
-                                    channelPubkey={channel.remote_pubkey}
                                     channelActive={channel.is_active}
                                     channelInboundLiquidity={channel.remote_balance}
                                     channelOutboundLiquidity={channel.local_balance}

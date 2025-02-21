@@ -34,6 +34,10 @@ export async function getDataFromApi<T>(
   filters: Record<string, string | number | boolean> = {}, // Additional filters
   results: T[] = []
 ): Promise<T | T[]> {
+
+  //start timer
+  const startTime = Date.now();
+
   const { isAuth, accessToken } = await verifySession();
 
   if (!isAuth) {
@@ -79,6 +83,11 @@ export async function getDataFromApi<T>(
   if (accumulate && data.next) {
     return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, filters, results);
   }
+
+  // Log the time taken
+  const endTime = Date.now();
+
+  console.log(`Time taken to fetch data: ${endTime - startTime}ms`);
 
   return results;
 }
@@ -471,3 +480,82 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
 
 }
 
+
+export async function fetchChannelForwardsIn(channel: Channel, daysSince: number) {
+  const sevenDaysAgo = getPastDate(daysSince)
+  const apiUrl = `${API_URL}/forwards`
+  const limit = 100
+  const offset = 0
+  const accumulate = true
+  const startDate = { attribute: "forward_date", date: sevenDaysAgo }
+  const endDate = false
+  const filters = { chan_id_in: channel.chan_id }
+
+
+  const forwardsResponse = await getDataFromApi<Forward>(apiUrl, limit, offset, accumulate, startDate, endDate, filters);
+  const forwardsData = forwardsResponse as Forward[];
+
+
+  const forwardsDataRaw: UnaggregatedData[] = forwardsData.map(
+    (forward) => ({
+      date: forward.forward_date,
+      value: forward.amt_out_msat / 1000,
+    }),
+  );
+
+
+  const forwardsByDay: AggregatedData[] = AggregatedValueByDay(forwardsDataRaw);
+
+
+  const routedChartData: AggregatedData[] = getLastNumDays(daysSince).map((date) => {
+    const routed = forwardsByDay.find((forward) => forward.date === date)?.value ?? 0;
+    return (
+      { date: date, value: routed }
+    )
+  });
+
+
+  routedChartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+
+  return routedChartData
+
+}
+
+export async function fetchChannelForwardsOut(channel: Channel, daysSince: number) {
+  const sevenDaysAgo = getPastDate(daysSince)
+  const apiUrl = `${API_URL}/forwards`
+  const limit = 100
+  const offset = 0
+  const accumulate = true
+  const startDate = { attribute: "forward_date", date: sevenDaysAgo }
+  const endDate = false
+  const filters = { chan_id_out: channel.chan_id }
+
+  const forwardsResponse = await getDataFromApi<Forward>(apiUrl, limit, offset, accumulate, startDate, endDate, filters);
+  const forwardsData = forwardsResponse as Forward[];
+
+  const forwardsDataRaw: UnaggregatedData[] = forwardsData.map(
+    (forward) => ({
+      date: forward.forward_date,
+      value: forward.amt_out_msat / 1000,
+    }),
+  );
+
+
+  const forwardsByDay: AggregatedData[] = AggregatedValueByDay(forwardsDataRaw);
+
+
+  const routedChartData: AggregatedData[] = getLastNumDays(daysSince).map((date) => {
+    const routed = forwardsByDay.find((forward) => forward.date === date)?.value ?? 0;
+    return (
+      { date: date, value: routed }
+    )
+  });
+
+
+  routedChartData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+
+  return routedChartData
+}
