@@ -11,7 +11,7 @@ import {
   labelPrevious,
   useDayPicker,
   type DayPickerProps,
-  type DateRange,
+  // type DateRange,
 } from "react-day-picker"
 
 
@@ -211,6 +211,7 @@ function Calendar({
             startMonth={startMonth}
             endMonth={endMonth}
             onPrevClick={onPrevClick}
+            onNextClick={onNextClick}
           />
         ),
         CaptionLabel: (props) => (
@@ -224,7 +225,7 @@ function Calendar({
         ),
         MonthGrid: ({ className, children, ...props }) => (
           <MonthGrid
-            children={children}
+            // children={children}
             className={className}
             displayYears={displayYears}
             startMonth={startMonth}
@@ -232,7 +233,9 @@ function Calendar({
             navView={navView}
             setNavView={setNavView}
             {...props}
-          />
+          >
+            {children}
+          </MonthGrid>
         ),
       }}
       numberOfMonths={columnsDisplayed}

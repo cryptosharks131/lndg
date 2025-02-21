@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import type { SessionPayload } from "@/app/auth/definitions";
+import type { SessionPayload } from "@/lib/definitions";
 import { jwtDecode } from "@/lib/utils";
 import { SessionTokens } from "@/lib/definitions";
 
@@ -58,7 +58,7 @@ export async function createSession(sessionPayload: SessionPayload) {
 
 export async function refreshSessionTokens(refreshToken: string) {
   try {
-    const res = await fetch(`${API_URL}/api/token/refresh/`, {
+    const res = await fetch(`${API_URL}/token/refresh/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh: refreshToken }),

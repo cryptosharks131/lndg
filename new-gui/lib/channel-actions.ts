@@ -2,7 +2,9 @@
 
 import { verifySession } from "@/app/auth/sessions";
 import { ToastActionElement } from "@/components/ui/toast";
-import { Channel, OpenChannelFormState, OpenChannelFormSchema, OpenChannelFormData } from "./definitions";
+import { Channel, OpenChannelFormState, OpenChannelFormSchema, OpenChannelFormData, NodeInfoApiData, ChannelPendingOpen, ChannelPendingClose, ChannelWaitingToClose, ChannelPendingForceClose } from "./definitions";
+import { getDataFromApi } from "./data";
+
 
 export type ToastData = { title: string; description?: string; variant?: "destructive" | "default"; action?: ToastActionElement; }
 
@@ -30,8 +32,9 @@ export const closeChannel = async (channel: Channel, targetFee: number = 1, forc
             : { chan_id, target_fee };
 
 
+        console.log(body)
         // close channel 
-        const response = await fetch(`${API_URL}/api/closechannel/`, {
+        const response = await fetch(`${API_URL}/closechannel/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -115,7 +118,7 @@ export async function openChannel(
         // open channel 
         // console.log(JSON.stringify(body))
 
-        const response = await fetch(`${API_URL}/api/openchannel/`, {
+        const response = await fetch(`${API_URL}/openchannel/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -147,7 +150,59 @@ export async function openChannel(
 
 }
 
-// force close channel
+
+
+export async function fetchOpenChannels() {
+    const apiUrl = `${API_URL}/channels`
+    const limit = 100
+    const offset = 0
+    const accumulate = false
+    const startDate = false
+    const endDate = false
+    const filters = { is_open: true, private: false }
+    // const channels: Channel[] = await getDataFromApi(`${API_URL}/channels/?is_open=true&private`, 100, 0, true);
+    const channelsResponse = await getDataFromApi<Channel>(apiUrl, limit, offset, accumulate, startDate, endDate, filters);
+    const channels = channelsResponse as Channel[]
+
+    // console.log(channels)
+    return channels;
+}
+
+export async function fetchPendingChannels(): Promise<{
+    channelsPendingOpen: ChannelPendingOpen[] | null,
+    channelsPendingClose: ChannelPendingClose[] | null,
+    channelsWaitingToClose: ChannelWaitingToClose[] | null,
+    channelsPendingForceClose: ChannelPendingForceClose[] | null
+
+}> {
+
+    const apiUrl = `${API_URL}/node_info`
+    const limit = 100
+    const offset = 0
+    const accumulate = false
+    const startDate = false
+    const endDate = false
+    const filters = {}
+
+    const response = await getDataFromApi<NodeInfoApiData>(apiUrl, limit, offset, accumulate, startDate, endDate, filters);
+    const data = response as NodeInfoApiData
+
+    const channelsPendingOpen = data.pending_open
+    const channelsPendingClose = data.pending_closed
+    const channelsWaitingToClose = data.waiting_for_close
+    const channelsPendingForceClose = data.pending_force_closed
+
+
+
+    return {
+        channelsPendingOpen,
+        channelsPendingClose,
+        channelsWaitingToClose,
+        channelsPendingForceClose
+    }
+
+}
+
 
 // update outbound fees
 

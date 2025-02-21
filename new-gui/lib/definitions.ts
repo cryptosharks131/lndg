@@ -84,10 +84,10 @@ export interface NodeInfoApiData {
     unconfirmed: number;
     total: number;
   };
-  pending_open: number | null | unknown;
-  pending_closed: number | null | unknown;
-  pending_force_closed: number | null | unknown;
-  waiting_for_close: number | null | unknown;
+  pending_open: ChannelPendingOpen[] | null;
+  pending_closed: ChannelPendingClose[] | null;
+  pending_force_closed: ChannelPendingForceClose[] | null;
+  waiting_for_close: ChannelWaitingToClose[] | null;
   db_size: number;
 }
 
@@ -143,6 +143,84 @@ export interface Channel {
   remote_inbound_fee_rate: number;
   auto_rebalance: boolean;
   notes: string;
+}
+
+export interface ChannelWaitingToClose {
+  remote_node_pub: string;
+  channel_point: string;
+  capacity: number;
+  local_balance: number;
+  remote_balance: number;
+  local_chan_reserve_sat: number;
+  remote_chan_reserve_sat: number;
+  initiator: number;
+  commitment_type: number;
+  local_commit_fee_sat: number;
+  limbo_balance: number;
+  closing_txid: string;
+  short_chan_id: string;
+  chan_id: string;
+  alias: string;
+}
+
+export interface ChannelPendingOpen {
+  alias: string;
+  remote_node_pub: string;
+  channel_point: string;
+  funding_txid: string;
+  output_index: string; // provided as a string (e.g. "0"); convert to number if needed
+  capacity: number;
+  local_balance: number;
+  remote_balance: number;
+  local_chan_reserve_sat: number;
+  remote_chan_reserve_sat: number;
+  initiator: number;
+  commitment_type: number;
+  commit_fee: number;
+  commit_weight: number;
+  fee_per_kw: number;
+  local_base_fee: string;
+  local_fee_rate: string;
+  local_cltv: string;
+  auto_rebalance: boolean;
+  ar_amt_target: number;
+  ar_in_target: number;
+  ar_out_target: number;
+  ar_max_cost: number;
+  auto_fees: boolean;
+}
+
+export interface ChannelPendingClose {
+  remote_node_pub: string;
+  channel_point: string;
+  capacity: number;
+  local_balance: number;
+  remote_balance: number;
+  local_chan_reserve_sat: number;
+  remote_chan_reserve_sat: number;
+  initiator: number;
+  commitment_type: number;
+  local_commit_fee_sat: number;
+  limbo_balance: number;
+  closing_txid: string;
+}
+
+export interface ChannelPendingForceClose {
+  remote_node_pub: string;
+  channel_point: string;
+  capacity: number;
+  local_balance: number;
+  remote_balance: number;
+  initiator: number;
+  commitment_type: number;
+  closing_txid: string;
+  limbo_balance: number;
+  maturity_height: number;
+  blocks_til_maturity: number;
+  maturity_datetime: string; // ISO 8601 formatted date string
+  short_chan_id: string;
+  chan_id: string;
+  alias: string;
 }
 
 export interface ChannelsChartData {

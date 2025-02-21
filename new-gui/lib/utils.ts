@@ -68,7 +68,7 @@ export const getDaysFromDateRange = (dateRange: DateRange): string[] => {
   }
 
   const days: string[] = [];
-  let currentDate = new Date(from);
+  const currentDate = new Date(from);
 
   while (!to || currentDate <= to) {
     days.push(currentDate.toISOString().split("T")[0]);

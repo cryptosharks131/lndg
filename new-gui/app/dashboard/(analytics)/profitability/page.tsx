@@ -1,7 +1,6 @@
-import AnalyticsFilterPane from "@/components/dashboard/analytics-filter-pane";
+
 import ProfitabilitySection from "./profitability";
 import { subDays } from "date-fns";
-import { DateRange } from "react-day-picker";
 import { Suspense } from "react";
 import { SkeletonProfitabilityChartSection } from "@/components/ui/skeletons";
 

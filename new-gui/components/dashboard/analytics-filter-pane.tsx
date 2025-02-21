@@ -2,7 +2,6 @@
 
 import {
     Sheet,
-    SheetClose,
     SheetContent,
     SheetDescription,
     SheetFooter,
@@ -105,9 +104,7 @@ export default function AnalyticsFilterPane() {
                     </div>
                 </div>
                 <SheetFooter>
-                    {/* <SheetClose asChild>
-                        <Button type="submit">Save changes</Button>
-                    </SheetClose> */}
+
                 </SheetFooter>
             </SheetContent>
         </Sheet>

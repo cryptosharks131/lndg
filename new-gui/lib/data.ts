@@ -19,10 +19,10 @@ import {
 import { verifySession } from "@/app/auth/sessions";
 import { AggregatedValueByDay, getDaysFromDateRange, getLastNumDays, getPastDate } from "./utils";
 import { DateRange } from "react-day-picker";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 
 
-const API_URL = process.env.API_URL + "/api";
+const API_URL = process.env.API_URL;
 
 export async function getDataFromApi<T>(
   apiURL: string,
@@ -33,7 +33,7 @@ export async function getDataFromApi<T>(
   endDate: { attribute: string; date: string } | false = false,
   filters: Record<string, string | number | boolean> = {}, // Additional filters
   results: T[] = []
-): Promise<T[]> {
+): Promise<T | T[]> {
   const { isAuth, accessToken } = await verifySession();
 
   if (!isAuth) {
@@ -53,9 +53,10 @@ export async function getDataFromApi<T>(
   for (const [key, value] of Object.entries(filters)) {
     nextUrl += `&${key}=${encodeURIComponent(value)}`;
   }
-  // console.log(
-  //   "api should be calling this url" , nextUrl
-  // )
+
+  console.log(
+    "api should be calling this url", nextUrl
+  )
 
   const res = await fetch(nextUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -67,9 +68,13 @@ export async function getDataFromApi<T>(
 
   const data = await res.json();
 
-  if (Array.isArray(data?.results)) {
-    results.push(...data.results);
+  // If data doesn't have results property, it's a single object response
+  if (!data.results) {
+    return data as T;
   }
+
+  // Handle array results
+  results.push(...data.results);
 
   if (accumulate && data.next) {
     return getDataFromApi(apiURL, limit, offset + limit, accumulate, startDate, endDate, filters, results);
@@ -80,7 +85,7 @@ export async function getDataFromApi<T>(
 
 
 export async function fetchBalancesChartData() {
-  const data: BalancesApiData[] = await getDataFromApi(`${API_URL}/balances`, 100, 0);
+  const data = await getDataFromApi<BalancesApiData>(`${API_URL}/balances`, 100, 0);
   // Check if data is valid and is an array with at least one element
 
   if (!Array.isArray(data) || data.length === 0 || !data[0]) {
@@ -105,10 +110,11 @@ export async function fetchBalancesChartData() {
 }
 
 export async function fetchChannelsChartData() {
-  const channels: Channel[] = await getDataFromApi(`${API_URL}/channels`, 100, 0, true);
+  const channelsResponse = await getDataFromApi<Channel>(`${API_URL}/channels`, 100, 0, true);
+  const channels = channelsResponse as Channel[];
 
   // Filter out active and open channels
-  const activeChannels = channels.filter(
+  const activeChannels: Channel[] = channels.filter(
     (channel) => channel.is_active && channel.is_open,
   );
 
@@ -170,12 +176,17 @@ export async function fetchFeeChartData() {
   const sevenDaysAgo = getPastDate(7)
 
   // forwards api has all the "fees" earned so you can calculate the last 7 days worth of fees earned
-  const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
+  const forwardsResponse = await getDataFromApi<Forward>(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
+  const forwardsData = forwardsResponse as Forward[];
   // onchain api has all the "fees" on chain so you can calculate the last 7 days worth of on chain fees
 
-  const onchainData: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: sevenDaysAgo });
+  const onchainDataResponse = await getDataFromApi<OnChainTransaction>(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: sevenDaysAgo });
+  const onchainData = onchainDataResponse as OnChainTransaction[];
+
   // payments api has all the "fees" paid so you can calculate the last 7 days worth of fees paid
-  const paymentsData: Payment[] = await getDataFromApi(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: sevenDaysAgo });
+  const paymentsDataResponse = await getDataFromApi<Payment>(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: sevenDaysAgo });
+  const paymentsData = paymentsDataResponse as Payment[];
+
 
   const forwardsDataRaw: UnaggregatedData[] = forwardsData.map(
     (forward) => ({
@@ -245,7 +256,8 @@ export async function fetchRoutedChartData() {
 
   const thirtyDaysAgo = getPastDate(30)
 
-  const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: thirtyDaysAgo });
+  const forwardsResponse = await getDataFromApi<Forward>(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: thirtyDaysAgo });
+  const forwardsData = forwardsResponse as Forward[];
 
 
 
@@ -282,13 +294,17 @@ export async function fetchNodePerformanceChartData() {
 
   const sevenDaysAgo = getPastDate(7)
 
+  // forwards api has all the "fees" earned so you can calculate the last 7 days worth of fees earned
+  const forwardsResponse = await getDataFromApi<Forward>(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
+  const forwardsData = forwardsResponse as Forward[];
+  // onchain api has all the "fees" on chain so you can calculate the last 7 days worth of on chain fees
 
-  const forwardsData: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 100, 0, true, { attribute: "forward_date", date: sevenDaysAgo });
+  const onchainDataResponse = await getDataFromApi<OnChainTransaction>(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: sevenDaysAgo });
+  const onchainData = onchainDataResponse as OnChainTransaction[];
 
-  const onchainData: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 100, 0, true, { attribute: "time_stamp", date: sevenDaysAgo });
-
-  const paymentsData: Payment[] = await getDataFromApi(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: sevenDaysAgo });
-
+  // payments api has all the "fees" paid so you can calculate the last 7 days worth of fees paid
+  const paymentsDataResponse = await getDataFromApi<Payment>(`${API_URL}/payments`, 100, 0, true, { attribute: "creation_date", date: sevenDaysAgo });
+  const paymentsData = paymentsDataResponse as Payment[];
   const balanceChartData = await fetchBalancesChartData();
 
   const total_outbound = balanceChartData.find((item) => item.item === "offchain_balance")?.value ?? 1;
@@ -347,8 +363,16 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
 
   // console.log(dateRange)
 
-  const forwardsDataApi: Forward[] = await getDataFromApi(`${API_URL}/forwards`, 1000, 0, true, { attribute: "forward_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "forward_date", date: dateRange.to?.toISOString().split('T')[0] });
+  const forwardsDataApiResponse = await getDataFromApi<Forward>(
+    `${API_URL}/forwards`,
+    1000,
+    0,
+    true,
+    { attribute: "forward_date", date: dateRange.from?.toISOString().split('T')[0] },
+    { attribute: "forward_date", date: dateRange.to?.toISOString().split('T')[0] }
+  );
   // console.log(forwardsDataApi)
+  const forwardsDataApi = forwardsDataApiResponse as Forward[]
   const forwardsDataRaw = forwardsDataApi.map(
     (forward) => ({
       date: formatDate(new Date(forward.forward_date)),
@@ -358,7 +382,16 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
   );
 
 
-  const onChainDataApi: OnChainTransaction[] = await getDataFromApi(`${API_URL}/onchain`, 1000, 0, true, { attribute: "time_stamp", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "time_stamp", date: dateRange.to?.toISOString().split('T')[0] });
+  const onChainDataApiResponse = await getDataFromApi<OnChainTransaction>(
+    `${API_URL}/onchain`,
+    1000,
+    0,
+    true,
+    { attribute: "time_stamp", date: dateRange.from?.toISOString().split('T')[0] },
+    { attribute: "time_stamp", date: dateRange.to?.toISOString().split('T')[0] }
+  );
+
+  const onChainDataApi = onChainDataApiResponse as OnChainTransaction[]
   // console.log(onChainDataApi)
   const onChainDataRaw = onChainDataApi.map(
     (onchain) => ({
@@ -367,7 +400,19 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
     }),
   );
 
-  const paymentsDataApi: Payment[] = await getDataFromApi(`${API_URL}/payments`, 1000, 0, true, { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] }, { status: 2 });
+  const paymentsDataApiResponse = await getDataFromApi<Payment>(
+    `${API_URL}/payments`,
+    1000,
+    0,
+    true,
+    { attribute: "creation_date", date: dateRange.from?.toISOString().split('T')[0] },
+    { attribute: "creation_date", date: dateRange.to?.toISOString().split('T')[0] },
+    { status: 2 }
+  );
+
+  const paymentsDataApi = paymentsDataApiResponse as Payment[]
+
+
   const paymentsDataRaw = paymentsDataApi.map(
     (payment) => ({
       date: formatDate(new Date(payment.creation_date)),
@@ -375,7 +420,17 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
     }),
   );
 
-  const closuresDataApi: Closure[] = await getDataFromApi(`${API_URL}/closures`, 1000, 0, true, { attribute: "closure_date", date: dateRange.from?.toISOString().split('T')[0] }, { attribute: "closure_date", date: dateRange.to?.toISOString().split('T')[0] });
+  const closuresDataApiResponse = await getDataFromApi<Closure>(
+    `${API_URL}/closures`,
+    1000,
+    0,
+    true,
+    { attribute: "closure_date", date: dateRange.from?.toISOString().split('T')[0] },
+    { attribute: "closure_date", date: dateRange.to?.toISOString().split('T')[0] }
+  );
+
+  const closuresDataApi = closuresDataApiResponse as Closure[]
+
   const closuresDataRaw = closuresDataApi.map(
     (closure) => ({
       date: formatDate(new Date(closure.closure_date)),
@@ -416,8 +471,3 @@ export async function fetchProfitabilityData(dateRange: DateRange) {
 
 }
 
-
-export async function fetchChannelsData() {
-  const channels: Channel[] = await getDataFromApi(`${API_URL}/channels/?is_open=true&private`, 100, 0, true);
-  return channels;
-}
