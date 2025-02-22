@@ -159,8 +159,7 @@ export async function fetchOpenChannels() {
     const accumulate = false
     const startDate = false
     const endDate = false
-    // const filters = { is_open: true, private: false }
-    const filters = {}
+    const filters = { is_open: true, private: false }
     // const channels: Channel[] = await getDataFromApi(`${API_URL}/channels/?is_open=true&private`, 100, 0, true);
     const channelsResponse = await getDataFromApi<Channel>(apiUrl, limit, offset, accumulate, startDate, endDate, filters);
     const channels = channelsResponse as Channel[]

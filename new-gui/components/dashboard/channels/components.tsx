@@ -197,11 +197,23 @@ export function Liquidity({ channel }: { channel: Channel }) {
 
 
         <div className="flex gap-5">
-            <span className="text-foreground flex flex-row items-center gap-2 cursor-pointer w-24" title="Capacity">
-                <Waypoints className="stroke-chart-1" size={18} />
-                {/* <span className="text-muted-foreground">Remote Balance: </span> */}
-                <span className="font-medium">{channel.capacity.toLocaleString()}</span>
-            </span>
+            <div className="flex flex-col">
+
+                <span className="text-foreground flex flex-row items-center gap-2 cursor-pointer w-24" title="Capacity">
+                    <Waypoints className="stroke-chart-1" size={12} />
+                    {/* <span className="text-muted-foreground">Remote Balance: </span> */}
+                    <span className="font-medium">{channel.capacity.toLocaleString()}</span>
+                </span>
+
+
+                <span className="text-foreground flex flex-row items-center gap-2 cursor-pointer w-24" title="Unsettled Balance">
+                    <CircleHelp className="stroke-chart-3" size={12} />
+                    <span className="font-medium">{channel.unsettled_balance.toLocaleString()}</span>
+                </span>
+
+
+
+            </div>
             <div className="flex items-center gap-x-4">
                 <div className="">
                     <LocalBalanceChart remoteBalance={channel.remote_balance} localBalance={channel.local_balance} />
@@ -257,23 +269,6 @@ export const OutboundRate = ({ channel }: { channel: Channel }) => (
     </div>
 )
 
-
-export const UnsettledBalance = ({ channel }: { channel: Channel }) => (
-    <div className="flex items-center gap-4 grow">
-        <CircleHelp className="stroke-chart-3" />
-        <span className="text-foreground">
-            <span className="font-medium">{channel.unsettled_balance.toLocaleString()}</span>
-        </span>
-
-        {/* <p className="font-xs text-muted-foreground">Unsettled Balance: {unsettledBalance}</p> */}
-    </div>
-)
-
-
-
-
-
-
 interface ChannelRoutesChartData {
     date: string;
     routedIn: number;
@@ -327,7 +322,7 @@ export function ChannelRoutesChart({ forwardsIn, forwardsOut }: { forwardsIn: Ag
     return (
         <div className="flex gap-4 place-items-center">
 
-            <ChartContainer config={chartConfig} className="h-10 w-40">
+            <ChartContainer config={chartConfig} className="h-9 w-40">
                 <BarChart accessibilityLayer data={chartData}>
                     <XAxis
                         dataKey="date"
@@ -375,7 +370,7 @@ const RoutingBadges = ({ forwardsIn, forwardsOut }: { forwardsIn: AggregatedData
         <>
             {formatNumberToTruncatedValues(forwardsIn.at(-1)?.value ?? 0) !== "0" && formatNumberToTruncatedValues(forwardsIn.at(-1)?.value ?? 0) !== "0.00" && (
                 <Badge variant="outline" className="col-span-1">
-                    <CircleArrowOutDownRight className="stroke-chart-1" size={12} />
+                    <CircleArrowOutDownRight className="stroke-chart-1" size={8} />
                     <span className="pl-2">
                         1d:
                     </span>
@@ -387,7 +382,7 @@ const RoutingBadges = ({ forwardsIn, forwardsOut }: { forwardsIn: AggregatedData
             {
                 formatNumberToTruncatedValues(forwardsIn.reduce((sum, entry) => sum + entry.value, 0)) !== "0" && formatNumberToTruncatedValues(forwardsIn.reduce((sum, entry) => sum + entry.value, 0)) !== "0.00" && (
                     <Badge variant="outline" className="col-span-1">
-                        <CircleArrowOutDownRight className="stroke-chart-1" size={12} />
+                        <CircleArrowOutDownRight className="stroke-chart-1" size={8} />
                         <span className="pl-2">
                             7d:
                         </span>
@@ -401,7 +396,7 @@ const RoutingBadges = ({ forwardsIn, forwardsOut }: { forwardsIn: AggregatedData
             {
                 formatNumberToTruncatedValues(forwardsOut.at(-1)?.value ?? 0) !== "0" && formatNumberToTruncatedValues(forwardsOut.at(-1)?.value ?? 0) !== "0.00" && (
                     <Badge variant="outline" className="col-span-1">
-                        <CircleArrowOutUpRight className="stroke-chart-2" size={12} />
+                        <CircleArrowOutUpRight className="stroke-chart-2" size={8} />
                         <span className="pl-2">
                             1d:
                         </span>
@@ -414,7 +409,7 @@ const RoutingBadges = ({ forwardsIn, forwardsOut }: { forwardsIn: AggregatedData
             {
                 formatNumberToTruncatedValues(forwardsOut.reduce((sum, entry) => sum + entry.value, 0)) !== "0" && formatNumberToTruncatedValues(forwardsOut.reduce((sum, entry) => sum + entry.value, 0)) !== "0.00" && (
                     <Badge variant="outline" className="col-span-1">
-                        <CircleArrowOutUpRight className="stroke-chart-2" size={12} />
+                        <CircleArrowOutUpRight className="stroke-chart-2" size={8} />
                         <span className="pl-2">
                             7d:
                         </span>
@@ -427,3 +422,4 @@ const RoutingBadges = ({ forwardsIn, forwardsOut }: { forwardsIn: AggregatedData
         </>
     )
 }
+

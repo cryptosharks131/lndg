@@ -3,9 +3,12 @@
 import { AggregatedData, Channel } from "@/lib/definitions"
 import { ColumnDef } from "@tanstack/react-table"
 
-import { ChannelInfo, ChannelRoutesChart, InboundRate, Liquidity, OutboundRate, UnsettledBalance } from "./components"
+import { ChannelInfo, ChannelRoutesChart, InboundRate, Liquidity, OutboundRate } from "./components"
 import { fetchChannelForwardsIn, fetchChannelForwardsOut } from "@/lib/data"
 import { useEffect, useState } from "react"
+import { SkeletonChannelRoutedStats } from "@/components/ui/skeletons"
+import { Bot } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 
 export const channelColumns: ColumnDef<Channel>[] = [
     {
@@ -18,18 +21,10 @@ export const channelColumns: ColumnDef<Channel>[] = [
     },
     {
         accessorKey: "capacity",
-        header: () => <div className="text-left">Capacity</div>,
+        header: () => <div className="text-left">Capacity and Balances</div>,
         cell: ({ row }) => {
             const channel = row.original
             return (<Liquidity channel={channel} />)
-        },
-    },
-    {
-        accessorKey: "unsettled",
-        header: () => <div className="text-left">Unsettled Balance</div>,
-        cell: ({ row }) => {
-            const channel = row.original
-            return (<UnsettledBalance channel={channel} />)
         },
     },
     {
@@ -66,7 +61,7 @@ export const channelColumns: ColumnDef<Channel>[] = [
             }, [channel]);
 
 
-            if (loading) return <div className="w-16">Loading...</div>;
+            if (loading) return <SkeletonChannelRoutedStats />;
 
             console.log(`${channel.chan_id} forwards in ${forwardsIn}`)
             console.log(`${channel.chan_id} forwards out ${forwardsOut}`)
@@ -80,6 +75,14 @@ export const channelColumns: ColumnDef<Channel>[] = [
         cell: ({ row }) => {
             const channel = row.original
             return (<OutboundRate channel={channel} />)
+        },
+    },
+    {
+        accessorKey: "autoRebalancer",
+        header: () => <div className="text-left flex gap-2" title="Auto Rebalancer"><Bot size={18} />AR</div>,
+        cell: ({ row }) => {
+            const channel = row.original
+            return (<Switch id="auto-rebalancer" />)
         },
     },
 ]

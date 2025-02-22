@@ -100,4 +100,24 @@ export function SkeletonProfitabilityChartSection() {
 
         </>
     )
-} 
+}
+
+export function SkeletonChannelRoutedStats() {
+
+    return (
+
+        <div className="flex gap-4 place-items-center">
+            <Skeleton className="h-12 w-[160px]" />
+
+            <div className="grid grid-cols-2 gap-1">
+                <Skeleton className="h-5 w-[100px]" />
+                <Skeleton className="h-5 w-[100px]" />
+                <Skeleton className="h-5 w-[100px]" />
+                <Skeleton className="h-5 w-[100px]" />
+
+
+            </div>
+
+        </div>
+    )
+}
