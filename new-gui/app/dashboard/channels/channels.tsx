@@ -20,11 +20,7 @@ export default async function Channels() {
             <>
 
                 <ChannelsTable columns={channelColumns} data={channels} />
-                <div className="grid grid-cols-1 gap-4">
-                    {channels.map((channel) => (
-                        <ChannelCard key={channel.chan_id} channel={channel} />
-                    ))}
-                </div>
+
             </>
 
         )

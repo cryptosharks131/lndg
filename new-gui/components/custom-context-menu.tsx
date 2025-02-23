@@ -32,7 +32,7 @@ type CustomContextMenuProps = {
 export function CustomContextMenu({ trigger, menuItems }: CustomContextMenuProps) {
     return (
         <ContextMenu>
-            <ContextMenuTrigger className="flex cursor-context-menu text-sm hover:bg-accent">
+            <ContextMenuTrigger asChild>
                 {trigger}
             </ContextMenuTrigger>
             <ContextMenuContent className="w-64">
