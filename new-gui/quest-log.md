@@ -24,7 +24,7 @@ This updated quest log provides hour estimates for a single developer with prior
   - [x] 5.2: Add input fields for channel parameters (4-8 hours)
   - [x] 5.3: Implement input validation (4-8 hours)
   - [x] 5.4: Style the modal (2-4 hours)
-- [ ] **Quest 6: Open Channel API Integration (Medium - 3 points, 24-48 hours)**
+- [x] **Quest 6: Open Channel API Integration (Medium - 3 points, 24-48 hours)**
   - [x] 6.1: Implement API call to open channel (8-16 hours)
   - [x] 6.2: Handle API responses (8-16 hours)
   - [x] 6.3: Implement loading indicators (4-8 hours)
@@ -41,14 +41,14 @@ This updated quest log provides hour estimates for a single developer with prior
 
 **Phase 2: Core Features & Enhancements**
 
-- [ ] **Quest 9: Fee Management UI (Easy - 1 point, 8-16 hours)**
-  - [ ] 9.1: Add "Manage Fees" option (2-4 hours)
-  - [ ] 9.2: Create input fields for fees (4-8 hours)
-  - [ ] 9.3: Style fee input section (2-4 hours)
-- [ ] **Quest 10: Adjust Channel Fees API Integration (Medium - 3 points, 16-32 hours)**
-  - [ ] 10.1: Implement API call to adjust fees (8-16 hours)
-  - [ ] 10.2: Handle API responses (4-8 hours)
-  - [ ] 10.3: Display confirmation message (4-8 hours)
+- [x] **Quest 9: Fee Management UI (Easy - 1 point, 8-16 hours)**
+  - [x] 9.1: Add "Manage Fees" option (2-4 hours)
+  - [x] 9.2: Create input fields for fees (4-8 hours)
+  - [x] 9.3: Style fee input section (2-4 hours)
+- [x] **Quest 10: Adjust Channel Fees API Integration (Medium - 3 points, 16-32 hours)**
+  - [x] 10.1: Implement API call to adjust fees (8-16 hours)
+  - [x] 10.2: Handle API responses (4-8 hours)
+  - [x] 10.3: Display confirmation message (4-8 hours)
 - [ ] **Quest 11: Enable/Disable Channel Routing (Medium - 3 points, 16-32 hours)**
   - [ ] 11.1: Add "Enable/Disable" option (4-8 hours)
   - [ ] 11.2: Implement API call to toggle routing (4-8 hours)

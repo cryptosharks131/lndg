@@ -1,7 +1,7 @@
 "use client"
 
 import { AggregatedData, Channel, Forward } from "@/lib/definitions";
-import { Circle, CircleArrowOutDownRight, CircleArrowOutUpRight, CircleDashed, CircleDot, CircleDotDashed, CircleHelp, Orbit, Waypoints } from "lucide-react";
+import { ArrowLeft, ArrowRight, Circle, CircleArrowOutDownRight, CircleArrowOutUpRight, CircleDashed, CircleDot, CircleDotDashed, CircleHelp, Orbit, Waypoints } from "lucide-react";
 
 
 import {
@@ -15,6 +15,12 @@ import {
     YAxis
 } from "recharts"
 
+import {
+    HoverCard,
+    HoverCardContent,
+    HoverCardTrigger,
+} from "@/components/ui/hover-card"
+
 
 import {
     ChartConfig, ChartContainer,
@@ -25,6 +31,8 @@ import {
 import { getDataFromApi } from "@/lib/data";
 import { getLastNumDays } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { channel } from "diagnostics_channel";
+import { Card } from "@/components/ui/card";
 
 
 export function ChannelInfo({ channel }: { channel: Channel }) {
@@ -237,23 +245,80 @@ export function Liquidity({ channel }: { channel: Channel }) {
 }
 
 
-export const InboundRate = ({ channel }: { channel: Channel }) => (
+export const InboundRateData = ({ channel }: { channel: Channel }) => (
     <div className="flex items-center gap-4 grow">
         <CircleArrowOutDownRight className="stroke-chart-1" />
         <div className="flex flex-col gap-0">
             <span className="text-foreground">
                 <span className="text-muted-foreground">Rate: </span>
-                <span className="font-medium">{channel.remote_fee_rate} ppm</span>
+                <span className="font-medium">{channel.local_inbound_fee_rate} ppm</span>
             </span>
             <span className="text-foreground">
                 <span className="text-muted-foreground">Base: </span>
-                <span className="font-medium">{channel.remote_base_fee} msat</span>
+                <span className="font-medium">{channel.local_inbound_base_fee} msat</span>
             </span>
         </div>
     </div>
 )
 
-export const OutboundRate = ({ channel }: { channel: Channel }) => (
+export const InboundRate = ({ channel }: { channel: Channel }) => {
+    return (
+
+        <HoverCard>
+            <HoverCardTrigger><InboundRateData channel={channel} /></HoverCardTrigger>
+            <HoverCardContent>
+
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1">
+
+                        <ArrowRight className="stroke-chart-1" /> <Orbit size={20} />
+
+                        <div className="flex flex-col gap-0">
+                            <span className="text-foreground">
+                                <span className="text-muted-foreground">Local Inbound Fees</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Base Fee: </span>
+                            <span className="font-medium">{channel.local_inbound_base_fee} msat</span>
+                        </span>
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Rate: </span>
+                            <span className="font-medium">{channel.local_inbound_fee_rate} ppm</span>
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Orbit size={20} /> <ArrowRight className="stroke-chart-2" />
+
+                        <div className="flex flex-col gap-0">
+                            <span className="text-foreground">
+                                <span className="text-muted-foreground">{channel.alias} Outbound Fees</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Base Fee: </span>
+                            <span className="font-medium">{channel.remote_base_fee} msat</span>
+                        </span>
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Rate: </span>
+                            <span className="font-medium">{channel.remote_fee_rate} ppm</span>
+                        </span>
+                    </div>
+                </div>
+
+
+
+            </HoverCardContent>
+        </HoverCard>
+    )
+}
+
+
+const OutboundRateData = ({ channel }: { channel: Channel }) => (
     <div className="flex items-center gap-4 grow">
         <CircleArrowOutUpRight className="stroke-chart-2" />
         <div className="flex flex-col gap-0">
@@ -268,6 +333,60 @@ export const OutboundRate = ({ channel }: { channel: Channel }) => (
         </div>
     </div>
 )
+
+export const OutboundRate = ({ channel }: { channel: Channel }) => {
+    return (
+
+        <HoverCard>
+            <HoverCardTrigger><OutboundRateData channel={channel} /></HoverCardTrigger>
+            <HoverCardContent>
+
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1">
+                        <Orbit size={20} /> <ArrowRight className="stroke-chart-2" />
+                        <div className="flex flex-col gap-0">
+                            <span className="text-foreground">
+                                <span className="text-muted-foreground">Local Outbound Fees</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Base Fee: </span>
+                            <span className="font-medium">{channel.local_base_fee} msat</span>
+                        </span>
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Rate: </span>
+                            <span className="font-medium">{channel.local_fee_rate} ppm</span>
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <ArrowRight className="stroke-chart-1" /> <Orbit size={20} />
+                        <div className="flex flex-col gap-0">
+                            <span className="text-foreground">
+                                <span className="text-muted-foreground">{channel.alias} Inbound Fees</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Base Fee: </span>
+                            <span className="font-medium">{channel.remote_inbound_base_fee} msat</span>
+                        </span>
+                        <span className="text-foreground">
+                            <span className="text-muted-foreground">Rate: </span>
+                            <span className="font-medium">{channel.remote_inbound_fee_rate} ppm</span>
+                        </span>
+                    </div>
+                </div>
+
+
+
+            </HoverCardContent>
+        </HoverCard>
+    )
+}
+
 
 interface ChannelRoutesChartData {
     date: string;

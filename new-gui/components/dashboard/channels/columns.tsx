@@ -10,6 +10,15 @@ import { SkeletonChannelRoutedStats } from "@/components/ui/skeletons"
 import { Bot } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { InboundFeesForm } from "./inbound-fee-form"
+import { OutboundFeesForm } from "./outbound-fee-form"
+
+
 export const channelColumns: ColumnDef<Channel>[] = [
     {
         accessorKey: "channelName",
@@ -32,7 +41,17 @@ export const channelColumns: ColumnDef<Channel>[] = [
         header: () => <div className="text-left">Inbound Fees</div>,
         cell: ({ row }) => {
             const channel = row.original
-            return (<InboundRate channel={channel} />)
+            return (
+                <Popover>
+                    <PopoverTrigger>
+                        <InboundRate channel={channel} />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                        <InboundFeesForm channel={channel} />
+                    </PopoverContent>
+                </Popover>
+
+            )
         },
     },
     {
@@ -74,7 +93,14 @@ export const channelColumns: ColumnDef<Channel>[] = [
         header: () => <div className="text-left">Outbound Fees</div>,
         cell: ({ row }) => {
             const channel = row.original
-            return (<OutboundRate channel={channel} />)
+            return (<Popover>
+                <PopoverTrigger>
+                    <OutboundRate channel={channel} />
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                    <OutboundFeesForm channel={channel} />
+                </PopoverContent>
+            </Popover>)
         },
     },
     {

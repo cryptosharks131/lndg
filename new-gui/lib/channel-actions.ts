@@ -2,7 +2,23 @@
 
 import { verifySession } from "@/app/auth/sessions";
 import { ToastActionElement } from "@/components/ui/toast";
-import { Channel, OpenChannelFormState, OpenChannelFormSchema, OpenChannelFormData, NodeInfoApiData, ChannelPendingOpen, ChannelPendingClose, ChannelWaitingToClose, ChannelPendingForceClose } from "./definitions";
+import {
+    Channel,
+    OpenChannelFormState,
+    OpenChannelFormSchema,
+    OpenChannelFormData,
+    NodeInfoApiData,
+    ChannelPendingOpen,
+    ChannelPendingClose,
+    ChannelWaitingToClose,
+    ChannelPendingForceClose,
+    UpdateChannelInboundFeesState,
+    UpdateChannelInboundFeesFormData,
+    UpdateChannelInboundFeesFormSchema,
+    UpdateChannelOutboundFeesState,
+    UpdateChannelOutboundFeesFormData,
+    UpdateChannelOutboundFeesFormSchema
+} from "./definitions";
 import { getDataFromApi } from "./data";
 
 
@@ -204,6 +220,191 @@ export async function fetchPendingChannels(): Promise<{
 }
 
 
+// update inbound fees
+
+export async function updateInboundFees(
+    state: UpdateChannelInboundFeesState,
+    formData: FormData,
+): Promise<UpdateChannelInboundFeesState> {
+
+    // 1. validate the data
+
+    try {
+        const rawData: UpdateChannelInboundFeesFormData = {
+            chanId: formData.get("chanId") as string,
+            baseFee: Number(formData.get("baseFee")) || 0,
+            feeRate: Number(formData.get("feeRate")) || 0,
+        };
+
+
+        const validatedData = UpdateChannelInboundFeesFormSchema.safeParse(rawData)
+        // console.log("formData:", formData)
+        // console.log("validatedData:", validatedData)
+        const errorMessage = { message: "Invalid Update Inbound Fees Form Data." }
+
+        if (!validatedData.success) {
+            return {
+                success: false,
+                errors: validatedData.error.flatten().fieldErrors,
+                inputs: rawData,
+                ...errorMessage,
+            }
+        }
+        //2. check if user is authenticated
+        const { isAuth, accessToken } = await verifySession();
+
+        if (!isAuth) {
+            throw new Error("Unauthorized: No access token");
+        }
+
+
+        const { chanId, baseFee, feeRate } = validatedData.data;
+
+        const body = {
+            chan_id: chanId,
+            inbound_base_fee: baseFee,
+            inbound_fee_rate: feeRate
+
+        };
+
+        // open channel 
+        console.log(JSON.stringify(body))
+
+        const response = await fetch(`${API_URL}/chanpolicy/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(body),
+        });
+
+        // console.log(response)
+
+        if (!response.ok) {
+            console.log(errorMessage)
+            return {
+                success: false,
+                message: `Failed to update inbound fees. ${errorMessage}`,
+                inputs: rawData, // Preserve inputs after failure
+            };
+        }
+
+        // Parse response body and check for error
+        const responseBody = await response.json();
+
+        // Check if there's an "error" field in the response
+        if (responseBody.error) {
+            return {
+                success: false,
+                message: responseBody.error,
+                inputs: rawData, // Preserve inputs after failure
+            };
+        }
+
+        // 6. If no error, return success
+        return { success: true, message: "Inbound Fees Updated successfully!" };
+    } catch (err) {
+        console.error("Update Inbound Fees error:", err);
+        return { success: false, message: "Unexpected error occurred. Please try again." };
+    }
+
+}
+
+// POST update_channel 
+
+
+
 // update outbound fees
+
+export async function updateOutboundFees(
+    state: UpdateChannelOutboundFeesState,
+    formData: FormData,
+): Promise<UpdateChannelOutboundFeesState> {
+
+    // 1. validate the data
+
+    try {
+        const rawData: UpdateChannelOutboundFeesFormData = {
+            chanId: formData.get("chanId") as string,
+            baseFee: Number(formData.get("baseFee")) || 0,
+            feeRate: Number(formData.get("feeRate")) || 0,
+        };
+
+
+        const validatedData = UpdateChannelOutboundFeesFormSchema.safeParse(rawData)
+        // console.log("formData:", formData)
+        // console.log("validatedData:", validatedData)
+        const errorMessage = { message: "Invalid Update Outbound Fees Form Data." }
+
+        if (!validatedData.success) {
+            return {
+                success: false,
+                errors: validatedData.error.flatten().fieldErrors,
+                inputs: rawData,
+                ...errorMessage,
+            }
+        }
+        //2. check if user is authenticated
+        const { isAuth, accessToken } = await verifySession();
+
+        if (!isAuth) {
+            throw new Error("Unauthorized: No access token");
+        }
+
+
+        const { chanId, baseFee, feeRate } = validatedData.data;
+
+        const body = {
+            chan_id: chanId,
+            base_fee: baseFee,
+            fee_rate: feeRate
+
+        };
+
+        // open channel 
+        console.log(JSON.stringify(body))
+
+        const response = await fetch(`${API_URL}/chanpolicy/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(body),
+        });
+
+        // console.log(response)
+
+        if (!response.ok) {
+            console.log(errorMessage)
+            return {
+                success: false,
+                message: `Failed to update Outbound fees. ${errorMessage}`,
+                inputs: rawData, // Preserve inputs after failure
+            };
+        }
+
+        // Parse response body and check for error
+        const responseBody = await response.json();
+
+        // Check if there's an "error" field in the response
+        if (responseBody.error) {
+            return {
+                success: false,
+                message: responseBody.error,
+                inputs: rawData, // Preserve inputs after failure
+            };
+        }
+
+        // 6. If no error, return success
+        return { success: true, message: "Outbound Fees Updated successfully!" };
+    } catch (err) {
+        console.error("Update Outbound Fees error:", err);
+        return { success: false, message: "Unexpected error occurred. Please try again." };
+    }
+
+}
+
 
 // update liquidity targets

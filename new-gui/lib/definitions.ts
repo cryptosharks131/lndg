@@ -392,3 +392,72 @@ export type OpenChannelFormState =
     inputs?: OpenChannelFormData;
   }
   | undefined;
+
+
+export const UpdateChannelInboundFeesFormSchema = z.object({
+  chanId: z
+    .string()
+    .min(1, { message: "Channel Id must be at least 1 characters long." })
+    .max(20, { message: "Channel Id must be no longer than 20 characters" })
+    .regex(
+      /^([1-9]?[0-9]{1,18}|[1-9][0-9]{18,18}|1844674407370955161[0-5])$/,
+      "Invalid format. Expected a 19-character hexadecimal string."
+    ),
+  baseFee: z.number().max(0, { message: "Base Fee must be negative" }),
+  feeRate: z.number().max(0, { message: "Fee Rate must be negative" }),
+});
+
+export interface UpdateChannelInboundFeesFormData {
+  chanId: Channel["chan_id"];
+  baseFee: Channel["local_inbound_base_fee"];
+  feeRate: Channel["local_inbound_fee_rate"];
+}
+
+export type UpdateChannelInboundFeesState =
+  | {
+    errors?: {
+      success?: boolean;
+      chanId?: string[];
+      baseFee?: string[];
+      feeRate?: string[];
+    };
+    success?: boolean;
+    message?: string;
+    inputs?: UpdateChannelInboundFeesFormData;
+
+  }
+
+
+export const UpdateChannelOutboundFeesFormSchema = z.object({
+  chanId: z
+    .string()
+    .min(1, { message: "Channel Id must be at least 1 characters long." })
+    .max(20, { message: "Channel Id must be no longer than 20 characters" })
+    .regex(
+      /^([1-9]?[0-9]{1,18}|[1-9][0-9]{18,18}|1844674407370955161[0-5])$/,
+      "Invalid format. Expected a 19-character hexadecimal string."
+    ),
+  baseFee: z.number().min(0, { message: "Base Fee must be negative" }),
+  feeRate: z.number().min(0, { message: "Fee Rate must be negative" }),
+});
+
+export interface UpdateChannelOutboundFeesFormData {
+  chanId: Channel["chan_id"];
+  baseFee: Channel["local_base_fee"];
+  feeRate: Channel["local_fee_rate"];
+}
+
+export type UpdateChannelOutboundFeesState =
+  | {
+    errors?: {
+      success?: boolean;
+      chanId?: string[];
+      baseFee?: string[];
+      feeRate?: string[];
+    };
+    success?: boolean;
+    message?: string;
+    inputs?: UpdateChannelInboundFeesFormData;
+
+  }
+
