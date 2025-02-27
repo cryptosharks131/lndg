@@ -104,6 +104,7 @@ def main(channels):
     channels_df['local_balance'] = channels_df['local_balance'] + channels_df['pending_outbound']
     channels_df['remote_balance'] = channels_df['remote_balance'] + channels_df['pending_inbound']
     channels_df['out_percent'] = ((channels_df['local_balance'] / channels_df['capacity']) * 100).round(0).astype(int)
+    channels_df['in_percent'] = ((channels_df['remote_balance'] / channels_df['capacity']) * 100).round(0).astype(int)
     channels_df['eligible'] = (datetime.now() - channels_df['fees_updated']).dt.total_seconds() > (update_hours * 3600)
 
     # Compute failed HTLCs per channel
