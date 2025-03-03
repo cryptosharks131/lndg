@@ -616,7 +616,7 @@ def auto_fees(stub):
                     channel_point.output_index = channel.output_index
                     version = stub.GetInfo(ln.GetInfoRequest()).version
                     if float(version[:4]) >= 0.18:
-                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=channel.local_inbound_base_fee, fee_rate_ppm=target_channel['new_inbound_rate'])))
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=channel.local_inbound_base_fee, fee_rate_ppm=int(target_channel['new_inbound_rate']))))
                         if target_channel['inbound_adjustment'] != 0:
                             print(f"{datetime.now().strftime('%c')} : [Data] : Updating inbound fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_inbound_rate'])}")
                             channel.local_inbound_fee_rate = target_channel['new_inbound_rate']
