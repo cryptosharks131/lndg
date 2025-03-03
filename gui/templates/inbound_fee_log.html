@@ -2,9 +2,9 @@
 {% block title %} {{ block.super }} - Autofees{% endblock %}
 {% block content %}
 {% load humanize %}
-{% if autofees %}
+{% if inbound_fee_log %}
 <div class="w3-container w3-padding-small">
-  <h2><a href="/autofees/">Our Fees Logs</a></h2>
+  <h2><a href="/inbound-fee-log/">Inbound Fee Log</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
     <tr>
       <th>Timestamp</th>
@@ -14,11 +14,11 @@
       <th>Old Value</th>
       <th>New Value</th>
     </tr>
-    {% for log in autofees %}
+    {% for log in inbound_fee_log %}
     <tr>
       <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
-      <td><a href="/autofees?={{ log.chan_id }}">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
+      <td><a href="/inbound_fee_log?={{ log.chan_id }}">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
       <td>{{ log.setting }}</td>
       <td>{{ log.old_value }}</td>
       <td {% if log.new_value > log.old_value %}style="background-color: rgba(46,160,67,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>{{ log.new_value }}</td>
@@ -27,9 +27,9 @@
   </table>
 </div>
 {% endif %}
-{% if not autofees %}
+{% if not inbound_fee_log %}
 <div class="w3-container w3-padding-small">
-  <center><h1>No fees logs to see here yet!</h1></center>
+  <center><h1>No inbound fee logs to see here yet!</h1></center>
 </div>
 {% endif %}
 {% endblock %}
