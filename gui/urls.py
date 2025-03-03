@@ -20,6 +20,7 @@ router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 router.register(r'peerevents', views.PeerEventsViewSet)
 router.register(r'trades', views.TradeSalesViewSet)
 router.register(r'feelog', views.FeeLogViewSet)
+router.register(r'inboundfeelog', views.InboundFeeLogViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),

@@ -2,7 +2,7 @@
 {% block title %} {{ block.super }} - Autofees{% endblock %}
 {% block content %}
 {% load humanize %}
-{% if autofees %}
+{% if outbound_fee_log %}
 <div class="w3-container w3-padding-small">
   <h2><a href="/autofees/">Outbound Fee Log</a></h2>
   <table class="w3-table-all w3-centered w3-hoverable">
@@ -14,7 +14,7 @@
       <th>Old Value</th>
       <th>New Value</th>
     </tr>
-    {% for log in autofees %}
+    {% for log in outbound_fee_log %}
     <tr>
       <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
       <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
@@ -27,7 +27,7 @@
   </table>
 </div>
 {% endif %}
-{% if not autofees %}
+{% if not outbound_fee_log %}
 <div class="w3-container w3-padding-small">
   <center><h1>No outbound fee logs to see here yet!</h1></center>
 </div>

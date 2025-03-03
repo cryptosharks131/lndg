@@ -2279,6 +2279,12 @@ class FeeLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = FeeLogSerializer
     filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
 
+class InboundFeeLogViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = InboundFeeLog.objects.all().order_by('-id')
+    serializer_class = InboundFeeLogSerializer
+    filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
+
 class FailedHTLCFilter(FilterSet):
     chan_in_or_out = CharFilter(method='filter_chan_in_or_out', label='Chan In Or Out')
     chan_id_in = CharFilter(field_name='chan_id_in', lookup_expr='exact')
