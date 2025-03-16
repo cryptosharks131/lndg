@@ -9,3 +9,4 @@ lndg-admin.txt
 gui/static/admin
 gui/static/rest_framework
 data/
+logs/
