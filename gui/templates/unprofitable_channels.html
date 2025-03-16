@@ -32,6 +32,8 @@
           <th onclick="sortTable(event.target, 6, 'int', 1)" width=8%>Profit</th>
           <th onclick="sortTable(event.target, 7, 'int', 1)" width=8%>Assisted Revenue</th>
           <th onclick="sortTable(event.target, 8, 'String', 1)" width=7%>Initiator</th>
+          <th onclick="sortTable(event.target, 9, 'int', 1)" width=7%>Local Ratio</th>
+          <th onclick="sortTable(event.target, 10, 'int', 1)" width=7%>Stuck Index</th>
           <th width=10%>Actions</th>
         </tr>
       </thead>
@@ -52,6 +54,8 @@
             <td {% if channel.profit < 0 %}style="color: red;"{% endif %}>{{ channel.profit|add:"0"|intcomma }}</td>
             <td>{{ channel.assisted_revenue|add:"0"|intcomma }}</td>
             <td>{% if channel.initiator %}Local{% else %}Remote{% endif %}</td>
+            <td>{{ channel.local_ratio }}%</td>
+            <td {% if channel.stuck_index > 0.7 %}style="color: red;"{% elif channel.stuck_index > 0.4 %}style="color: orange;"{% else %}style="color: green;"{% endif %}>{{ channel.stuck_index }}</td>
             <td>
               <a style="display: inline-block;position:relative;width:25px;height:25px" href="#" data-value="{{ channel.chan_id }}" onclick="copyToClipboard('{{ channel.chan_id }}', this)">
                 <svg style="position:absolute;top:0;left:0;width:25px;height:25px" version="1.1" viewBox="0 0 16 16">
@@ -67,7 +71,7 @@
         {% endfor %}
       {% else %}
         <tr>
-          <td colspan="10">No channel data available for the selected timeframe.</td>
+          <td colspan="12">No channel data available for the selected timeframe.</td>
         </tr>
       {% endif %}
       </tbody>
@@ -85,141 +89,148 @@
       <li><strong>Profit:</strong> Fees earned from routing minus costs of rebalancing</li>
       <li><strong>Assisted Revenue:</strong> Fees earned from forwards where this channel was the inbound channel</li>
       <li><strong>Initiator:</strong> Whether you opened the channel (Local) or the peer opened it (Remote)</li>
+      <li><strong>Local Ratio:</strong> Percentage of the channel's capacity that is on your side</li>
+      <li><strong>Stuck Index:</strong> Measure of how "stuck" a channel is (0 = active, 1 = inactive/stuck)</li>
     </ul>
-    <p><em>Note: Channels with negative profit and low assisted revenue are good candidates for closure.</em></p>
+    <p><em>Note: Channels with negative profit, low assisted revenue, and high stuck index are good candidates for closure.</em></p>
   </div>
 </div>
 
 <!-- JavaScript for sorting and copying -->
 <script>
-    function copyToClipboard(text, element) {
-      navigator.clipboard.writeText(text).then(function() {
-        // Show visual feedback
-        if (element) {
-          // If using the SVG icon
-          const originalIcon = element.querySelector('svg:first-child');
-          const checkmark = element.querySelector('.checkmark');
-          
-          // Hide original icon and show checkmark
-          originalIcon.style.visibility = 'hidden';
-          checkmark.style.visibility = 'visible';
-          
-          setTimeout(function() {
-            // Restore original icon and hide checkmark
-            originalIcon.style.visibility = 'visible';
-            checkmark.style.visibility = 'hidden';
-          }, 1500);
-        } else {
-          // If using the button
-          const button = event.target;
-          const originalText = button.textContent;
-          button.textContent = "Copied!";
-          button.style.backgroundColor = "#4CAF50";
-          
-          setTimeout(function() {
-            button.textContent = originalText;
-            button.style.backgroundColor = "";
-          }, 1500);
-        }
-      }, function() {
-        console.error('Failed to copy text to clipboard');
-      });
-      
-      // Prevent default link behavior
-      if (event && event.preventDefault) {
-        event.preventDefault();
+  function copyToClipboard(text, element) {
+    navigator.clipboard.writeText(text).then(function() {
+      // Show visual feedback
+      if (element) {
+        // If using the SVG icon
+        const originalIcon = element.querySelector('svg:first-child');
+        const checkmark = element.querySelector('.checkmark');
+        
+        // Hide original icon and show checkmark
+        originalIcon.style.visibility = 'hidden';
+        checkmark.style.visibility = 'visible';
+        
+        setTimeout(function() {
+          // Restore original icon and hide checkmark
+          originalIcon.style.visibility = 'visible';
+          checkmark.style.visibility = 'hidden';
+        }, 1500);
+      } else {
+        // If using the button
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = "Copied!";
+        button.style.backgroundColor = "#4CAF50";
+        
+        setTimeout(function() {
+          button.textContent = originalText;
+          button.style.backgroundColor = "";
+        }, 1500);
       }
-      return false;
+    }, function() {
+      console.error('Failed to copy text to clipboard');
+    });
+    
+    // Prevent default link behavior
+    if (event && event.preventDefault) {
+      event.preventDefault();
     }
+    return false;
+  }
 
   // Sorting function from channels.html
   function sortTable(element, n, type, asc, subElement = null) {
-    var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-    table = document.getElementById("unprofitableChannelsTable");
-    switching = true;
-    // Set the sorting direction to ascending:
-    dir = asc ? "asc" : "desc";
-    /* Make a loop that will continue until
-    no switching has been done: */
-    while (switching) {
-      // Start by saying: no switching is done:
-      switching = false;
-      rows = table.rows;
-      /* Loop through all table rows (except the
-      first, which contains table headers): */
-      for (i = 1; i < (rows.length - 1); i++) {
-        // Start by saying there should be no switching:
-        shouldSwitch = false;
-        /* Get the two elements you want to compare,
-        one from current row and one from the next: */
-        x = rows[i].getElementsByTagName("TD")[n];
-        y = rows[i + 1].getElementsByTagName("TD")[n];
-        if (subElement != null) {
-          x = x.getElementsByTagName(subElement)[0];
-          y = y.getElementsByTagName(subElement)[0];
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById("unprofitableChannelsTable");
+  switching = true;
+  // Set the sorting direction to ascending:
+  dir = asc ? "asc" : "desc";
+  
+  while (switching) {
+    switching = false;
+    rows = table.rows;
+    
+    for (i = 1; i < (rows.length - 1); i++) {
+      shouldSwitch = false;
+      x = rows[i].getElementsByTagName("TD")[n];
+      y = rows[i + 1].getElementsByTagName("TD")[n];
+      
+      if (subElement != null) {
+        x = x.getElementsByTagName(subElement)[0];
+        y = y.getElementsByTagName(subElement)[0];
+      }
+      
+      // Special handling for Stuck Index column (column 10)
+      if (n === 10) {
+        // Use parseFloat for decimal values
+        var xValue = parseFloat(x.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+        var yValue = parseFloat(y.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+        
+        if (dir == "asc") {
+          if (xValue > yValue) {
+            shouldSwitch = true;
+            break;
+          }
+        } else if (dir == "desc") {
+          if (xValue < yValue) {
+            shouldSwitch = true;
+            break;
+          }
         }
-        /* Check if the two rows should switch place,
-        based on the direction, asc or desc: */
+      } else {
+        // Original logic for other columns
         if (dir == "asc") {
           if (type == "int") {
-            if (parseInt(x.innerHTML.replace(/,/g, '')) > parseInt(y.innerHTML.replace(/,/g, ''))) {
-              // If so, mark as a switch and break the loop:
+            if (parseInt(x.innerHTML.replace(/,/g, '').replace(/%/g, '')) > parseInt(y.innerHTML.replace(/,/g, '').replace(/%/g, ''))) {
               shouldSwitch = true;
               break;
             }
           } else {
             if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-              // If so, mark as a switch and break the loop:
               shouldSwitch = true;
               break;
             }
           }
         } else if (dir == "desc") {
           if (type == "int") {
-            if (parseInt(x.innerHTML.replace(/,/g, '')) < parseInt(y.innerHTML.replace(/,/g, ''))) {
-              // If so, mark as a switch and break the loop:
+            if (parseInt(x.innerHTML.replace(/,/g, '').replace(/%/g, '')) < parseInt(y.innerHTML.replace(/,/g, '').replace(/%/g, ''))) {
               shouldSwitch = true;
               break;
             }
           } else {
             if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-              // If so, mark as a switch and break the loop:
               shouldSwitch = true;
               break;
             }
           }
         }
       }
-      if (shouldSwitch) {
-        /* If a switch has been marked, make the switch
-        and mark that a switch has been done: */
-        rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+    }
+    
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      switchcount++;
+    } else {
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
         switching = true;
-        // Each time a switch is done, increase this count by 1:
-        switchcount++;
-      } else {
-        /* If no switching has been done AND the direction is "asc",
-        set the direction to "desc" and run the while loop again. */
-        if (switchcount == 0 && dir == "asc") {
-          dir = "desc";
-          switching = true;
-        }
       }
     }
-    
-    // Update all headers to remove any existing sort indicators
-    var headers = table.getElementsByTagName("TH");
-    for (i = 0; i < headers.length; i++) {
-      // Remove any existing sort indicators
-      headers[i].innerHTML = headers[i].innerHTML.replace(" ↑", "").replace(" ↓", "");
-    }
-    
-    // Add sort indicator to the clicked header
-    if (dir == "asc") {
-      element.innerHTML = element.innerHTML + " ↑";
-    } else {
-      element.innerHTML = element.innerHTML + " ↓";
-    }
   }
+  
+  // Update all headers to remove any existing sort indicators
+  var headers = table.getElementsByTagName("TH");
+  for (i = 0; i < headers.length; i++) {
+    headers[i].innerHTML = headers[i].innerHTML.replace(" ↑", "").replace(" ↓", "");
+  }
+  
+  // Add sort indicator to the clicked header
+  if (dir == "asc") {
+    element.innerHTML = element.innerHTML + " ↑";
+  } else {
+    element.innerHTML = element.innerHTML + " ↓";
+  }
+}
 </script>
 {% endblock %}
