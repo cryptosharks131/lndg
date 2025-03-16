@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Unprofitable Channels{% endblock %}
+{% block content %}
+{% load humanize %}
+
+<div class="w3-container w3-padding-small">
+  <h2>Unprofitable Channels ({{ timeframe_name }})</h2>
+  
+  <!-- Timeframe Selection -->
+  <div class="w3-container w3-padding-small">
+    <form method="get" action="/unprofitable_channels/">
+      <label for="timeframe">Timeframe: </label>
+      <select id="timeframe" name="timeframe" onchange="this.form.submit()">
+        {% for key, option in timeframe_options.items %}
+          <option value="{{ key }}" {% if timeframe == key %}selected{% endif %}>{{ option.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  
+  <!-- Channels Table -->
+  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+    <table class="w3-table-all w3-centered w3-hoverable">
+      <tr>
+        <th>Channel ID</th>
+        <th width=15%>Alias</th>
+        <th width=10%>Routed Out (sats)</th>
+        <th width=10%>Last Routing</th>
+        <th width=10%>Rebalanced Out (sats)</th>
+        <th width=10%>Last Rebalance</th>
+        <th width=8%>Profit</th>
+        <th width=8%>Assisted Revenue</th>
+        <th width=7%>Initiator</th>
+        <th width=10%>Actions</th>
+      </tr>
+      {% if channels %}
+        {% for channel in channels %}
+          <tr>
+            <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+            <td>{% if channel.alias == '' %}---{% else %}{{ channel.alias }}{% endif %}</td>
+            <td>{{ channel.routed_out_sats|add:"0"|intcomma }}</td>
+            <td>{% if channel.last_routing %}{{ channel.last_routing|date:"M d, Y" }}{% else %}Never{% endif %}</td>
+            <td>{{ channel.rebalanced_out_sats|add:"0"|intcomma }}</td>
+            <td>{% if channel.last_rebalance %}{{ channel.last_rebalance|date:"M d, Y" }}{% else %}Never{% endif %}</td>
+            <td {% if channel.profit < 0 %}style="color: red;"{% endif %}>{{ channel.profit|add:"0"|intcomma }}</td>
+            <td>{{ channel.assisted_revenue|add:"0"|intcomma }}</td>
+            <td>{% if channel.initiator %}Local{% else %}Remote{% endif %}</td>
+            <td>
+              <a href="/closechannel/?={{ channel.chan_id }}" class="w3-button w3-small w3-red w3-round">Close</a>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="10">No channel data available for the selected timeframe.</td>
+        </tr>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<!-- Add a section explaining the metrics -->
+<div class="w3-container w3-padding-small">
+  <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue">
+    <h4>Understanding the Metrics:</h4>
+    <ul>
+      <li><strong>Routed Out:</strong> Total satoshis routed out through this channel</li>
+      <li><strong>Rebalanced Out:</strong> Total satoshis sent in rebalancing operations</li>
+      <li><strong>Profit:</strong> Fees earned from routing minus costs of rebalancing</li>
+      <li><strong>Assisted Revenue:</strong> Fees earned from forwards where this channel was the inbound channel</li>
+      <li><strong>Initiator:</strong> Whether you opened the channel (Local) or the peer opened it (Remote)</li>
+    </ul>
+    <p><em>Note: Channels with negative profit and low assisted revenue are good candidates for closure.</em></p>
+  </div>
+</div>
+{% endblock %}
