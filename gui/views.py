@@ -1186,6 +1186,20 @@ def unprofitable_channels(request):
         # Combine all data and build the channel metrics list
         channel_metrics = []
         
+        # Calculate total outbound activity for each channel (for stuck index)
+        outbound_activities = []
+        for channel in channels:
+            chan_id = channel.chan_id
+            metrics = channel_metrics_dict[chan_id]
+            total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
+            outbound_activities.append(total_outbound)
+        
+        # Find min and max outbound activity for normalization
+        min_outbound = min(outbound_activities) if outbound_activities else 0
+        max_outbound = max(outbound_activities) if outbound_activities else 1
+        # Avoid division by zero
+        outbound_range = max(max_outbound - min_outbound, 1)
+        
         for channel in channels:
             chan_id = channel.chan_id
             out_stats = out_forwards_stats.get(chan_id, {
@@ -1207,6 +1221,13 @@ def unprofitable_channels(request):
             # Calculate profit
             profit = out_stats['fee'] - reb_stats['rebalance_cost']
             
+            # Calculate local ratio (percentage of capacity that is local balance)
+            local_ratio = round((channel.local_balance / channel.capacity) * 100, 2) if channel.capacity > 0 else 0
+            
+            # Calculate stuck index (normalized outbound activity)
+            total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
+            stuck_index = round(1 - ((total_outbound - min_outbound) / outbound_range), 2) if outbound_range > 0 else 0
+            
             # Add metrics to the list
             channel_metrics.append({
                 'chan_id': chan_id,
@@ -1220,7 +1241,9 @@ def unprofitable_channels(request):
                 'initiator': channel.initiator,
                 'capacity': channel.capacity,
                 'local_balance': channel.local_balance,
-                'remote_balance': channel.remote_balance
+                'remote_balance': channel.remote_balance,
+                'local_ratio': local_ratio,
+                'stuck_index': stuck_index
             })
         
         # Sort by profit (ascending to show least profitable first)
