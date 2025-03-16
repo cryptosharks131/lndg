@@ -1081,6 +1081,129 @@ def opens(request):
         return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def unprofitable_channels(request):
+    if request.method == 'GET':
+        # Get the timeframe from the request, default to 30 days
+        timeframe = request.GET.get('timeframe', '30')
+        timeframe_options = {
+            '1': {'days': 1, 'name': '1 Day'},
+            '7': {'days': 7, 'name': '7 Days'},
+            '30': {'days': 30, 'name': '30 Days'}
+        }
+        
+        selected_timeframe = timeframe_options.get(timeframe, timeframe_options['30'])
+        filter_date = datetime.now() - timedelta(days=selected_timeframe['days'])
+        
+        # Get active channels in a single query
+        channels = Channels.objects.filter(is_active=True, is_open=True)
+        channel_ids = [c.chan_id for c in channels]
+        
+        # Batch query for out forwards - get statistics per channel
+        out_forwards_stats = {}
+        out_forwards = Forwards.objects.filter(
+            chan_id_out__in=channel_ids,
+            forward_date__gte=filter_date
+        ).values('chan_id_out').annotate(
+            routed_out_sats=Sum('amt_out_msat') / 1000,
+            total_fee=Sum('fee'),
+            last_forward=Max('forward_date')
+        )
+        
+        for fwd in out_forwards:
+            out_forwards_stats[fwd['chan_id_out']] = {
+                'routed_out_sats': int(fwd['routed_out_sats'] or 0),
+                'fee': fwd['total_fee'] or 0,
+                'last_routing': fwd['last_forward']
+            }
+        
+        # Batch query for in forwards (assisted revenue)
+        in_forwards_stats = {}
+        in_forwards = Forwards.objects.filter(
+            chan_id_in__in=channel_ids,
+            forward_date__gte=filter_date
+        ).values('chan_id_in').annotate(
+            assisted_revenue=Sum('fee')
+        )
+        
+        for fwd in in_forwards:
+            in_forwards_stats[fwd['chan_id_in']] = {
+                'assisted_revenue': fwd['assisted_revenue'] or 0
+            }
+        
+        # Batch query for rebalance payments
+        rebalance_stats = {}
+        rebalance_payments = Payments.objects.filter(
+            rebal_chan__in=channel_ids,
+            creation_date__gte=filter_date,
+            status=2  # Successful payments
+        ).values('rebal_chan').annotate(
+            rebalanced_out_sats=Sum('value'),
+            rebalance_cost=Sum('fee'),
+            last_rebalance=Max('creation_date')
+        )
+        
+        for reb in rebalance_payments:
+            rebalance_stats[reb['rebal_chan']] = {
+                'rebalanced_out_sats': int(reb['rebalanced_out_sats'] or 0),
+                'rebalance_cost': reb['rebalance_cost'] or 0,
+                'last_rebalance': reb['last_rebalance']
+            }
+        
+        # Combine all data and build the channel metrics list
+        channel_metrics = []
+        
+        for channel in channels:
+            chan_id = channel.chan_id
+            out_stats = out_forwards_stats.get(chan_id, {
+                'routed_out_sats': 0, 
+                'fee': 0, 
+                'last_routing': None
+            })
+            
+            reb_stats = rebalance_stats.get(chan_id, {
+                'rebalanced_out_sats': 0, 
+                'rebalance_cost': 0, 
+                'last_rebalance': None
+            })
+            
+            in_stats = in_forwards_stats.get(chan_id, {
+                'assisted_revenue': 0
+            })
+            
+            # Calculate profit
+            profit = out_stats['fee'] - reb_stats['rebalance_cost']
+            
+            # Add metrics to the list
+            channel_metrics.append({
+                'chan_id': chan_id,
+                'alias': channel.alias,
+                'routed_out_sats': out_stats['routed_out_sats'],
+                'last_routing': out_stats['last_routing'],
+                'rebalanced_out_sats': reb_stats['rebalanced_out_sats'],
+                'last_rebalance': reb_stats['last_rebalance'],
+                'profit': profit,
+                'assisted_revenue': in_stats['assisted_revenue'],
+                'initiator': channel.initiator,
+                'capacity': channel.capacity,
+                'local_balance': channel.local_balance,
+                'remote_balance': channel.remote_balance
+            })
+        
+        # Sort by profit (ascending to show least profitable first)
+        channel_metrics.sort(key=lambda x: x['profit'])
+        
+        context = {
+            'channels': channel_metrics,
+            'timeframe': timeframe,
+            'timeframe_name': selected_timeframe['name'],
+            'timeframe_options': timeframe_options
+        }
+        
+        return render(request, 'unprofitable_channels.html', context)
+    else:
+        return redirect('home')
+    
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def actions(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))
