@@ -1088,7 +1088,8 @@ def unprofitable_channels(request):
         timeframe_options = {
             '1': {'days': 1, 'name': '1 Day'},
             '7': {'days': 7, 'name': '7 Days'},
-            '30': {'days': 30, 'name': '30 Days'}
+            '30': {'days': 30, 'name': '30 Days'},
+            '90': {'days': 90, 'name': '90 Days'}  # Added a 90-day option
         }
         
         selected_timeframe = timeframe_options.get(timeframe, timeframe_options['30'])
@@ -1109,11 +1110,27 @@ def unprofitable_channels(request):
             last_forward=Max('forward_date')
         )
         
+        # Get the last forward details for each channel (for amount information)
+        last_forward_details = {}
+        for chan_id in channel_ids:
+            last_forward = Forwards.objects.filter(
+                chan_id_out=chan_id,
+                forward_date__gte=filter_date
+            ).order_by('-forward_date').first()
+            
+            if last_forward:
+                last_forward_details[chan_id] = {
+                    'date': last_forward.forward_date,
+                    'amount': int(last_forward.amt_out_msat / 1000) if last_forward.amt_out_msat else 0
+                }
+        
         for fwd in out_forwards:
-            out_forwards_stats[fwd['chan_id_out']] = {
+            chan_id = fwd['chan_id_out']
+            last_fwd_detail = last_forward_details.get(chan_id, None)
+            out_forwards_stats[chan_id] = {
                 'routed_out_sats': int(fwd['routed_out_sats'] or 0),
                 'fee': fwd['total_fee'] or 0,
-                'last_routing': fwd['last_forward']
+                'last_routing': last_fwd_detail
             }
         
         # Batch query for in forwards (assisted revenue)
@@ -1142,11 +1159,28 @@ def unprofitable_channels(request):
             last_rebalance=Max('creation_date')
         )
         
+        # Get the last rebalance details for each channel (for amount information)
+        last_rebalance_details = {}
+        for chan_id in channel_ids:
+            last_rebalance = Payments.objects.filter(
+                rebal_chan=chan_id,
+                creation_date__gte=filter_date,
+                status=2
+            ).order_by('-creation_date').first()
+            
+            if last_rebalance:
+                last_rebalance_details[chan_id] = {
+                    'date': last_rebalance.creation_date,
+                    'amount': last_rebalance.value or 0
+                }
+        
         for reb in rebalance_payments:
-            rebalance_stats[reb['rebal_chan']] = {
+            chan_id = reb['rebal_chan']
+            last_reb_detail = last_rebalance_details.get(chan_id, None)
+            rebalance_stats[chan_id] = {
                 'rebalanced_out_sats': int(reb['rebalanced_out_sats'] or 0),
                 'rebalance_cost': reb['rebalance_cost'] or 0,
-                'last_rebalance': reb['last_rebalance']
+                'last_rebalance': last_reb_detail
             }
         
         # Combine all data and build the channel metrics list
