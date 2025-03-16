@@ -20,33 +20,40 @@
   
   <!-- Channels Table -->
   <div class="w3-container w3-padding-small" style="overflow-x: scroll">
-    <table class="w3-table-all w3-centered w3-hoverable">
-      <tr>
-        <th>Channel ID</th>
-        <th width=15%>Alias</th>
-        <th width=10%>Routed Out (sats)</th>
-        <th width=10%>Last Routing</th>
-        <th width=10%>Rebalanced Out (sats)</th>
-        <th width=10%>Last Rebalance</th>
-        <th width=8%>Profit</th>
-        <th width=8%>Assisted Revenue</th>
-        <th width=7%>Initiator</th>
-        <th width=10%>Actions</th>
-      </tr>
+    <table id="unprofitableChannelsTable" class="w3-table-all w3-centered w3-hoverable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">Channel ID ↕️</th>
+          <th onclick="sortTable(1)" width=15%>Alias ↕️</th>
+          <th onclick="sortTable(2, true)" width=10%>Routed Out (sats) ↕️</th>
+          <th onclick="sortTable(3)" width=10%>Last Routing ↕️</th>
+          <th onclick="sortTable(4, true)" width=10%>Rebalanced Out (sats) ↕️</th>
+          <th onclick="sortTable(5)" width=10%>Last Rebalance ↕️</th>
+          <th onclick="sortTable(6, true)" width=8%>Profit ↕️</th>
+          <th onclick="sortTable(7, true)" width=8%>Assisted Revenue ↕️</th>
+          <th onclick="sortTable(8)" width=7%>Initiator ↕️</th>
+          <th width=10%>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
       {% if channels %}
         {% for channel in channels %}
           <tr>
             <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
             <td>{% if channel.alias == '' %}---{% else %}{{ channel.alias }}{% endif %}</td>
             <td>{{ channel.routed_out_sats|add:"0"|intcomma }}</td>
-            <td>{% if channel.last_routing %}{{ channel.last_routing|date:"M d, Y" }}{% else %}Never{% endif %}</td>
+            <td>{% if channel.last_routing %}
+                {{ channel.last_routing.date|date:"M d, Y" }} ({{ channel.last_routing.amount|intcomma }} sats)
+                {% else %}N/A{% endif %}</td>
             <td>{{ channel.rebalanced_out_sats|add:"0"|intcomma }}</td>
-            <td>{% if channel.last_rebalance %}{{ channel.last_rebalance|date:"M d, Y" }}{% else %}Never{% endif %}</td>
+            <td>{% if channel.last_rebalance %}
+                {{ channel.last_rebalance.date|date:"M d, Y" }} ({{ channel.last_rebalance.amount|intcomma }} sats)
+                {% else %}N/A{% endif %}</td>
             <td {% if channel.profit < 0 %}style="color: red;"{% endif %}>{{ channel.profit|add:"0"|intcomma }}</td>
             <td>{{ channel.assisted_revenue|add:"0"|intcomma }}</td>
             <td>{% if channel.initiator %}Local{% else %}Remote{% endif %}</td>
             <td>
-              <a href="/closechannel/?={{ channel.chan_id }}" class="w3-button w3-small w3-red w3-round">Close</a>
+              <button onclick="copyToClipboard('{{ channel.chan_id }}')" class="w3-button w3-small w3-blue w3-round">Copy ID</button>
             </td>
           </tr>
         {% endfor %}
@@ -55,6 +62,7 @@
           <td colspan="10">No channel data available for the selected timeframe.</td>
         </tr>
       {% endif %}
+      </tbody>
     </table>
   </div>
 </div>
@@ -73,4 +81,102 @@
     <p><em>Note: Channels with negative profit and low assisted revenue are good candidates for closure.</em></p>
   </div>
 </div>
+
+<!-- JavaScript for sorting and copying -->
+<script>
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+      // Show temporary success message
+      const button = event.target;
+      const originalText = button.textContent;
+      button.textContent = "Copied!";
+      button.style.backgroundColor = "#4CAF50";
+      
+      setTimeout(function() {
+        button.textContent = originalText;
+        button.style.backgroundColor = "";
+      }, 1500);
+    }, function() {
+      console.error('Failed to copy text to clipboard');
+    });
+  }
+
+  function sortTable(n, isNumeric = false) {
+    var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+    table = document.getElementById("unprofitableChannelsTable");
+    switching = true;
+    // Set the sorting direction to ascending
+    dir = "asc";
+    
+    while (switching) {
+      switching = false;
+      rows = table.rows;
+      
+      // Skip header row and loop through rows
+      for (i = 1; i < (rows.length - 1); i++) {
+        shouldSwitch = false;
+        
+        // Get the two elements to compare
+        x = rows[i].getElementsByTagName("TD")[n];
+        y = rows[i + 1].getElementsByTagName("TD")[n];
+        
+        // Check if the two rows should switch places
+        if (isNumeric) {
+          // Parse numbers (remove commas and other non-numeric characters)
+          var xNum = parseInt(x.innerHTML.replace(/[^0-9.-]+/g, ""));
+          var yNum = parseInt(y.innerHTML.replace(/[^0-9.-]+/g, ""));
+          
+          if (dir == "asc") {
+            if (xNum > yNum) {
+              shouldSwitch = true;
+              break;
+            }
+          } else if (dir == "desc") {
+            if (xNum < yNum) {
+              shouldSwitch = true;
+              break;
+            }
+          }
+        } else {
+          // Regular text comparison
+          if (dir == "asc") {
+            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+              shouldSwitch = true;
+              break;
+            }
+          } else if (dir == "desc") {
+            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+              shouldSwitch = true;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (shouldSwitch) {
+        // If a switch has been marked, make the switch and mark that a switch has been done
+        rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+        switching = true;
+        // Each time a switch is done, increase the count by 1
+        switchcount++;
+      } else {
+        // If no switching has been done AND the direction is "asc", set the direction to "desc" and run again
+        if (switchcount == 0 && dir == "asc") {
+          dir = "desc";
+          switching = true;
+        }
+      }
+    }
+    
+    // Update the sort indicators in the headers
+    const headers = table.getElementsByTagName("th");
+    for (i = 0; i < headers.length; i++) {
+      if (i === n) {
+        headers[i].innerHTML = headers[i].innerHTML.replace(" ↕️", (dir === "asc" ? " ↑" : " ↓"));
+      } else {
+        headers[i].innerHTML = headers[i].innerHTML.replace(" ↑", " ↕️").replace(" ↓", " ↕️");
+      }
+    }
+  }
+</script>
 {% endblock %}
