@@ -1182,27 +1182,36 @@ def unprofitable_channels(request):
         
         # Calculate normalized metrics for each channel
         outbound_activities = []
+        outbound_ratios = []  # NEW: Track outbound activity as a ratio of channel capacity
         assisted_revenues = []
         fee_rates = []
 
         for chan_id, metrics in channel_metrics_dict.items():
-            outbound_activities.append(metrics['routed_out_sats'] + metrics['rebalanced_out_sats'])
-            assisted_revenues.append(metrics['assisted_revenue'])
-            
-            # Get channel object to access fee rate
+            # Get channel object to access capacity
             channel_obj = next((c for c in channels if c.chan_id == chan_id), None)
             if channel_obj:
+                total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
+                outbound_activities.append(total_outbound)
+                
+                # Calculate outbound ratio (outbound activity / channel capacity)
+                capacity = channel_obj.capacity or 1  # Avoid division by zero
+                outbound_ratio = total_outbound / capacity
+                outbound_ratios.append(outbound_ratio)
+                
+                assisted_revenues.append(metrics['assisted_revenue'])
                 fee_rate = getattr(channel_obj, 'local_fee_rate', 0) or 0
                 fee_rates.append(fee_rate)
 
         # Find min/max values for normalization
         max_outbound = max(outbound_activities) if outbound_activities else 1
+        max_outbound_ratio = max(outbound_ratios) if outbound_ratios else 1
         max_assisted = max(assisted_revenues) if assisted_revenues else 1
         max_fee_rate = max(fee_rates) if fee_rates else 1000
 
         # Thresholds for high/medium/low classifications
-        high_activity_threshold = max_outbound * 0.7
-        medium_activity_threshold = max_outbound * 0.3
+        # NEW: Use ratio-based thresholds for activity
+        high_ratio_threshold = max(max_outbound_ratio * 0.7, 0.5)  # At least 50% of capacity or 70% of max ratio
+        medium_ratio_threshold = max(max_outbound_ratio * 0.3, 0.2)  # At least 20% of capacity or 30% of max ratio
         high_assisted_threshold = max_assisted * 0.7
         medium_assisted_threshold = max_assisted * 0.3
         high_fee_threshold = max(max_fee_rate, 1000) * 0.7
@@ -1239,6 +1248,9 @@ def unprofitable_channels(request):
             total_outbound = routing_out + rebalancing_out
             assisted_revenue = metrics['assisted_revenue']
             
+            # NEW: Calculate outbound ratio (outbound activity / channel capacity)
+            outbound_ratio = total_outbound / channel.capacity if channel.capacity > 0 else 0
+            
             # Get fee rate
             local_fee_rate = getattr(channel, 'local_fee_rate', 0) or 0
             
@@ -1249,29 +1261,28 @@ def unprofitable_channels(request):
             # Start with worst score
             priority_score = 7.0
             
-            # Check conditions from best to worst and assign appropriate score
-            if routing_out > high_activity_threshold and local_fee_rate > high_fee_threshold:
-                # 1) High routing out with high local_fee_rate
+            # Check conditions using ratio-based thresholds
+            if outbound_ratio > high_ratio_threshold and local_fee_rate > high_fee_threshold:
+                # 1) High routing out ratio with high local_fee_rate
                 priority_score = 1.0
-            elif rebalancing_out > high_activity_threshold and assisted_revenue > high_assisted_threshold:
-                # 2) High rebalancing out with high assisted revenue
+            elif outbound_ratio > high_ratio_threshold and assisted_revenue > high_assisted_threshold:
+                # 2) High rebalancing out ratio with high assisted revenue
                 priority_score = 2.0
-            elif routing_out > medium_activity_threshold and local_fee_rate > medium_fee_threshold:
-                # 3) Medium routing out with medium local_fee_rate
+            elif outbound_ratio > medium_ratio_threshold and local_fee_rate > medium_fee_threshold:
+                # 3) Medium routing out ratio with medium local_fee_rate
                 priority_score = 3.0
-            elif rebalancing_out > medium_activity_threshold and assisted_revenue > medium_assisted_threshold:
-                # 4) Medium rebalancing out with medium assisted revenue
+            elif outbound_ratio > medium_ratio_threshold and assisted_revenue > medium_assisted_threshold:
+                # 4) Medium rebalancing out ratio with medium assisted revenue
                 priority_score = 4.0
-            elif routing_out > 0 and local_fee_rate > 0:
-                # 5) Low routing out and low local_fee_rate
+            elif outbound_ratio > 0 and local_fee_rate > 0:
+                # 5) Low routing out ratio and low local_fee_rate
                 priority_score = 5.0
-            elif rebalancing_out > 0 and assisted_revenue > 0:
-                # 6) Low rebalancing out and low assisted revenue
+            elif outbound_ratio > 0 and assisted_revenue > 0:
+                # 6) Low rebalancing out ratio and low assisted revenue
                 priority_score = 6.0
             # else: 7) No activity and no compensation (already set as default)
             
-            # TARGETED ADJUSTMENT: Apply assisted revenue bonus
-            # This gives a bonus for high assisted revenue without disrupting the main ranking
+            # Apply assisted revenue bonus
             if assisted_revenue > high_assisted_threshold:
                 # Significant bonus for high assisted revenue
                 assisted_bonus = 1.5
@@ -1314,11 +1325,13 @@ def unprofitable_channels(request):
                 'assisted_revenue': assisted_revenue,
                 'initiator': channel.initiator,
                 'capacity': channel.capacity,
+                'capacity_millions': round(channel.capacity / 1000000, 1),
                 'local_balance': channel.local_balance,
                 'remote_balance': channel.remote_balance,
                 'local_ratio': local_ratio_pct,
                 'stuck_index': smart_stuck_index,
                 'local_fee_rate': local_fee_rate,
+                'outbound_ratio': round(outbound_ratio * 100, 2),  # Add this to show the ratio as percentage
                 'priority_rank': round(priority_score, 1)  # Shows the exact ranking with adjustment
             })
         
