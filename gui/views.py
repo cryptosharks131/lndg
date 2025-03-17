@@ -1152,54 +1152,57 @@ def unprofitable_channels(request):
         rebalance_payments = Payments.objects.filter(
             rebal_chan__in=channel_ids,
             creation_date__gte=filter_date,
-            status=2  # Successful payments
-        ).values('rebal_chan').annotate(
-            rebalanced_out_sats=Sum('value'),
-            rebalance_cost=Sum('fee'),
-            last_rebalance=Max('creation_date')
+            status=2,  # Successful payments
+            rebal_chan__isnull=False  # This identifies it as a rebalance
         )
         
-        # Get the last rebalance details for each channel (for amount information)
-        last_rebalance_details = {}
-        for chan_id in channel_ids:
-            last_rebalance = Payments.objects.filter(
-                rebal_chan=chan_id,
-                creation_date__gte=filter_date,
-                status=2
-            ).order_by('-creation_date').first()
-            
-            if last_rebalance:
-                last_rebalance_details[chan_id] = {
-                    'date': last_rebalance.creation_date,
-                    'amount': last_rebalance.value or 0
-                }
-        
-        for reb in rebalance_payments:
-            chan_id = reb['rebal_chan']
-            last_reb_detail = last_rebalance_details.get(chan_id, None)
-            rebalance_stats[chan_id] = {
-                'rebalanced_out_sats': int(reb['rebalanced_out_sats'] or 0),
-                'rebalance_cost': reb['rebalance_cost'] or 0,
-                'last_rebalance': last_reb_detail
-            }
-        
-        # Combine all data and build the channel metrics list
-        channel_metrics = []
-        
-        # Calculate total outbound activity for each channel (for stuck index)
-        outbound_activities = []
-        for channel in channels:
-            chan_id = channel.chan_id
+        for payment in rebalance_payments:
+            chan_id = payment.chan_out  # Using chan_out for outbound rebalances
             metrics = channel_metrics_dict[chan_id]
-            total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
-            outbound_activities.append(total_outbound)
+            
+            # Update rebalanced out sats
+            metrics['rebalanced_out_sats'] += payment.value if payment.value else 0
+            
+            # Update rebalance fee cost
+            metrics['rebalance_fee_cost'] += payment.fee if payment.fee else 0
+            
+            # Track last rebalance event
+            if metrics['last_rebalance'] is None or payment.creation_date > metrics['last_rebalance']:
+                metrics['last_rebalance'] = payment.creation_date
+                metrics['last_rebalance_amount'] = payment.value if payment.value else 0
         
-        # Find min and max outbound activity for normalization
-        min_outbound = min(outbound_activities) if outbound_activities else 0
+        # Calculate normalized metrics for each channel
+        # Calculate normalized metrics for each channel
+        outbound_activities = []
+        assisted_revenues = []
+        fee_rates = []
+
+        for chan_id, metrics in channel_metrics_dict.items():
+            outbound_activities.append(metrics['routed_out_sats'] + metrics['rebalanced_out_sats'])
+            assisted_revenues.append(metrics['assisted_revenue'])
+            
+            # Get channel object to access fee rate
+            channel_obj = next((c for c in channels if c.chan_id == chan_id), None)
+            if channel_obj:
+                fee_rate = getattr(channel_obj, 'local_fee_rate', 0) or 0
+                fee_rates.append(fee_rate)
+
+        # Find min/max values for normalization
         max_outbound = max(outbound_activities) if outbound_activities else 1
-        # Avoid division by zero
-        outbound_range = max(max_outbound - min_outbound, 1)
-        
+        max_assisted = max(assisted_revenues) if assisted_revenues else 1
+        max_fee_rate = max(fee_rates) if fee_rates else 1000
+
+        # Thresholds for high/medium/low classifications
+        high_activity_threshold = max_outbound * 0.7
+        medium_activity_threshold = max_outbound * 0.3
+        high_assisted_threshold = max_assisted * 0.7
+        medium_assisted_threshold = max_assisted * 0.3
+        high_fee_threshold = max(max_fee_rate, 1000) * 0.7
+        medium_fee_threshold = max(max_fee_rate, 1000) * 0.3
+
+        # Build the final channel metrics list
+        channel_metrics = []
+
         for channel in channels:
             chan_id = channel.chan_id
             out_stats = out_forwards_stats.get(chan_id, {
@@ -1222,28 +1225,84 @@ def unprofitable_channels(request):
             profit = out_stats['fee'] - reb_stats['rebalance_cost']
             
             # Calculate local ratio (percentage of capacity that is local balance)
-            local_ratio = round((channel.local_balance / channel.capacity) * 100, 2) if channel.capacity > 0 else 0
+            local_ratio = channel.local_balance / channel.capacity if channel.capacity > 0 else 0
+            local_ratio_pct = round(local_ratio * 100, 2)
             
-            # Calculate stuck index (normalized outbound activity)
-            total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
-            stuck_index = round(1 - ((total_outbound - min_outbound) / outbound_range), 2) if outbound_range > 0 else 0
+            # Get activity metrics
+            routing_out = metrics['routed_out_sats']
+            rebalancing_out = metrics['rebalanced_out_sats']
+            total_outbound = routing_out + rebalancing_out
+            assisted_revenue = metrics['assisted_revenue']
+            
+            # Get fee rate
+            local_fee_rate = getattr(channel, 'local_fee_rate', 0) or 0
+            
+            # Calculate priority score based on activity and fees
+            # Lower score = better (less stuck), higher score = worse (more stuck)
+            # We'll use a score from 0-7 matching your priority list
+            
+            # Start with worst score
+            priority_score = 7.0
+            
+            # Check conditions from best to worst and assign appropriate score
+            if routing_out > high_activity_threshold and local_fee_rate > high_fee_threshold:
+                # 1) High routing out with high local_fee_rate
+                priority_score = 1.0
+            elif rebalancing_out > high_activity_threshold and assisted_revenue > high_assisted_threshold:
+                # 2) High rebalancing out with high assisted revenue
+                priority_score = 2.0
+            elif routing_out > medium_activity_threshold and local_fee_rate > medium_fee_threshold:
+                # 3) Medium routing out with medium local_fee_rate
+                priority_score = 3.0
+            elif rebalancing_out > medium_activity_threshold and assisted_revenue > medium_assisted_threshold:
+                # 4) Medium rebalancing out with medium assisted revenue
+                priority_score = 4.0
+            elif routing_out > 0 and local_fee_rate > 0:
+                # 5) Low routing out and low local_fee_rate
+                priority_score = 5.0
+            elif rebalancing_out > 0 and assisted_revenue > 0:
+                # 6) Low rebalancing out and low assisted revenue
+                priority_score = 6.0
+            # else: 7) No activity and no compensation (already set as default)
+            
+            # NEW: Apply local liquidity adjustment
+            # If local_ratio is low, reduce the penalty (improve the score)
+            # Define thresholds for local liquidity
+            low_local_threshold = 0.2  # 20% or less is considered low local liquidity
+            high_local_threshold = 0.8  # 80% or more is considered high local liquidity
+            
+            if local_ratio <= low_local_threshold:
+                # Significant improvement for channels with very low local liquidity
+                # Reduce penalty by up to 3 points (but not below 1)
+                local_liquidity_adjustment = 3.0 * (1 - (local_ratio / low_local_threshold))
+                priority_score = max(1.0, priority_score - local_liquidity_adjustment)
+            elif local_ratio >= high_local_threshold:
+                # Slight penalty for channels with very high local liquidity
+                # Increase penalty by up to 0.5 points (but not above 7)
+                local_liquidity_adjustment = 0.5 * ((local_ratio - high_local_threshold) / (1 - high_local_threshold))
+                priority_score = min(7.0, priority_score + local_liquidity_adjustment)
+            
+            # Normalize to 0-1 scale (divide by 7)
+            smart_stuck_index = round(priority_score / 7.0, 2)
             
             # Add metrics to the list
             channel_metrics.append({
                 'chan_id': chan_id,
-                'alias': channel.alias,
-                'routed_out_sats': out_stats['routed_out_sats'],
-                'last_routing': out_stats['last_routing'],
-                'rebalanced_out_sats': reb_stats['rebalanced_out_sats'],
-                'last_rebalance': reb_stats['last_rebalance'],
+                'alias': channel.alias or "---",
+                'routed_out_sats': routing_out,
+                'last_routing': last_routing,
+                'rebalanced_out_sats': rebalancing_out,
+                'last_rebalance': last_rebalance, 
                 'profit': profit,
-                'assisted_revenue': in_stats['assisted_revenue'],
+                'assisted_revenue': assisted_revenue,
                 'initiator': channel.initiator,
                 'capacity': channel.capacity,
                 'local_balance': channel.local_balance,
                 'remote_balance': channel.remote_balance,
-                'local_ratio': local_ratio,
-                'stuck_index': stuck_index
+                'local_ratio': local_ratio_pct,
+                'stuck_index': smart_stuck_index,
+                'local_fee_rate': local_fee_rate,
+                'priority_rank': round(priority_score, 1)  # Optional: add this to see the exact ranking with adjustment
             })
         
         # Sort by profit (ascending to show least profitable first)
