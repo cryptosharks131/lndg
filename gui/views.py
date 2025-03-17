@@ -1168,7 +1168,6 @@ def unprofitable_channels(request):
                 metrics['last_rebalance_amount'] = payment.value if payment.value else 0
         
         # Calculate normalized metrics for each channel
-        # Calculate normalized metrics for each channel
         outbound_activities = []
         assisted_revenues = []
         fee_rates = []
@@ -1258,20 +1257,32 @@ def unprofitable_channels(request):
                 priority_score = 6.0
             # else: 7) No activity and no compensation (already set as default)
             
-            # NEW: Apply local liquidity adjustment
+            # TARGETED ADJUSTMENT: Apply assisted revenue bonus
+            # This gives a bonus for high assisted revenue without disrupting the main ranking
+            if assisted_revenue > high_assisted_threshold:
+                # Significant bonus for high assisted revenue
+                assisted_bonus = 1.5
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            elif assisted_revenue > medium_assisted_threshold:
+                # Moderate bonus for medium assisted revenue
+                assisted_bonus = 0.75
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            elif assisted_revenue > 0:
+                # Small bonus for any assisted revenue
+                assisted_bonus = 0.25
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            
+            # Apply local liquidity adjustment
             # If local_ratio is low, reduce the penalty (improve the score)
-            # Define thresholds for local liquidity
             low_local_threshold = 0.2  # 20% or less is considered low local liquidity
             high_local_threshold = 0.8  # 80% or more is considered high local liquidity
             
             if local_ratio <= low_local_threshold:
                 # Significant improvement for channels with very low local liquidity
-                # Reduce penalty by up to 3 points (but not below 1)
                 local_liquidity_adjustment = 3.0 * (1 - (local_ratio / low_local_threshold))
                 priority_score = max(1.0, priority_score - local_liquidity_adjustment)
             elif local_ratio >= high_local_threshold:
                 # Slight penalty for channels with very high local liquidity
-                # Increase penalty by up to 0.5 points (but not above 7)
                 local_liquidity_adjustment = 0.5 * ((local_ratio - high_local_threshold) / (1 - high_local_threshold))
                 priority_score = min(7.0, priority_score + local_liquidity_adjustment)
             
@@ -1295,7 +1306,7 @@ def unprofitable_channels(request):
                 'local_ratio': local_ratio_pct,
                 'stuck_index': smart_stuck_index,
                 'local_fee_rate': local_fee_rate,
-                'priority_rank': round(priority_score, 1)  # Optional: add this to see the exact ranking with adjustment
+                'priority_rank': round(priority_score, 1)  # Shows the exact ranking with adjustment
             })
         
         # Sort by profit (ascending to show least profitable first)
