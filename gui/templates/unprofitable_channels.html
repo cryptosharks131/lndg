@@ -49,12 +49,12 @@
                 {% else %}N/A{% endif %}</td>
             <td>{{ channel.rebalanced_out_sats|add:"0"|intcomma }}</td>
             <td>{% if channel.last_rebalance %}
-                {{ channel.last_rebalance.date|date:"M d, Y" }} ({{ channel.last_rebalance.amount|intcomma }} sats)
+                {{ channel.last_rebalance.date|date:"M d, Y" }} ({{ channel.last_rebalance.amount|floatformat:0|intcomma }} sats)
                 {% else %}N/A{% endif %}</td>
             <td {% if channel.profit < 0 %}style="color: red;"{% endif %}>{{ channel.profit|add:"0"|intcomma }}</td>
             <td>{{ channel.assisted_revenue|add:"0"|intcomma }}</td>
             <td>{% if channel.initiator %}Local{% else %}Remote{% endif %}</td>
-            <td>{{ channel.local_ratio }}%</td>
+            <td>{{ channel.local_ratio }}% ({{ channel.capacity_millions }}M)</td>
             <td {% if channel.stuck_index > 0.8 %}style="color: red;"{% elif channel.stuck_index > 0.4 %}style="color: orange;"{% else %}style="color: green;"{% endif %}>{{ channel.stuck_index }}</td>
             <td>
               <a style="display: inline-block;position:relative;width:25px;height:25px" href="#" data-value="{{ channel.chan_id }}" onclick="copyToClipboard('{{ channel.chan_id }}', this)">
