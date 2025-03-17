@@ -23,6 +23,7 @@ from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
+import subprocess
 from pandas import DataFrame, merge
 from requests import get
 from secrets import token_bytes
@@ -2375,6 +2376,45 @@ def forwards_summary(request):
 
     return Response({'results': summary_out.union(summary_in)})
 
+def get_channeldb_file_size():
+    try:
+        # Use the prefix for connecting to remote LND connections, eg `ssh lnd@remote-lnd`
+        remote_prefix_setting = LocalSettings.objects.filter(key='LND-RemotePrefix').first()
+        # Set a custom path if your channel.db is located elsewhere, eg `/home/lnd/.lnd/data/graph/mainnet/channel.db`
+        db_path_setting = LocalSettings.objects.filter(key='LND-ChannelDBPath').first()
+        
+        # Create settings if they don't exist
+        if not remote_prefix_setting:
+            LocalSettings.objects.create(key='LND-RemotePrefix', value='')
+            remote_prefix_setting = LocalSettings.objects.filter(key='LND-RemotePrefix').first()
+            
+        if not db_path_setting:
+            LocalSettings.objects.create(key='LND-ChannelDBPath', value='')
+            db_path_setting = LocalSettings.objects.filter(key='LND-ChannelDBPath').first()
+        
+        # If either setting has a value, use the SSH/remote approach
+        if remote_prefix_setting.value or db_path_setting.value:
+            ssh_prefix = remote_prefix_setting.value
+            # Use the provided path or fall back to the settings path
+            channel_db_path = db_path_setting.value if db_path_setting.value else settings.LND_DATABASE_PATH
+            
+            # Build command based on whether we have a Tunnel/SSH prefix
+            if ssh_prefix:
+                command = f"{ssh_prefix} 'du -b {channel_db_path} | cut -f1'"
+            else:
+                command = f"du -b {channel_db_path} | cut -f1"
+                
+            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            file_size_bytes = int(result.stdout.strip())
+            return round(file_size_bytes * 0.000000001, 3)  # Convert bytes to gigabytes
+        else:
+            # Use the original default behavior
+            return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+    except Exception as e:
+        # Handle exceptions
+        print(f"Error retrieving channel.db file size: {e}")
+        return 0
+
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def node_info(request): 
@@ -2459,7 +2499,7 @@ def node_info(request):
             waiting_for_close.append(pending_item)
     limbo_balance -= pending_closing_balance
     try:
-        db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+        db_size = get_channeldb_file_size()
     except:
         db_size = 0
     return Response({
