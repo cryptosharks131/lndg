@@ -4,6 +4,7 @@ from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Va
 from django.db.models.functions import Round, TruncDay, Coalesce
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
+from django.conf import settings
 from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
@@ -23,7 +24,7 @@ from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
-import subprocess
+import os.path as path
 from pandas import DataFrame, merge
 from requests import get
 from secrets import token_bytes
@@ -2378,38 +2379,84 @@ def forwards_summary(request):
 
 def get_channeldb_file_size():
     try:
-        # Use the prefix for connecting to remote LND connections, eg `ssh lnd@remote-lnd`
-        remote_prefix_setting = LocalSettings.objects.filter(key='LND-RemotePrefix').first()
-        # Set a custom path if your channel.db is located elsewhere, eg `/home/lnd/.lnd/data/graph/mainnet/channel.db`
-        db_path_setting = LocalSettings.objects.filter(key='LND-ChannelDBPath').first()
-        
-        # Create settings if they don't exist
-        if not remote_prefix_setting:
-            LocalSettings.objects.create(key='LND-RemotePrefix', value='')
-            remote_prefix_setting = LocalSettings.objects.filter(key='LND-RemotePrefix').first()
-            
-        if not db_path_setting:
-            LocalSettings.objects.create(key='LND-ChannelDBPath', value='')
-            db_path_setting = LocalSettings.objects.filter(key='LND-ChannelDBPath').first()
-        
-        # If either setting has a value, use the SSH/remote approach
-        if remote_prefix_setting.value or db_path_setting.value:
-            ssh_prefix = remote_prefix_setting.value
-            # Use the provided path or fall back to the settings path
-            channel_db_path = db_path_setting.value if db_path_setting.value else settings.LND_DATABASE_PATH
-            
-            # Build command based on whether we have a Tunnel/SSH prefix
-            if ssh_prefix:
-                command = f"{ssh_prefix} 'du -b {channel_db_path} | cut -f1'"
-            else:
-                command = f"du -b {channel_db_path} | cut -f1"
-                
-            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            file_size_bytes = int(result.stdout.strip())
-            return round(file_size_bytes * 0.000000001, 3)  # Convert bytes to gigabytes
+        # Create the Enable setting if it doesn't exist ---
+        enabled_setting = LocalSettings.objects.filter(key='RemoteFSEnabled').first()
+        if not enabled_setting:
+            LocalSettings.objects.create(key='RemoteFSEnabled', value='0')  # Default: disabled
+            # IMPORTANT: We do NOT create other settings here.
+            # Only once enabled at /api/settings/RemoteFSEnabled/, we create the rest to avoid boilerplate
+            enabled = False  # Since we just created it, it's disabled.
         else:
-            # Use the original default behavior
+            # Read the Enable setting ---
+            enabled = bool(int(LocalSettings.objects.get(key='RemoteFSEnabled').value))
+
+        if enabled:
+            # Only import paramiko if enabled
+            import paramiko
+            import stat
+
+            # Create connection settings only if enabled AND they don't exist ---
+            host_setting = LocalSettings.objects.filter(key='RemoteFSHost').first()
+            if not host_setting:
+                LocalSettings.objects.create(key='RemoteFSHost', value='')
+
+            user_setting = LocalSettings.objects.filter(key='RemoteFSUser').first()
+            if not user_setting:
+                LocalSettings.objects.create(key='RemoteFSUser', value='')
+
+            port_setting = LocalSettings.objects.filter(key='RemoteFSPort').first()
+            if not port_setting:
+                LocalSettings.objects.create(key='RemoteFSPort', value='22')  # Default SSH port
+
+            path_setting = LocalSettings.objects.filter(key='RemoteFSPath').first()
+            if not path_setting:
+                default_path = '/home/admin/.lnd/data/graph/mainnet/channel.db'
+                LocalSettings.objects.create(key='RemoteFSPath', value=default_path)
+
+            # Read the connection settings ---
+            host = LocalSettings.objects.get(key='RemoteFSHost').value
+            user = LocalSettings.objects.get(key='RemoteFSUser').value
+            port = int(LocalSettings.objects.get(key='RemoteFSPort').value)  # Ensure port is an integer
+            channel_db_path = LocalSettings.objects.get(key='RemoteFSPath').value if LocalSettings.objects.get(key='RemoteFSPath').value else settings.LND_DATABASE_PATH
+
+            # Check for required settings
+            if not host or not user:
+                print("Error: Remote file size enabled, but host or user is not set.")
+                return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+
+            # --- Paramiko logic ---
+            try:
+                # Create SSH client
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # Automatically add host keys
+
+                # Connect to the remote host (eg 10.1.1.2, lnd, 22)
+                ssh.connect(hostname=host, username=user, port=port)
+
+                # Open an SFTP session
+                sftp = ssh.open_sftp()
+
+                # Get file stats
+                file_stat = sftp.stat(channel_db_path)
+
+                # Get file size
+                file_size_bytes = file_stat.st_size
+
+                # Close connections
+                sftp.close()
+                ssh.close()
+
+                return round(file_size_bytes * 0.000000001, 3)
+
+            except Exception as e:
+                print(f"Error retrieving file size with paramiko: {e}")
+                return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3) # Fallback
+            # --- End Paramiko logic ---
+
+        else:
+            # Use the original default behavior (local file size)
             return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+
     except Exception as e:
         # Handle exceptions
         print(f"Error retrieving channel.db file size: {e}")
