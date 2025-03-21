@@ -82,12 +82,20 @@ def main(channels):
 
         # Low Liquidity
         lowliq_df = channels_df[channels_df['out_percent'] <= lowliq_limit].copy()
-        failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).filter(timestamp__gte=filter_1day).order_by('-id').values())
+        failed_htlc_df = DataFrame.from_records(FailedHTLCs.objects.exclude(wire_failure=99).order_by('-id').values())
         if failed_htlc_df.shape[0] > 0:
             failed_htlc_df = failed_htlc_df[(failed_htlc_df['wire_failure']==15) & (failed_htlc_df['failure_detail']==6) & (failed_htlc_df['amount']>failed_htlc_df['chan_out_liq']+failed_htlc_df['chan_out_pending'])]
-        lowliq_df['failed_out_1day'] = 0 if failed_htlc_df.empty else lowliq_df.apply(lambda row: len(failed_htlc_df[failed_htlc_df['chan_id_out']==row.chan_id]), axis=1)
+        lowliq_df['failed_out_since_last_fee_update'] = 0 if failed_htlc_df.empty else lowliq_df.apply(
+            lambda row: len(failed_htlc_df[
+                (failed_htlc_df['chan_id_out'] == row.chan_id) &
+                (failed_htlc_df['timestamp'] >= row['fees_updated']) &
+                (failed_htlc_df['wire_failure'] == 15) &
+                (failed_htlc_df['failure_detail'] == 6) &
+                (failed_htlc_df['amount'] > (failed_htlc_df['chan_out_liq'] + failed_htlc_df['chan_out_pending']))
+            ]), axis=1)
+
         # INCREASE IF (failed htlc > threshhold) && (flow in == 0)
-        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_1day']>failed_htlc_limit and row['amt_routed_in_1day'] == 0 else row['local_fee_rate'], axis=1)
+        lowliq_df['new_rate'] = lowliq_df.apply(lambda row: row['local_fee_rate']+(5*multiplier) if row['failed_out_since_last_fee_update']>failed_htlc_limit and row['amt_routed_in_1day'] == 0 else row['local_fee_rate'], axis=1)
 
         # Balanced Liquidity
         balanced_df = channels_df[(channels_df['out_percent'] > lowliq_limit) & (channels_df['out_percent'] < excess_limit)].copy()
