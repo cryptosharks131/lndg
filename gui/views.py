@@ -4,7 +4,6 @@ from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Va
 from django.db.models.functions import Round, TruncDay, Coalesce
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
-from django.conf import settings
 from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.response import Response
@@ -24,7 +23,6 @@ from gui.lnd_deps import walletkit_pb2_grpc as walletstub
 from gui.lnd_deps.lnd_connect import lnd_connect
 from lndg import settings
 from os import path
-import os.path as path
 from pandas import DataFrame, merge
 from requests import get
 from secrets import token_bytes
@@ -2393,31 +2391,32 @@ def get_channeldb_file_size():
         if enabled:
             # Only import paramiko if enabled
             import paramiko
-            import stat
 
             # Create connection settings only if enabled AND they don't exist ---
-            host_setting = LocalSettings.objects.filter(key='RemoteFSHost').first()
-            if not host_setting:
+            host = LocalSettings.objects.filter(key='RemoteFSHost').first()
+            if not host:
                 LocalSettings.objects.create(key='RemoteFSHost', value='')
+                host = LocalSettings.objects.get(key='RemoteFSHost').value
 
-            user_setting = LocalSettings.objects.filter(key='RemoteFSUser').first()
-            if not user_setting:
+            user = LocalSettings.objects.filter(key='RemoteFSUser').first()
+            if not user:
                 LocalSettings.objects.create(key='RemoteFSUser', value='')
+                user = LocalSettings.objects.get(key='RemoteFSUser').value
 
-            port_setting = LocalSettings.objects.filter(key='RemoteFSPort').first()
-            if not port_setting:
+            port = LocalSettings.objects.filter(key='RemoteFSPort').first()
+            if not port:
                 LocalSettings.objects.create(key='RemoteFSPort', value='22')  # Default SSH port
+                port = LocalSettings.objects.get(key='RemoteFSPort').value
 
-            path_setting = LocalSettings.objects.filter(key='RemoteFSPath').first()
-            if not path_setting:
+            db_path = LocalSettings.objects.filter(key='RemoteFSPath').first()
+            if not db_path:
                 default_path = '/home/admin/.lnd/data/graph/mainnet/channel.db'
                 LocalSettings.objects.create(key='RemoteFSPath', value=default_path)
+                db_path = LocalSettings.objects.get(key='RemoteFSPath').value
 
             # Read the connection settings ---
-            host = LocalSettings.objects.get(key='RemoteFSHost').value
-            user = LocalSettings.objects.get(key='RemoteFSUser').value
-            port = int(LocalSettings.objects.get(key='RemoteFSPort').value)  # Ensure port is an integer
-            channel_db_path = LocalSettings.objects.get(key='RemoteFSPath').value if LocalSettings.objects.get(key='RemoteFSPath').value else settings.LND_DATABASE_PATH
+            port = int(port)  # Ensure port is an integer
+            channel_db_path = db_path.value if db_path.value else settings.LND_DATABASE_PATH # Use settings path if db path is blank
 
             # Check for required settings
             if not host or not user:
