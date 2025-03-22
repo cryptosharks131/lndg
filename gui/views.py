@@ -2396,30 +2396,38 @@ def get_channeldb_file_size():
             host = LocalSettings.objects.filter(key='RemoteFSHost').first()
             if not host:
                 LocalSettings.objects.create(key='RemoteFSHost', value='')
-                host = LocalSettings.objects.get(key='RemoteFSHost').value
+                host_value = LocalSettings.objects.get(key='RemoteFSHost').value
+            else:
+                host_value = host.value
 
             user = LocalSettings.objects.filter(key='RemoteFSUser').first()
             if not user:
                 LocalSettings.objects.create(key='RemoteFSUser', value='')
-                user = LocalSettings.objects.get(key='RemoteFSUser').value
+                user_value = LocalSettings.objects.get(key='RemoteFSUser').value
+            else:
+                user_value = user.value
 
             port = LocalSettings.objects.filter(key='RemoteFSPort').first()
             if not port:
                 LocalSettings.objects.create(key='RemoteFSPort', value='22')  # Default SSH port
-                port = LocalSettings.objects.get(key='RemoteFSPort').value
+                port_value = LocalSettings.objects.get(key='RemoteFSPort').value
+            else:
+                port_value = port.value
 
             db_path = LocalSettings.objects.filter(key='RemoteFSPath').first()
             if not db_path:
                 default_path = '/home/admin/.lnd/data/graph/mainnet/channel.db'
                 LocalSettings.objects.create(key='RemoteFSPath', value=default_path)
-                db_path = LocalSettings.objects.get(key='RemoteFSPath').value
+                db_path_value = LocalSettings.objects.get(key='RemoteFSPath').value
+            else:
+                db_path_value = db_path.value
 
             # Read the connection settings ---
-            port = int(port)  # Ensure port is an integer
-            channel_db_path = db_path.value if db_path.value else settings.LND_DATABASE_PATH # Use settings path if db path is blank
+            port = int(port_value)  # Ensure port is an integer
+            channel_db_path = db_path_value if db_path_value else settings.LND_DATABASE_PATH # Use settings path if db path is blank
 
             # Check for required settings
-            if not host or not user:
+            if not host_value or not user_value:
                 print("Error: Remote file size enabled, but host or user is not set.")
                 return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
 
@@ -2430,7 +2438,7 @@ def get_channeldb_file_size():
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # Automatically add host keys
 
                 # Connect to the remote host (eg 10.1.1.2, lnd, 22)
-                ssh.connect(hostname=host, username=user, port=port)
+                ssh.connect(hostname=host_value, username=user_value, port=port)
 
                 # Open an SFTP session
                 sftp = ssh.open_sftp()
