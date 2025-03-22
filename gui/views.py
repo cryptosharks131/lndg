@@ -1081,6 +1081,269 @@ def opens(request):
         return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def unprofitable_channels(request):
+    if request.method == 'GET':
+        # Get the timeframe from the request, default to 30 days
+        timeframe = request.GET.get('timeframe', '30')
+        timeframe_options = {
+            '1': {'days': 1, 'name': '1 Day'},
+            '7': {'days': 7, 'name': '7 Days'},
+            '30': {'days': 30, 'name': '30 Days'},
+            '90': {'days': 90, 'name': '90 Days'}  # Added a 90-day option
+        }
+        
+        selected_timeframe = timeframe_options.get(timeframe, timeframe_options['30'])
+        filter_date = datetime.now() - timedelta(days=selected_timeframe['days'])
+        
+        # Get active channels in a single query
+        channels = Channels.objects.filter(is_active=True, is_open=True)
+        channel_ids = [c.chan_id for c in channels]
+        
+        # Batch query for out forwards - get statistics per channel
+        out_forwards_stats = {}
+        out_forwards = Forwards.objects.filter(
+            chan_id_out__in=channel_ids,
+            forward_date__gte=filter_date
+        ).values('chan_id_out').annotate(
+            routed_out_sats=Sum('amt_out_msat') / 1000,
+            total_fee=Sum('fee'),
+            last_forward=Max('forward_date')
+        )
+        
+        # Get the last forward details for each channel (for amount information)
+        last_forward_details = {}
+        for chan_id in channel_ids:
+            last_forward = Forwards.objects.filter(
+                chan_id_out=chan_id,
+                forward_date__gte=filter_date
+            ).order_by('-forward_date').first()
+            
+            if last_forward:
+                last_forward_details[chan_id] = {
+                    'date': last_forward.forward_date,
+                    'amount': int(last_forward.amt_out_msat / 1000) if last_forward.amt_out_msat else 0
+                }
+        
+        for fwd in out_forwards:
+            chan_id = fwd['chan_id_out']
+            last_fwd_detail = last_forward_details.get(chan_id, None)
+            out_forwards_stats[chan_id] = {
+                'routed_out_sats': int(fwd['routed_out_sats'] or 0),
+                'fee': fwd['total_fee'] or 0,
+                'last_routing': last_fwd_detail
+            }
+        
+        # Batch query for in forwards (assisted revenue)
+        in_forwards_stats = {}
+        in_forwards = Forwards.objects.filter(
+            chan_id_in__in=channel_ids,
+            forward_date__gte=filter_date
+        ).values('chan_id_in').annotate(
+            assisted_revenue=Sum('fee')
+        )
+        
+        for fwd in in_forwards:
+            in_forwards_stats[fwd['chan_id_in']] = {
+                'assisted_revenue': fwd['assisted_revenue'] or 0
+            }
+        
+        # Batch query for rebalance payments
+        rebalance_stats = {}
+        rebalance_payments = Payments.objects.filter(
+            rebal_chan__in=channel_ids,
+            creation_date__gte=filter_date,
+            status=2,  # Successful payments
+            rebal_chan__isnull=False  # This identifies it as a rebalance
+        )
+        
+        for payment in rebalance_payments:
+            chan_id = payment.chan_out  # Using chan_out for outbound rebalances
+            metrics = channel_metrics_dict[chan_id]
+            
+            # Update rebalanced out sats
+            metrics['rebalanced_out_sats'] += payment.value if payment.value else 0
+            
+            # Update rebalance fee cost
+            metrics['rebalance_fee_cost'] += payment.fee if payment.fee else 0
+            
+            # Track last rebalance event
+            if metrics['last_rebalance'] is None or payment.creation_date > metrics['last_rebalance']:
+                metrics['last_rebalance'] = payment.creation_date
+                metrics['last_rebalance_amount'] = payment.value if payment.value else 0
+        
+        # Calculate normalized metrics for each channel
+        outbound_activities = []
+        outbound_ratios = []  # NEW: Track outbound activity as a ratio of channel capacity
+        assisted_revenues = []
+        fee_rates = []
+
+        for chan_id, metrics in channel_metrics_dict.items():
+            # Get channel object to access capacity
+            channel_obj = next((c for c in channels if c.chan_id == chan_id), None)
+            if channel_obj:
+                total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
+                outbound_activities.append(total_outbound)
+                
+                # Calculate outbound ratio (outbound activity / channel capacity)
+                capacity = channel_obj.capacity or 1  # Avoid division by zero
+                outbound_ratio = total_outbound / capacity
+                outbound_ratios.append(outbound_ratio)
+                
+                assisted_revenues.append(metrics['assisted_revenue'])
+                fee_rate = getattr(channel_obj, 'local_fee_rate', 0) or 0
+                fee_rates.append(fee_rate)
+
+        # Find min/max values for normalization
+        max_outbound = max(outbound_activities) if outbound_activities else 1
+        max_outbound_ratio = max(outbound_ratios) if outbound_ratios else 1
+        max_assisted = max(assisted_revenues) if assisted_revenues else 1
+        max_fee_rate = max(fee_rates) if fee_rates else 1000
+
+        # Thresholds for high/medium/low classifications
+        # NEW: Use ratio-based thresholds for activity
+        high_ratio_threshold = max(max_outbound_ratio * 0.7, 0.5)  # At least 50% of capacity or 70% of max ratio
+        medium_ratio_threshold = max(max_outbound_ratio * 0.3, 0.2)  # At least 20% of capacity or 30% of max ratio
+        high_assisted_threshold = max_assisted * 0.7
+        medium_assisted_threshold = max_assisted * 0.3
+        high_fee_threshold = max(max_fee_rate, 1000) * 0.7
+        medium_fee_threshold = max(max_fee_rate, 1000) * 0.3
+
+        # Build the final channel metrics list
+        channel_metrics = []
+
+        for channel in channels:
+            chan_id = channel.chan_id
+            out_stats = out_forwards_stats.get(chan_id, {
+                'routed_out_sats': 0, 
+                'fee': 0, 
+                'last_routing': None
+            })
+            
+            reb_stats = rebalance_stats.get(chan_id, {
+                'rebalanced_out_sats': 0, 
+                'rebalance_cost': 0, 
+                'last_rebalance': None
+            })
+            
+            in_stats = in_forwards_stats.get(chan_id, {
+                'assisted_revenue': 0
+            })
+            
+            # Calculate profit
+            profit = out_stats['fee'] - reb_stats['rebalance_cost']
+            
+            # Calculate local ratio (percentage of capacity that is local balance)
+            local_ratio = channel.local_balance / channel.capacity if channel.capacity > 0 else 0
+            local_ratio_pct = round(local_ratio * 100, 2)
+            
+            # Get activity metrics
+            routing_out = metrics['routed_out_sats']
+            rebalancing_out = metrics['rebalanced_out_sats']
+            total_outbound = routing_out + rebalancing_out
+            assisted_revenue = metrics['assisted_revenue']
+            
+            # NEW: Calculate outbound ratio (outbound activity / channel capacity)
+            outbound_ratio = total_outbound / channel.capacity if channel.capacity > 0 else 0
+            
+            # Get fee rate
+            local_fee_rate = getattr(channel, 'local_fee_rate', 0) or 0
+            
+            # Calculate priority score based on activity and fees
+            # Lower score = better (less stuck), higher score = worse (more stuck)
+            # We'll use a score from 0-7 matching your priority list
+            
+            # Start with worst score
+            priority_score = 7.0
+            
+            # Check conditions using ratio-based thresholds
+            if outbound_ratio > high_ratio_threshold and local_fee_rate > high_fee_threshold:
+                # 1) High routing out ratio with high local_fee_rate
+                priority_score = 1.0
+            elif outbound_ratio > high_ratio_threshold and assisted_revenue > high_assisted_threshold:
+                # 2) High rebalancing out ratio with high assisted revenue
+                priority_score = 2.0
+            elif outbound_ratio > medium_ratio_threshold and local_fee_rate > medium_fee_threshold:
+                # 3) Medium routing out ratio with medium local_fee_rate
+                priority_score = 3.0
+            elif outbound_ratio > medium_ratio_threshold and assisted_revenue > medium_assisted_threshold:
+                # 4) Medium rebalancing out ratio with medium assisted revenue
+                priority_score = 4.0
+            elif outbound_ratio > 0 and local_fee_rate > 0:
+                # 5) Low routing out ratio and low local_fee_rate
+                priority_score = 5.0
+            elif outbound_ratio > 0 and assisted_revenue > 0:
+                # 6) Low rebalancing out ratio and low assisted revenue
+                priority_score = 6.0
+            # else: 7) No activity and no compensation (already set as default)
+            
+            # Apply assisted revenue bonus
+            if assisted_revenue > high_assisted_threshold:
+                # Significant bonus for high assisted revenue
+                assisted_bonus = 1.5
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            elif assisted_revenue > medium_assisted_threshold:
+                # Moderate bonus for medium assisted revenue
+                assisted_bonus = 0.75
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            elif assisted_revenue > 0:
+                # Small bonus for any assisted revenue
+                assisted_bonus = 0.25
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            
+            # Apply local liquidity adjustment
+            # If local_ratio is low, reduce the penalty (improve the score)
+            low_local_threshold = 0.2  # 20% or less is considered low local liquidity
+            high_local_threshold = 0.8  # 80% or more is considered high local liquidity
+            
+            if local_ratio <= low_local_threshold:
+                # Significant improvement for channels with very low local liquidity
+                local_liquidity_adjustment = 3.0 * (1 - (local_ratio / low_local_threshold))
+                priority_score = max(1.0, priority_score - local_liquidity_adjustment)
+            elif local_ratio >= high_local_threshold:
+                # Slight penalty for channels with very high local liquidity
+                local_liquidity_adjustment = 0.5 * ((local_ratio - high_local_threshold) / (1 - high_local_threshold))
+                priority_score = min(7.0, priority_score + local_liquidity_adjustment)
+            
+            # Normalize to 0-1 scale (divide by 7)
+            smart_stuck_index = round(priority_score / 7.0, 2)
+            
+            # Add metrics to the list
+            channel_metrics.append({
+                'chan_id': chan_id,
+                'alias': channel.alias or "---",
+                'routed_out_sats': routing_out,
+                'last_routing': last_routing,
+                'rebalanced_out_sats': rebalancing_out,
+                'last_rebalance': last_rebalance, 
+                'profit': profit,
+                'assisted_revenue': assisted_revenue,
+                'initiator': channel.initiator,
+                'capacity': channel.capacity,
+                'capacity_millions': round(channel.capacity / 1000000, 1),
+                'local_balance': channel.local_balance,
+                'remote_balance': channel.remote_balance,
+                'local_ratio': local_ratio_pct,
+                'stuck_index': smart_stuck_index,
+                'local_fee_rate': local_fee_rate,
+                'outbound_ratio': round(outbound_ratio * 100, 2),  # Add this to show the ratio as percentage
+                'priority_rank': round(priority_score, 1)  # Shows the exact ranking with adjustment
+            })
+        
+        # Sort by profit (ascending to show least profitable first)
+        channel_metrics.sort(key=lambda x: x['profit'])
+        
+        context = {
+            'channels': channel_metrics,
+            'timeframe': timeframe,
+            'timeframe_name': selected_timeframe['name'],
+            'timeframe_options': timeframe_options
+        }
+        
+        return render(request, 'unprofitable_channels.html', context)
+    else:
+        return redirect('home')
+    
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def actions(request):
     if request.method == 'GET':
         channels = Channels.objects.filter(is_active=True, is_open=True, private=False).annotate(outbound_percent=((Sum('local_balance')+Sum('pending_outbound'))*1000)/Sum('capacity'), inbound_percent=((Sum('remote_balance')+Sum('pending_inbound'))*1000)/Sum('capacity'))

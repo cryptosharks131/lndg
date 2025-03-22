@@ -60,6 +60,7 @@ urlpatterns = [
     path('remove_avoid/', views.remove_avoid, name='remove-avoid'),
     path('get_fees/', views.get_fees, name='get-fees'),
     path('opens/', views.opens, name='opens'),
+    path('unprofitable_channels/', views.unprofitable_channels, name='unprofitable-channels'),
     path('actions/', views.actions, name='actions'),
     path('fees/', views.fees, name='fees'),
     path('keysends/', views.keysends, name='keysends'),
