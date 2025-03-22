@@ -13,7 +13,7 @@ from os import environ
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels, HistFailedHTLC, PeerEvents
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, InboundFeeLog, PendingChannels, HistFailedHTLC, PeerEvents
 import af
 
 def update_payments(stub):
@@ -512,7 +512,6 @@ def update_closures(stub):
         for closure in closures:
             counter += 1
             if counter > skip:
-                channel = Channels.objects.filter(chan_id=closure.chan_id)[0] if Channels.objects.filter(chan_id=closure.chan_id).exists() else None
                 resolution_count = len(closure.resolutions)
                 txid, index = closure.channel_point.split(':')
                 closing_costs = get_tx_fees(closure.closing_tx_hash) if (closure.open_initiator != 2 and closure.close_type not in [4, 5]) else 0
@@ -607,20 +606,29 @@ def auto_fees(stub):
         results_df = af.main(channels)
         if not results_df.empty: 
             update_df = results_df[results_df['eligible'] == True]
-            update_df = update_df[update_df['adjustment']!=0]
+            update_df = update_df[(update_df['adjustment']!=0) | (update_df['inbound_adjustment']!=0)]
             if not update_df.empty:
                 for target_channel in update_df.to_dict(orient='records'):
-                    print(f"{datetime.now().strftime('%c')} : [Data] : Updating fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
                     channel = Channels.objects.filter(chan_id=target_channel['chan_id'])[0]
                     channel_point = ln.ChannelPoint()
                     channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
                     channel_point.funding_txid_str = channel.funding_txid
                     channel_point.output_index = channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
-                    channel.local_fee_rate = target_channel['new_rate']
+                    version = stub.GetInfo(ln.GetInfoRequest()).version
+                    if float(version[:4]) >= 0.18:
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=channel.local_inbound_base_fee, fee_rate_ppm=int(target_channel['new_inbound_rate']))))
+                        if target_channel['inbound_adjustment'] != 0:
+                            print(f"{datetime.now().strftime('%c')} : [Data] : Updating inbound fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_inbound_rate'])}")
+                            channel.local_inbound_fee_rate = target_channel['new_inbound_rate']
+                            InboundFeeLog(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_inbound_fee_rate'], new_value=target_channel['new_inbound_rate']).save()
+                    else:
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
+                    if target_channel['adjustment'] != 0:
+                        print(f"{datetime.now().strftime('%c')} : [Data] : Updating outbound fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
+                        channel.local_fee_rate = target_channel['new_rate']
+                        Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
                     channel.fees_updated = datetime.now()
                     channel.save()
-                    Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Data] : Error processing auto_fees: {str(e)}")
 

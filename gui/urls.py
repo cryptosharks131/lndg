@@ -20,6 +20,7 @@ router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 router.register(r'peerevents', views.PeerEventsViewSet)
 router.register(r'trades', views.TradeSalesViewSet)
 router.register(r'feelog', views.FeeLogViewSet)
+router.register(r'inboundfeelog', views.InboundFeeLogViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -60,12 +61,14 @@ urlpatterns = [
     path('remove_avoid/', views.remove_avoid, name='remove-avoid'),
     path('get_fees/', views.get_fees, name='get-fees'),
     path('opens/', views.opens, name='opens'),
+    path('unprofitable_channels/', views.unprofitable_channels, name='unprofitable-channels'),
     path('actions/', views.actions, name='actions'),
     path('fees/', views.fees, name='fees'),
     path('keysends/', views.keysends, name='keysends'),
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
-    path('autofees/', views.autofees, name='autofees'),
+    path('autofees/', views.outbound_fee_log, name='outbound-fee-log'),
+    path('inbound-fee-log/', views.inbound_fee_log, name='inbound-fee-log'),
     path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
     path('logs/', views.logs, name='logs'),

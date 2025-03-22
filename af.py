@@ -108,8 +108,9 @@ def main(channels):
     channels_df['eligible'] = (datetime.now() - channels_df['fees_updated']).dt.total_seconds() > (update_hours * 3600)
 
     # Compute failed HTLCs per channel
+    filter_last_updated = datetime.now() - timedelta(hours=update_hours)
     failed_htlc_df = DataFrame.from_records(
-        FailedHTLCs.objects.filter(timestamp__gte=filter_1day, wire_failure=15, failure_detail=6).values()
+        FailedHTLCs.objects.filter(timestamp__gte=filter_last_updated, wire_failure=15, failure_detail=6).values()
     )
     if not failed_htlc_df.empty:
         failed_htlc_df = failed_htlc_df[
@@ -164,8 +165,8 @@ def main(channels):
         (group_df['total_amt_routed_out_7day'] - group_df['total_amt_routed_in_7day']) / group_df['total_capacity']
     ).where(group_df['total_capacity'] > 0, 0)
 
-    # Define adjustment calculation function
-    def compute_adjustment(row):
+    # Define outbound adjustment calculation function
+    def compute_outbound_adjustment(row):
         if row['overall_out_percent'] <= lowliq_limit:
             return (5 * multiplier) if (row['total_failed_out_1day'] > failed_htlc_limit and 
                                     row['total_amt_routed_in_1day'] == 0) else 0
@@ -185,20 +186,50 @@ def main(channels):
             else:
                 return 0
 
-    group_df['adjustment'] = group_df.apply(compute_adjustment, axis=1)
+    group_df['adjustment'] = group_df.apply(compute_outbound_adjustment, axis=1)
+
+    # Define inbound adjustment calculation function
+    def compute_inbound_adjustment(row):
+        if row['overall_out_percent'] <= lowliq_limit:
+            return (-12 * multiplier) if (row['total_failed_out_1day'] > failed_htlc_limit and 
+                                    row['total_amt_routed_in_1day'] == 0) else 0
+        elif row['overall_out_percent'] < excess_limit: 
+            if row['total_amt_routed_in_7day'] + row['total_amt_routed_out_7day'] == 0:
+                return 7 * multiplier
+            elif row['group_net_routed_7day'] > 1:
+                return (-5 * multiplier) * (1 + row['group_net_routed_7day'])
+            else:
+                return 0
+        else:
+            if row['total_amt_routed_in_7day'] + row['total_amt_routed_out_7day'] == 0:
+                return 12 * multiplier
+            elif (row['group_net_routed_7day'] < 0 and 
+                row['total_revenue_assist_7day'] > row['total_revenue_7day'] * 10):
+                return 12 * multiplier
+            else:
+                return 0
+
+    group_df['inbound_adjustment'] = group_df.apply(compute_inbound_adjustment, axis=1)
 
     # Merge adjustments back to channels_df
     channels_df = channels_df.merge(group_df[['adjustment']], on='remote_pubkey', how='left')
+    channels_df = channels_df.merge(group_df[['inbound_adjustment']], on='remote_pubkey', how='left')
 
-    # Compute new rates
+    # Compute new outbound rates
     channels_df['new_rate'] = channels_df['local_fee_rate'] + channels_df['adjustment']
     channels_df['new_rate'] = (channels_df['new_rate'] / increment).round(0) * increment
     channels_df['new_rate'] = channels_df['new_rate'].clip(min_rate, max_rate)
     channels_df['adjustment'] = channels_df['new_rate'] - channels_df['local_fee_rate']
 
-    # Return result with relevant columns
+    # Compute new inbound rates
+    channels_df['new_inbound_rate'] = channels_df['local_inbound_fee_rate'] + channels_df['inbound_adjustment']
+    channels_df['new_inbound_rate'] = (channels_df['new_inbound_rate'] / increment).round(0) * increment
+    channels_df['new_inbound_rate'] = channels_df['new_inbound_rate'].clip(-((channels_df['ar_max_cost']/100)*channels_df['local_fee_rate']), 0)
+    channels_df['inbound_adjustment'] = channels_df['new_inbound_rate'] - channels_df['local_inbound_fee_rate']
+
+    # Return results
     return channels_df
 
 
 if __name__ == '__main__':
-    print(main(Channels.objects.filter(is_open=True)))
+    print(main(Channels.objects.filter(is_open=True))[['chan_id', 'local_fee_rate', 'new_rate', 'adjustment', 'local_inbound_fee_rate', 'new_inbound_rate', 'inbound_adjustment']])
