@@ -108,8 +108,9 @@ def main(channels):
     channels_df['eligible'] = (datetime.now() - channels_df['fees_updated']).dt.total_seconds() > (update_hours * 3600)
 
     # Compute failed HTLCs per channel
+    filter_last_updated = datetime.now() - timedelta(hours=update_hours)
     failed_htlc_df = DataFrame.from_records(
-        FailedHTLCs.objects.filter(timestamp__gte=filter_1day, wire_failure=15, failure_detail=6).values()
+        FailedHTLCs.objects.filter(timestamp__gte=filter_last_updated, wire_failure=15, failure_detail=6).values()
     )
     if not failed_htlc_df.empty:
         failed_htlc_df = failed_htlc_df[
