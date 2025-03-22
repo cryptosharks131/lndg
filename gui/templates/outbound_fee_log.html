@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Outbound Fee Log{% endblock %}
+{% block content %}
+{% load humanize %}
+{% if outbound_fee_log %}
+<div class="w3-container w3-padding-small">
+  <h2><a href="/autofees/">Outbound Fee Log</a></h2>
+  <table class="w3-table-all w3-centered w3-hoverable">
+    <tr>
+      <th>Timestamp</th>
+      <th>Channel ID</th>
+      <th>Peer Alias</th>
+      <th>Setting</th>
+      <th>Old Value</th>
+      <th>New Value</th>
+    </tr>
+    {% for log in outbound_fee_log %}
+    <tr>
+      <td title="{{ log.timestamp }}">{{ log.timestamp|naturaltime }}</td>
+      <td><a href="/channel?={{ log.chan_id }}" target="_blank">{{ log.chan_id }}</a></td>
+      <td><a href="/autofees?={{ log.chan_id }}">{% if log.peer_alias == '' %}---{% else %}{{ log.peer_alias }}{% endif %}</a></td>
+      <td>{{ log.setting }}</td>
+      <td>{{ log.old_value }}</td>
+      <td {% if log.new_value > log.old_value %}style="background-color: rgba(46,160,67,0.15)"{% else %}style="background-color: rgba(248,81,73,0.15)"{% endif %}>{{ log.new_value }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% if not outbound_fee_log %}
+<div class="w3-container w3-padding-small">
+  <center><h1>No outbound fee logs to see here yet!</h1></center>
+</div>
+{% endif %}
+{% endblock %}

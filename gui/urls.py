@@ -20,6 +20,7 @@ router.register(r'failedhtlcs', views.FailedHTLCViewSet)
 router.register(r'peerevents', views.PeerEventsViewSet)
 router.register(r'trades', views.TradeSalesViewSet)
 router.register(r'feelog', views.FeeLogViewSet)
+router.register(r'inboundfeelog', views.InboundFeeLogViewSet)
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -66,7 +67,8 @@ urlpatterns = [
     path('keysends/', views.keysends, name='keysends'),
     path('channels/', views.channels, name='channels'),
     path('autopilot/', views.autopilot, name='autopilot'),
-    path('autofees/', views.autofees, name='autofees'),
+    path('autofees/', views.outbound_fee_log, name='outbound-fee-log'),
+    path('inbound-fee-log/', views.inbound_fee_log, name='inbound-fee-log'),
     path('peerevents', views.peerevents, name='peerevents'),
     path('advanced/', views.advanced, name='advanced'),
     path('logs/', views.logs, name='logs'),

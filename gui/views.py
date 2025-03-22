@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import *
 from .serializers import *
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, HistFailedHTLC, TradeSales
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, InboundFeeLog, PendingChannels, AvoidNodes, PeerEvents, HistFailedHTLC, TradeSales
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -1726,18 +1726,40 @@ def autopilot(request):
         return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def autofees(request):
+def outbound_fee_log(request):
     if request.method == 'GET':
         try:
             chan_id = request.GET.urlencode()[1:]
             filter_7d = datetime.now() - timedelta(days=7)
-            autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
-            if autofees_df.shape[0]> 0:
-                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+            outbound_fee_log_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            if outbound_fee_log_df.shape[0]> 0:
+                outbound_fee_log_df['change'] = outbound_fee_log_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
             context = {
-                'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
+                'outbound_fee_log': [] if outbound_fee_log_df.empty else outbound_fee_log_df.to_dict(orient='records')
             }
-            return render(request, 'autofees.html', context)
+            return render(request, 'outbound_fee_log.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+    else:
+        return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def inbound_fee_log(request):
+    if request.method == 'GET':
+        try:
+            chan_id = request.GET.urlencode()[1:]
+            filter_7d = datetime.now() - timedelta(days=7)
+            inbound_fee_log_df = DataFrame.from_records(InboundFeeLog.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else InboundFeeLog.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            if inbound_fee_log_df.shape[0]> 0:
+                inbound_fee_log_df['change'] = inbound_fee_log_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+            context = {
+                'inbound_fee_log': [] if inbound_fee_log_df.empty else inbound_fee_log_df.to_dict(orient='records')
+            }
+            return render(request, 'inbound_fee_log.html', context)
         except Exception as e:
             try:
                 error = str(e.code())
@@ -2518,6 +2540,12 @@ class FeeLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Autofees.objects.all().order_by('-id')
     serializer_class = FeeLogSerializer
+    filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
+
+class InboundFeeLogViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = InboundFeeLog.objects.all().order_by('-id')
+    serializer_class = InboundFeeLogSerializer
     filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
 
 class FailedHTLCFilter(FilterSet):
