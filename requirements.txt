@@ -9,3 +9,4 @@ requests
 asyncio
 bech32
 cryptography
+paramiko
