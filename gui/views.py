@@ -1089,7 +1089,7 @@ def unprofitable_channels(request):
             '1': {'days': 1, 'name': '1 Day'},
             '7': {'days': 7, 'name': '7 Days'},
             '30': {'days': 30, 'name': '30 Days'},
-            '90': {'days': 90, 'name': '90 Days'}  # Added a 90-day option
+            '90': {'days': 90, 'name': '90 Days'}
         }
         
         selected_timeframe = timeframe_options.get(timeframe, timeframe_options['30'])
@@ -1099,58 +1099,54 @@ def unprofitable_channels(request):
         channels = Channels.objects.filter(is_active=True, is_open=True)
         channel_ids = [c.chan_id for c in channels]
         
-        # Batch query for out forwards - get statistics per channel
-        out_forwards_stats = {}
+        # Dictionary to store metrics for each channel
+        channel_metrics_dict = {chan_id: {
+            'routed_out_sats': 0,
+            'last_routing': None,
+            'last_routing_amount': 0,
+            'rebalanced_out_sats': 0,
+            'last_rebalance': None,
+            'last_rebalance_amount': 0,
+            'fee_revenue': 0,
+            'rebalance_fee_cost': 0,
+            'assisted_revenue': 0
+        } for chan_id in channel_ids}
+        
+        # 1. Get outbound forwarding stats (routing out)
         out_forwards = Forwards.objects.filter(
             chan_id_out__in=channel_ids,
             forward_date__gte=filter_date
-        ).values('chan_id_out').annotate(
-            routed_out_sats=Sum('amt_out_msat') / 1000,
-            total_fee=Sum('fee'),
-            last_forward=Max('forward_date')
         )
         
-        # Get the last forward details for each channel (for amount information)
-        last_forward_details = {}
-        for chan_id in channel_ids:
-            last_forward = Forwards.objects.filter(
-                chan_id_out=chan_id,
-                forward_date__gte=filter_date
-            ).order_by('-forward_date').first()
+        # Calculate total fees and amounts
+        for forward in out_forwards:
+            chan_id = forward.chan_id_out
+            metrics = channel_metrics_dict[chan_id]
             
-            if last_forward:
-                last_forward_details[chan_id] = {
-                    'date': last_forward.forward_date,
-                    'amount': int(last_forward.amt_out_msat / 1000) if last_forward.amt_out_msat else 0
-                }
+            # Update routed out sats
+            metrics['routed_out_sats'] += int(forward.amt_out_msat / 1000) if forward.amt_out_msat else 0
+            
+            # Update fee revenue
+            metrics['fee_revenue'] += forward.fee if forward.fee else 0
+            
+            # Track last routing event
+            if metrics['last_routing'] is None or forward.forward_date > metrics['last_routing']:
+                metrics['last_routing'] = forward.forward_date
+                metrics['last_routing_amount'] = int(forward.amt_out_msat / 1000) if forward.amt_out_msat else 0
         
-        for fwd in out_forwards:
-            chan_id = fwd['chan_id_out']
-            last_fwd_detail = last_forward_details.get(chan_id, None)
-            out_forwards_stats[chan_id] = {
-                'routed_out_sats': int(fwd['routed_out_sats'] or 0),
-                'fee': fwd['total_fee'] or 0,
-                'last_routing': last_fwd_detail
-            }
-        
-        # Batch query for in forwards (assisted revenue)
-        in_forwards_stats = {}
+        # 2. Get inbound forwarding stats (assisted revenue)
         in_forwards = Forwards.objects.filter(
             chan_id_in__in=channel_ids,
             forward_date__gte=filter_date
-        ).values('chan_id_in').annotate(
-            assisted_revenue=Sum('fee')
         )
         
-        for fwd in in_forwards:
-            in_forwards_stats[fwd['chan_id_in']] = {
-                'assisted_revenue': fwd['assisted_revenue'] or 0
-            }
+        for forward in in_forwards:
+            chan_id = forward.chan_id_in
+            channel_metrics_dict[chan_id]['assisted_revenue'] += forward.fee if forward.fee else 0
         
-        # Batch query for rebalance payments
-        rebalance_stats = {}
+        # 3. Get outbound rebalance data - using chan_out to match channels view
         rebalance_payments = Payments.objects.filter(
-            rebal_chan__in=channel_ids,
+            chan_out__in=channel_ids,  # This is the key change - using chan_out instead of rebal_chan
             creation_date__gte=filter_date,
             status=2,  # Successful payments
             rebal_chan__isnull=False  # This identifies it as a rebalance
@@ -1213,24 +1209,21 @@ def unprofitable_channels(request):
 
         for channel in channels:
             chan_id = channel.chan_id
-            out_stats = out_forwards_stats.get(chan_id, {
-                'routed_out_sats': 0, 
-                'fee': 0, 
-                'last_routing': None
-            })
+            metrics = channel_metrics_dict[chan_id]
             
-            reb_stats = rebalance_stats.get(chan_id, {
-                'rebalanced_out_sats': 0, 
-                'rebalance_cost': 0, 
-                'last_rebalance': None
-            })
+            # Calculate profit (fee revenue - rebalance costs)
+            profit = metrics['fee_revenue'] - metrics['rebalance_fee_cost']
             
-            in_stats = in_forwards_stats.get(chan_id, {
-                'assisted_revenue': 0
-            })
+            # Format last routing and rebalance for display
+            last_routing = {
+                'date': metrics['last_routing'],
+                'amount': metrics['last_routing_amount']
+            } if metrics['last_routing'] else None
             
-            # Calculate profit
-            profit = out_stats['fee'] - reb_stats['rebalance_cost']
+            last_rebalance = {
+                'date': metrics['last_rebalance'],
+                'amount': metrics['last_rebalance_amount']
+            } if metrics['last_rebalance'] else None
             
             # Calculate local ratio (percentage of capacity that is local balance)
             local_ratio = channel.local_balance / channel.capacity if channel.capacity > 0 else 0
