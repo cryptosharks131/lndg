@@ -232,5 +232,14 @@
     element.innerHTML = element.innerHTML + " ↓";
   }
 }
+  // Function to trigger initial sort
+  function initialSort() {
+    // Get the Stuck Index header (11th column, index 10)
+    var stuckIndexHeader = document.getElementById("unprofitableChannelsTable").getElementsByTagName("TH")[10];
+    // Trigger sort with: element, column index, type, ascending
+    sortTable(stuckIndexHeader, 10, 'int', 0);  // 0 for descending order
+  }
+
+  document.addEventListener('DOMContentLoaded', initialSort);
 </script>
 {% endblock %}
