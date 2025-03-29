@@ -1098,6 +1098,20 @@ def unprofitable_channels(request):
         # Get active channels in a single query
         channels = Channels.objects.filter(is_active=True, is_open=True)
         channel_ids = [c.chan_id for c in channels]
+
+        # Get current block height once
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            current_block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
+        except Exception as e:
+            print(f"Error getting current block height: {e}")
+            # Handle error appropriately, maybe return an error message or default height
+            current_block_height = 0 # Or some other fallback
+
+        # Define Age Thresholds and Max Bonus
+        VERY_NEW_DAYS = 7
+        ESTABLISHED_DAYS = 30
+        MAX_AGE_BONUS = 2.0
         
         # Dictionary to store metrics for each channel
         channel_metrics_dict = {chan_id: {
@@ -1296,6 +1310,34 @@ def unprofitable_channels(request):
                 # Slight penalty for channels with very high local liquidity
                 local_liquidity_adjustment = 0.5 * ((local_ratio - high_local_threshold) / (1 - high_local_threshold))
                 priority_score = min(7.0, priority_score + local_liquidity_adjustment)
+
+            age_bonus = 0.0
+            if current_block_height > 0 and channel.chan_id: # Ensure we have data
+                try:
+                    opening_block_height = int(channel.chan_id) >> 40
+                    if opening_block_height > 0: # Ensure valid opening height
+                        channel_age_blocks = max(0, current_block_height - opening_block_height)
+                        channel_age_days = channel_age_blocks / 144 # Approx days
+
+                        if channel_age_days < VERY_NEW_DAYS:
+                            # Max bonus for very new channels
+                            age_bonus = MAX_AGE_BONUS
+                        elif channel_age_days < ESTABLISHED_DAYS:
+                            # Linearly decreasing bonus for channels between 7 and 30 days
+                            age_progress = (channel_age_days - VERY_NEW_DAYS) / (ESTABLISHED_DAYS - VERY_NEW_DAYS)
+                            age_bonus = MAX_AGE_BONUS * (1 - age_progress)
+                        # else: age_bonus remains 0 for established channels
+
+                except Exception as e:
+                    # Handle potential errors during age calculation gracefully
+                    print(f"Error calculating age for chan_id {channel.chan_id}: {e}")
+                    channel_age_days = -1 # Indicate unknown age
+            else:
+                 channel_age_days = -1 # Indicate unknown age if block height or chan_id missing
+
+
+            # Apply the age bonus, ensuring score doesn't go below 1.0
+            priority_score = max(1.0, priority_score - age_bonus)
             
             # Normalize to 0-1 scale (divide by 7)
             smart_stuck_index = round(priority_score / 7.0, 2)
@@ -1319,7 +1361,8 @@ def unprofitable_channels(request):
                 'stuck_index': smart_stuck_index,
                 'local_fee_rate': local_fee_rate,
                 'outbound_ratio': round(outbound_ratio * 100, 2),  # Add this to show the ratio as percentage
-                'priority_rank': round(priority_score, 1)  # Shows the exact ranking with adjustment
+                'priority_rank': round(priority_score, 1),  # Shows the exact ranking with adjustment
+                'age_days': round(channel_age_days) if channel_age_days >= 0 else 'N/A' # Add age for display
             })
         
         # Sort by profit (ascending to show least profitable first)

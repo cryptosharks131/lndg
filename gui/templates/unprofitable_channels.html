@@ -32,6 +32,7 @@
           <th onclick="sortTable(event.target, 6, 'int', 1)" width=8%>Profit</th>
           <th onclick="sortTable(event.target, 7, 'int', 1)" width=8%>Assisted Revenue</th>
           <th onclick="sortTable(event.target, 8, 'String', 1)" width=7%>Initiator</th>
+          <th onclick="sortTable(event.target, 9, 'int', 1)" width=7%>Age (Days)</th>
           <th onclick="sortTable(event.target, 9, 'int', 1)" width=7%>Local Ratio</th>
           <th onclick="sortTable(event.target, 10, 'int', 1)" width=7%>Stuck Index</th>
           <th width=10%>Actions</th>
@@ -54,6 +55,7 @@
             <td {% if channel.profit < 0 %}style="color: red;"{% endif %}>{{ channel.profit|add:"0"|intcomma }}</td>
             <td>{{ channel.assisted_revenue|add:"0"|intcomma }}</td>
             <td>{% if channel.initiator %}Local{% else %}Remote{% endif %}</td>
+            <td>{{ channel.age_days }}</td>
             <td>{{ channel.local_ratio }}% ({{ channel.capacity_millions }}M)</td>
             <td {% if channel.stuck_index > 0.8 %}style="color: red;"{% elif channel.stuck_index > 0.4 %}style="color: orange;"{% else %}style="color: green;"{% endif %}>{{ channel.stuck_index }}</td>
             <td>
@@ -71,7 +73,7 @@
         {% endfor %}
       {% else %}
         <tr>
-          <td colspan="12">No channel data available for the selected timeframe.</td>
+          <td colspan="13">No channel data available for the selected timeframe.</td>
         </tr>
       {% endif %}
       </tbody>
@@ -89,6 +91,7 @@
       <li><strong>Profit:</strong> Fees earned from routing minus costs of rebalancing</li>
       <li><strong>Assisted Revenue:</strong> Fees earned from forwards where this channel was the inbound channel</li>
       <li><strong>Initiator:</strong> Whether you opened the channel (Local) or the peer opened it (Remote)</li>
+      <li><strong>Age (Days):</strong> Approximate age of the channel in days since opening</li>
       <li><strong>Local Ratio:</strong> Percentage of the channel's capacity that is on your side</li>
       <li><strong>Stuck Index:</strong> Measure of how "stuck" a channel is (0 = active, 1 = inactive/stuck)</li>
     </ul>
@@ -149,60 +152,54 @@
   while (switching) {
     switching = false;
     rows = table.rows;
-    
+
     for (i = 1; i < (rows.length - 1); i++) {
       shouldSwitch = false;
       x = rows[i].getElementsByTagName("TD")[n];
       y = rows[i + 1].getElementsByTagName("TD")[n];
-      
+
       if (subElement != null) {
         x = x.getElementsByTagName(subElement)[0];
         y = y.getElementsByTagName(subElement)[0];
       }
-      
-      // Special handling for Stuck Index column (column 10)
-      if (n === 10) {
-        // Use parseFloat for decimal values
-        var xValue = parseFloat(x.innerHTML.replace(/,/g, '').replace(/%/g, ''));
-        var yValue = parseFloat(y.innerHTML.replace(/,/g, '').replace(/%/g, ''));
-        
-        if (dir == "asc") {
-          if (xValue > yValue) {
-            shouldSwitch = true;
-            break;
-          }
-        } else if (dir == "desc") {
-          if (xValue < yValue) {
-            shouldSwitch = true;
-            break;
-          }
+
+      {{ edit_start }}
+      let xValue, yValue; // Use let for block scope
+
+      // Handle Stuck Index column (index 11) - parseFloat
+      if (n === 11) {
+        xValue = parseFloat(x.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+        yValue = parseFloat(y.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+      }
+      // Handle Age column (index 9) - parseInt with N/A check
+      else if (n === 9) {
+        const xValueStr = x.innerHTML.replace(/,/g, '').replace(/%/g, '');
+        const yValueStr = y.innerHTML.replace(/,/g, '').replace(/%/g, '');
+        // Treat N/A as Infinity for ascending sort, -Infinity for descending
+        xValue = (xValueStr === 'N/A') ? (dir === "asc" ? Infinity : -Infinity) : parseInt(xValueStr);
+        yValue = (yValueStr === 'N/A') ? (dir === "asc" ? Infinity : -Infinity) : parseInt(yValueStr);
+      }
+      // Handle other integer columns - parseInt
+      else if (type === 'int') {
+        xValue = parseInt(x.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+        yValue = parseInt(y.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+      }
+      // Handle string columns
+      else {
+        xValue = x.innerHTML.toLowerCase();
+        yValue = y.innerHTML.toLowerCase();
+      }
+
+      // Perform comparison based on direction
+      if (dir == "asc") {
+        if (xValue > yValue) {
+          shouldSwitch = true;
+          break;
         }
-      } else {
-        // Original logic for other columns
-        if (dir == "asc") {
-          if (type == "int") {
-            if (parseInt(x.innerHTML.replace(/,/g, '').replace(/%/g, '')) > parseInt(y.innerHTML.replace(/,/g, '').replace(/%/g, ''))) {
-              shouldSwitch = true;
-              break;
-            }
-          } else {
-            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-              shouldSwitch = true;
-              break;
-            }
-          }
-        } else if (dir == "desc") {
-          if (type == "int") {
-            if (parseInt(x.innerHTML.replace(/,/g, '').replace(/%/g, '')) < parseInt(y.innerHTML.replace(/,/g, '').replace(/%/g, ''))) {
-              shouldSwitch = true;
-              break;
-            }
-          } else {
-            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-              shouldSwitch = true;
-              break;
-            }
-          }
+      } else if (dir == "desc") {
+        if (xValue < yValue) {
+          shouldSwitch = true;
+          break;
         }
       }
     }
@@ -237,7 +234,7 @@
     // Get the Stuck Index header (11th column, index 10)
     var stuckIndexHeader = document.getElementById("unprofitableChannelsTable").getElementsByTagName("TH")[10];
     // Trigger sort with: element, column index, type, ascending
-    sortTable(stuckIndexHeader, 10, 'int', 0);  // 0 for descending order
+    sortTable(stuckIndexHeader, 11, 'int', 0);  // 0 for descending order
   }
 
   document.addEventListener('DOMContentLoaded', initialSort);
