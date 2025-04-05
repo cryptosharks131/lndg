@@ -112,13 +112,6 @@ cd lndg
 # Ensure Python virtualenv is installed (example for Debian/Ubuntu)
 sudo apt update && sudo apt install -y virtualenv
 
-# Set up a Python 3 virtual environment
-virtualenv -p python3 .venv
-
-# Activate the virtual environment (syntax might vary based on shell)
-# source .venv/bin/activate  # For bash/zsh
-# .\.venv\Scripts\activate  # For Windows PowerShell
-
 # Install required dependencies
 .venv/bin/pip install -r requirements.txt
 
@@ -183,9 +176,6 @@ cd lndg
 
 # Pull the latest changes
 git pull
-
-# Activate the virtual environment if not already active
-# source .venv/bin/activate
 
 # Install any new dependencies
 .venv/bin/pip install -r requirements.txt
