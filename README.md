@@ -1,17 +1,57 @@
 # LNDg - GUI for LND Data Analysis and Node Management
 
-Welcome to LNDg, an advanced web interface designed for analyzing LND data and automating node management tasks.
+Welcome to LNDg, an advanced web interface designed for analyzing Lightning Network Daemon (LND) data and automating node management tasks.
+
+## Table of Contents
+
+- [Installation](#installation)
+  - [1-Click Installation](#1-click-installation)
+  - [Docker Installation](#docker-installation)
+  - [Manual Installation](#manual-installation)
+- [Updating LNDg](#updating-lndg)
+  - [Docker Update](#docker-update)
+  - [Manual Update](#manual-update)
+- [Configuration](#configuration)
+  - [Backend Controller Setup](#backend-controller-setup)
+  - [Webserver Setup (Optional)](#webserver-setup-optional)
+  - [PostgreSQL Setup (Optional)](#postgresql-setup-optional)
+  - [Important Notes](#important-notes)
+- [Key Features](#key-features)
+  - [Track Peer Events](#track-peer-events)
+  - [Batch Channel Opens](#batch-channel-opens)
+  - [Watch Tower Management](#watch-tower-management)
+  - [Fee Rate Suggestions](#fee-rate-suggestions)
+  - [New Peer Suggestions](#new-peer-suggestions)
+  - [Channel Performance Metrics](#channel-performance-metrics)
+  - [Password Protected Login](#password-protected-login)
+  - [Auto-Rebalance Action Suggestions](#auto-rebalance-action-suggestions)
+  - [AR-Autopilot Setting](#ar-autopilot-setting)
+  - [HTLC Failure Stream](#htlc-failure-stream)
+  - [API Backend](#api-backend)
+  - [Peer Reconnection](#peer-reconnection)
+- [Auto-Fees](#auto-fees)
+  - [Auto-Fees Settings](#auto-fees-settings)
+  - [Auto-Fees Notes](#auto-fees-notes)
+- [Auto-Rebalancer](#auto-rebalancer)
+  - [Understanding Auto-Rebalancer](#understanding-auto-rebalancer)
+  - [Auto-Rebalancer Settings](#auto-rebalancer-settings)
+  - [Additional Customization Options](#additional-customization-options)
+  - [Steps to Start the Auto-Rebalancer](#steps-to-start-the-auto-rebalancer)
+- [Preview Screens](#preview-screens)
+
+## Installation
 
 Choose your preferred installation method:
 
-- **1-Click Installation**: Easily install LNDg directly from popular platforms like Umbrel, Citadel, Start9 and RaspiBlitz.
-- [Docker Installation](https://github.com/cryptosharks131/lndg#docker-installation-requires-docker-and-docker-compose-be-installed): Ideal for users familiar with Docker and Docker Compose.
-- [Manual Installation](https://github.com/cryptosharks131/lndg#manual-installation): If you prefer a hands-on approach to set up LNDg.
+### 1-Click Installation
 
+Easily install LNDg directly from popular platforms like Umbrel, Citadel, Start9, and RaspiBlitz. Follow the instructions provided by your chosen platform.
 
-## Docker Installation (requires Docker and Docker Compose)
+### Docker Installation
 
-### Prepare Install
+This method requires Docker and Docker Compose to be installed on your system.
+
+**1. Prepare Installation:**
 
 ```bash
 # Clone the repository
@@ -23,236 +63,324 @@ cd lndg
 # Customize the docker-compose.yaml file
 nano docker-compose.yaml
 ```
-**Replace the contents of `docker-compose.yaml` with your desired volume paths and settings. An example configuration is shown below.**
+
+Replace the contents of `docker-compose.yaml` with your desired volume paths and settings. An example configuration is shown below:
+
 ```yaml
 services:
   lndg:
     build: .
     volumes:
+      # Adjust paths according to your setup
       - /home/<user>/.lnd:/root/.lnd:ro
       - /home/<user>/<path-to>/lndg/data:/app/data:rw
     command:
       - sh
       - -c
+      # Customize network ('mainnet' or 'testnet') and RPC address/port if needed
       - python initialize.py -net 'mainnet' -rpc '127.0.0.1:10009' -wn && python controller.py runserver 0.0.0.0:8889 > /var/log/lndg-controller.log 2>&1
+    # Use host network mode for simplicity, adjust if needed
     network_mode: "host"
 ```
-### Build and Deploy
+
+**2. Build and Deploy:**
+
 ```bash
-# Deploy the Docker image
+# Build and deploy the Docker container in detached mode
 docker-compose up -d
 
-# Retrieve the admin password for login
-nano data/lndg-admin.txt
+# Retrieve the admin password for the initial login
+cat data/lndg-admin.txt
 ```
-- **This example configuration will host LNDg at http://0.0.0.0:8889. Use the machine IP to reach the LNDg instance.**  
-- **Log in to LNDg using the provided password and the username `lndg-admin`.**
 
-### Updating
+- This example configuration will host LNDg at `http://<your-machine-ip>:8889`.
+- Log in to LNDg using the username `lndg-admin` and the password retrieved from `data/lndg-admin.txt`.
+
+### Manual Installation
+
+This method provides a hands-on approach to setting up LNDg.
+
+**1. Install LNDg:**
+
 ```bash
+# Clone the repository
+git clone https://github.com/cryptosharks131/lndg.git
+
+# Change directory
+cd lndg
+
+# Ensure Python virtualenv is installed (example for Debian/Ubuntu)
+sudo apt update && sudo apt install -y virtualenv
+
+# Set up a Python 3 virtual environment
+virtualenv -p python3 .venv
+
+# Activate the virtual environment (syntax might vary based on shell)
+# source .venv/bin/activate  # For bash/zsh
+# .\.venv\Scripts\activate  # For Windows PowerShell
+
+# Install required dependencies
+.venv/bin/pip install -r requirements.txt
+
+# Initialize settings (use --help for options)
+# Add -wn or --whitenoise to serve static files if not using a separate webserver
+.venv/bin/python initialize.py -wn
+
+# Install whitenoise if the -wn flag was used
+.venv/bin/pip install whitenoise
+
+# Retrieve the admin password
+cat data/lndg-admin.txt
+
+# Run the development server (adjust IP/port if needed)
+.venv/bin/python manage.py runserver 0.0.0.0:8889
+```
+
+- The initial login user is `lndg-admin`. The password is in `data/lndg-admin.txt`.
+- Access LNDg at `http://<your-machine-ip>:8889`.
+
+**2. Setup Backend Controller:**
+
+The `controller.py` script manages backend database updates, automated rebalancing, HTLC stream data, and p2p trade secrets. Set it up to run persistently using `systemd` (recommended) or `supervisord`.
+
+- **Systemd:**
+  - Option 1 (Script): `sudo bash systemd.sh`
+  - Option 2 (Manual): [Manual Systemd Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)
+
+- **Supervisord:**
+  - Configure Supervisord: `.venv/bin/python initialize.py -sd`
+  - Install Supervisord: `.venv/bin/pip install supervisor`
+  - Start Supervisord: `supervisord`
+
+Alternatively, use your preferred task scheduler (like `cron`) to run `controller.py`.
+
+## Updating LNDg
+
+### Docker Update
+
+```bash
+# Navigate to the lndg directory
+cd lndg
+
+# Stop the current containers
 docker-compose down
+
+# Rebuild the image without using cache
 docker-compose build --no-cache
+
+# Start the updated containers
 docker-compose up -d
 
-# OPTIONAL: remove unused builds and objects
+# OPTIONAL: Remove unused Docker objects
 docker system prune -f
 ```
-## Manual Installation
 
-### Step 1 - Install LNDg
-
-1. Clone the repository: `git clone https://github.com/cryptosharks131/lndg.git`
-2. Change the directory into the repository: `cd lndg`
-3. Ensure you have Python virtualenv installed: `sudo apt install virtualenv`
-4. Set up a Python 3 virtual environment: `virtualenv -p python3 .venv`
-5. Install the required dependencies: `.venv/bin/pip install -r requirements.txt`
-6. Initialize necessary settings for your Django site: `.venv/bin/python initialize.py`
-   1. use `.venv/bin/python initialize.py --help` to see additional options
-   2. add `-wn | --whitenoise` option to serve static _(.js, .css)_ files (required if installing manually)
-      - if **whitenoise** option is provided, you'll need to install it via `.venv/bin/pip install whitenoise`
-7. The initial login user is `lndg-admin`, and the password will be genereted and stored in: `data/lndg-admin.txt`
-8. Run the server using a Python development server: `.venv/bin/python manage.py runserver 0.0.0.0:8889`
-
-### Step 2 - Setup Backend Controller For Data, Automated Rebalancing, HTLC Stream Data and p2p-trade-secrets
-
-The file `controller.py` orchestrates the services needed to update the backend database with the most up-to-date information, rebalance any channels based on your LNDg dashboard settings, listen for any failure events in your HTLC stream and serves the p2p trade secrets.
-
-**Recommended Setup with Supervisord (least setup) or Systemd (most compatible):**
-
-1. **Systemd (2 options)**
-   - Option 1 - Bash script install: `sudo bash systemd.sh`
-   - Option 2 - [Manual Setup Instructions](https://github.com/cryptosharks131/lndg/blob/master/systemd.md)
-
-2. **Supervisord**
-   - Configure Supervisord by running: `.venv/bin/python initialize.py -sd`
-   - Install Supervisord: `.venv/bin/pip install supervisor`
-   - Start Supervisord: `supervisord`
-
-
-Alternatively, you may create your own task for these files using your preferred tool (task scheduler, cron job, etc).
-
-### Updating
-
-1. Make sure you are in the LNDg folder: `cd lndg`
-2. Pull the new files from the repository: `git pull`
-3. Migrate any database changes: `.venv/bin/python manage.py migrate`
-
-### Notes
-
-1. If you're not using default settings for LND or you'd like to run on a network other than `mainnet`, use the correct flags in step 6 (see `initialize.py --help`) or edit the variables directly in `lndg/settings.py`.
-2. You can not run the development server outside of DEBUG mode due to static file issues. To address this, install and configure Whitenoise by running the following command: `.venv/bin/pip install whitenoise && rm lndg/settings.py && .venv/bin/python initialize.py -wn`. (see [6.1](#step-1---install-lndg))
-3. You can always update the `lndg/settings.py` file by directly modifying it or re-running the script `.venv/bin/python initialize.py <options> -f`. (see [6](#step-1---install-lndg))
-4. If you plan to run this site continuously, it's advisable to set up a proper web server to host it (see Nginx below).
-5. You can manage your login credentials from the admin page, accessible at `http:<your-hosting-lndg-ip:port>/lndg-admin`.
-6. If you encounter issues accessing the site, ensure that any firewall is open on port 8889, where LNDg is running.
-
-### Using A Webserver
-You can serve the dashboard at all times using a webserver instead of the development server. Using a webserver will serve your static files, and installing whitenoise is not required when running in this manner. Any webserver can be used to host the site if configured properly. A bash script has been included to help aid in the setup of an nginx webserver.
-
-To set up the nginx webserver, run the following command:
+### Manual Update
 
 ```bash
-sudo bash nginx.sh
-```
-### When updating
-When updating your LNDg installation, follow the same steps as described above. However, after updating, you will also need to restart the uWSGI service to apply the changes to the user interface (UI).
+# Navigate to the lndg directory
+cd lndg
 
-To restart the uWSGI service, use the following command:
+# Pull the latest changes
+git pull
+
+# Activate the virtual environment if not already active
+# source .venv/bin/activate
+
+# Install any new dependencies
+.venv/bin/pip install -r requirements.txt
+
+# Apply any database migrations
+.venv/bin/python manage.py migrate
+
+# Restart the LNDg service (web server and controller)
+# Example for systemd:
+# sudo systemctl restart lndg-web.service
+# sudo systemctl restart lndg-controller.service
+# If using supervisord:
+# supervisorctl restart lndg-web
+# supervisorctl restart lndg-controller
+# If using the development server, stop and restart it:
+# .venv/bin/python manage.py runserver 0.0.0.0:8889
+```
+
+If using a webserver like Nginx with uWSGI (see below), restart the uWSGI service:
 
 ```bash
 sudo systemctl restart uwsgi.service
 ``` 
 
-### Postgres
-Optionally, you may chose to run LNDg using a postgres database instead of the default sqlite3.
+## Configuration
 
-A setup guide can be found here: [Postgres Setup](https://github.com/cryptosharks131/lndg/blob/master/postgres.md)
+### Backend Controller Setup
+
+As mentioned in the [Manual Installation](#manual-installation), the `controller.py` needs to run persistently. Use `systemd` or `supervisord` for reliable operation.
+
+### Webserver Setup (Optional)
+
+For continuous operation and better performance, especially in non-DEBUG mode, use a dedicated webserver like Nginx instead of the Django development server. Using a webserver also handles static file serving, making the `whitenoise` dependency optional.
+
+A helper script is included for setting up Nginx:
+
+```bash
+sudo bash nginx.sh
+```
+
+Remember to restart the `uwsgi.service` after updates if using this setup.
+
+### PostgreSQL Setup (Optional)
+
+LNDg uses SQLite3 by default. You can configure it to use a PostgreSQL database for potentially better performance in high-usage scenarios.
+
+See the [Postgres Setup Guide](https://github.com/cryptosharks131/lndg/blob/master/postgres.md) for instructions.
+
+### Important Notes
+
+1.  **Custom LND Settings:** If not using default LND settings (e.g., non-default ports, network), use flags during `initialize.py` (check `--help`) or edit `lndg/settings.py` directly.
+2.  **Static Files (Manual Install):** If running manually *without* a separate webserver (like Nginx), you MUST use the `-wn` flag with `initialize.py` and install `whitenoise` to serve static files (.css, .js). Running the development server (`manage.py runserver`) with `DEBUG=False` without `whitenoise` or a webserver will cause issues.
+3.  **Updating Settings:** Modify `lndg/settings.py` directly or re-run `initialize.py <options> -f` to update settings.
+4.  **Admin Credentials:** Manage login credentials via the admin interface at `http://<your-lndg-ip:port>/lndg-admin`.
+5.  **Firewall:** Ensure your firewall allows incoming connections on the port LNDg is running on (default: 8889).
 
 ## Key Features
 
 ### Track Peer Events
-LNDg will track the changes your peers make to channel policies you have in open channels and any connection events that may happen with those channels.
 
-### Batch Opens
-You can use LNDg to batch open up to 10 channels at a time with a single transaction. This can help to significantly reduce the channel open fees incurred when opening multiple channels.
+Monitor changes your peers make to channel policies and track connection events for your open channels.
+
+### Batch Channel Opens
+
+Open up to 10 channels simultaneously in a single transaction, potentially reducing on-chain fees.
 
 ### Watch Tower Management
-You can use LNDg to add, monitor, or remove watch towers from the LND node.
 
-### Suggests Fee Rates
-LNDg will make suggestions on an adjustment to the current set outbound fee rate for each channel. This uses historical payment and forwarding data over the last 7 days to drive suggestions. You can use the Auto-Fees feature in order to automatically act upon the suggestions given.
+Add, monitor, and remove watchtowers connected to your LND node.
 
-You may see another adjustment right after setting the new suggested fee rate on some channels. This is normal, and you should wait ~24 hours before changing the fee rate again on any given channel.
+### Fee Rate Suggestions
 
-### Suggests New Peers
-LNDg will make suggestions for new peers to open channels to based on your node's successful routing history.
+Receive suggestions for adjusting outbound fee rates based on the last 7 days of payment and forwarding data. Enable Auto-Fees to act on these suggestions automatically. Note: Allow ~24 hours after a manual change before making another adjustment on the same channel.
 
-#### There are two unique values in LNDg:
-1. Volume Score - A score based upon both the count of transactions and the volume of transactions routed through the peer
-2. Savings By Volume (ppm) - The amount of sats you could have saved during rebalances if you were peered directly with this node over the total amount routed through the peer
+### New Peer Suggestions
+
+Get recommendations for new peers based on your node's successful routing history, considering:
+- **Volume Score:** Based on the count and volume of transactions routed through the peer.
+- **Savings By Volume (ppm):** Estimated sats saved on rebalances if peered directly, relative to the volume routed through the peer.
 
 ### Channel Performance Metrics
-#### LNDg will aggregate your payment and forwarding data to provide the following metrics:
-1. Outbound Flow Details - This shows the amount routed outbound next to the amount rebalanced in
-2. Revenue Details - This shows the revenue earned on the left, the profit (revenue - cost) in the middle, and the assisted revenue (amount earned due to this channel's inbound flow) on the right
-3. Inbound Flow Details - This shows the amount routed inbound next to the amount rebalanced out
-4. Updates - This is the number of updates the channel has had and is directly correlated to the space it takes up in channel.db
 
-#### LNDg also provides a P&L page in order to track overall metrics and profitability of the node.
+Aggregate payment and forwarding data provides:
+1.  **Outbound Flow:** Amount routed outbound vs. amount rebalanced in.
+2.  **Revenue:** Total earned, profit (revenue - cost), and assisted revenue (earned due to this channel's inbound).
+3.  **Inbound Flow:** Amount routed inbound vs. amount rebalanced out.
+4.  **Updates:** Number of channel updates (correlates to `channel.db` size).
+
+A dedicated P&L page tracks overall node metrics and profitability.
 
 ### Password Protected Login
-The initial login username is `lndg-admin` but can be easily modified by going to the page found here: `/lndg-admin`
 
-### Suggests AR Actions
-LNDg will make suggestions for actions to take around Auto-Rebalancing.
+Initial username is `lndg-admin`. Change it via the `/lndg-admin` page.
+
+### Auto-Rebalance Action Suggestions
+
+LNDg suggests actions to optimize Auto-Rebalancing (AR).
 
 ### AR-Autopilot Setting
-LNDg will automatically act upon the suggestions it makes on the Suggests AR Actions page.
+
+Enable this setting (`AR-Autopilot`) to automatically implement the suggestions from the AR Actions page.
 
 ### HTLC Failure Stream
-LNDg will listen for failure events in your htlc stream and record them to the dashboard when they occur.
+
+Listen for and record HTLC failure events to the dashboard.
 
 ### API Backend
-The following data can be accessed at the /api endpoint:  
-`payments`  `paymenthops`  `invoices`  `forwards`  `onchain`  `peers`  `channels`  `rebalancer`  `settings` `pendinghtlcs` `failedhtlcs`
+
+Access data programmatically via the `/api` endpoint. Available resources include:
+`payments`, `paymenthops`, `invoices`, `forwards`, `onchain`, `peers`, `channels`, `rebalancer`, `settings`, `pendinghtlcs`, `failedhtlcs`.
+Append `?format=json` for JSON output.
 
 ### Peer Reconnection
-LNDg will automatically try to resolve any channels that are seen as inactive, no more than every 3 minutes per peer.
+
+Automatically attempts to reconnect to peers associated with inactive channels (max once every 3 minutes per peer).
 
 ## Auto-Fees
-### Here are some additional notes to help you get started using Auto-Fees (AF).
-LNDg can update your fees on a channel every 24 hours (default) if there is a suggestion listed on the fee rates page. You must make sure the `AF-Enabled` setting is set to `1` and that individual channels you want to be managed are also set to `enabled`. You can view a log of AF changes by opening the Autofees tab.
 
-You can customize some settings of AF by updating the following settings:  
-`AF-FailedHTLCs` - The minimum daily failed HTLCs count in which we could trigger a fee increase (depending on flow)  
-`AF-Increment` - The increment size of our potential fee changes, all fee suggestions will be a multiple of this value  
-`AF-MaxRate` - The maximum fee rate in which we can adjust to  
-`AF-MinRate` - The minimum fee rate in which we can adjust to  
-`AF-Multiplier` - Multiplier to increase incremental movements, the larger the multiplier, the larger the incremental moves  
-`AF-UpdateHours` - Change the number of hours that must pass since the last fee rate change before AF may adjust the fee rate again  
-`AF-LowLiqLimit` - The liquidity (%) a channel must drop below before running the `Low Liquidity` fee algorithm  
-`AF-ExcessLimit` - The liquidity (%) a channel must go above before running the `Excess Liquidity` fee algorithm  
+LNDg can automatically update channel fees based on performance suggestions.
 
-AF Notes:
-1. AF changes only trigger after `AF-UpdateHours` hours of no fee updates via LNDg
-2. Channels with less than `AF-LowLiqLimit` outbound liquidty will increase based on failed HTLC counts and incoming flow
-3. Channels with more than `AF-ExcessLimit` outbound liquidty will decrease based on no flows or assisted revenues
-4. Channels between the previous two groups will increase or decrease based on flow
+### Auto-Fees Settings
 
-## Auto-Rebalancer - [Quick Start Guide](https://github.com/cryptosharks131/lndg/blob/master/quickstart.md)
-### Here are some additional notes to help you better understand the Auto-Rebalancer (AR).
+Customize Auto-Fees (AF) behavior via the settings page:
+- `AF-Enabled`: Set to `1` to enable Auto-Fees globally. Individual channels must also be enabled.
+- `AF-FailedHTLCs`: Minimum daily failed HTLC count to potentially trigger a fee increase (based on flow).
+- `AF-Increment`: Base increment size (ppm) for fee changes. Suggestions are multiples of this value.
+- `AF-MaxRate`: Maximum fee rate (ppm) AF can set.
+- `AF-MinRate`: Minimum fee rate (ppm) AF can set.
+- `AF-Multiplier`: Multiplies the `AF-Increment` for larger fee adjustments.
+- `AF-UpdateHours`: Minimum hours between AF adjustments for a single channel (default: 24).
+- `AF-LowLiqLimit`: Outbound liquidity (%) threshold below which the "Low Liquidity" fee algorithm applies.
+- `AF-ExcessLimit`: Outbound liquidity (%) threshold above which the "Excess Liquidity" fee algorithm applies.
 
-The objective of the Auto-Rebalancer is to "refill" the liquidity on the local side (i.e. OUTBOUND) of profitable and lucrative channels.  So that, when a forward comes in from another node there is always enough liquidity to route the payment and in return collect the desired routing fees.
+### Auto-Fees Notes
 
-1. The AR variable `AR-Enabled` must be set to 1 (enabled) in order to start looking for new rebalance opportunities. (default=0)
-2. The AR variable `AR-Target%` defines the % size of the channel capacity you would like to use for rebalance attempts. Example: If a channel size is 1M Sats and AR-Target% = 0.05 LNDg will select an amount of 5% of 1M = 50K for rebalancing. (default=5)
-3. The AR variable `AR-Time` defines the maximum amount of time (minutes) we will spend looking for a route. (default=5)
-4. The AR variable `AR-MaxFeeRate` defines the maximum amount in ppm a rebalance attempt can ever use for a fee limit. This is the maximum limit to ensure the total fee does not exceed this amount. Example: AR-MaxFeeRate = 800 will ensure the rebalance fee is always less than 800 ppm. (default=100)
-5. The AR variable `AR-MaxCost%	` defines the maximum % of the ppm being charged on the `INBOUND` receving channel that will be used as the fee limit for the rebalance attempt. Example: If your fee to node A is 1000ppm and AR-MaxCost% = 0.5 LNDg will use 50% of 1000ppm = 500ppm max fee limit for rebalancing. (default=65)
-6. The AR variable `AR-Outbound%` helps identify all the channels that would be a candidate for rebalancing targetd channels. Rebalances will only consider any `OUTBOUND` channel that has more outbound liquidity than the current `AR-Outbound%` setting AND the channel is not currently being targeted as an `INBOUND` receving channel for rebalances.  Example: AR-Outboud% = 0.6 would make all channels with an outbound capacity of 60% or more AND not enabled under AR on the channel line to be a candidate for rebalancing. (default=75)
-7. Channels need to be targeted in order to be refilled with outbound liquidity and in order to control costs as a first prioirty, all calculations are based on the specific `INBOUND` receving channel.
-8. Enable `INBOUND` receving channels you would like to target and set an inbound liquidity `Target%` on the specific channel. Rebalance attempts will be made until inbound liquidity falls below this channel settting.
-9. The `INBOUND` receving channel is the channel that later routes out real payments and earns back the fees paid. Target channels that have lucrative outbound flows.
-10. Attempts that are successful or attempts with only incorrect payment information are tried again immediately. Example: If a rebalancing for 50k was sucessful, AR will try another 50k immediately with the same parameters.
-11. Attempts that fail for other reasons will not be tried again for 30 minutes after the stop time. This allows the liquidity in the network to move around for 30 mins before trying another rebalancing attempt that previously failed. The 30 minute window can be customized by updating the `AR-WaitPeriod` setting.
+1.  AF adjustments occur only if `AF-UpdateHours` have passed since the last LNDg fee update for that channel.
+2.  Channels below `AF-LowLiqLimit`% outbound liquidity may see fee increases based on failed HTLCs and incoming flow.
+3.  Channels above `AF-ExcessLimit`% outbound liquidity may see fee decreases based on lack of flow or assisted revenue.
+4.  Channels between these limits adjust based on overall flow patterns.
+5.  View AF change history in the "Autofees" tab.
 
-Additional customization options:
-1. `AR-Autopilot` - Automatically act upon suggestions on the AR Actions page. (default=0)
-2. `AR-WaitPeriod` - How much time (minutes) AR should wait before scheduling a channel that has recently failed an attempt. (default=30)
-3. `AR-Variance` - How much to randomly vary the target rebalance amount by this % of the target amount.  (default=0)
-4. `AR-Inbound%` - The default `iTarget%` value to assign to new channels.  (default=100)
-5. `AR-APDays` - The number of days of historical data AP should use to decide actions to take. (default=7)
-6. `AR-Workers` - Define how many parallel rebalances to spin up at once. (default=1)
+## Auto-Rebalancer
 
-#### Steps to start the Auto-Rebalancer:
-1. Update Channel Specific Settings  
-  a. Go to Active Channels section  
-  b. Find the channels you would like to activate for rebalancing (this refills its outbound)  
-  c. On far right column Click the Enable button to activate rebalancing  
-  d. The dashboard will refresh and show AR-Target 100%  
-  e. Adjust the AR-Target to desired % of liquidity you want to keep on remote INBOUND side. Example select 0.60 if you want 60% of the channel capacity on Remote/INBOUND side  which would mean that there is 40% on Local/OUTBOUND side  
-  f. Hit Enter  
-  g. Dashboard will refresh in the browser  
-  h. Make sure you enable all channels that are valuable outbound routes for you to ensure they are not used for filling up routes you have targeted (you can enable and target 100% in order to avoid any action on this channel from the rebalancer)  
+Automatically manage channel liquidity to maintain outbound capacity on profitable routes. See the [Quick Start Guide](https://github.com/cryptosharks131/lndg/blob/master/quickstart.md).
 
-2. Update Global Settings  
-  a. Go to section Update Auto Rebalancer Settings  
-  b. Select the global settings (sample below):  
-  c. Click OK button to submit  
-  d. Once enabled is set to 1 in the global settings - the rebalancer will become active
-  ```
-  Enabled: 1
-  Target Amount (%): 0.03
-  Target Time (min): 3
-  Target Outbound Above (%): 0.4
-  Global Max Fee Rate (ppm): 500
-  Max Cost (%): 0.6
-  ```
-3. Go to section Last 10 Rebalance Requests - that will show the list of the rebalancing queue and status.  
+### Understanding Auto-Rebalancer
 
-If you want a channel not to be picked for rebalancing (i.e. it is already full with OUTBOUND capacity that you desire), enable the channel and set the AR-Target% to 100. The rebalancer will ignore the channel while selecting the channels for outbound candidates and since its INBOUND can never be above 100% it will never trigger a rebalance.  
+The goal is to move funds (rebalance) *into* the local side (outbound capacity) of channels that frequently route payments *out* successfully. This ensures liquidity is available to earn routing fees.
+
+### Auto-Rebalancer Settings
+
+Configure Auto-Rebalancer (AR) globally:
+- `AR-Enabled`: Set to `1` to activate AR (default: 0).
+- `AR-Target%`: Default rebalance amount as a percentage of channel capacity (e.g., 0.05 means 5%). Used if not set per-channel (default: 5).
+- `AR-Time`: Maximum time (minutes) to search for a rebalance route (default: 5).
+- `AR-MaxFeeRate`: Absolute maximum fee rate (ppm) allowed for any rebalance attempt (default: 100).
+- `AR-MaxCost%`: Maximum rebalance fee limit as a percentage of the *target inbound channel's* current outbound fee rate (e.g., 0.65 means 65%) (default: 65).
+- `AR-Outbound%`: Channels with *more* outbound liquidity than this percentage are considered potential *sources* for rebalancing funds *from* (default: 75). They must also *not* be targeted for receiving inbound liquidity.
+
+### Additional Customization Options
+
+- `AR-Autopilot`: Set to `1` to automatically act on AR suggestions (default: 0).
+- `AR-WaitPeriod`: Time (minutes) to wait before retrying a rebalance on a channel after a failure (default: 30).
+- `AR-Variance`: Randomly vary the target rebalance amount by this percentage (default: 0).
+- `AR-Inbound%`: Default inbound target (`iTarget%`) for newly monitored channels (default: 100).
+- `AR-APDays`: Number of days of historical data for Autopilot decisions (default: 7).
+- `AR-Workers`: Number of parallel rebalance attempts to run concurrently (default: 1).
+
+### Steps to Start the Auto-Rebalancer
+
+1.  **Configure Target Channels (Receiving Inbound Liquidity):**
+    a. Go to the "Active Channels" section on the LNDg dashboard.
+    b. Identify channels you want to *refill* with outbound liquidity (these are your profitable outbound routes).
+    c. Click the "Enable" button in the far-right column for these target channels.
+    d. The page will refresh, showing `AR-Target: 100%`.
+    e. Adjust the `AR-Target` percentage for each channel. This represents the desired *remote* (inbound) liquidity percentage. E.g., `0.60` means you want 60% inbound / 40% outbound liquidity. Press Enter to save.
+    f. **Important:** Enable *all* channels valuable for outbound routing, even if you don't actively target them for refilling. Set their `AR-Target` to `100%` to prevent AR from using them as a *source* for rebalancing funds *away* from them.
+
+2.  **Update Global Settings:**
+    a. Go to the "Update Auto Rebalancer Settings" section.
+    b. Set `Enabled: 1` to activate the rebalancer.
+    c. Configure other global settings (`Target Amount (%)`, `Target Time (min)`, `Target Outbound Above (%)`, `Global Max Fee Rate (ppm)`, `Max Cost (%)`) as needed.
+    d. Click "OK" to submit.
+
+3.  **Monitor Rebalances:**
+    a. Check the "Last 10 Rebalance Requests" section to view the queue and status of attempts.
+
+**Notes on AR Logic:**
+- Rebalances aim to decrease inbound liquidity below the channel-specific `AR-Target%`.
+- Channels with outbound liquidity *above* the global `AR-Outbound%` are potential *sources* to push funds from, *unless* they are themselves enabled with an `AR-Target`.
+- Successful attempts or failures due to incorrect payment info are retried immediately.
+- Other failures trigger a wait period (`AR-WaitPeriod`) before retrying on that channel.
 
 ## Preview Screens
+
 ### Main Dashboard
 ![image](https://user-images.githubusercontent.com/38626122/148699177-d10d412e-641e-4676-acac-2047e7e2d7a6.png)
 ![image](https://user-images.githubusercontent.com/38626122/148699209-667936fd-c56f-484f-8dd4-75e052c8c14f.png)
@@ -261,26 +389,28 @@ If you want a channel not to be picked for rebalancing (i.e. it is already full 
 ![image](https://user-images.githubusercontent.com/38626122/148699286-0b1d2c13-191a-4c6c-99ae-ce3d8b8ac64d.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809583-db743233-25c1-4d3e-aaec-2a7767de2c9f.png)
 
-### Channel Performance, Peers, Balances, Routes, Keysends and Pending HTLCs All Open In Separate Screens
+### Separate Screens (Performance, Peers, Balances, etc.)
 ![image](https://user-images.githubusercontent.com/38626122/150556928-bb8772fb-14c4-4b7a-865e-a8350aac7f83.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809809-1ed40cfb-9d12-447a-8e5e-82ae79605895.png)
 ![image](https://user-images.githubusercontent.com/38626122/137810021-4f69dcb0-5fce-4062-bc49-e75f5dd0feda.png)
 ![image](https://user-images.githubusercontent.com/38626122/137809882-4a87f86d-290c-456e-9606-ed669fd98561.png)
 ![image](https://user-images.githubusercontent.com/38626122/148699417-bd9fbb49-72f5-4c3f-811f-e18c990a06ba.png)
 
-### Manage Auto-Fees Or Get Suggestions
+### Manage Auto-Fees / Get Suggestions
 ![image](https://user-images.githubusercontent.com/38626122/175364451-a7e2bc62-71bd-4a2d-99f6-6a1f27e5999a.png)
 
 ### Batch Open Channels
 ![image](https://user-images.githubusercontent.com/38626122/175364599-ac894b68-a11d-420b-93b3-3ee8dffc857f.png)
 
-### Suggests Peers To Open With and Rebalancer Actions To Take
+### Suggestions (Peers, Rebalancer Actions)
 ![image](https://user-images.githubusercontent.com/38626122/148699445-88efeacd-3cfc-429c-91d8-3a52ee633195.png)
 ![image](https://user-images.githubusercontent.com/38626122/148699467-62ebbd7d-9f36-4707-88fd-62f2cc2a5506.png)
 
-### Browsable API at `/api` (json format available with url appended with `?format=json`)
+### API Browser (`/api`)
 ![image](https://user-images.githubusercontent.com/38626122/137810278-7f38ac5b-8932-4953-aa4c-9c29d66dce0c.png)
 
-### View Keysend Messages (you can only receive these if you have `accept-keysend=true` in lnd.conf)
+### View Keysend Messages
+*(Requires `accept-keysend=true` in lnd.conf)*
+
 ![image](https://user-images.githubusercontent.com/38626122/134045287-086d56e3-5959-4f5f-a06e-cb6d2ac4957c.png)
 
