@@ -8,14 +8,14 @@
     <small class="w3-round w3-border-small w3-border-grey">{{ chan_id }}</small> <small class="w3-round w3-border-small w3-border-grey">{{ channel.short_chan_id }}</small>
   </h3>
   <span style="padding:1.5px 8px" title="{%if channel.private %}🕶️ Private{%else%}🌐 Public{%endif%} {% if channel.is_active and peer_info.connected %}Connected{%elif not channel.is_open %}Closed{% else %}Disconnected/Inactive{% endif %} Channel" class="w3-round w3-border w3-border-{% if channel.is_active and peer_info.connected %}green{%elif not channel.is_open %}gray{% else %}red{% endif %}">
-    {% if peer_info %}📍{{ peer_info.address }} | 
-    Channel Updates: {{ channel.num_updates|intcomma }} | 
+    {% if peer_info %}📍{{ peer_info.address }} |
+    Channel Updates: {{ channel.num_updates|intcomma }} |
     {% if not channel.is_open %}❌ Closed:{% elif channel.is_active %}Uptime:{% else %}Downtime:{% endif %} {{ channel.last_update|naturaltime|slice:":-4" }} <small class="w3-round w3-border-small w3-border-grey">since {{ channel.last_update }}</small></h6>{% endif %} {%if channel.private %}🕶️{%else%}🌐{%endif%}
   </span>
   <div style="padding-top:5px"/>
   <span style="padding:1.5px 8px;" class="w3-round w3-border w3-border-gray">
     ⛓️ Channel Point: <a href="{{ network_links }}/{{ network }}tx/{{ channel.funding_txid }}" target="_blank">{{ channel.funding_txid }}:{{ channel.output_index }}</a> |
-    Opened In: <a href="{{ network_links }}/{{ network }}block/{{ channel.open_block }}" target="_blank">{{ channel.open_block|intcomma }}</a> | 
+    Opened In: <a href="{{ network_links }}/{{ network }}block/{{ channel.open_block }}" target="_blank">{{ channel.open_block|intcomma }}</a> |
     Opener: {% if channel.initiator == True %}Local{% else %}Remote{% endif %}
   </span>
 </div>
@@ -570,7 +570,7 @@
     let next_failed_htlcs = (await failedhtlcs_task).results
     if(next_failed_htlcs.length<5){
       byId("loadMoreFailedHTLCs").style.display = "none"
-    }    
+    }
     if(next_failed_htlcs.length==0){
       return
     }

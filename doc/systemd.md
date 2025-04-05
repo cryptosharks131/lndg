@@ -4,7 +4,7 @@
 - **This assumes you have installed lndg on the home directory of the user. For example, user `mynode` will have a home directory of `/home/mynode/`.**
 
 ## Backend Controller Setup
-Create a service file for `controller.py`, copying the contents below to the file and filling in the user you would like this to run under.  
+Create a service file for `controller.py`, copying the contents below to the file and filling in the user you would like this to run under.
 `nano /etc/systemd/system/lndg-controller.service`
 ```
 [Unit]
@@ -21,12 +21,12 @@ RestartSec=60s
 [Install]
 WantedBy=multi-user.target
 ```
-Enable and start the service to run the backend controller.  
-`sudo systemctl enable lndg-controller.service`  
+Enable and start the service to run the backend controller.
+`sudo systemctl enable lndg-controller.service`
 `sudo systemctl start lndg-controller.service`
 
 ## Additional Commands
-You can also check on the status, disable or stop the backend controller.  
-`sudo systemctl status lndg-controller.service`  
-`sudo systemctl disable lndg-controller.service`  
-`sudo systemctl stop lndg-controller.service`  
+You can also check on the status, disable or stop the backend controller.
+`sudo systemctl status lndg-controller.service`
+`sudo systemctl disable lndg-controller.service`
+`sudo systemctl stop lndg-controller.service`
