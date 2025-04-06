@@ -112,6 +112,9 @@ cd lndg
 # Ensure Python virtualenv is installed (example for Debian/Ubuntu)
 sudo apt update && sudo apt install -y virtualenv
 
+# Set up a Python 3 virtual environment
+virtualenv -p python3 .venv
+
 # Install required dependencies
 .venv/bin/pip install -r requirements.txt
 
