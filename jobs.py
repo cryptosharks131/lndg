@@ -378,7 +378,7 @@ def update_channels(stub):
             print(f"{datetime.now().strftime('%c')} : [Data] : Error getting graph data for channel {db_channel.chan_id}: {str(e)}")
             if pending_channel: # skip adding new channel to the list, LND may not have added to the graph yet
                 print(f"{datetime.now().strftime('%c')} : [Data] : Waiting for pending channel {db_channel.chan_id} to be added to the graph...")
-                continue 
+                continue
             else:
                 old_fee_rate = None
                 db_channel.local_base_fee = -1 if db_channel.local_base_fee is None else db_channel.local_base_fee
@@ -600,11 +600,15 @@ def auto_fees(stub):
     else:
         LocalSettings(key='AF-Enabled', value='0').save()
         return
-
+    if LocalSettings.objects.filter(key='AF-InboundFees').exists():
+        inbound_enabled = int(LocalSettings.objects.filter(key='AF-InboundFees')[0].value)
+    else:
+        LocalSettings(key='AF-InboundFees', value='0').save()
+        inbound_enabled = False
     try:
         channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
         results_df = af.main(channels)
-        if not results_df.empty: 
+        if not results_df.empty:
             update_df = results_df[results_df['eligible'] == True]
             update_df = update_df[(update_df['adjustment']!=0) | (update_df['inbound_adjustment']!=0)]
             if not update_df.empty:
@@ -615,8 +619,14 @@ def auto_fees(stub):
                     channel_point.funding_txid_str = channel.funding_txid
                     channel_point.output_index = channel.output_index
                     version = stub.GetInfo(ln.GetInfoRequest()).version
-                    if float(version[:4]) >= 0.18:
-                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=channel.local_inbound_base_fee, fee_rate_ppm=int(target_channel['new_inbound_rate']))))
+                    if inbound_enabled and float(version[:4]) >= 0.18:
+                        inbound_fee_rate = int(target_channel['new_inbound_rate'])
+                        # if we are using a discount, then discount our base fee to mirror outbound
+                        if inbound_fee_rate == 0:
+                            inbound_base_fee = 0
+                        else:
+                            inbound_base_fee = -channel.local_base_fee
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=inbound_base_fee, fee_rate_ppm=inbound_fee_rate)))
                         if target_channel['inbound_adjustment'] != 0:
                             print(f"{datetime.now().strftime('%c')} : [Data] : Updating inbound fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_inbound_rate'])}")
                             channel.local_inbound_fee_rate = target_channel['new_inbound_rate']
