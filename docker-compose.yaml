@@ -4,7 +4,7 @@ services:
     volumes:
       - /root/.lnd:/root/.lnd:ro
       - /root/lndg/data:/app/data:rw
-      - /root/lndg/data/lndg-controller.log:/var/log/lndg-controller.log:rw
+      - /root/lndg/data/logs:/var/log:rw
     command:
       - sh
       - -c
