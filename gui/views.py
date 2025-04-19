@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
-from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField
+from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField, ExpressionWrapper, DateTimeField, DurationField
 from django.db.models.functions import Round, TruncDay, Coalesce
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from .forms import *
 from .serializers import *
-from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, PendingChannels, AvoidNodes, PeerEvents, HistFailedHTLC, TradeSales
+from .models import Payments, PaymentHops, Invoices, Forwards, Channels, Rebalancer, LocalSettings, Peers, Onchain, Closures, Resolutions, PendingHTLCs, FailedHTLCs, Autopilot, Autofees, InboundFeeLog, PendingChannels, AvoidNodes, PeerEvents, HistFailedHTLC, TradeSales
 from gui.lnd_deps import lightning_pb2 as ln
 from gui.lnd_deps import lightning_pb2_grpc as lnrpc
 from gui.lnd_deps import router_pb2 as lnr
@@ -684,8 +684,32 @@ def chart(request):
     payments = Payments.objects.filter(status=2).annotate(dt=TruncDay('creation_date')).values('dt').annotate(cost=Sum('fee', output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Value(0))
     invoices = Invoices.objects.filter(state=1, is_revenue=True).annotate(dt=TruncDay('settle_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('amt_paid', output_field=FloatField()), onchain=Value(0))
     forwards = Forwards.objects.annotate(dt=TruncDay('forward_date')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Sum('fee', output_field=FloatField()), onchain=Value(0))
-    onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('amount'))
-    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain).values('dt', 'cost', 'revenue', 'onchain'))
+    onchain = Onchain.objects.annotate(dt=TruncDay('time_stamp')).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('fee'))
+
+    # Estimate blockchain timing parameters
+    first_record = Onchain.objects.order_by('time_stamp').first()
+    first_date = first_record.time_stamp
+    first_block = first_record.block_height
+    last_record = Onchain.objects.order_by('time_stamp').last()
+    last_date = last_record.time_stamp
+    last_block = last_record.block_height
+    time_interval_per_block = timedelta(minutes=10)
+    if last_block > first_block:
+        time_interval_per_block =  (last_date - first_date) / (last_block - first_block)
+    offset = first_date - first_block * time_interval_per_block
+    # Convert close_height to datetime
+    datetime_from_blocks = TruncDay(
+        ExpressionWrapper(
+            offset
+            + ExpressionWrapper(
+                F('close_height') * time_interval_per_block,
+                output_field=DurationField(),
+            ),
+            output_field=DateTimeField()
+        )
+    )
+    closures = Closures.objects.annotate(dt=datetime_from_blocks).values('dt').annotate(cost=Value(0, output_field=FloatField()), revenue=Value(0, output_field=FloatField()), onchain=Sum('closing_costs'))
+    balance = DataFrame.from_records(payments.union(invoices, forwards, onchain, closures).values('dt', 'cost', 'revenue', 'onchain'))
     results = balance.groupby('dt').sum().reset_index().sort_values('dt')
     return Response(results.to_dict(orient='records'))
 
@@ -1053,6 +1077,305 @@ def opens(request):
             'graph_links': graph_links()
         }
         return render(request, 'open_list.html', context)
+    else:
+        return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def unprofitable_channels(request):
+    if request.method == 'GET':
+        # Get the timeframe from the request, default to 30 days
+        timeframe = request.GET.get('timeframe', '30')
+        timeframe_options = {
+            '1': {'days': 1, 'name': '1 Day'},
+            '7': {'days': 7, 'name': '7 Days'},
+            '30': {'days': 30, 'name': '30 Days'},
+            '90': {'days': 90, 'name': '90 Days'}
+        }
+
+        selected_timeframe = timeframe_options.get(timeframe, timeframe_options['30'])
+        filter_date = datetime.now() - timedelta(days=selected_timeframe['days'])
+
+        # Get active channels in a single query
+        channels = Channels.objects.filter(is_active=True, is_open=True)
+        channel_ids = [c.chan_id for c in channels]
+
+        # Get current block height once
+        try:
+            stub = lnrpc.LightningStub(lnd_connect())
+            current_block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
+        except Exception as e:
+            print(f"Error getting current block height: {e}")
+            # Handle error appropriately, maybe return an error message or default height
+            current_block_height = 0 # Or some other fallback
+
+        # Define Age Thresholds and Max Bonus
+        VERY_NEW_DAYS = 7
+        ESTABLISHED_DAYS = 30
+        MAX_AGE_BONUS = 2.0
+
+        # Dictionary to store metrics for each channel
+        channel_metrics_dict = {chan_id: {
+            'routed_out_sats': 0,
+            'last_routing': None,
+            'last_routing_amount': 0,
+            'rebalanced_out_sats': 0,
+            'last_rebalance': None,
+            'last_rebalance_amount': 0,
+            'fee_revenue': 0,
+            'rebalance_fee_cost': 0,
+            'assisted_revenue': 0
+        } for chan_id in channel_ids}
+
+        # 1. Get outbound forwarding stats (routing out)
+        out_forwards = Forwards.objects.filter(
+            chan_id_out__in=channel_ids,
+            forward_date__gte=filter_date
+        )
+
+        # Calculate total fees and amounts
+        for forward in out_forwards:
+            chan_id = forward.chan_id_out
+            metrics = channel_metrics_dict[chan_id]
+
+            # Update routed out sats
+            metrics['routed_out_sats'] += int(forward.amt_out_msat / 1000) if forward.amt_out_msat else 0
+
+            # Update fee revenue
+            metrics['fee_revenue'] += forward.fee if forward.fee else 0
+
+            # Track last routing event
+            if metrics['last_routing'] is None or forward.forward_date > metrics['last_routing']:
+                metrics['last_routing'] = forward.forward_date
+                metrics['last_routing_amount'] = int(forward.amt_out_msat / 1000) if forward.amt_out_msat else 0
+
+        # 2. Get inbound forwarding stats (assisted revenue)
+        in_forwards = Forwards.objects.filter(
+            chan_id_in__in=channel_ids,
+            forward_date__gte=filter_date
+        )
+
+        for forward in in_forwards:
+            chan_id = forward.chan_id_in
+            channel_metrics_dict[chan_id]['assisted_revenue'] += forward.fee if forward.fee else 0
+
+        # 3. Get outbound rebalance data - using chan_out to match channels view
+        rebalance_payments = Payments.objects.filter(
+            chan_out__in=channel_ids,  # This is the key change - using chan_out instead of rebal_chan
+            creation_date__gte=filter_date,
+            status=2,  # Successful payments
+            rebal_chan__isnull=False  # This identifies it as a rebalance
+        )
+
+        for payment in rebalance_payments:
+            chan_id = payment.chan_out  # Using chan_out for outbound rebalances
+            metrics = channel_metrics_dict[chan_id]
+
+            # Update rebalanced out sats
+            metrics['rebalanced_out_sats'] += payment.value if payment.value else 0
+
+            # Update rebalance fee cost
+            metrics['rebalance_fee_cost'] += payment.fee if payment.fee else 0
+
+            # Track last rebalance event
+            if metrics['last_rebalance'] is None or payment.creation_date > metrics['last_rebalance']:
+                metrics['last_rebalance'] = payment.creation_date
+                metrics['last_rebalance_amount'] = payment.value if payment.value else 0
+
+        # Calculate normalized metrics for each channel
+        outbound_activities = []
+        outbound_ratios = []  # NEW: Track outbound activity as a ratio of channel capacity
+        assisted_revenues = []
+        fee_rates = []
+
+        for chan_id, metrics in channel_metrics_dict.items():
+            # Get channel object to access capacity
+            channel_obj = next((c for c in channels if c.chan_id == chan_id), None)
+            if channel_obj:
+                total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
+                outbound_activities.append(total_outbound)
+
+                # Calculate outbound ratio (outbound activity / channel capacity)
+                capacity = channel_obj.capacity or 1  # Avoid division by zero
+                outbound_ratio = total_outbound / capacity
+                outbound_ratios.append(outbound_ratio)
+
+                assisted_revenues.append(metrics['assisted_revenue'])
+                fee_rate = getattr(channel_obj, 'local_fee_rate', 0) or 0
+                fee_rates.append(fee_rate)
+
+        # Find min/max values for normalization
+        max_outbound = max(outbound_activities) if outbound_activities else 1
+        max_outbound_ratio = max(outbound_ratios) if outbound_ratios else 1
+        max_assisted = max(assisted_revenues) if assisted_revenues else 1
+        max_fee_rate = max(fee_rates) if fee_rates else 1000
+
+        # Thresholds for high/medium/low classifications
+        # NEW: Use ratio-based thresholds for activity
+        high_ratio_threshold = max(max_outbound_ratio * 0.7, 0.5)  # At least 50% of capacity or 70% of max ratio
+        medium_ratio_threshold = max(max_outbound_ratio * 0.3, 0.2)  # At least 20% of capacity or 30% of max ratio
+        high_assisted_threshold = max_assisted * 0.7
+        medium_assisted_threshold = max_assisted * 0.3
+        high_fee_threshold = max(max_fee_rate, 1000) * 0.7
+        medium_fee_threshold = max(max_fee_rate, 1000) * 0.3
+
+        # Build the final channel metrics list
+        channel_metrics = []
+
+        for channel in channels:
+            chan_id = channel.chan_id
+            metrics = channel_metrics_dict[chan_id]
+
+            # Calculate profit (fee revenue - rebalance costs)
+            profit = metrics['fee_revenue'] - metrics['rebalance_fee_cost']
+
+            # Format last routing and rebalance for display
+            last_routing = {
+                'date': metrics['last_routing'],
+                'amount': metrics['last_routing_amount']
+            } if metrics['last_routing'] else None
+
+            last_rebalance = {
+                'date': metrics['last_rebalance'],
+                'amount': metrics['last_rebalance_amount']
+            } if metrics['last_rebalance'] else None
+
+            # Calculate local ratio (percentage of capacity that is local balance)
+            local_ratio = channel.local_balance / channel.capacity if channel.capacity > 0 else 0
+            local_ratio_pct = round(local_ratio * 100, 2)
+
+            # Get activity metrics
+            routing_out = metrics['routed_out_sats']
+            rebalancing_out = metrics['rebalanced_out_sats']
+            total_outbound = routing_out + rebalancing_out
+            assisted_revenue = metrics['assisted_revenue']
+
+            # NEW: Calculate outbound ratio (outbound activity / channel capacity)
+            outbound_ratio = total_outbound / channel.capacity if channel.capacity > 0 else 0
+
+            # Get fee rate
+            local_fee_rate = getattr(channel, 'local_fee_rate', 0) or 0
+
+            # Calculate priority score based on activity and fees
+            # Lower score = better (less stuck), higher score = worse (more stuck)
+            # We'll use a score from 0-7 matching your priority list
+
+            # Start with worst score
+            priority_score = 7.0
+
+            # Check conditions using ratio-based thresholds
+            if outbound_ratio > high_ratio_threshold and local_fee_rate > high_fee_threshold:
+                # 1) High routing out ratio with high local_fee_rate
+                priority_score = 1.0
+            elif outbound_ratio > high_ratio_threshold and assisted_revenue > high_assisted_threshold:
+                # 2) High rebalancing out ratio with high assisted revenue
+                priority_score = 2.0
+            elif outbound_ratio > medium_ratio_threshold and local_fee_rate > medium_fee_threshold:
+                # 3) Medium routing out ratio with medium local_fee_rate
+                priority_score = 3.0
+            elif outbound_ratio > medium_ratio_threshold and assisted_revenue > medium_assisted_threshold:
+                # 4) Medium rebalancing out ratio with medium assisted revenue
+                priority_score = 4.0
+            elif outbound_ratio > 0 and local_fee_rate > 0:
+                # 5) Low routing out ratio and low local_fee_rate
+                priority_score = 5.0
+            elif outbound_ratio > 0 and assisted_revenue > 0:
+                # 6) Low rebalancing out ratio and low assisted revenue
+                priority_score = 6.0
+            # else: 7) No activity and no compensation (already set as default)
+
+            # Apply assisted revenue bonus
+            if assisted_revenue > high_assisted_threshold:
+                # Significant bonus for high assisted revenue
+                assisted_bonus = 1.5
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            elif assisted_revenue > medium_assisted_threshold:
+                # Moderate bonus for medium assisted revenue
+                assisted_bonus = 0.75
+                priority_score = max(1.0, priority_score - assisted_bonus)
+            elif assisted_revenue > 0:
+                # Small bonus for any assisted revenue
+                assisted_bonus = 0.25
+                priority_score = max(1.0, priority_score - assisted_bonus)
+
+            # Apply local liquidity adjustment
+            # If local_ratio is low, reduce the penalty (improve the score)
+            low_local_threshold = 0.2  # 20% or less is considered low local liquidity
+            high_local_threshold = 0.8  # 80% or more is considered high local liquidity
+
+            if local_ratio <= low_local_threshold:
+                # Significant improvement for channels with very low local liquidity
+                local_liquidity_adjustment = 3.0 * (1 - (local_ratio / low_local_threshold))
+                priority_score = max(1.0, priority_score - local_liquidity_adjustment)
+            elif local_ratio >= high_local_threshold:
+                # Slight penalty for channels with very high local liquidity
+                local_liquidity_adjustment = 0.5 * ((local_ratio - high_local_threshold) / (1 - high_local_threshold))
+                priority_score = min(7.0, priority_score + local_liquidity_adjustment)
+
+            age_bonus = 0.0
+            if current_block_height > 0 and channel.chan_id: # Ensure we have data
+                try:
+                    opening_block_height = int(channel.chan_id) >> 40
+                    if opening_block_height > 0: # Ensure valid opening height
+                        channel_age_blocks = max(0, current_block_height - opening_block_height)
+                        channel_age_days = channel_age_blocks / 144 # Approx days
+
+                        if channel_age_days < VERY_NEW_DAYS:
+                            # Max bonus for very new channels
+                            age_bonus = MAX_AGE_BONUS
+                        elif channel_age_days < ESTABLISHED_DAYS:
+                            # Linearly decreasing bonus for channels between 7 and 30 days
+                            age_progress = (channel_age_days - VERY_NEW_DAYS) / (ESTABLISHED_DAYS - VERY_NEW_DAYS)
+                            age_bonus = MAX_AGE_BONUS * (1 - age_progress)
+                        # else: age_bonus remains 0 for established channels
+
+                except Exception as e:
+                    # Handle potential errors during age calculation gracefully
+                    print(f"Error calculating age for chan_id {channel.chan_id}: {e}")
+                    channel_age_days = -1 # Indicate unknown age
+            else:
+                 channel_age_days = -1 # Indicate unknown age if block height or chan_id missing
+
+
+            # Apply the age bonus, ensuring score doesn't go below 1.0
+            priority_score = max(1.0, priority_score - age_bonus)
+
+            # Normalize to 0-1 scale (divide by 7)
+            smart_stuck_index = round(priority_score / 7.0, 2)
+
+            # Add metrics to the list
+            channel_metrics.append({
+                'chan_id': chan_id,
+                'alias': channel.alias or "---",
+                'routed_out_sats': routing_out,
+                'last_routing': last_routing,
+                'rebalanced_out_sats': rebalancing_out,
+                'last_rebalance': last_rebalance,
+                'profit': profit,
+                'assisted_revenue': assisted_revenue,
+                'initiator': channel.initiator,
+                'capacity': channel.capacity,
+                'capacity_millions': round(channel.capacity / 1000000, 1),
+                'local_balance': channel.local_balance,
+                'remote_balance': channel.remote_balance,
+                'local_ratio': local_ratio_pct,
+                'stuck_index': smart_stuck_index,
+                'local_fee_rate': local_fee_rate,
+                'outbound_ratio': round(outbound_ratio * 100, 2),  # Add this to show the ratio as percentage
+                'priority_rank': round(priority_score, 1),  # Shows the exact ranking with adjustment
+                'age_days': round(channel_age_days) if channel_age_days >= 0 else 'N/A' # Add age for display
+            })
+
+        # Sort by profit (ascending to show least profitable first)
+        channel_metrics.sort(key=lambda x: x['profit'])
+
+        context = {
+            'channels': channel_metrics,
+            'timeframe': timeframe,
+            'timeframe_name': selected_timeframe['name'],
+            'timeframe_options': timeframe_options
+        }
+
+        return render(request, 'unprofitable_channels.html', context)
     else:
         return redirect('home')
 
@@ -1439,18 +1762,40 @@ def autopilot(request):
         return redirect('home')
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
-def autofees(request):
+def outbound_fee_log(request):
     if request.method == 'GET':
         try:
             chan_id = request.GET.urlencode()[1:]
             filter_7d = datetime.now() - timedelta(days=7)
-            autofees_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
-            if autofees_df.shape[0]> 0:
-                autofees_df['change'] = autofees_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+            outbound_fee_log_df = DataFrame.from_records(Autofees.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else Autofees.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            if outbound_fee_log_df.shape[0]> 0:
+                outbound_fee_log_df['change'] = outbound_fee_log_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
             context = {
-                'autofees': [] if autofees_df.empty else autofees_df.to_dict(orient='records')
+                'outbound_fee_log': [] if outbound_fee_log_df.empty else outbound_fee_log_df.to_dict(orient='records')
             }
-            return render(request, 'autofees.html', context)
+            return render(request, 'outbound_fee_log.html', context)
+        except Exception as e:
+            try:
+                error = str(e.code())
+            except:
+                error = str(e)
+            return render(request, 'error.html', {'error': error})
+    else:
+        return redirect('home')
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def inbound_fee_log(request):
+    if request.method == 'GET':
+        try:
+            chan_id = request.GET.urlencode()[1:]
+            filter_7d = datetime.now() - timedelta(days=7)
+            inbound_fee_log_df = DataFrame.from_records(InboundFeeLog.objects.filter(timestamp__gte=filter_7d).order_by('-id').values() if chan_id == "" else InboundFeeLog.objects.filter(chan_id=chan_id).filter(timestamp__gte=filter_7d).order_by('-id').values())
+            if inbound_fee_log_df.shape[0]> 0:
+                inbound_fee_log_df['change'] = inbound_fee_log_df.apply(lambda row: 0 if row.old_value == 0 else round((row.new_value-row.old_value)*100/row.old_value, 1), axis=1)
+            context = {
+                'inbound_fee_log': [] if inbound_fee_log_df.empty else inbound_fee_log_df.to_dict(orient='records')
+            }
+            return render(request, 'inbound_fee_log.html', context)
         except Exception as e:
             try:
                 error = str(e.code())
@@ -1652,7 +1997,8 @@ def get_local_settings(*prefixes):
         form.append({'unit': 'days', 'form_id': 'autopilotdays', 'value': 7, 'label': 'Autopilot Days', 'id': 'AR-APDays', 'title': 'Number of days to consider for autopilot calculations. Default 7', 'min':0, 'max':100})
         form.append({'unit': '', 'form_id': 'workers', 'value': 1, 'label': 'Workers', 'id': 'AR-Workers', 'title': 'Number of concurrent rebalance workers to run at once (use a proper value for your hardware, this will increase the load on the lnd server). Default 1', 'min':1, 'max':12})
     if 'AF-' in prefixes:
-        form.append({'unit': '', 'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable Auto-fee functionality', 'min':0, 'max':1})
+        form.append({'unit': '', 'form_id': 'af_enabled', 'value': 0, 'label': 'Autofee', 'id': 'AF-Enabled', 'title': 'Enable/Disable All Auto-fee functionality', 'min':0, 'max':1})
+        form.append({'unit': '', 'form_id': 'af_inbound', 'value': 0, 'label': 'Inbound Fees', 'id': 'AF-InboundFees', 'title': 'Enable/Disable Inbound Auto-fee functionality', 'min':0, 'max':1})
         form.append({'unit': 'ppm', 'form_id': 'af_maxRate', 'value': 2500, 'label': 'AF Max Rate', 'id': 'AF-MaxRate', 'title': 'Maximum Rate that can be adjusted to. Default 2500', 'min':0, 'max':5000})
         form.append({'unit': 'ppm', 'form_id': 'af_minRate', 'value': 0, 'label': 'AF Min Rate', 'id': 'AF-MinRate', 'title': 'Minimum Rate that can be adjusted to. Default 0', 'min':0, 'max':5000})
         form.append({'unit': 'ppm', 'form_id': 'af_increment', 'value': 5, 'label': 'AF Increment', 'id': 'AF-Increment', 'title': 'Target fee rate will always be a multiple of this value. Default 5', 'min':1, 'max':100})
@@ -1680,7 +2026,7 @@ def get_local_settings(*prefixes):
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def update_settings(request):
     if request.method == 'POST':
-        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AR-Enabled'}, 
+        template = [{'form_id': 'enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AR-Enabled'},
                     {'form_id': 'target_percent', 'value': 3.0, 'parse': lambda x: float(x),'id': 'AR-Target%'},
                     {'form_id': 'target_time', 'value': 5, 'parse': lambda x: int(x),'id': 'AR-Time'},
                     {'form_id': 'fee_rate', 'value': 500, 'parse': lambda x: int(x),'id': 'AR-MaxFeeRate'},
@@ -1694,6 +2040,7 @@ def update_settings(request):
                     {'form_id': 'workers', 'value': 1, 'parse': lambda x: int(x),'id': 'AR-Workers'},
                     #AF
                     {'form_id': 'af_enabled', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-Enabled'},
+                    {'form_id': 'af_inbound', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-InboundFees'},
                     {'form_id': 'af_maxRate', 'value': 2500, 'parse': lambda x: int(x),'id': 'AF-MaxRate'},
                     {'form_id': 'af_minRate', 'value': 0, 'parse': lambda x: int(x),'id': 'AF-MinRate'},
                     {'form_id': 'af_increment', 'value': 5, 'parse': lambda x: int(x),'id': 'AF-Increment'},
@@ -1741,7 +2088,7 @@ def update_settings(request):
                         messages.success(request, 'All channels ' + field['id'] + ' updated to: ' + str(value))
                     else:
                         messages.success(request, field['id'] + ' updated to: ' + str(value))
-            
+
     return redirect(request.META.get('HTTP_REFERER'))
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
@@ -1952,7 +2299,7 @@ def update_setting(request):
                 target = int(value)
                 stub = lnrpc.LightningStub(lnd_connect())
                 version = stub.GetInfo(ln.GetInfoRequest()).version
-                if float(version[:4]) >= 0.18:                
+                if float(version[:4]) >= 0.18:
                     channels = Channels.objects.filter(is_open=True)
                     for db_channel in channels:
                         channel_point = point(db_channel)
@@ -1962,12 +2309,12 @@ def update_setting(request):
                         db_channel.save()
                     messages.success(request, 'Inbound fee rate for all open channels updated to a value of: ' + str(target))
                 else:
-                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')                    
+                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')
             elif key == 'ALL-iBase':
                 target = int(value)
                 stub = lnrpc.LightningStub(lnd_connect())
                 version = stub.GetInfo(ln.GetInfoRequest()).version
-                if float(version[:4]) >= 0.18:                  
+                if float(version[:4]) >= 0.18:
                     channels = Channels.objects.filter(is_open=True)
                     for db_channel in channels:
                         channel_point = point(db_channel)
@@ -1975,9 +2322,9 @@ def update_setting(request):
                         stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=db_channel.local_base_fee, fee_rate=(db_channel.local_fee_rate/1000000), time_lock_delta=db_channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=target, fee_rate_ppm=inbound_fee_rate)))
                         db_channel.local_inbound_base_fee = target
                         db_channel.save()
-                    messages.success(request, 'Inbound base fee for all channels updated to a value of: ' + str(target)) 
+                    messages.success(request, 'Inbound base fee for all channels updated to a value of: ' + str(target))
                 else:
-                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')                                   
+                    messages.error(request, f'LND version too low to set inbound fees, update to v0.18+')
             elif key == 'ALL-CLTV':
                 target = int(value)
                 stub = lnrpc.LightningStub(lnd_connect())
@@ -2218,7 +2565,7 @@ class TradeSalesViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = TradeSales.objects.all()
     serializer_class = TradeSalesSerializer
-      
+
     def update(self, request, pk):
         rebalance = get_object_or_404(self.queryset, pk=pk)
         serializer = self.get_serializer(rebalance, data=request.data, context={'request': request}, partial=True)
@@ -2231,6 +2578,12 @@ class FeeLogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Autofees.objects.all().order_by('-id')
     serializer_class = FeeLogSerializer
+    filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
+
+class InboundFeeLogViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
+    queryset = InboundFeeLog.objects.all().order_by('-id')
+    serializer_class = InboundFeeLogSerializer
     filterset_fields = {'chan_id': ['exact'], 'id': ['lt']}
 
 class FailedHTLCFilter(FilterSet):
@@ -2289,14 +2642,14 @@ class RebalancerViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Rebalancer.objects.all().order_by('-id')
     serializer_class = RebalancerSerializer
     filterset_fields = {'status':['lt','gt','exact'], 'payment_hash':['exact'], 'stop':['gt'], 'last_hop_pubkey':['exact'], 'id':['lt']}
-    
+
     def create(self, request):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors)
-        
+
     def update(self, request, pk):
         rebalance = get_object_or_404(self.queryset, pk=pk)
         serializer = RebalancerSerializer(rebalance, data=request.data, context={'request': request}, partial=True)
@@ -2351,14 +2704,108 @@ def forwards_summary(request):
 
     return Response({'results': summary_out.union(summary_in)})
 
+def get_channeldb_file_size():
+    try:
+        # Create the Enable setting if it doesn't exist ---
+        enabled_setting = LocalSettings.objects.filter(key='RemoteFSEnabled').first()
+        if not enabled_setting:
+            LocalSettings.objects.create(key='RemoteFSEnabled', value='0')  # Default: disabled
+            # IMPORTANT: We do NOT create other settings here.
+            # Only once enabled at /api/settings/RemoteFSEnabled/, we create the rest to avoid boilerplate
+            enabled = False  # Since we just created it, it's disabled.
+        else:
+            # Read the Enable setting ---
+            enabled = bool(int(LocalSettings.objects.get(key='RemoteFSEnabled').value))
+
+        if enabled:
+            # Only import paramiko if enabled
+            import paramiko
+
+            # Create connection settings only if enabled AND they don't exist ---
+            host = LocalSettings.objects.filter(key='RemoteFSHost').first()
+            if not host:
+                LocalSettings.objects.create(key='RemoteFSHost', value='')
+                host_value = LocalSettings.objects.get(key='RemoteFSHost').value
+            else:
+                host_value = host.value
+
+            user = LocalSettings.objects.filter(key='RemoteFSUser').first()
+            if not user:
+                LocalSettings.objects.create(key='RemoteFSUser', value='')
+                user_value = LocalSettings.objects.get(key='RemoteFSUser').value
+            else:
+                user_value = user.value
+
+            port = LocalSettings.objects.filter(key='RemoteFSPort').first()
+            if not port:
+                LocalSettings.objects.create(key='RemoteFSPort', value='22')  # Default SSH port
+                port_value = LocalSettings.objects.get(key='RemoteFSPort').value
+            else:
+                port_value = port.value
+
+            db_path = LocalSettings.objects.filter(key='RemoteFSPath').first()
+            if not db_path:
+                default_path = '/home/admin/.lnd/data/graph/mainnet/channel.db'
+                LocalSettings.objects.create(key='RemoteFSPath', value=default_path)
+                db_path_value = LocalSettings.objects.get(key='RemoteFSPath').value
+            else:
+                db_path_value = db_path.value
+
+            # Read the connection settings ---
+            port = int(port_value)  # Ensure port is an integer
+            channel_db_path = db_path_value if db_path_value else settings.LND_DATABASE_PATH # Use settings path if db path is blank
+
+            # Check for required settings
+            if not host_value or not user_value:
+                print("Error: Remote file size enabled, but host or user is not set.")
+                return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+
+            # --- Paramiko logic ---
+            try:
+                # Create SSH client
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # Automatically add host keys
+
+                # Connect to the remote host (eg 10.1.1.2, lnd, 22)
+                ssh.connect(hostname=host_value, username=user_value, port=port)
+
+                # Open an SFTP session
+                sftp = ssh.open_sftp()
+
+                # Get file stats
+                file_stat = sftp.stat(channel_db_path)
+
+                # Get file size
+                file_size_bytes = file_stat.st_size
+
+                # Close connections
+                sftp.close()
+                ssh.close()
+
+                return round(file_size_bytes * 0.000000001, 3)
+
+            except Exception as e:
+                print(f"Error retrieving file size with paramiko: {e}")
+                return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3) # Fallback
+            # --- End Paramiko logic ---
+
+        else:
+            # Use the original default behavior (local file size)
+            return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+
+    except Exception as e:
+        # Handle exceptions
+        print(f"Error retrieving channel.db file size: {e}")
+        return 0
+
 @api_view(['GET'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
-def node_info(request): 
+def node_info(request):
     stub = lnrpc.LightningStub(lnd_connect())
     node_info = stub.GetInfo(ln.GetInfoRequest())
     balances = stub.WalletBalance(ln.WalletBalanceRequest())
     pending_channels = stub.PendingChannels(ln.PendingChannelsRequest())
-    
+
     limbo_balance = pending_channels.total_limbo_balance
     pending_open = None
     pending_closed = None
@@ -2435,7 +2882,7 @@ def node_info(request):
             waiting_for_close.append(pending_item)
     limbo_balance -= pending_closing_balance
     try:
-        db_size = round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
+        db_size = get_channeldb_file_size()
     except:
         db_size = 0
     return Response({
@@ -2862,7 +3309,7 @@ def bump_fee(request):
             return Response({'error': f'Fee bump failed! Error: {error_msg}'})
     else:
         return Response({'error': 'Invalid request!'})
-    
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def chan_policy(request):
@@ -2936,7 +3383,7 @@ def chan_policy(request):
         return Response(return_response)
     else:
         return Response({'error': 'Invalid request!'})
-    
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def broadcast_tx(request):
@@ -2958,7 +3405,7 @@ def broadcast_tx(request):
             return Response({'error': f'TX broadcast failed! Error: {error_msg}'})
     else:
         return Response({'error': 'Invalid request!'})
-    
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def create_trade(request):
@@ -2980,7 +3427,7 @@ def create_trade(request):
             return Response({'error': f'Error creating trade: {error}'})
     else:
         return Response({'error': serializer.error_messages})
-    
+
 @api_view(['POST'])
 @is_login_required(permission_classes([IsAuthenticated]), settings.LOGIN_REQUIRED)
 def reset_api(request):

@@ -37,39 +37,40 @@ class RebalancerForm(forms.ModelForm):
     last_hop_pubkey = forms.CharField(label='funding_txid', max_length=66, required=False)
     duration = forms.IntegerField(label='duration')
 
-class AutoRebalanceForm(forms.Form):	
-    enabled = forms.IntegerField(label='enabled', required=False)	
-    target_percent = forms.FloatField(label='target_percent', required=False)	
-    target_time = forms.IntegerField(label='target_time', required=False)	
-    fee_rate = forms.IntegerField(label='fee_rate', required=False)	
-    outbound_percent = forms.FloatField(label='outbound_percent', required=False)	
-    inbound_percent = forms.FloatField(label='inbound_percent', required=False)	
-    max_cost = forms.FloatField(label='max_cost', required=False)	
-    variance = forms.IntegerField(label='variance', required=False)	
-    wait_period = forms.IntegerField(label='wait_period', required=False)	
-    autopilot = forms.IntegerField(label='autopilot', required=False)	
+class AutoRebalanceForm(forms.Form):
+    enabled = forms.IntegerField(label='enabled', required=False)
+    target_percent = forms.FloatField(label='target_percent', required=False)
+    target_time = forms.IntegerField(label='target_time', required=False)
+    fee_rate = forms.IntegerField(label='fee_rate', required=False)
+    outbound_percent = forms.FloatField(label='outbound_percent', required=False)
+    inbound_percent = forms.FloatField(label='inbound_percent', required=False)
+    max_cost = forms.FloatField(label='max_cost', required=False)
+    variance = forms.IntegerField(label='variance', required=False)
+    wait_period = forms.IntegerField(label='wait_period', required=False)
+    autopilot = forms.IntegerField(label='autopilot', required=False)
     autopilotdays = forms.IntegerField(label='autopilotdays', required=False)
     workers = forms.IntegerField(label='workers', required=False)
     update_channels = forms.BooleanField(widget=forms.CheckboxSelectMultiple, required=False)
 
-class AutoFeesForm(AutoRebalanceForm):	
-    af_enabled = forms.IntegerField(label='af_enabled', required=False)	
-    af_maxRate = forms.IntegerField(label='af_maxRate', required=False)	
-    af_minRate = forms.IntegerField(label='af_minRate', required=False)	
-    af_increment = forms.IntegerField(label='af_increment', required=False)	
-    af_multiplier = forms.IntegerField(label='af_multiplier', required=False)	
-    af_failedHTLCs = forms.IntegerField(label='af_failedHTLCs', required=False)	
+class AutoFeesForm(AutoRebalanceForm):
+    af_enabled = forms.IntegerField(label='af_enabled', required=False)
+    af_inbound = forms.IntegerField(label='af_inbound', required=False)
+    af_maxRate = forms.IntegerField(label='af_maxRate', required=False)
+    af_minRate = forms.IntegerField(label='af_minRate', required=False)
+    af_increment = forms.IntegerField(label='af_increment', required=False)
+    af_multiplier = forms.IntegerField(label='af_multiplier', required=False)
+    af_failedHTLCs = forms.IntegerField(label='af_failedHTLCs', required=False)
     af_updateHours = forms.IntegerField(label='af_updateHours', required=False)
     af_lowliq = forms.IntegerField(label='af_lowliq', required=False)
     af_excess = forms.IntegerField(label='af_excess', required=False)
 
-class GUIForm(AutoFeesForm):	
-    gui_graphLinks = forms.CharField(label='gui_graphLinks', required=False)	
-    gui_netLinks = forms.CharField(label='gui_netLinks', required=False)	
+class GUIForm(AutoFeesForm):
+    gui_graphLinks = forms.CharField(label='gui_graphLinks', required=False)
+    gui_netLinks = forms.CharField(label='gui_netLinks', required=False)
 
-class LocalSettingsForm(GUIForm):	
-    lnd_cleanPayments = forms.IntegerField(label='lnd_cleanPayments', required=False)	
-    lnd_retentionDays = forms.IntegerField(label='lnd_retentionDays', required=False)	
+class LocalSettingsForm(GUIForm):
+    lnd_cleanPayments = forms.IntegerField(label='lnd_cleanPayments', required=False)
+    lnd_retentionDays = forms.IntegerField(label='lnd_retentionDays', required=False)
 
 updates_channel_codes = [
     (0, 'base_fee'),

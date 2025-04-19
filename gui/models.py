@@ -280,6 +280,16 @@ class Autofees(models.Model):
     class Meta:
         app_label = 'gui'
 
+class InboundFeeLog(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now)
+    chan_id = models.CharField(max_length=20)
+    peer_alias = models.CharField(max_length=32)
+    setting = models.CharField(max_length=20)
+    old_value = models.IntegerField()
+    new_value = models.IntegerField()
+    class Meta:
+        app_label = 'gui'
+
 class PendingChannels(models.Model):
     funding_txid = models.CharField(max_length=64)
     output_index = models.IntegerField()

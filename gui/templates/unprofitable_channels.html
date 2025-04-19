@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %} {{ block.super }} - Unprofitable Channels{% endblock %}
+{% block content %}
+{% load humanize %}
+
+<div class="w3-container w3-padding-small">
+  <h2>Unprofitable Channels ({{ timeframe_name }})</h2>
+  
+  <!-- Timeframe Selection -->
+  <div class="w3-container w3-padding-small">
+    <form method="get" action="/unprofitable_channels/">
+      <label for="timeframe">Timeframe: </label>
+      <select id="timeframe" name="timeframe" onchange="this.form.submit()">
+        {% for key, option in timeframe_options.items %}
+          <option value="{{ key }}" {% if timeframe == key %}selected{% endif %}>{{ option.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  
+  <!-- Channels Table -->
+  <div class="w3-container w3-padding-small" style="overflow-x: scroll">
+    <table id="unprofitableChannelsTable" class="w3-table-all w3-centered w3-hoverable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(event.target, 0, 'String', 1)">Channel ID</th>
+          <th onclick="sortTable(event.target, 1, 'String', 1)" width=15%>Alias</th>
+          <th onclick="sortTable(event.target, 2, 'int', 1)" width=10%>Routed Out (sats)</th>
+          <th onclick="sortTable(event.target, 3, 'String', 1)" width=10%>Last Routing</th>
+          <th onclick="sortTable(event.target, 4, 'int', 1)" width=10%>Rebalanced Out (sats)</th>
+          <th onclick="sortTable(event.target, 5, 'String', 1)" width=10%>Last Rebalance</th>
+          <th onclick="sortTable(event.target, 6, 'int', 1)" width=8%>Profit</th>
+          <th onclick="sortTable(event.target, 7, 'int', 1)" width=8%>Assisted Revenue</th>
+          <th onclick="sortTable(event.target, 8, 'String', 1)" width=7%>Initiator</th>
+          <th onclick="sortTable(event.target, 9, 'int', 1)" width=7%>Age (Days)</th>
+          <th onclick="sortTable(event.target, 10, 'int', 1)" width=7%>Local Ratio</th>
+          <th onclick="sortTable(event.target, 11, 'int', 1)" width=7%>Stuck Index</th>
+          <th width=10%>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% if channels %}
+        {% for channel in channels %}
+          <tr>
+            <td><a href="/channel?={{ channel.chan_id }}" target="_blank">{{ channel.chan_id }}</a></td>
+            <td>{% if channel.alias == '' %}---{% else %}{{ channel.alias }}{% endif %}</td>
+            <td>{{ channel.routed_out_sats|add:"0"|intcomma }}</td>
+            <td>{% if channel.last_routing %}
+                {{ channel.last_routing.date|date:"M d, Y" }} ({{ channel.last_routing.amount|intcomma }} sats)
+                {% else %}N/A{% endif %}</td>
+            <td>{{ channel.rebalanced_out_sats|add:"0"|intcomma }}</td>
+            <td>{% if channel.last_rebalance %}
+                {{ channel.last_rebalance.date|date:"M d, Y" }} ({{ channel.last_rebalance.amount|floatformat:0|intcomma }} sats)
+                {% else %}N/A{% endif %}</td>
+            <td {% if channel.profit < 0 %}style="color: red;"{% endif %}>{{ channel.profit|add:"0"|intcomma }}</td>
+            <td>{{ channel.assisted_revenue|add:"0"|intcomma }}</td>
+            <td>{% if channel.initiator %}Local{% else %}Remote{% endif %}</td>
+            <td>{{ channel.age_days }}</td>
+            <td>{{ channel.local_ratio }}% ({{ channel.capacity_millions }}M)</td>
+            <td {% if channel.stuck_index > 0.8 %}style="color: red;"{% elif channel.stuck_index > 0.4 %}style="color: orange;"{% else %}style="color: green;"{% endif %}>{{ channel.stuck_index }}</td>
+            <td>
+              <a style="display: inline-block;position:relative;width:25px;height:25px" href="#" data-value="{{ channel.chan_id }}" onclick="copyToClipboard('{{ channel.chan_id }}', this)">
+                <svg style="position:absolute;top:0;left:0;width:25px;height:25px" version="1.1" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+                  <path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+                </svg>
+                <svg class="checkmark" style="position:absolute;top:0;left:0;width:25px;height:25px;visibility:hidden" version="1.1" viewBox="0 0 16 16">
+                  <path style="fill:#3fb950;stroke:#3fb950;" fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path>
+                </svg>
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="13">No channel data available for the selected timeframe.</td>
+        </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add a section explaining the metrics -->
+<div class="w3-container w3-padding-small">
+  <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue">
+    <h4>Understanding the Metrics:</h4>
+    <ul>
+      <li><strong>Routed Out:</strong> Total satoshis routed out through this channel</li>
+      <li><strong>Rebalanced Out:</strong> Total satoshis sent in rebalancing operations</li>
+      <li><strong>Profit:</strong> Fees earned from routing minus costs of rebalancing</li>
+      <li><strong>Assisted Revenue:</strong> Fees earned from forwards where this channel was the inbound channel</li>
+      <li><strong>Initiator:</strong> Whether you opened the channel (Local) or the peer opened it (Remote)</li>
+      <li><strong>Age (Days):</strong> Approximate age of the channel in days since opening</li>
+      <li><strong>Local Ratio:</strong> Percentage of the channel's capacity that is on your side</li>
+      <li><strong>Stuck Index:</strong> Measure of how "stuck" a channel is (0 = active, 1 = inactive/stuck)</li>
+    </ul>
+    <p><em>Note: Channels with negative profit, low assisted revenue, and high stuck index are good candidates for closure.</em></p>
+  </div>
+</div>
+
+<!-- JavaScript for sorting and copying -->
+<script>
+  function copyToClipboard(text, element) {
+    navigator.clipboard.writeText(text).then(function() {
+      // Show visual feedback
+      if (element) {
+        // If using the SVG icon
+        const originalIcon = element.querySelector('svg:first-child');
+        const checkmark = element.querySelector('.checkmark');
+        
+        // Hide original icon and show checkmark
+        originalIcon.style.visibility = 'hidden';
+        checkmark.style.visibility = 'visible';
+        
+        setTimeout(function() {
+          // Restore original icon and hide checkmark
+          originalIcon.style.visibility = 'visible';
+          checkmark.style.visibility = 'hidden';
+        }, 1500);
+      } else {
+        // If using the button
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = "Copied!";
+        button.style.backgroundColor = "#4CAF50";
+        
+        setTimeout(function() {
+          button.textContent = originalText;
+          button.style.backgroundColor = "";
+        }, 1500);
+      }
+    }, function() {
+      console.error('Failed to copy text to clipboard');
+    });
+    
+    // Prevent default link behavior
+    if (event && event.preventDefault) {
+      event.preventDefault();
+    }
+    return false;
+  }
+
+  // Sorting function from channels.html
+  function sortTable(element, n, type, asc, subElement = null) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById("unprofitableChannelsTable");
+  switching = true;
+  // Set the sorting direction to ascending:
+  dir = asc ? "asc" : "desc";
+  
+  while (switching) {
+    switching = false;
+    rows = table.rows;
+
+    for (i = 1; i < (rows.length - 1); i++) {
+      shouldSwitch = false;
+      x = rows[i].getElementsByTagName("TD")[n];
+      y = rows[i + 1].getElementsByTagName("TD")[n];
+
+      if (subElement != null) {
+        x = x.getElementsByTagName(subElement)[0];
+        y = y.getElementsByTagName(subElement)[0];
+      }
+
+      {{ edit_start }}
+      let xValue, yValue; // Use let for block scope
+
+      // Handle Stuck Index column (index 11) - parseFloat
+      if (n === 11) {
+        xValue = parseFloat(x.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+        yValue = parseFloat(y.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+      }
+      // Handle Age column (index 9) - parseInt with N/A check
+      else if (n === 9) {
+        const xValueStr = x.innerHTML.replace(/,/g, '').replace(/%/g, '');
+        const yValueStr = y.innerHTML.replace(/,/g, '').replace(/%/g, '');
+        // Treat N/A as Infinity for ascending sort, -Infinity for descending
+        xValue = (xValueStr === 'N/A') ? (dir === "asc" ? Infinity : -Infinity) : parseInt(xValueStr);
+        yValue = (yValueStr === 'N/A') ? (dir === "asc" ? Infinity : -Infinity) : parseInt(yValueStr);
+      }
+      // Handle other integer columns - parseInt
+      else if (type === 'int') {
+        xValue = parseInt(x.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+        yValue = parseInt(y.innerHTML.replace(/,/g, '').replace(/%/g, ''));
+      }
+      // Handle string columns
+      else {
+        xValue = x.innerHTML.toLowerCase();
+        yValue = y.innerHTML.toLowerCase();
+      }
+
+      // Perform comparison based on direction
+      if (dir == "asc") {
+        if (xValue > yValue) {
+          shouldSwitch = true;
+          break;
+        }
+      } else if (dir == "desc") {
+        if (xValue < yValue) {
+          shouldSwitch = true;
+          break;
+        }
+      }
+    }
+    
+    if (shouldSwitch) {
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      switchcount++;
+    } else {
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+  
+  // Update all headers to remove any existing sort indicators
+  var headers = table.getElementsByTagName("TH");
+  for (i = 0; i < headers.length; i++) {
+    headers[i].innerHTML = headers[i].innerHTML.replace(" ↑", "").replace(" ↓", "");
+  }
+  
+  // Add sort indicator to the clicked header
+  if (dir == "asc") {
+    element.innerHTML = element.innerHTML + " ↑";
+  } else {
+    element.innerHTML = element.innerHTML + " ↓";
+  }
+}
+  // Function to trigger initial sort
+  function initialSort() {
+    // Get the Stuck Index header (11th column, index 10)
+    var stuckIndexHeader = document.getElementById("unprofitableChannelsTable").getElementsByTagName("TH")[10];
+    // Trigger sort with: element, column index, type, ascending
+    sortTable(stuckIndexHeader, 11, 'int', 0);  // 0 for descending order
+  }
+
+  document.addEventListener('DOMContentLoaded', initialSort);
+</script>
+{% endblock %}

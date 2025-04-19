@@ -13,7 +13,7 @@ from os import environ
 from requests import get
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
-from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, PendingChannels, HistFailedHTLC, PeerEvents
+from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, InboundFeeLog, PendingChannels, HistFailedHTLC, PeerEvents
 import af
 
 def update_payments(stub):
@@ -146,8 +146,18 @@ def update_invoice(stub, invoice, db_invoice):
     db_invoice.save()
 
 def update_forwards(stub):
-    records = Forwards.objects.count()
-    forwards = stub.ForwardingHistory(ln.ForwardingHistoryRequest(start_time=1420070400, index_offset=records, num_max_events=100)).forwarding_events
+    latest_forward = Forwards.objects.order_by('-forward_date', '-id').first()
+    start_time = int(latest_forward.forward_date.timestamp()) if latest_forward else 1420070400
+    processed_count = Forwards.objects.filter(forward_date=latest_forward.forward_date).count() if latest_forward else 0
+    response = stub.ForwardingHistory(ln.ForwardingHistoryRequest(
+        start_time=start_time,
+        index_offset=processed_count,
+        num_max_events=1000
+    ))
+    forwards = response.forwarding_events
+    if not forwards:
+        return
+    new_forwards = []
     for forward in forwards:
         inbound_channel = Channels.objects.get(chan_id=forward.chan_id_in) if Channels.objects.filter(chan_id=forward.chan_id_in).exists() else None
         outbound_channel = Channels.objects.get(chan_id=forward.chan_id_out) if Channels.objects.filter(chan_id=forward.chan_id_out).exists() else None
@@ -156,12 +166,23 @@ def update_forwards(stub):
         amt_out_msat = forward.amt_out_msat
         in_fee_msat = 0
         if outbound_channel and outbound_channel.fees_updated < forward_datetime:
-            out_fee_msat = int((amt_out_msat * (outbound_channel.local_fee_rate/1000000)) + outbound_channel.local_base_fee)
+            out_fee_msat = int((amt_out_msat * (outbound_channel.local_fee_rate / 1000000)) + outbound_channel.local_base_fee)
             if forward.fee_msat < out_fee_msat:
                 in_fee_msat = out_fee_msat - forward.fee_msat
         incoming_peer_alias = (inbound_channel.remote_pubkey[:12] if inbound_channel.alias == '' else inbound_channel.alias) if inbound_channel else forward.peer_alias_in
         outgoing_peer_alias = (outbound_channel.remote_pubkey[:12] if outbound_channel.alias == '' else outbound_channel.alias) if outbound_channel else forward.peer_alias_out
-        Forwards(forward_date=forward_datetime, chan_id_in=forward.chan_id_in, chan_id_out=forward.chan_id_out, chan_in_alias=incoming_peer_alias, chan_out_alias=outgoing_peer_alias, amt_in_msat=amt_in_msat, amt_out_msat=amt_out_msat, fee=round(forward.fee_msat/1000, 3), inbound_fee=round(in_fee_msat/1000, 3)).save()
+        new_forwards.append(Forwards(
+            forward_date=forward_datetime,
+            chan_id_in=forward.chan_id_in,
+            chan_id_out=forward.chan_id_out,
+            chan_in_alias=incoming_peer_alias,
+            chan_out_alias=outgoing_peer_alias,
+            amt_in_msat=amt_in_msat,
+            amt_out_msat=amt_out_msat,
+            fee=round(forward.fee_msat / 1000, 3),
+            inbound_fee=round(in_fee_msat / 1000, 3)
+        ))
+    Forwards.objects.bulk_create(new_forwards)
 
 def disconnectpeer(stub, peer):
     try:
@@ -295,7 +316,7 @@ def update_channels(stub):
                 else:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=None, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_disabled = remote_policy.disabled
-                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=None, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CLTV', old_value=None, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_cltv = remote_policy.time_lock_delta
                 PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=None, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                 db_channel.remote_min_htlc_msat = remote_policy.min_htlc
@@ -329,7 +350,7 @@ def update_channels(stub):
                         PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='Disabled', old_value=1, new_value=0, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_disabled = remote_policy.disabled
                 if db_channel.remote_cltv != remote_policy.time_lock_delta:
-                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CTLV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
+                    PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='CLTV', old_value=db_channel.remote_cltv, new_value=remote_policy.time_lock_delta, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
                     db_channel.remote_cltv = remote_policy.time_lock_delta
                 if db_channel.remote_min_htlc_msat != remote_policy.min_htlc:
                     PeerEvents(chan_id=db_channel.chan_id, peer_alias=db_channel.alias, event='MinHTLC', old_value=db_channel.remote_min_htlc_msat, new_value=remote_policy.min_htlc, out_liq=(db_channel.local_balance + db_channel.pending_outbound)).save()
@@ -357,7 +378,7 @@ def update_channels(stub):
             print(f"{datetime.now().strftime('%c')} : [Data] : Error getting graph data for channel {db_channel.chan_id}: {str(e)}")
             if pending_channel: # skip adding new channel to the list, LND may not have added to the graph yet
                 print(f"{datetime.now().strftime('%c')} : [Data] : Waiting for pending channel {db_channel.chan_id} to be added to the graph...")
-                continue 
+                continue
             else:
                 old_fee_rate = None
                 db_channel.local_base_fee = -1 if db_channel.local_base_fee is None else db_channel.local_base_fee
@@ -491,7 +512,6 @@ def update_closures(stub):
         for closure in closures:
             counter += 1
             if counter > skip:
-                channel = Channels.objects.filter(chan_id=closure.chan_id)[0] if Channels.objects.filter(chan_id=closure.chan_id).exists() else None
                 resolution_count = len(closure.resolutions)
                 txid, index = closure.channel_point.split(':')
                 closing_costs = get_tx_fees(closure.closing_tx_hash) if (closure.open_initiator != 2 and closure.close_type not in [4, 5]) else 0
@@ -580,26 +600,45 @@ def auto_fees(stub):
     else:
         LocalSettings(key='AF-Enabled', value='0').save()
         return
-
+    if LocalSettings.objects.filter(key='AF-InboundFees').exists():
+        inbound_enabled = int(LocalSettings.objects.filter(key='AF-InboundFees')[0].value)
+    else:
+        LocalSettings(key='AF-InboundFees', value='0').save()
+        inbound_enabled = False
     try:
         channels = Channels.objects.filter(is_open=True, is_active=True, private=False, auto_fees=True)
         results_df = af.main(channels)
-        if not results_df.empty: 
+        if not results_df.empty:
             update_df = results_df[results_df['eligible'] == True]
-            update_df = update_df[update_df['adjustment']!=0]
+            update_df = update_df[(update_df['adjustment']!=0) | (update_df['inbound_adjustment']!=0)]
             if not update_df.empty:
                 for target_channel in update_df.to_dict(orient='records'):
-                    print(f"{datetime.now().strftime('%c')} : [Data] : Updating fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
                     channel = Channels.objects.filter(chan_id=target_channel['chan_id'])[0]
                     channel_point = ln.ChannelPoint()
                     channel_point.funding_txid_bytes = bytes.fromhex(channel.funding_txid)
                     channel_point.funding_txid_str = channel.funding_txid
                     channel_point.output_index = channel.output_index
-                    stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
-                    channel.local_fee_rate = target_channel['new_rate']
+                    version = stub.GetInfo(ln.GetInfoRequest()).version
+                    if inbound_enabled and float(version[:4]) >= 0.18:
+                        inbound_fee_rate = int(target_channel['new_inbound_rate'])
+                        # if we are using a discount, then discount our base fee to mirror outbound
+                        if inbound_fee_rate == 0:
+                            inbound_base_fee = 0
+                        else:
+                            inbound_base_fee = -channel.local_base_fee
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv, inbound_fee=ln.InboundFee(base_fee_msat=inbound_base_fee, fee_rate_ppm=inbound_fee_rate)))
+                        if target_channel['inbound_adjustment'] != 0:
+                            print(f"{datetime.now().strftime('%c')} : [Data] : Updating inbound fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_inbound_rate'])}")
+                            channel.local_inbound_fee_rate = target_channel['new_inbound_rate']
+                            InboundFeeLog(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_inbound_fee_rate'], new_value=target_channel['new_inbound_rate']).save()
+                    else:
+                        stub.UpdateChannelPolicy(ln.PolicyUpdateRequest(chan_point=channel_point, base_fee_msat=channel.local_base_fee, fee_rate=(target_channel['new_rate']/1000000), time_lock_delta=channel.local_cltv))
+                    if target_channel['adjustment'] != 0:
+                        print(f"{datetime.now().strftime('%c')} : [Data] : Updating outbound fees for channel {str(target_channel['chan_id'])} to a value of: {str(target_channel['new_rate'])}")
+                        channel.local_fee_rate = target_channel['new_rate']
+                        Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
                     channel.fees_updated = datetime.now()
                     channel.save()
-                    Autofees(chan_id=channel.chan_id, peer_alias=channel.alias, setting=(f"AF [ {target_channel['net_routed_7day']}:{target_channel['in_percent']}:{target_channel['out_percent']} ]"), old_value=target_channel['local_fee_rate'], new_value=target_channel['new_rate']).save()
     except Exception as e:
         print(f"{datetime.now().strftime('%c')} : [Data] : Error processing auto_fees: {str(e)}")
 

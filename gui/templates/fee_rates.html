@@ -14,13 +14,15 @@
         <th onclick="sortTable(event.target, 3, 'int', 0, 'label')" width=10%>Capacity</th>
         <th onclick="sortTable(event.target, 4, 'int')">Inbound Liquidity</th>
         <th onclick="sortTable(event.target, 5, 'int')" title="The value represents net flow --> (routed out - routed in) / capacity">7Day Flow</th>
-        <th onclick="sortTable(event.target, 9, 'int')">Adjustment</th>
-        <th onclick="sortTable(event.target, 10, 'int')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested Rate</th>
+        <th onclick="sortTable(event.target, 9, 'int')">oAdjustment</th>
+        <th onclick="sortTable(event.target, 10, 'int')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested oRate</th>
+        <th onclick="sortTable(event.target, 11, 'int')">iAdjustment</th>
+        <th onclick="sortTable(event.target, 12, 'int')" title="A suggested fee rate based on the flow pattern over the last 7 days">Suggested iRate</th>
         <th>oRate</th>
-        <th onclick="sortTable(event.target, 12, 'int')">oBase</th>
-        <th onclick="sortTable(event.target, 13, '%')">Max Cost</th>
-        <th onclick="sortTable(event.target, 14, 'int')">iRate</th>
-        <th onclick="sortTable(event.target, 15, 'int')">iBase</th>
+        <th>iRate</th>
+        <th onclick="sortTable(event.target, 15, '%')">Max Cost</th>
+        <th onclick="sortTable(event.target, 16, 'int')">Peer oRate</th>
+        <th onclick="sortTable(event.target, 17, 'int')">Peer iRate</th>
         <th>Updated</th>
         <th width=92px>
           <form title="Enable all channels" style="position: absolute;" action="/update_setting/" method="post">
@@ -52,6 +54,8 @@
         <td>{% if channel.net_routed_7day != 0 %}{{ channel.net_routed_7day }} <small class="w3-round w3-border-small w3-border-grey">{% if channel.net_routed_7day > 0 %}OUT{% else %}IN{% endif %}</small>{% else %}0{% endif %}</td>
         <td>{{ channel.adjustment }}</td>
         <td>{{ channel.new_rate|intcomma }}</td>
+        <td>{{ channel.inbound_adjustment|intcomma }}</td>
+        <td>{{ channel.new_inbound_rate|intcomma }}</td>
         <td>
           <form action="/update_channel/" method="post">
             {% csrf_token %}
@@ -60,10 +64,17 @@
             <input type="hidden" name="update_target" value="1">
           </form>
         </td>
-        <td>{{ channel.local_base_fee|intcomma }}</td>
+        <td>
+          <form action="/update_channel/" method="post">
+            {% csrf_token %}
+            <input style="text-align:center" id="target" type="number" min="-100000" max="0" name="target" value="{{ channel.local_inbound_fee_rate }}">
+            <input type="hidden" name="chan_id" value="{{ channel.chan_id }}">
+            <input type="hidden" name="update_target" value="13">
+          </form>
+        </td>
         <td {% if channel.auto_rebalance == True %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>{{ channel.ar_max_cost }}%</td>
         <td>{{ channel.remote_fee_rate|intcomma }}</td>
-        <td>{{ channel.remote_base_fee|intcomma }}</td>
+        <td>{{ channel.remote_inbound_fee_rate|intcomma }}</td>
         <td {% if channel.eligible == True %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>{{ channel.fees_updated|naturaltime }}</td>
         <td {% if channel.auto_fees == False %}style="background-color: rgba(248,81,73,0.15);"{% else %}style="background-color: rgba(56,139,253,0.15)"{% endif %}>
           <form action="/update_channel/" method="post">
