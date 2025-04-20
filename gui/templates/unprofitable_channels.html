@@ -102,43 +102,88 @@
 <!-- JavaScript for sorting and copying -->
 <script>
   function copyToClipboard(text, element) {
-    navigator.clipboard.writeText(text).then(function() {
-      // Show visual feedback
-      if (element) {
-        // If using the SVG icon
-        const originalIcon = element.querySelector('svg:first-child');
-        const checkmark = element.querySelector('.checkmark');
-        
-        // Hide original icon and show checkmark
-        originalIcon.style.visibility = 'hidden';
-        checkmark.style.visibility = 'visible';
-        
-        setTimeout(function() {
-          // Restore original icon and hide checkmark
-          originalIcon.style.visibility = 'visible';
-          checkmark.style.visibility = 'hidden';
-        }, 1500);
-      } else {
-        // If using the button
-        const button = event.target;
-        const originalText = button.textContent;
-        button.textContent = "Copied!";
-        button.style.backgroundColor = "#4CAF50";
-        
-        setTimeout(function() {
-          button.textContent = originalText;
-          button.style.backgroundColor = "";
-        }, 1500);
-      }
-    }, function() {
-      console.error('Failed to copy text to clipboard');
-    });
+    // Check if we're in a secure context (HTTPS)
+    if (navigator.clipboard && window.isSecureContext) {
+      // Secure context: use the modern Clipboard API
+      navigator.clipboard.writeText(text).then(function() {
+        showCopySuccess(element);
+      }).catch(function(err) {
+        console.error('Failed to copy: ', err);
+        fallbackCopy(text, element);
+      });
+    } else {
+      // Non-secure context: use fallback method
+      fallbackCopy(text, element);
+    }
     
     // Prevent default link behavior
     if (event && event.preventDefault) {
       event.preventDefault();
     }
     return false;
+  }
+
+  function fallbackCopy(text, element) {
+    // Create temporary input element
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Make the textarea out of viewport
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    
+    // Preserve scroll position
+    const scrollPos = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // Select and copy
+    textArea.focus();
+    textArea.select();
+    
+    let success = false;
+    try {
+      success = document.execCommand('copy');
+    } catch (err) {
+      console.error('Fallback: Oops, unable to copy', err);
+    }
+    
+    // Clean up
+    document.body.removeChild(textArea);
+    window.scrollTo(0, scrollPos);
+    
+    // Show success visual feedback
+    if (success) {
+      showCopySuccess(element);
+    }
+    }
+
+  function showCopySuccess(element) {
+    if (element) {
+      // If using the SVG icon
+      const originalIcon = element.querySelector('svg:first-child');
+      const checkmark = element.querySelector('.checkmark');
+
+      if (originalIcon && checkmark) {
+        // Hide original icon and show checkmark
+        originalIcon.style.visibility = 'hidden';
+        checkmark.style.visibility = 'visible';
+
+        setTimeout(function() {
+          // Restore original icon and hide checkmark
+          originalIcon.style.visibility = 'visible';
+          checkmark.style.visibility = 'hidden';
+        }, 1500);
+      } else {
+        // Simple text-based fallback if SVG elements aren't found
+        const originalText = element.textContent || 'Copy';
+        element.textContent = "Copied!";
+
+        setTimeout(function() {
+          element.textContent = originalText;
+        }, 1500);
+      }
+    }
   }
 
   // Sorting function from channels.html
