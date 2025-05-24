@@ -2,7 +2,6 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField, ExpressionWrapper, DateTimeField, DurationField
 from django.db.models.functions import Round, TruncDay, Coalesce
-from django.db import connection
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
@@ -3469,108 +3468,130 @@ def reset_api(request):
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def peer_offline_report(request):
+    # For now, let's stick to Month to Date (MTD) only to simplify and test
+    # Timeframe selection can be re-added later if this approach is performant enough
     timeframe_options = {
         'MTD': 'Month to Date',
-        'QTD': 'Quarter to Date',
-        'YTD': 'Year to Date',
     }
-    selected_timeframe = request.GET.get('timeframe', 'MTD')
+    selected_timeframe = 'MTD' # Hardcode to MTD for now
+    
     alias_filter_query = request.GET.get('alias', '').strip()
-    sort_by_query = request.GET.get('sort', '-sum_offline_hours') # Default sort: sum_offline_hours DESC
+    sort_by_query = request.GET.get('sort', '-sum_offline_hours')
 
     now = timezone.now()
-    if selected_timeframe == 'MTD':
-        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    elif selected_timeframe == 'QTD':
-        current_quarter = (now.month - 1) // 3 + 1
-        start_month = (current_quarter - 1) * 3 + 1
-        start_date = now.replace(month=start_month, day=1, hour=0, minute=0, second=0, microsecond=0)
-    elif selected_timeframe == 'YTD':
-        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-    else: # Fallback
-        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
-    start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S') # For SQL
+    # Calculate start_date for MTD
+    start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     peer_stats_list = []
-    
-    # Construct the SQL query (using Django table names: gui_channels, gui_peerevents)
-    # Parameters: %(start_date)s, %(alias_ilike)s (optional)
-    sql_query = """
-        WITH calculated_offline_durations AS (
-            SELECT
-                oe.chan_id,
-                gc.alias AS channel_alias, -- Get alias from gui_channels
-                oe.timestamp AS offline_start,
-                COALESCE(
-                    (SELECT MIN(ne.timestamp) 
-                     FROM gui_peerevents ne 
-                     WHERE ne.chan_id = oe.chan_id 
-                       AND ne.timestamp > oe.timestamp 
-                       AND ne.new_value = 1),
-                    CASE 
-                        WHEN NOT gc.is_active THEN NOW() AT TIME ZONE 'UTC'
-                        ELSE NULL
-                    END
-                ) AS offline_end
-            FROM gui_peerevents oe
-            JOIN gui_channels gc ON oe.chan_id = gc.chan_id
-            WHERE oe.event = 'Connection'
-              AND oe.new_value = 0
-              AND gc.is_open = TRUE
-              AND oe.timestamp >= %(start_date)s
-              {alias_filter_sql} -- Placeholder for alias filter
-        )
-        SELECT
-            cod.channel_alias,
-            cod.chan_id,
-            ROUND(EXTRACT(epoch FROM AVG(GREATEST(cod.offline_end, cod.offline_start) - cod.offline_start)) / 3600.0, 2) AS avg_offline_hours,
-            ROUND(EXTRACT(epoch FROM SUM(GREATEST(cod.offline_end, cod.offline_start) - cod.offline_start)) / 3600.0, 2) AS total_offline_hours,
-            COUNT(*) AS offline_count,
-            NOT c.is_active AS currently_offline
-        FROM calculated_offline_durations cod
-        JOIN gui_channels c ON cod.chan_id = c.chan_id
-        WHERE cod.offline_end IS NOT NULL AND cod.offline_end >= cod.offline_start
-        GROUP BY cod.channel_alias, cod.chan_id, c.is_active
-        -- ORDER BY clause will be handled by Python for flexibility with GET params
-    """
 
-    params = {'start_date': start_date_str}
-    alias_filter_sql_part = ""
+    open_channels = Channels.objects.filter(is_open=True)
     if alias_filter_query:
-        alias_filter_sql_part = "AND gc.alias ILIKE %(alias_ilike)s"
-        params['alias_ilike'] = f"%{alias_filter_query}%"
-    
-    final_sql_query = sql_query.format(alias_filter_sql=alias_filter_sql_part)
+        open_channels = open_channels.filter(alias__icontains=alias_filter_query)
 
-    with connection.cursor() as cursor:
-        cursor.execute(final_sql_query, params)
-        columns = [col[0] for col in cursor.description]
-        for row in cursor.fetchall():
-            peer_stats_list.append(dict(zip(columns, row)))
+    for channel in open_channels:
+        events = PeerEvents.objects.filter(
+            chan_id=channel.chan_id,
+            event='Connection',
+            timestamp__gte=start_date
+        ).order_by('timestamp')
+
+        if not events.exists():
+            # Add peer with 0 offline stats if they have no events in the period but are being listed
+            # Or, decide to only show peers with actual offline events
+            # For now, let's only process if events exist for simplicity, can adjust later
+            # If you want to show all peers, even with 0 offline time:
+            # if not alias_filter_query or channel.alias.lower().__contains__(alias_filter_query.lower()): # re-check filter if adding 0-stat peers
+            #     peer_stats_list.append({
+            #         'chan_id': channel.chan_id,
+            #         'channel_alias': channel.alias,
+            #         'avg_offline_hours': 0,
+            #         'total_offline_hours': 0,
+            #         'offline_count': 0,
+            #         'currently_offline': not channel.is_active,
+            #     })
+            continue
+
+
+        total_offline_duration_seconds = 0
+        offline_instance_count = 0
+        
+        current_offline_start_time = None
+
+        for i, event in enumerate(events):
+            if event.new_value == 0: # Went offline
+                if current_offline_start_time is None: # Start of a new offline period
+                    current_offline_start_time = event.timestamp
+                    offline_instance_count += 1
+            elif event.new_value == 1: # Came online
+                if current_offline_start_time is not None: # Was previously offline
+                    duration = event.timestamp - current_offline_start_time
+                    total_offline_duration_seconds += duration.total_seconds()
+                    current_offline_start_time = None # Reset
+
+        # After iterating through all events for the channel:
+        # If current_offline_start_time is still set, it means the peer was offline
+        # at the time of its last event in the period and hasn't come back online according to subsequent events *in this period*.
+        # We then check its *actual current status*.
+        if current_offline_start_time is not None:
+            if not channel.is_active: # Peer is *still* offline right now
+                duration = now - current_offline_start_time
+                total_offline_duration_seconds += duration.total_seconds()
+            else:
+                # Peer was offline at last event, but is active NOW.
+                # This means it came online after its last recorded event within the timeframe OR
+                # its 'online' event is outside the 'start_date' filter.
+                # To be safe and avoid over-counting, we only count up to the last event if it's now online.
+                # However, our loop structure handles this: if the last event was offline, and no 'online' event followed,
+                # current_offline_start_time is set. If channel.is_active is True, we don't add duration to 'now'.
+                # This seems implicitly handled by not having an 'else' here to add more duration.
+                pass
+
+
+        if offline_instance_count > 0:
+            avg_offline_hours = (total_offline_duration_seconds / offline_instance_count / 3600.0)
+            sum_offline_hours = total_offline_duration_seconds / 3600.0
+            
+            peer_stats_list.append({
+                'chan_id': channel.chan_id,
+                'channel_alias': channel.alias,
+                'avg_offline_hours': round(avg_offline_hours, 2),
+                'total_offline_hours': round(sum_offline_hours, 2),
+                'offline_count': offline_instance_count,
+                'currently_offline': not channel.is_active,
+            })
+        # Optional: if you want to list peers even if they had no offline events in the period but match alias filter
+        elif alias_filter_query and channel.alias.lower().__contains__(alias_filter_query.lower()):
+             peer_stats_list.append({
+                'chan_id': channel.chan_id,
+                'channel_alias': channel.alias,
+                'avg_offline_hours': 0,
+                'total_offline_hours': 0,
+                'offline_count': 0,
+                'currently_offline': not channel.is_active,
+            })
+
 
     # Python-side sorting
     reverse_sort = sort_by_query.startswith('-')
     sort_key = sort_by_query.lstrip('-')
     
-    # Ensure numeric fields are sorted numerically, handle None for robustness
     def sort_helper(item):
         val = item.get(sort_key)
         if isinstance(val, (int, float)):
             return val
-        if val is None : # Treat None as smallest
+        if val is None:
             return float('-inf') if not reverse_sort else float('inf') 
-        return str(val).lower() # Fallback to string sort for alias/status
+        return str(val).lower()
 
     peer_stats_list.sort(key=sort_helper, reverse=reverse_sort)
 
     context = {
         'peer_stats': peer_stats_list,
-        'timeframe_options': timeframe_options,
+        'timeframe_options': timeframe_options, # Will only contain MTD for now
         'selected_timeframe': selected_timeframe,
         'alias_filter_query': alias_filter_query,
         'current_sort': sort_by_query,
-        'page_title': 'Peer Offline Report',
-        'active_menu': 'peer_offline_report', # For nav highlighting
+        'page_title': 'Peer Offline Report (MTD)',
+        'active_menu': 'peer_offline_report',
     }
-    return render(request, 'gui/peer_offline_report.html', context)
+    return render(request, 'peer_offline_report.html', context)
