@@ -8,17 +8,11 @@
 <div class="w3-container w3-padding-small">
     {# Page Title - Plain like unprofitable_channels.html #}
     <h2>{{ page_title }}</h2>
+    <p class="w3-small w3-text-grey">Displaying data for the current month. Timeframe selection is fixed to optimize performance.</p>
 
     {# Filter Form - Placed directly under the title #}
     <div class="w3-container w3-padding-small"> {# Added padding-small for a bit of spacing #}
         <form method="get">
-            <label for="timeframe">Timeframe:</label>
-            <select name="timeframe" id="timeframe" class="w3-select w3-border w3-round" style="width:auto; display:inline-block; margin-right:15px;" onchange="this.form.submit()">
-                {% for key, value in timeframe_options.items %}
-                <option value="{{ key }}" {% if key == selected_timeframe %}selected{% endif %}>{{ value }}</option>
-                {% endfor %}
-            </select>
-
             <label for="alias" style="margin-left:10px;">Filter by Alias:</label>
             <input type="text" name="alias" id="alias" class="w3-input w3-border w3-round" style="width:auto; display:inline-block;" value="{{ alias_filter_query }}">
             
@@ -45,7 +39,7 @@
                 {% for peer in peer_stats %}
                 <tr>
                     <td>
-                        <a href="{% url 'channel' %}?chan_id={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
+                        <a href="/channel?={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
                             {{ peer.channel_alias }}
                         </a>
                     </td>
@@ -70,7 +64,7 @@
     </div>
     {% endif %}
     <div class="w3-container w3-padding-small w3-small w3-text-grey"> {# Footer styling like unprofitable_channels's explanation box #}
-        Data based on peer connection events for the {{ selected_timeframe }} period.
+        Data based on peer connection events for the current month (Month to Date).
         Default sort by SUM Offline Hours (descending). Click headers to re-sort.
     </div>
 </div>
@@ -118,7 +112,7 @@ function sortTable(clickedHeaderElement, columnIndex, type, initialDirAsc) {
             valB = parseInt(valB, 10);
         } else if (type === 'String') {
             valA = valA.toLowerCase();
-            valB = valB.toLowerCase();
+            valB = valA.localeCompare(valB);
         }
         
         if (valA < valB) return -1 * D;

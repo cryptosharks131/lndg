@@ -3468,16 +3468,12 @@ def reset_api(request):
 
 @is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
 def peer_offline_report(request):
-    timeframe_options = {
-        'MTD': 'Month to Date',
-    }
-    selected_timeframe = 'MTD' 
+    # Timeframe is now fixed to Month to Date
+    # timeframe_options = {'MTD': 'Month to Date'} # No longer needed for a dropdown
+    # selected_timeframe = 'MTD' # Implied
     
     alias_filter_query = request.GET.get('alias', '').strip()
-    # Default sort is now handled by the initial order of data or client-side if preferred.
-    # For server-side initial sort, ensure the data is presorted before context.
-    # Let's initially sort by total_offline_hours descending as was intended.
-    sort_by_query = request.GET.get('sort', '-total_offline_hours') # Corrected default
+    sort_by_query = request.GET.get('sort', '-total_offline_hours') 
 
     now = timezone.now()
     start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -3547,27 +3543,20 @@ def peer_offline_report(request):
     
     def sort_helper(item):
         val = item.get(sort_key)
-        # Handle boolean sort for 'currently_offline' if that key is used
         if isinstance(val, bool):
-            return (val is False, val) if reverse_sort else (val is True, val) # Sort True before False if not reverse
+            return (val is False, val) if reverse_sort else (val is True, val) 
         if isinstance(val, (int, float)):
             return val
         if val is None:
             return float('-inf') if not reverse_sort else float('inf') 
         return str(val).lower()
 
-    # Only apply server-side sort if sort_by_query is not the default *client-side* sort later
-    # Or, always apply for the initial state.
     peer_stats_list.sort(key=sort_helper, reverse=reverse_sort)
-
 
     context = {
         'peer_stats': peer_stats_list,
-        'timeframe_options': timeframe_options,
-        'selected_timeframe': selected_timeframe,
         'alias_filter_query': alias_filter_query,
-        # 'current_sort': sort_by_query, # Less relevant if client-side sort is primary
-        'page_title': 'Peer Offline Report (MTD)',
+        'page_title': 'Peer Offline Report (Month to Date)', # Updated title
         'active_menu': 'peer_offline_report',
     }
     return render(request, 'peer_offline_report.html', context)
