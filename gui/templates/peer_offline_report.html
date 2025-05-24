@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">{{ page_title }}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="form-inline mb-3">
+                        <div class="form-group mr-2">
+                            <label for="timeframe" class="mr-2">Timeframe:</label>
+                            <select name="timeframe" id="timeframe" class="form-control" onchange="this.form.submit()">
+                                {% for key, value in timeframe_options.items %}
+                                <option value="{{ key }}" {% if key == selected_timeframe %}selected{% endif %}>{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mr-2">
+                            <label for="alias" class="mr-2">Filter by Alias:</label>
+                            <input type="text" name="alias" id="alias" class="form-control" value="{{ alias_filter_query }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary mr-2">Filter</button>
+                         <a href="{% url 'peer-offline-report' %}" class="btn btn-secondary">Reset Filters</a>
+                    </form>
+
+                    {% if peer_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <a href="?timeframe={{ selected_timeframe }}&alias={{ alias_filter_query }}&sort={% if current_sort == 'channel_alias' %}-channel_alias{% else %}channel_alias{% endif %}">
+                                            Alias {% if current_sort == 'channel_alias' %}<i class="fas fa-sort-alpha-down"></i>{% elif current_sort == '-channel_alias' %}<i class="fas fa-sort-alpha-up"></i>{% else %}<i class="fas fa-sort"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th class="text-center">
+                                        <a href="?timeframe={{ selected_timeframe }}&alias={{ alias_filter_query }}&sort={% if current_sort == 'currently_offline' %}-currently_offline{% else %}currently_offline{% endif %}">
+                                            Current Status {% if current_sort == 'currently_offline' %}<i class="fas fa-sort-amount-down"></i>{% elif current_sort == '-currently_offline' %}<i class="fas fa-sort-amount-up"></i>{% else %}<i class="fas fa-sort"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th class="text-right">
+                                        <a href="?timeframe={{ selected_timeframe }}&alias={{ alias_filter_query }}&sort={% if current_sort == 'avg_offline_hours' %}-avg_offline_hours{% else %}avg_offline_hours{% endif %}">
+                                            AVG Offline Hours {% if current_sort == 'avg_offline_hours' %}<i class="fas fa-sort-numeric-down"></i>{% elif current_sort == '-avg_offline_hours' %}<i class="fas fa-sort-numeric-up"></i>{% else %}<i class="fas fa-sort-numeric-down"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th class="text-right">
+                                        <a href="?timeframe={{ selected_timeframe }}&alias={{ alias_filter_query }}&sort={% if current_sort == 'total_offline_hours' %}-total_offline_hours{% else %}total_offline_hours{% endif %}">
+                                            SUM Offline Hours {% if current_sort == 'total_offline_hours' %}<i class="fas fa-sort-numeric-down"></i>{% elif current_sort == '-total_offline_hours' %}<i class="fas fa-sort-numeric-up"></i>{% else %}<i class="fas fa-sort-numeric-down"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th class="text-right">
+                                        <a href="?timeframe={{ selected_timeframe }}&alias={{ alias_filter_query }}&sort={% if current_sort == 'offline_count' %}-offline_count{% else %}offline_count{% endif %}">
+                                            Offline Count {% if current_sort == 'offline_count' %}<i class="fas fa-sort-numeric-down"></i>{% elif current_sort == '-offline_count' %}<i class="fas fa-sort-numeric-up"></i>{% else %}<i class="fas fa-sort-numeric-down"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for peer in peer_stats %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'channel' %}?chan_id={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
+                                            {{ peer.channel_alias }}
+                                        </a>
+                                        <small class="text-muted d-block">Chan ID: {{ peer.chan_id }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if peer.currently_offline %}
+                                        <span class="badge badge-danger">Offline</span>
+                                        {% else %}
+                                        <span class="badge badge-success">Online</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right">{{ peer.avg_offline_hours | floatformat:2 }}</td>
+                                    <td class="text-right">{{ peer.total_offline_hours | floatformat:2 }}</td>
+                                    <td class="text-right">{{ peer.offline_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No peer offline data found for the selected criteria.</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-muted">
+                    Data based on peer connection events. "AVG/SUM Offline Hours" are calculated for periods where a peer was observed to be offline within the selected timeframe.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

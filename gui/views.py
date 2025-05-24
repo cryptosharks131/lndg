@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField, ExpressionWrapper, DateTimeField, DurationField
 from django.db.models.functions import Round, TruncDay, Coalesce
+from django.db import connection
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
 from datetime import datetime, timedelta
@@ -3464,3 +3466,111 @@ def reset_api(request):
             return Response({'error': f'Error deleting table: {error}'})
     else:
         return Response({'error': serializer.error_messages})
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def peer_offline_report(request):
+    timeframe_options = {
+        'MTD': 'Month to Date',
+        'QTD': 'Quarter to Date',
+        'YTD': 'Year to Date',
+    }
+    selected_timeframe = request.GET.get('timeframe', 'MTD')
+    alias_filter_query = request.GET.get('alias', '').strip()
+    sort_by_query = request.GET.get('sort', '-sum_offline_hours') # Default sort: sum_offline_hours DESC
+
+    now = timezone.now()
+    if selected_timeframe == 'MTD':
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif selected_timeframe == 'QTD':
+        current_quarter = (now.month - 1) // 3 + 1
+        start_month = (current_quarter - 1) * 3 + 1
+        start_date = now.replace(month=start_month, day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif selected_timeframe == 'YTD':
+        start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else: # Fallback
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S') # For SQL
+
+    peer_stats_list = []
+    
+    # Construct the SQL query (using Django table names: gui_channels, gui_peerevents)
+    # Parameters: %(start_date)s, %(alias_ilike)s (optional)
+    sql_query = """
+        WITH calculated_offline_durations AS (
+            SELECT
+                oe.chan_id,
+                gc.alias AS channel_alias, -- Get alias from gui_channels
+                oe.timestamp AS offline_start,
+                COALESCE(
+                    (SELECT MIN(ne.timestamp) 
+                     FROM gui_peerevents ne 
+                     WHERE ne.chan_id = oe.chan_id 
+                       AND ne.timestamp > oe.timestamp 
+                       AND ne.new_value = 1),
+                    CASE 
+                        WHEN NOT gc.is_active THEN NOW() AT TIME ZONE 'UTC'
+                        ELSE NULL
+                    END
+                ) AS offline_end
+            FROM gui_peerevents oe
+            JOIN gui_channels gc ON oe.chan_id = gc.chan_id
+            WHERE oe.event = 'Connection'
+              AND oe.new_value = 0
+              AND gc.is_open = TRUE
+              AND oe.timestamp >= %(start_date)s
+              {alias_filter_sql} -- Placeholder for alias filter
+        )
+        SELECT
+            cod.channel_alias,
+            cod.chan_id,
+            ROUND(EXTRACT(epoch FROM AVG(GREATEST(cod.offline_end, cod.offline_start) - cod.offline_start)) / 3600.0, 2) AS avg_offline_hours,
+            ROUND(EXTRACT(epoch FROM SUM(GREATEST(cod.offline_end, cod.offline_start) - cod.offline_start)) / 3600.0, 2) AS total_offline_hours,
+            COUNT(*) AS offline_count,
+            NOT c.is_active AS currently_offline
+        FROM calculated_offline_durations cod
+        JOIN gui_channels c ON cod.chan_id = c.chan_id
+        WHERE cod.offline_end IS NOT NULL AND cod.offline_end >= cod.offline_start
+        GROUP BY cod.channel_alias, cod.chan_id, c.is_active
+        -- ORDER BY clause will be handled by Python for flexibility with GET params
+    """
+
+    params = {'start_date': start_date_str}
+    alias_filter_sql_part = ""
+    if alias_filter_query:
+        alias_filter_sql_part = "AND gc.alias ILIKE %(alias_ilike)s"
+        params['alias_ilike'] = f"%{alias_filter_query}%"
+    
+    final_sql_query = sql_query.format(alias_filter_sql=alias_filter_sql_part)
+
+    with connection.cursor() as cursor:
+        cursor.execute(final_sql_query, params)
+        columns = [col[0] for col in cursor.description]
+        for row in cursor.fetchall():
+            peer_stats_list.append(dict(zip(columns, row)))
+
+    # Python-side sorting
+    reverse_sort = sort_by_query.startswith('-')
+    sort_key = sort_by_query.lstrip('-')
+    
+    # Ensure numeric fields are sorted numerically, handle None for robustness
+    def sort_helper(item):
+        val = item.get(sort_key)
+        if isinstance(val, (int, float)):
+            return val
+        if val is None : # Treat None as smallest
+            return float('-inf') if not reverse_sort else float('inf') 
+        return str(val).lower() # Fallback to string sort for alias/status
+
+    peer_stats_list.sort(key=sort_helper, reverse=reverse_sort)
+
+    context = {
+        'peer_stats': peer_stats_list,
+        'timeframe_options': timeframe_options,
+        'selected_timeframe': selected_timeframe,
+        'alias_filter_query': alias_filter_query,
+        'current_sort': sort_by_query,
+        'page_title': 'Peer Offline Report',
+        'active_menu': 'peer_offline_report', # For nav highlighting
+    }
+    return render(request, 'gui/peer_offline_report.html', context)
