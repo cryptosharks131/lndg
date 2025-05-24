@@ -6,121 +6,109 @@
 
 {% block content %}
 <div class="w3-container w3-padding-small">
-    <div class="w3-card w3-round">
-        <header class="w3-container w3-blue w3-padding-small w3-round-top">
-            <h2>{{ page_title }}</h2>
-        </header>
+    {# Page Title - Plain like unprofitable_channels.html #}
+    <h2>{{ page_title }}</h2>
 
-        <div class="w3-container w3-padding">
-            <form method="get" class="w3-row-padding">
-                <div class="w3-third">
-                    <label for="timeframe">Timeframe:</label>
-                    <select name="timeframe" id="timeframe" class="w3-select w3-border w3-round" onchange="this.form.submit()">
-                        {% for key, value in timeframe_options.items %}
-                        <option value="{{ key }}" {% if key == selected_timeframe %}selected{% endif %}>{{ value }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="w3-third">
-                    <label for="alias">Filter by Alias:</label>
-                    <input type="text" name="alias" id="alias" class="w3-input w3-border w3-round" value="{{ alias_filter_query }}">
-                </div>
-                <div class="w3-third w3-margin-top">
-                    <button type="submit" class="w3-button w3-blue w3-round w3-padding-small">Filter</button>
-                    <a href="{% url 'peer-offline-report' %}" class="w3-button w3-grey w3-round w3-padding-small">Reset</a>
-                </div>
-            </form>
-        </div>
+    {# Filter Form - Placed directly under the title #}
+    <div class="w3-container w3-padding-small"> {# Added padding-small for a bit of spacing #}
+        <form method="get">
+            <label for="timeframe">Timeframe:</label>
+            <select name="timeframe" id="timeframe" class="w3-select w3-border w3-round" style="width:auto; display:inline-block; margin-right:15px;" onchange="this.form.submit()">
+                {% for key, value in timeframe_options.items %}
+                <option value="{{ key }}" {% if key == selected_timeframe %}selected{% endif %}>{{ value }}</option>
+                {% endfor %}
+            </select>
 
-        {% if peer_stats %}
-        <div class="w3-container w3-padding-small" style="overflow-x:auto;">
-            <table id="peerOfflineReportTable" class="w3-table-all w3-centered w3-hoverable w3-card">
-                <thead>
-                    <tr class="w3-light-grey">
-                        <th style="cursor:pointer;" onclick="sortTable(event, 0, 'String')">
-                            Alias <i class="fas fa-sort"></i>
-                        </th>
-                        <th style="cursor:pointer;" onclick="sortTable(event, 1, 'String')">
-                            Current Status <i class="fas fa-sort"></i>
-                        </th>
-                        <th style="cursor:pointer;" onclick="sortTable(event, 2, 'float')">
-                            AVG Offline Hours <i class="fas fa-sort"></i>
-                        </th>
-                        <th style="cursor:pointer;" onclick="sortTable(event, 3, 'float')">
-                            SUM Offline Hours <i class="fas fa-sort"></i>
-                        </th>
-                        <th style="cursor:pointer;" onclick="sortTable(event, 4, 'int')">
-                            Offline Count <i class="fas fa-sort"></i>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for peer in peer_stats %}
-                    <tr>
-                        <td>
-                            <a href="{% url 'channel' %}?chan_id={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
-                                {{ peer.channel_alias }}
-                            </a>
-                            <small class="w3-text-grey w3-block">Chan ID: {{ peer.chan_id }}</small>
-                        </td>
-                        <td class="w3-center">
-                            {% if peer.currently_offline %}
-                            <span title="Offline" style="color:red; font-size:1.5em;">&#10060;</span> {# Red X: ❌ #}
-                            {% else %}
-                            <span title="Online" style="color:green; font-size:1.2em;">&#9989;</span> {# Green Check: ✅ #}
-                            {% endif %}
-                        </td>
-                        <td data-sort-value="{{ peer.avg_offline_hours }}">{{ peer.avg_offline_hours | floatformat:2 }}</td>
-                        <td data-sort-value="{{ peer.total_offline_hours }}">{{ peer.total_offline_hours | floatformat:2 }}</td>
-                        <td data-sort-value="{{ peer.offline_count }}">{{ peer.offline_count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="w3-container w3-padding w3-center">
-            <p>No peer offline data found for the selected criteria.</p>
-        </div>
-        {% endif %}
-        <footer class="w3-container w3-light-grey w3-padding-small w3-round-bottom w3-small">
-            Data based on peer connection events for the {{ selected_timeframe }} period.
-            Sorting is performed client-side after initial load if alias filter is not active.
-        </footer>
+            <label for="alias" style="margin-left:10px;">Filter by Alias:</label>
+            <input type="text" name="alias" id="alias" class="w3-input w3-border w3-round" style="width:auto; display:inline-block;" value="{{ alias_filter_query }}">
+            
+            <button type="submit" class="w3-button w3-blue w3-round w3-padding-small" style="margin-left:10px;">Filter</button>
+            <a href="{% url 'peer-offline-report' %}" class="w3-button w3-grey w3-round w3-padding-small" style="margin-left:5px;">Reset</a>
+        </form>
+    </div>
+
+    {% if peer_stats %}
+    <div class="w3-container w3-padding-small" style="overflow-x:auto;">
+        {# Table styling to match unprofitable_channels.html more closely #}
+        {# Retaining w3-centered for data, headers will follow if not overridden by th specific styles #}
+        <table id="peerOfflineReportTable" class="w3-table-all w3-centered w3-hoverable"> 
+            <thead>
+                <tr> 
+                    <th onclick="sortTable(event.target, 0, 'String', 1)">Alias</th>
+                    <th onclick="sortTable(event.target, 1, 'String', 1)">Current Status</th>
+                    <th onclick="sortTable(event.target, 2, 'float', 0)">AVG Offline Hours</th>
+                    <th onclick="sortTable(event.target, 3, 'float', 0)">SUM Offline Hours</th>
+                    <th onclick="sortTable(event.target, 4, 'int', 0)">Offline Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for peer in peer_stats %}
+                <tr>
+                    <td>
+                        <a href="{% url 'channel' %}?chan_id={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
+                            {{ peer.channel_alias }}
+                        </a>
+                    </td>
+                    <td class="w3-center"> {# Explicitly center status icon #}
+                        {% if peer.currently_offline %}
+                        <span title="Offline" style="color:red; font-size:1.2em;">&#10060;</span>
+                        {% else %}
+                        <span title="Online" style="color:green; font-size:1.0em;">&#9989;</span>
+                        {% endif %}
+                    </td>
+                    <td data-value="{{ peer.avg_offline_hours }}">{{ peer.avg_offline_hours | floatformat:2 }}</td>
+                    <td data-value="{{ peer.total_offline_hours }}">{{ peer.total_offline_hours | floatformat:2 }}</td>
+                    <td data-value="{{ peer.offline_count }}">{{ peer.offline_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="w3-container w3-padding w3-center">
+        <p>No peer offline data found for the selected criteria.</p>
+    </div>
+    {% endif %}
+    <div class="w3-container w3-padding-small w3-small w3-text-grey"> {# Footer styling like unprofitable_channels's explanation box #}
+        Data based on peer connection events for the {{ selected_timeframe }} period.
+        Default sort by SUM Offline Hours (descending). Click headers to re-sort.
     </div>
 </div>
 
 <script>
-// Basic table sorting function (adapt from advanced.html or use a more robust one if needed)
-// This is a simplified version. The one in advanced.html might be more complex.
-// Ensure Font Awesome icons are updated by the sortTable function if it handles that.
-function sortTable(event, columnIndex, type) {
+// Adopted sortTable function similar to unprofitable_channels.html
+function sortTable(clickedHeaderElement, columnIndex, type, initialDirAsc) {
     const table = document.getElementById("peerOfflineReportTable");
-    let th = event.currentTarget; // The TH element clicked
-    let rows = Array.from(table.rows).slice(1); // Get all rows except the header
-    let D = th.classList.contains('sort_asc') ? -1 : 1; // Sort direction
+    let rows = Array.from(table.rows).slice(1); 
+    let currentSortDir = clickedHeaderElement.dataset.sortDir || (initialDirAsc ? "asc" : "desc");
+    let D; 
 
-    // Reset other header sort indicators
-    table.querySelectorAll('th.sort_asc, th.sort_desc').forEach(header => {
-        if (header !== th) {
-            header.classList.remove('sort_asc', 'sort_desc');
-            header.querySelector('i').className = 'fas fa-sort';
-        }
-    });
-
-    if (D === -1) {
-        th.classList.remove('sort_asc');
-        th.classList.add('sort_desc');
-        th.querySelector('i').className = 'fas fa-sort-down'; // Or specific type like fa-sort-alpha-down
+    if (clickedHeaderElement.classList.contains('sorting')) {
+        D = (currentSortDir === "asc") ? -1 : 1; 
+        clickedHeaderElement.dataset.sortDir = (D === 1) ? "asc" : "desc";
     } else {
-        th.classList.remove('sort_desc');
-        th.classList.add('sort_asc');
-        th.querySelector('i').className = 'fas fa-sort-up'; // Or specific type like fa-sort-alpha-up
+        D = initialDirAsc ? 1 : -1; 
+        clickedHeaderElement.dataset.sortDir = initialDirAsc ? "asc" : "desc";
     }
     
+    const headers = table.getElementsByTagName("TH");
+    for (let i = 0; i < headers.length; i++) {
+        headers[i].innerHTML = headers[i].innerHTML.replace(/ [↑↓]$/, ""); 
+        if (headers[i] !== clickedHeaderElement) {
+            headers[i].classList.remove('sorting');
+            delete headers[i].dataset.sortDir;
+        }
+    }
+    
+    clickedHeaderElement.classList.add('sorting');
+    // Ensure existing content isn't duplicated if sortTable is called multiple times on same header before full page refresh
+    let baseHTML = clickedHeaderElement.innerHTML.replace(/ [↑↓]$/, "");
+    clickedHeaderElement.innerHTML = baseHTML + (D === 1 ? " ↑" : " ↓");
+
+
     rows.sort((a, b) => {
-        let valA = a.cells[columnIndex].dataset.sortValue || a.cells[columnIndex].textContent.trim();
-        let valB = b.cells[columnIndex].dataset.sortValue || b.cells[columnIndex].textContent.trim();
+        let valA = a.cells[columnIndex].dataset.value || a.cells[columnIndex].textContent.trim();
+        let valB = b.cells[columnIndex].dataset.value || b.cells[columnIndex].textContent.trim();
 
         if (type === 'float') {
             valA = parseFloat(valA);
@@ -138,21 +126,20 @@ function sortTable(event, columnIndex, type) {
         return 0;
     });
 
-    rows.forEach(row => table.tBodies[0].appendChild(row));
+    const tbody = table.tBodies[0];
+    tbody.innerHTML = ""; 
+    rows.forEach(row => tbody.appendChild(row)); 
 }
 
-// Set initial sort indicator for SUM Offline Hours (column index 3)
 document.addEventListener('DOMContentLoaded', function() {
     const headers = document.getElementById("peerOfflineReportTable").getElementsByTagName('th');
-    if (headers.length > 3) { // Ensure column exists
-        // Find the 'SUM Offline Hours' column header (index 3)
-        const sumOfflineTh = headers[3];
-        sumOfflineTh.classList.add('sort_desc'); // Assuming default server sort is descending
-        sumOfflineTh.querySelector('i').className = 'fas fa-sort-down';
-
-        // If you want to trigger client-side sort on load to match this:
-        // sortTable({currentTarget: sumOfflineTh}, 3, 'float');
-        // sortTable({currentTarget: sumOfflineTh}, 3, 'float'); // Call twice to ensure descending if first is asc. Or adjust D.
+    if (headers.length > 3) { 
+        const sumOfflineTh = headers[3]; // SUM Offline Hours column
+        sumOfflineTh.dataset.sortDir = 'desc'; 
+        sumOfflineTh.classList.add('sorting');    
+        // Ensure existing content isn't duplicated if script runs multiple times or header has complex content
+        let baseHTML = sumOfflineTh.innerHTML.replace(/ [↑↓]$/, "");
+        sumOfflineTh.innerHTML = baseHTML + " ↓";
     }
 });
 </script>
