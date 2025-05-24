@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, render, redirect
 from django.db.models import Sum, IntegerField, Count, Max, F, Q, Case, When, Value, FloatField, ExpressionWrapper, DateTimeField, DurationField
 from django.db.models.functions import Round, TruncDay, Coalesce
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django_filters import FilterSet, CharFilter, DateTimeFilter, NumberFilter
 from datetime import datetime, timedelta
@@ -3464,3 +3465,98 @@ def reset_api(request):
             return Response({'error': f'Error deleting table: {error}'})
     else:
         return Response({'error': serializer.error_messages})
+
+@is_login_required(login_required(login_url='/lndg-admin/login/?next=/'), settings.LOGIN_REQUIRED)
+def peer_offline_report(request):
+    # Timeframe is now fixed to Month to Date
+    # timeframe_options = {'MTD': 'Month to Date'} # No longer needed for a dropdown
+    # selected_timeframe = 'MTD' # Implied
+    
+    alias_filter_query = request.GET.get('alias', '').strip()
+    sort_by_query = request.GET.get('sort', '-total_offline_hours') 
+
+    now = timezone.now()
+    start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    peer_stats_list = []
+
+    open_channels = Channels.objects.filter(is_open=True)
+    if alias_filter_query:
+        open_channels = open_channels.filter(alias__icontains=alias_filter_query)
+
+    for channel in open_channels:
+        events = PeerEvents.objects.filter(
+            chan_id=channel.chan_id,
+            event='Connection',
+            timestamp__gte=start_date
+        ).order_by('timestamp')
+
+        if not events.exists() and not (alias_filter_query and channel.alias.lower().__contains__(alias_filter_query.lower())):
+            # Skip if no events and not specifically filtered for this alias (to show 0s)
+            continue
+
+        total_offline_duration_seconds = 0
+        offline_instance_count = 0
+        current_offline_start_time = None
+
+        for i, event in enumerate(events):
+            if event.new_value == 0:
+                if current_offline_start_time is None:
+                    current_offline_start_time = event.timestamp
+                    offline_instance_count += 1
+            elif event.new_value == 1:
+                if current_offline_start_time is not None:
+                    duration = event.timestamp - current_offline_start_time
+                    total_offline_duration_seconds += duration.total_seconds()
+                    current_offline_start_time = None
+
+        if current_offline_start_time is not None:
+            if not channel.is_active:
+                duration = now - current_offline_start_time
+                total_offline_duration_seconds += duration.total_seconds()
+
+        current_peer_stats = {
+            'chan_id': channel.chan_id,
+            'channel_alias': channel.alias,
+            'avg_offline_hours': 0,
+            'total_offline_hours': 0,
+            'offline_count': 0,
+            'currently_offline': not channel.is_active,
+        }
+
+        if offline_instance_count > 0:
+            avg_offline_hours = (total_offline_duration_seconds / offline_instance_count / 3600.0)
+            sum_offline_hours = total_offline_duration_seconds / 3600.0
+            current_peer_stats['avg_offline_hours'] = round(avg_offline_hours, 2)
+            current_peer_stats['total_offline_hours'] = round(sum_offline_hours, 2)
+            current_peer_stats['offline_count'] = offline_instance_count
+        
+        # Add to list if it had offline events OR if it was specifically filtered by alias (to show 0s)
+        if offline_instance_count > 0 or (alias_filter_query and channel.alias.lower().__contains__(alias_filter_query.lower())):
+            peer_stats_list.append(current_peer_stats)
+
+
+    # Python-side sorting for initial load / if JS is disabled / if alias filter is used
+    reverse_sort = sort_by_query.startswith('-')
+    # Use the part after '-' as the key, ensure it matches dict keys
+    sort_key = sort_by_query.lstrip('-') 
+    
+    def sort_helper(item):
+        val = item.get(sort_key)
+        if isinstance(val, bool):
+            return (val is False, val) if reverse_sort else (val is True, val) 
+        if isinstance(val, (int, float)):
+            return val
+        if val is None:
+            return float('-inf') if not reverse_sort else float('inf') 
+        return str(val).lower()
+
+    peer_stats_list.sort(key=sort_helper, reverse=reverse_sort)
+
+    context = {
+        'peer_stats': peer_stats_list,
+        'alias_filter_query': alias_filter_query,
+        'page_title': 'Peer Offline Report (Month to Date)', # Updated title
+        'active_menu': 'peer_offline_report',
+    }
+    return render(request, 'peer_offline_report.html', context)
