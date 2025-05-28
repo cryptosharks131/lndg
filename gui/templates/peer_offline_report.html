@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %} {# For intcomma if needed, though not used in current stat fields #}
+
+{% block title %} {{ block.super }} - {{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="w3-container w3-padding-small">
+    {# Page Title - Plain like unprofitable_channels.html #}
+    <h2>{{ page_title }}</h2>
+    <p class="w3-small w3-text-grey">Displaying data for the current month. Timeframe selection is fixed to optimize performance.</p>
+
+    {# Filter Form - Placed directly under the title #}
+    <div class="w3-container w3-padding-small"> {# Added padding-small for a bit of spacing #}
+        <form method="get" id="filterForm"> {# Added an ID to the form for easier reset handling #}
+            <label for="alias" style="margin-left:10px;">Filter by Alias:</label>
+            <input type="text" name="alias" id="alias" class="w3-input w3-border w3-round" style="width:auto; display:inline-block;" value="{{ alias_filter_query }}">
+            
+            <button type="submit" class="w3-button w3-blue w3-round w3-padding-small" style="margin-left:10px;">Filter</button>
+            <a href="{% url 'peer-offline-report' %}" class="w3-button w3-grey w3-round w3-padding-small" style="margin-left:5px;">Reset</a>
+            {{ edit_start }}
+            <button type="button" id="exportTop10Button" class="w3-button w3-green w3-round w3-padding-small" style="margin-left:10px;">Export Top 10 CSV</button>
+            {{ edit_end }}
+        </form>
+    </div>
+
+    {% if peer_stats %}
+    <div class="w3-container w3-padding-small" style="overflow-x:auto;">
+        {# Table styling to match unprofitable_channels.html more closely #}
+        {# Retaining w3-centered for data, headers will follow if not overridden by th specific styles #}
+        <table id="peerOfflineReportTable" class="w3-table-all w3-centered w3-hoverable"> 
+            <thead>
+                <tr> 
+                    <th onclick="sortTable(event.target, 0, 'String', 1)">Alias</th>
+                    <th onclick="sortTable(event.target, 1, 'String', 1)">Current Status</th>
+                    <th onclick="sortTable(event.target, 2, 'float', 0)">AVG Offline Hours</th>
+                    <th onclick="sortTable(event.target, 3, 'float', 0)">SUM Offline Hours</th>
+                    <th onclick="sortTable(event.target, 4, 'int', 0)">Offline Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for peer in peer_stats %}
+                <tr>
+                    <td data-alias="{{ peer.channel_alias }}"> {# Added data-alias for easier JS access #}
+                        <a href="/channel?={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
+                            {{ peer.channel_alias }}
+                        </a>
+                    </td>
+                    <td class="w3-center" data-status="{% if peer.currently_offline %}Offline{% else %}Online{% endif %}"> {# Added data-status #}
+                        {% if peer.currently_offline %}
+                        <span title="Offline" style="color:red; font-size:1.2em;">&#10060;</span>
+                        {% else %}
+                        <span title="Online" style="color:green; font-size:1.0em;">&#9989;</span>
+                        {% endif %}
+                    </td>
+                    <td data-value="{{ peer.avg_offline_hours }}">{{ peer.avg_offline_hours | floatformat:2 }}</td>
+                    <td data-value="{{ peer.total_offline_hours }}">{{ peer.total_offline_hours | floatformat:2 }}</td>
+                    <td data-value="{{ peer.offline_count }}">{{ peer.offline_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="w3-container w3-padding w3-center">
+        <p>No peer offline data found for the selected criteria.</p>
+    </div>
+    {% endif %}
+    <div class="w3-container w3-padding-small w3-small w3-text-grey"> {# Footer styling like unprofitable_channels's explanation box #}
+        Data based on peer connection events for the current month (Month to Date).
+        Default sort by SUM Offline Hours (descending). Click headers to re-sort.
+    </div>
+</div>
+
+<div id="copyFeedback" class="w3-panel w3-green w3-display-container w3-round" style="display:none; position:fixed; top:20px; right:20px; z-index:9999; padding:12px 20px;">
+  <span onclick="this.parentElement.style.display='none'" class="w3-button w3-display-topright w3-hover-none w3-hover-text-grey">&times;</span>
+  <p>Top 10 CSV copied to clipboard!</p>
+</div>
+
+<script>
+// Adopted sortTable function similar to unprofitable_channels.html
+function sortTable(clickedHeaderElement, columnIndex, type, initialDirAsc) {
+    const table = document.getElementById("peerOfflineReportTable");
+    let rows = Array.from(table.rows).slice(1); 
+    let currentSortDir = clickedHeaderElement.dataset.sortDir || (initialDirAsc ? "asc" : "desc");
+    let D; 
+
+    if (clickedHeaderElement.classList.contains('sorting')) {
+        D = (currentSortDir === "asc") ? -1 : 1; 
+        clickedHeaderElement.dataset.sortDir = (D === 1) ? "asc" : "desc";
+    } else {
+        D = initialDirAsc ? 1 : -1; 
+        clickedHeaderElement.dataset.sortDir = initialDirAsc ? "asc" : "desc";
+    }
+    
+    const headers = table.getElementsByTagName("TH");
+    for (let i = 0; i < headers.length; i++) {
+        headers[i].innerHTML = headers[i].innerHTML.replace(/ [↑↓]$/, ""); 
+        if (headers[i] !== clickedHeaderElement) {
+            headers[i].classList.remove('sorting');
+            delete headers[i].dataset.sortDir;
+        }
+    }
+    
+    clickedHeaderElement.classList.add('sorting');
+    // Ensure existing content isn't duplicated if sortTable is called multiple times on same header before full page refresh
+    let baseHTML = clickedHeaderElement.innerHTML.replace(/ [↑↓]$/, "");
+    clickedHeaderElement.innerHTML = baseHTML + (D === 1 ? " ↑" : " ↓");
+
+
+    rows.sort((a, b) => {
+        let valA = a.cells[columnIndex].dataset.value || a.cells[columnIndex].textContent.trim();
+        let valB = b.cells[columnIndex].dataset.value || b.cells[columnIndex].textContent.trim();
+
+        if (type === 'float') {
+            valA = parseFloat(valA);
+            valB = parseFloat(valB);
+        } else if (type === 'int') {
+            valA = parseInt(valA, 10);
+            valB = parseInt(valB, 10);
+        } else if (type === 'String') {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase(); // Corrected valA.localeCompare(valB) was for return value
+        }
+        
+        if (valA < valB) return -1 * D;
+        if (valA > valB) return 1 * D;
+        return 0;
+    });
+
+    const tbody = table.tBodies[0];
+    tbody.innerHTML = ""; 
+    rows.forEach(row => tbody.appendChild(row)); 
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const headers = document.getElementById("peerOfflineReportTable").getElementsByTagName('th');
+    if (headers.length > 3) { 
+        const sumOfflineTh = headers[3]; // SUM Offline Hours column
+        sumOfflineTh.dataset.sortDir = 'desc'; 
+        sumOfflineTh.classList.add('sorting');    
+        // Ensure existing content isn't duplicated if script runs multiple times or header has complex content
+        let baseHTML = sumOfflineTh.innerHTML.replace(/ [↑↓]$/, "");
+        sumOfflineTh.innerHTML = baseHTML + " ↓";
+    }
+
+    {{ edit_start }}
+    const exportButton = document.getElementById('exportTop10Button');
+    if (exportButton) {
+        exportButton.addEventListener('click', function() {
+            const table = document.getElementById('peerOfflineReportTable');
+            if (!table) return;
+
+            let csvData = [];
+            // Define CSV Headers - we want Alias, SUM Offline Hours, Offline Count
+            const csvHeaders = ["Alias", "SUM Offline Hours", "Offline Count"];
+            csvData.push(csvHeaders.join(','));
+
+            const rows = Array.from(table.tBodies[0].rows);
+            
+            for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                const row = rows[i];
+                // Extract data, ensuring to handle potential commas in alias by quoting
+                let alias = row.cells[0].getElementsByTagName('a')[0] ? row.cells[0].getElementsByTagName('a')[0].textContent.trim() : row.cells[0].textContent.trim();
+                // If alias might contain a comma, quote it for CSV integrity
+                if (alias.includes(',')) {
+                    alias = `"${alias}"`;
+                }
+                const sumOffline = row.cells[3].dataset.value || row.cells[3].textContent.trim();
+                const offlineCount = row.cells[4].dataset.value || row.cells[4].textContent.trim();
+                
+                csvData.push([alias, sumOffline, offlineCount].join(','));
+            }
+
+            if (csvData.length <= 1) { // Only header row
+                alert('No data to export.');
+                return;
+            }
+
+            const csvString = csvData.join('\n'); // Corrected: Join all rows with actual newline character
+            
+            // Copy to clipboard
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(csvString).then(function() {
+                    showCopyFeedback("Top 10 CSV copied!");
+                }).catch(function(err) {
+                    console.error('Failed to copy CSV to clipboard: ', err);
+                    alert('Failed to copy CSV. See console for details.');
+                });
+            } else {
+                // Fallback for non-secure contexts or older browsers
+                const textArea = document.createElement("textarea");
+                textArea.value = csvString;
+                textArea.style.position = "fixed"; 
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopyFeedback("Top 10 CSV copied!");
+                } catch (err) {
+                    console.error('Fallback CSV copy failed: ', err);
+                    alert('Fallback CSV copy failed. See console.');
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+    }
+
+    function showCopyFeedback(message = "Copied to clipboard!") {
+        const feedbackPanel = document.getElementById('copyFeedback');
+        if (feedbackPanel) {
+            feedbackPanel.querySelector('p').textContent = message;
+            feedbackPanel.style.display = 'block';
+            setTimeout(function() {
+                feedbackPanel.style.display = 'none';
+            }, 2500);
+        }
+    }
+    {{ edit_end }}
+});
+</script>
+{% endblock %}
