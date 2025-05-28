@@ -12,12 +12,15 @@
 
     {# Filter Form - Placed directly under the title #}
     <div class="w3-container w3-padding-small"> {# Added padding-small for a bit of spacing #}
-        <form method="get">
+        <form method="get" id="filterForm"> {# Added an ID to the form for easier reset handling #}
             <label for="alias" style="margin-left:10px;">Filter by Alias:</label>
             <input type="text" name="alias" id="alias" class="w3-input w3-border w3-round" style="width:auto; display:inline-block;" value="{{ alias_filter_query }}">
             
             <button type="submit" class="w3-button w3-blue w3-round w3-padding-small" style="margin-left:10px;">Filter</button>
             <a href="{% url 'peer-offline-report' %}" class="w3-button w3-grey w3-round w3-padding-small" style="margin-left:5px;">Reset</a>
+            {{ edit_start }}
+            <button type="button" id="exportTop10Button" class="w3-button w3-green w3-round w3-padding-small" style="margin-left:10px;">Export Top 10 CSV</button>
+            {{ edit_end }}
         </form>
     </div>
 
@@ -38,12 +41,12 @@
             <tbody>
                 {% for peer in peer_stats %}
                 <tr>
-                    <td>
+                    <td data-alias="{{ peer.channel_alias }}"> {# Added data-alias for easier JS access #}
                         <a href="/channel?={{ peer.chan_id }}" title="View Channel Details for {{ peer.channel_alias }}" target="_blank">
                             {{ peer.channel_alias }}
                         </a>
                     </td>
-                    <td class="w3-center"> {# Explicitly center status icon #}
+                    <td class="w3-center" data-status="{% if peer.currently_offline %}Offline{% else %}Online{% endif %}"> {# Added data-status #}
                         {% if peer.currently_offline %}
                         <span title="Offline" style="color:red; font-size:1.2em;">&#10060;</span>
                         {% else %}
@@ -67,6 +70,11 @@
         Data based on peer connection events for the current month (Month to Date).
         Default sort by SUM Offline Hours (descending). Click headers to re-sort.
     </div>
+</div>
+
+<div id="copyFeedback" class="w3-panel w3-green w3-display-container w3-round" style="display:none; position:fixed; top:20px; right:20px; z-index:9999; padding:12px 20px;">
+  <span onclick="this.parentElement.style.display='none'" class="w3-button w3-display-topright w3-hover-none w3-hover-text-grey">&times;</span>
+  <p>Top 10 CSV copied to clipboard!</p>
 </div>
 
 <script>
@@ -112,7 +120,7 @@ function sortTable(clickedHeaderElement, columnIndex, type, initialDirAsc) {
             valB = parseInt(valB, 10);
         } else if (type === 'String') {
             valA = valA.toLowerCase();
-            valB = valA.localeCompare(valB);
+            valB = valB.toLowerCase(); // Corrected valA.localeCompare(valB) was for return value
         }
         
         if (valA < valB) return -1 * D;
@@ -135,6 +143,82 @@ document.addEventListener('DOMContentLoaded', function() {
         let baseHTML = sumOfflineTh.innerHTML.replace(/ [↑↓]$/, "");
         sumOfflineTh.innerHTML = baseHTML + " ↓";
     }
+
+    {{ edit_start }}
+    const exportButton = document.getElementById('exportTop10Button');
+    if (exportButton) {
+        exportButton.addEventListener('click', function() {
+            const table = document.getElementById('peerOfflineReportTable');
+            if (!table) return;
+
+            let csvData = [];
+            // Define CSV Headers - we want Alias, SUM Offline Hours, Offline Count
+            const csvHeaders = ["Alias", "SUM Offline Hours", "Offline Count"];
+            csvData.push(csvHeaders.join(','));
+
+            const rows = Array.from(table.tBodies[0].rows);
+            
+            for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                const row = rows[i];
+                // Extract data, ensuring to handle potential commas in alias by quoting
+                let alias = row.cells[0].getElementsByTagName('a')[0] ? row.cells[0].getElementsByTagName('a')[0].textContent.trim() : row.cells[0].textContent.trim();
+                // If alias might contain a comma, quote it for CSV integrity
+                if (alias.includes(',')) {
+                    alias = `"${alias}"`;
+                }
+                const sumOffline = row.cells[3].dataset.value || row.cells[3].textContent.trim();
+                const offlineCount = row.cells[4].dataset.value || row.cells[4].textContent.trim();
+                
+                csvData.push([alias, sumOffline, offlineCount].join(','));
+            }
+
+            if (csvData.length <= 1) { // Only header row
+                alert('No data to export.');
+                return;
+            }
+
+            const csvString = csvData.join('\n'); // Corrected: Join all rows with actual newline character
+            
+            // Copy to clipboard
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(csvString).then(function() {
+                    showCopyFeedback("Top 10 CSV copied!");
+                }).catch(function(err) {
+                    console.error('Failed to copy CSV to clipboard: ', err);
+                    alert('Failed to copy CSV. See console for details.');
+                });
+            } else {
+                // Fallback for non-secure contexts or older browsers
+                const textArea = document.createElement("textarea");
+                textArea.value = csvString;
+                textArea.style.position = "fixed"; 
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopyFeedback("Top 10 CSV copied!");
+                } catch (err) {
+                    console.error('Fallback CSV copy failed: ', err);
+                    alert('Fallback CSV copy failed. See console.');
+                }
+                document.body.removeChild(textArea);
+            }
+        });
+    }
+
+    function showCopyFeedback(message = "Copied to clipboard!") {
+        const feedbackPanel = document.getElementById('copyFeedback');
+        if (feedbackPanel) {
+            feedbackPanel.querySelector('p').textContent = message;
+            feedbackPanel.style.display = 'block';
+            setTimeout(function() {
+                feedbackPanel.style.display = 'none';
+            }, 2500);
+        }
+    }
+    {{ edit_end }}
 });
 </script>
 {% endblock %}
