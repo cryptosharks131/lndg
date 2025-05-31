@@ -128,7 +128,7 @@ async def run_rebalancer(rebalance, worker):
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
-                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire increase for {next_rebalance.target_alias} from {next_rebalance.value} to {rebalance.value}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire increase for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value}")
                 else:
                     next_rebalance = None
             # For failed rebalances, try in rapid fire with reduced balances until give up.
@@ -146,7 +146,7 @@ async def run_rebalancer(rebalance, worker):
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     next_rebalance = Rebalancer(value=int(next_value), fee_limit=round(rebalance.fee_limit/(rebalance.value/next_value), 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
-                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire decrease for {next_rebalance.target_alias} from {next_rebalance.value} to {rebalance.value}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire decrease for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value}")
                 else:
                     next_rebalance = None
             else:
