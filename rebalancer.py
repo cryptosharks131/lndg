@@ -416,22 +416,29 @@ def main():
     else:
         LocalSettings(key='AR-Workers', value='1').save()
         worker_count = 1
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.create_task(update_worker_count())
-    while True:
-        shutdown_rebalancer = False
-        scheduled_rebalances = []
-        active_rebalances = []
-        if Rebalancer.objects.filter(status=1).exists():
-            unknown_errors = Rebalancer.objects.filter(status=1)
-            for unknown_error in unknown_errors:
-                unknown_error.status = 400
-                unknown_error.stop = datetime.now()
-                unknown_error.save()
-        loop.run_until_complete(start_queue(worker_count))
-        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
-        sleep(20)
+    try:
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer initializing...")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.create_task(update_worker_count())
+        while True:
+            shutdown_rebalancer = False
+            scheduled_rebalances = []
+            active_rebalances = []
+            if Rebalancer.objects.filter(status=1).exists():
+                unknown_errors = Rebalancer.objects.filter(status=1)
+                for unknown_error in unknown_errors:
+                    unknown_error.status = 400
+                    unknown_error.stop = datetime.now()
+                    unknown_error.save()
+            loop.run_until_complete(start_queue(worker_count))
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
+            sleep(20)
+    except Exception as e:
+        error = str(e)
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer loop error: {error}")
+    finally:
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer loop has been terminated")
 
 if __name__ == '__main__':
     main()

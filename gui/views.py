@@ -231,6 +231,7 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
+            grep = request.GET.get('grep', None)
             logfile = '/var/log/lndg-controller.log'
             file_size = path.getsize(logfile)-2
             if file_size == 0:
@@ -240,7 +241,14 @@ def logs(request):
                 read_size = min(target_size, file_size)
                 with open(logfile, "rb") as reader:
                     reader.seek(-read_size, 2)
-                    logs = [line.decode('utf-8') for line in reader.readlines()]
+                    logs = []
+                    for line in reader.readlines():
+                        log_line = line.decode('utf-8')
+                        if grep:
+                            if str(grep) in log_line:
+                                logs.append(log_line)
+                        else:
+                            logs.append(log_line)
             return render(request, 'logs.html', {'logs': logs})
         except Exception as e:
             return render(request, 'error.html', {'error': str(e)})
