@@ -231,6 +231,7 @@ def logs(request):
     if request.method == 'GET':
         try:
             count = request.GET.get('tail', 20)
+            grep = request.GET.get('grep', None)
             logfile = '/var/log/lndg-controller.log'
             file_size = path.getsize(logfile)-2
             if file_size == 0:
@@ -240,7 +241,14 @@ def logs(request):
                 read_size = min(target_size, file_size)
                 with open(logfile, "rb") as reader:
                     reader.seek(-read_size, 2)
-                    logs = [line.decode('utf-8') for line in reader.readlines()]
+                    logs = []
+                    for line in reader.readlines():
+                        log_line = line.decode('utf-8')
+                        if grep:
+                            if str(grep) in log_line:
+                                logs.append(log_line)
+                        else:
+                            logs.append(log_line)
             return render(request, 'logs.html', {'logs': logs})
         except Exception as e:
             return render(request, 'error.html', {'error': str(e)})
@@ -1105,50 +1113,40 @@ def unprofitable_channels(request):
             current_block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
         except Exception as e:
             print(f"Error getting current block height: {e}")
-            # Handle error appropriately, maybe return an error message or default height
-            current_block_height = 0 # Or some other fallback
+            current_block_height = 0 
 
-        # Define Age Thresholds and Max Bonus
         VERY_NEW_DAYS = 7
         ESTABLISHED_DAYS = 30
         MAX_AGE_BONUS = 2.0
 
-        # Dictionary to store metrics for each channel
         channel_metrics_dict = {chan_id: {
             'routed_out_sats': 0,
             'last_routing': None,
             'last_routing_amount': 0,
-            'rebalanced_out_sats': 0,
-            'last_rebalance': None,
-            'last_rebalance_amount': 0,
+            'rebalanced_out_sats': 0, # For display of rebalances OUT
+            'last_rebalance': None,    # For display of last rebalance OUT
+            'last_rebalance_amount': 0, # For display of last rebalance OUT amount
             'fee_revenue': 0,
-            'rebalance_fee_cost': 0,
+            'rebalance_fee_cost': 0, # THIS WILL BE THE CORRECTED COST FOR PROFIT
             'assisted_revenue': 0
         } for chan_id in channel_ids}
 
-        # 1. Get outbound forwarding stats (routing out)
+        # 1. Get outbound forwarding stats (routing out) - Populates 'fee_revenue'
         out_forwards = Forwards.objects.filter(
             chan_id_out__in=channel_ids,
             forward_date__gte=filter_date
         )
 
-        # Calculate total fees and amounts
         for forward in out_forwards:
             chan_id = forward.chan_id_out
             metrics = channel_metrics_dict[chan_id]
-
-            # Update routed out sats
             metrics['routed_out_sats'] += int(forward.amt_out_msat / 1000) if forward.amt_out_msat else 0
-
-            # Update fee revenue
             metrics['fee_revenue'] += forward.fee if forward.fee else 0
-
-            # Track last routing event
             if metrics['last_routing'] is None or forward.forward_date > metrics['last_routing']:
                 metrics['last_routing'] = forward.forward_date
                 metrics['last_routing_amount'] = int(forward.amt_out_msat / 1000) if forward.amt_out_msat else 0
 
-        # 2. Get inbound forwarding stats (assisted revenue)
+        # 2. Get inbound forwarding stats (assisted revenue) - Populates 'assisted_revenue'
         in_forwards = Forwards.objects.filter(
             chan_id_in__in=channel_ids,
             forward_date__gte=filter_date
@@ -1158,28 +1156,48 @@ def unprofitable_channels(request):
             chan_id = forward.chan_id_in
             channel_metrics_dict[chan_id]['assisted_revenue'] += forward.fee if forward.fee else 0
 
-        # 3. Get outbound rebalance data - using chan_out to match channels view
-        rebalance_payments = Payments.objects.filter(
-            chan_out__in=channel_ids,  # This is the key change - using chan_out instead of rebal_chan
+        # --- Calculate rebalance_fee_cost for PROFIT (cost of rebalances INTO the channel) ---
+        # This section calculates the cost component for the profit metric accurately.
+        all_rebalance_payments_in_period = Payments.objects.filter(
             creation_date__gte=filter_date,
-            status=2,  # Successful payments
-            rebal_chan__isnull=False  # This identifies it as a rebalance
+            status=2,
+            rebal_chan__isnull=False 
+        )
+        payment_fees_by_hash = {p.payment_hash: p.fee for p in all_rebalance_payments_in_period}
+
+        rebalance_invoices_into_our_channels = Invoices.objects.filter(
+            chan_in__in=channel_ids,
+            state=1, 
+            settle_date__gte=filter_date,
+            r_hash__in=all_rebalance_payments_in_period.values_list('payment_hash', flat=True)
         )
 
-        for payment in rebalance_payments:
-            chan_id = payment.chan_out  # Using chan_out for outbound rebalances
-            metrics = channel_metrics_dict[chan_id]
+        for invoice in rebalance_invoices_into_our_channels:
+            chan_id_receiving_rebalance = invoice.chan_in
+            if chan_id_receiving_rebalance in channel_metrics_dict:
+                cost_of_this_rebalance_in = payment_fees_by_hash.get(invoice.r_hash, 0)
+                channel_metrics_dict[chan_id_receiving_rebalance]['rebalance_fee_cost'] += cost_of_this_rebalance_in
+        # --- End of rebalance_fee_cost calculation for profit ---
 
-            # Update rebalanced out sats
-            metrics['rebalanced_out_sats'] += payment.value if payment.value else 0
+        # 3. Get outbound rebalance data FOR DISPLAY PURPOSES (rebalanced_out_sats, last_rebalance)
+        # This data is for display columns like "Rebalanced Out Sats" and "Last Rebalance (Out)".
+        # It does NOT contribute to the 'rebalance_fee_cost' used in profit calculation.
+        rebalance_payments_out_for_display = Payments.objects.filter(
+            chan_out__in=channel_ids, 
+            creation_date__gte=filter_date,
+            status=2, 
+            rebal_chan__isnull=False 
+        )
 
-            # Update rebalance fee cost
-            metrics['rebalance_fee_cost'] += payment.fee if payment.fee else 0
-
-            # Track last rebalance event
-            if metrics['last_rebalance'] is None or payment.creation_date > metrics['last_rebalance']:
-                metrics['last_rebalance'] = payment.creation_date
-                metrics['last_rebalance_amount'] = payment.value if payment.value else 0
+        for payment in rebalance_payments_out_for_display:
+            chan_id = payment.chan_out 
+            if chan_id in channel_metrics_dict: # Ensure channel is in our scope
+                metrics = channel_metrics_dict[chan_id]
+                metrics['rebalanced_out_sats'] += payment.value if payment.value else 0
+                # Update last_rebalance and last_rebalance_amount if this payment is later
+                if metrics['last_rebalance'] is None or payment.creation_date > metrics['last_rebalance']:
+                    metrics['last_rebalance'] = payment.creation_date
+                    metrics['last_rebalance_amount'] = payment.value if payment.value else 0
 
         # Calculate normalized metrics for each channel
         outbound_activities = []
@@ -1187,11 +1205,11 @@ def unprofitable_channels(request):
         assisted_revenues = []
         fee_rates = []
 
-        for chan_id, metrics in channel_metrics_dict.items():
+        for chan_id, metrics_data in channel_metrics_dict.items(): # Changed metrics to metrics_data to avoid conflict
             # Get channel object to access capacity
             channel_obj = next((c for c in channels if c.chan_id == chan_id), None)
             if channel_obj:
-                total_outbound = metrics['routed_out_sats'] + metrics['rebalanced_out_sats']
+                total_outbound = metrics_data['routed_out_sats'] + metrics_data['rebalanced_out_sats']
                 outbound_activities.append(total_outbound)
 
                 # Calculate outbound ratio (outbound activity / channel capacity)
@@ -1199,7 +1217,7 @@ def unprofitable_channels(request):
                 outbound_ratio = total_outbound / capacity
                 outbound_ratios.append(outbound_ratio)
 
-                assisted_revenues.append(metrics['assisted_revenue'])
+                assisted_revenues.append(metrics_data['assisted_revenue'])
                 fee_rate = getattr(channel_obj, 'local_fee_rate', 0) or 0
                 fee_rates.append(fee_rate)
 
@@ -1223,20 +1241,21 @@ def unprofitable_channels(request):
 
         for channel in channels:
             chan_id = channel.chan_id
-            metrics = channel_metrics_dict[chan_id]
+            metrics = channel_metrics_dict[chan_id] # Use 'metrics' here as it's conventional in this loop
 
             # Calculate profit (fee revenue - rebalance costs)
+            # THIS NOW USES THE CORRECTED 'rebalance_fee_cost'
             profit = metrics['fee_revenue'] - metrics['rebalance_fee_cost']
 
             # Format last routing and rebalance for display
-            last_routing = {
+            last_routing_display = { # Renamed to avoid conflict if 'last_routing' is a direct key
                 'date': metrics['last_routing'],
                 'amount': metrics['last_routing_amount']
             } if metrics['last_routing'] else None
 
-            last_rebalance = {
-                'date': metrics['last_rebalance'],
-                'amount': metrics['last_rebalance_amount']
+            last_rebalance_display = { # Renamed
+                'date': metrics['last_rebalance'], # This is last rebalance OUT
+                'amount': metrics['last_rebalance_amount'] # This is last rebalance OUT amount
             } if metrics['last_rebalance'] else None
 
             # Calculate local ratio (percentage of capacity that is local balance)
@@ -1347,9 +1366,9 @@ def unprofitable_channels(request):
                 'chan_id': chan_id,
                 'alias': channel.alias or "---",
                 'routed_out_sats': routing_out,
-                'last_routing': last_routing,
+                'last_routing': last_routing_display,
                 'rebalanced_out_sats': rebalancing_out,
-                'last_rebalance': last_rebalance,
+                'last_rebalance': last_rebalance_display,
                 'profit': profit,
                 'assisted_revenue': assisted_revenue,
                 'initiator': channel.initiator,

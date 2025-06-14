@@ -128,7 +128,7 @@ async def run_rebalancer(rebalance, worker):
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     next_rebalance = Rebalancer(value=int(rebalance.value*inc), fee_limit=round(rebalance.fee_limit*inc, 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
-                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire increase for {next_rebalance.target_alias} from {next_rebalance.value} to {rebalance.value}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire increase for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value}")
                 else:
                     next_rebalance = None
             # For failed rebalances, try in rapid fire with reduced balances until give up.
@@ -146,7 +146,7 @@ async def run_rebalancer(rebalance, worker):
                 if await inbound_cans_len(inbound_cans) > 0 and len(outbound_cans) > 0:
                     next_rebalance = Rebalancer(value=int(next_value), fee_limit=round(rebalance.fee_limit/(rebalance.value/next_value), 3), outgoing_chan_ids=str(outbound_cans).replace('\'', ''), last_hop_pubkey=rebalance.last_hop_pubkey, target_alias=original_alias, duration=1)
                     await save_record(next_rebalance)
-                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire decrease for {next_rebalance.target_alias} from {next_rebalance.value} to {rebalance.value}")
+                    print(f"{datetime.now().strftime('%c')} : [Rebalancer] : RapidFire decrease for {next_rebalance.target_alias} from {rebalance.value} to {next_rebalance.value}")
                 else:
                     next_rebalance = None
             else:
@@ -416,22 +416,29 @@ def main():
     else:
         LocalSettings(key='AR-Workers', value='1').save()
         worker_count = 1
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.create_task(update_worker_count())
-    while True:
-        shutdown_rebalancer = False
-        scheduled_rebalances = []
-        active_rebalances = []
-        if Rebalancer.objects.filter(status=1).exists():
-            unknown_errors = Rebalancer.objects.filter(status=1)
-            for unknown_error in unknown_errors:
-                unknown_error.status = 400
-                unknown_error.stop = datetime.now()
-                unknown_error.save()
-        loop.run_until_complete(start_queue(worker_count))
-        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
-        sleep(20)
+    try:
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer initializing...")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.create_task(update_worker_count())
+        while True:
+            shutdown_rebalancer = False
+            scheduled_rebalances = []
+            active_rebalances = []
+            if Rebalancer.objects.filter(status=1).exists():
+                unknown_errors = Rebalancer.objects.filter(status=1)
+                for unknown_error in unknown_errors:
+                    unknown_error.status = 400
+                    unknown_error.stop = datetime.now()
+                    unknown_error.save()
+            loop.run_until_complete(start_queue(worker_count))
+            print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer successfully exited...sleeping for 20 seconds")
+            sleep(20)
+    except Exception as e:
+        error = str(e)
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer loop error: {error}")
+    finally:
+        print(f"{datetime.now().strftime('%c')} : [Rebalancer] : Rebalancer loop has been terminated")
 
 if __name__ == '__main__':
     main()
