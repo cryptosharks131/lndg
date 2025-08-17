@@ -16,8 +16,20 @@ django.setup()
 from gui.models import Payments, PaymentHops, Invoices, Forwards, Channels, Peers, Onchain, Closures, Resolutions, PendingHTLCs, LocalSettings, FailedHTLCs, Autofees, InboundFeeLog, PendingChannels, HistFailedHTLC, PeerEvents
 import af
 
+_SELF_PUBKEY = None
+
+def _get_self_pubkey(stub):
+    global _SELF_PUBKEY
+    if _SELF_PUBKEY is None:
+        try:
+            _SELF_PUBKEY = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+        except Exception as e:
+            print(f"{datetime.now().strftime('%c')} : [Data] : GetInfo failed: {e}")
+            raise
+    return _SELF_PUBKEY
+
 def update_payments(stub):
-    self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+    self_pubkey = _get_self_pubkey(stub)
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
         payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
@@ -27,16 +39,103 @@ def update_payments(stub):
         else:
             payment.status = 3
             payment.save()
-    last_index = Payments.objects.aggregate(Max('index'))['index__max'] if Payments.objects.exists() else 0
-    payments = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=last_index, max_payments=100)).payments
-    for payment in payments:
+
+    page_size = 1000
+    have_rows = Payments.objects.exists()
+
+    if not have_rows:
+        start_ts = int(datetime(2015, 1, 1).timestamp())
+        index_offset = 0
+        while True:
+            resp = stub.ListPayments(ln.ListPaymentsRequest(
+                include_incomplete=True,
+                creation_date_start=start_ts,
+                index_offset=index_offset,
+                max_payments=page_size
+            ))
+            payments = resp.payments
+            if not payments:
+                break
+
+            page_hashes = [p.payment_hash for p in payments]
+            existing_hashes = set(list(
+                Payments.objects.filter(payment_hash__in=page_hashes)
+                .only('payment_hash').values_list('payment_hash', flat=True)
+            ))
+            new_hashes = set(page_hashes) - existing_hashes
+
+            new_payments = []
+            for p in payments:
+                if p.payment_hash in new_hashes:
+                    new_payments.append(Payments(
+                        creation_date=datetime.fromtimestamp(p.creation_date),
+                        payment_hash=p.payment_hash,
+                        value=round(p.value_msat/1000, 3),
+                        fee=round(p.fee_msat/1000, 3),
+                        status=p.status,
+                        index=p.payment_index
+                    ))
+            if new_payments:
+                try:
+                    Payments.objects.bulk_create(new_payments, ignore_conflicts=True, batch_size=1000)
+                except Exception as e:
+                    print(f"{datetime.now().strftime('%c')} : [Data] : Error bulk inserting payments: {str(e)}")
+
+            for p in payments:
+                if (p.payment_hash in new_hashes) or (p.status in (0, 1)):
+                    update_payment(stub, p, self_pubkey)
+
+            index_offset = resp.last_index_offset
+            if len(payments) < page_size:
+                break
+    else:
         try:
-            new_payment = Payments(creation_date=datetime.fromtimestamp(payment.creation_date), payment_hash=payment.payment_hash, value=round(payment.value_msat/1000, 3), fee=round(payment.fee_msat/1000, 3), status=payment.status, index=payment.payment_index)
-            new_payment.save()
-        except Exception as e:
-            #Error inserting, try to update instead
-            print(f"{datetime.now().strftime('%c')} : [Data] : Error processing {new_payment}: {str(e)}")
-        update_payment(stub, payment, self_pubkey)
+            latest_index = Payments.objects.latest('index').index
+        except Payments.DoesNotExist:
+            latest_index = 0
+
+        index_offset = latest_index
+        while True:
+            resp = stub.ListPayments(ln.ListPaymentsRequest(
+                include_incomplete=True,
+                index_offset=index_offset,
+                max_payments=page_size
+            ))
+            payments = resp.payments
+            if not payments:
+                break
+
+            page_hashes = [p.payment_hash for p in payments]
+            existing_hashes = set(list(
+                Payments.objects.filter(payment_hash__in=page_hashes)
+                .only('payment_hash').values_list('payment_hash', flat=True)
+            ))
+            new_hashes = set(page_hashes) - existing_hashes
+
+            new_payments = []
+            for p in payments:
+                if p.payment_hash in new_hashes:
+                    new_payments.append(Payments(
+                        creation_date=datetime.fromtimestamp(p.creation_date),
+                        payment_hash=p.payment_hash,
+                        value=round(p.value_msat/1000, 3),
+                        fee=round(p.fee_msat/1000, 3),
+                        status=p.status,
+                        index=p.payment_index
+                    ))
+            if new_payments:
+                try:
+                    Payments.objects.bulk_create(new_payments, ignore_conflicts=True, batch_size=1000)
+                except Exception as e:
+                    print(f"{datetime.now().strftime('%c')} : [Data] : Error bulk inserting payments: {str(e)}")
+
+            for p in payments:
+                if (p.payment_hash in new_hashes) or (p.status in (0, 1)):
+                    update_payment(stub, p, self_pubkey)
+
+            index_offset = resp.last_index_offset
+            if len(payments) < page_size:
+                break
 
 def update_payment(stub, payment, self_pubkey):
     db_payment = Payments.objects.filter(payment_hash=payment.payment_hash)[0]
@@ -111,7 +210,7 @@ def update_invoice(stub, invoice, db_invoice):
             message = records[34349334].decode('utf-8', errors='ignore')[:1000] if 34349334 in records else None
             if 34349337 in records and 34349339 in records and 34349343 in records and 34349334 in records:
                 signerstub = lnsigner.SignerStub(lnd_connect())
-                self_pubkey = stub.GetInfo(ln.GetInfoRequest()).identity_pubkey
+                self_pubkey = _get_self_pubkey(stub)
                 try:
                     valid = signerstub.VerifyMessage(lns.VerifyMessageReq(msg=(records[34349339]+bytes.fromhex(self_pubkey)+records[34349343]+records[34349334]), signature=records[34349337], pubkey=records[34349339])).valid
                 except:
