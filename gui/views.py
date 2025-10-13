@@ -29,6 +29,8 @@ from requests import get
 from secrets import token_bytes
 from trade import create_trade_details
 import af
+import logging
+logger = logging.getLogger('django.lndg')
 
 def graph_links():
     if LocalSettings.objects.filter(key='GUI-GraphLinks').exists():
@@ -409,12 +411,10 @@ def closures(request):
         return redirect('home')
 
 def find_next_block_maturity(force_closing_channel):
-    #print (f"{datetime.now().strftime('%c')} : {force_closing_channel=}")
     if force_closing_channel.blocks_til_maturity > 0:
         return force_closing_channel.blocks_til_maturity
     for pending_htlc in force_closing_channel.pending_htlcs:
         if pending_htlc.blocks_til_maturity > 0:
-            #print (f"{datetime.now().strftime('%c')} : {pending_htlc=}")
             return pending_htlc.blocks_til_maturity
     return -1
 
@@ -1113,7 +1113,7 @@ def unprofitable_channels(request):
             stub = lnrpc.LightningStub(lnd_connect())
             current_block_height = stub.GetInfo(ln.GetInfoRequest()).block_height
         except Exception as e:
-            print(f"Error getting current block height: {e}")
+            logger.error(f'Error getting current block height: {str(e)}')
             current_block_height = 0 
 
         VERY_NEW_DAYS = 7
@@ -1350,7 +1350,7 @@ def unprofitable_channels(request):
 
                 except Exception as e:
                     # Handle potential errors during age calculation gracefully
-                    print(f"Error calculating age for chan_id {channel.chan_id}: {e}")
+                    logger.error(f'Error calculating age for chan_id {channel.chan_id}: {str(e)}')
                     channel_age_days = -1 # Indicate unknown age
             else:
                  channel_age_days = -1 # Indicate unknown age if block height or chan_id missing
@@ -1429,26 +1429,25 @@ def actions(request):
             result['auto_rebalance'] = channel.auto_rebalance
             result['ar_target'] = channel.ar_in_target
             if result['o7D'] > (result['i7D']*1.10) and result['outbound_percent'] > 75:
-                #print('Case 1: Pass')
-                continue
+                logger.debug('Auto-Enable Case 1: Pass')
             elif result['o7D'] > (result['i7D']*1.10) and result['inbound_percent'] > 75 and channel.auto_rebalance == False:
                 if channel.local_fee_rate <= channel.remote_fee_rate:
-                    #print('Case 6: Peer Fee Too High')
+                    logger.debug('Case 6: Peer Fee Too High')
                     result['output'] = 'Peer Fee Too High'
                     result['reason'] = 'o7D > i7D AND Inbound Liq > 75% AND Local Fee < Remote Fee'
                     continue
-                #print('Case 2: Enable AR')
+                logger.debug('Case 2: Enable AR - o7D > i7D AND Inbound Liq > 75%')
                 result['output'] = 'Enable AR'
                 result['reason'] = 'o7D > i7D AND Inbound Liq > 75%'
             elif result['o7D'] < (result['i7D']*1.10) and result['outbound_percent'] > 75 and channel.auto_rebalance == True:
-                #print('Case 3: Disable AR')
+                logger.debug('Case 3: Disable AR - o7D < i7D AND Outbound Liq > 75%')
                 result['output'] = 'Disable AR'
                 result['reason'] = 'o7D < i7D AND Outbound Liq > 75%'
             elif result['o7D'] < (result['i7D']*1.10) and result['inbound_percent'] > 75:
-                #print('Case 4: Pass')
+                logger.debug('Case 4: Pass')
                 continue
             else:
-                #print('Case 5: Pass')
+                logger.debug('Case 5: Pass')
                 continue
             if len(result) > 0:
                 action_list.append(result)
@@ -1725,7 +1724,7 @@ def batch_open(request):
                         channel_open.local_funding_amount = open['amt']
                         channels.append(channel_open)
                     response = stub.BatchOpenChannel(ln.BatchOpenChannelRequest(channels=channels, sat_per_vbyte=form.cleaned_data['fee_rate']))
-                    print(response)
+                    logger.debug(f'Batch open response: {response}')
                     messages.success(request, 'Batch opened channels!')
                 except Exception as e:
                     error = str(e)
@@ -2777,7 +2776,7 @@ def get_channeldb_file_size():
 
             # Check for required settings
             if not host_value or not user_value:
-                print("Error: Remote file size enabled, but host or user is not set.")
+                logger.error('Error: Remote file size enabled, but host or user is not set')
                 return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3)
 
             # --- Paramiko logic ---
@@ -2805,7 +2804,7 @@ def get_channeldb_file_size():
                 return round(file_size_bytes * 0.000000001, 3)
 
             except Exception as e:
-                print(f"Error retrieving file size with paramiko: {e}")
+                logger.error(f'Error retrieving file size with paramiko: {str(e)}')
                 return round(path.getsize(path.expanduser(settings.LND_DATABASE_PATH))*0.000000001, 3) # Fallback
             # --- End Paramiko logic ---
 
@@ -2815,7 +2814,7 @@ def get_channeldb_file_size():
 
     except Exception as e:
         # Handle exceptions
-        print(f"Error retrieving channel.db file size: {e}")
+        logger.error(f'Error retrieving channel.db file size: {str(e)}')
         return 0
 
 @api_view(['GET'])

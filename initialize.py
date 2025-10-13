@@ -171,6 +171,76 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'gui/static/')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SESSION_COOKIE_AGE = %s
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {name} {levelname} - {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {name} - {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'app-file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'data/lndg-controller.log',
+            'maxBytes': 25*(1024*1024),
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'web-file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'data/lndg-web.log',
+            'maxBytes': 25*(1024*1024),
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        '[Controller]': {
+            'handlers': ['app-file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        '[Data]': {
+            'handlers': ['app-file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        '[Rebalancer]': {
+            'handlers': ['app-file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        '[HTLC]': {
+            'handlers': ['app-file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        '[P2P]': {
+            'handlers': ['app-file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['web-file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 ''' % (secret, debug, node_ip, csrf, lnd_tls_path, lnd_macaroon_path, lnd_database_path, lnd_network, lnd_rpc_server, lnd_max_message, not nologinrequired, wnl, api_login, cookie_age)
     if not force_new and Path("lndg/settings.py").exists():
         print('A settings file already exist, skipping creation...')

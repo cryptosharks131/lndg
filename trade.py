@@ -19,6 +19,8 @@ from os import environ
 environ['DJANGO_SETTINGS_MODULE'] = 'lndg.settings'
 django.setup()
 from gui.models import TradeSales, Payments, PaymentHops, Forwards, Peers
+import logging
+logger = logging.getLogger('[P2P]')
 
 def is_hex(n):
     return len(n) % 2 == 0 and all(c in '0123456789ABCDEFabcdef' for c in n)
@@ -667,7 +669,7 @@ def getSecret(stub, sale_type):
             outgoing_nodes = Forwards.objects.filter(forward_date__gte=filter_30day).values('chan_id_out').annotate(ppm=Round((Sum('fee')/Sum('amt_out_msat'))*1000000000, output_field=IntegerField()), score=Round((Round(Count('id')/1, output_field=IntegerField())+Round(Sum('amt_out_msat')/100000, output_field=IntegerField()))/10, output_field=IntegerField())).exclude(score=0).order_by('-score', '-ppm')[:5]
             secret = json.dumps({"incoming_nodes":list(incoming_nodes.values('chan_id_in', 'score', 'ppm')), "outgoing_nodes":list(outgoing_nodes.values('chan_id_out', 'score', 'ppm'))})
         except Exception as e:
-            print(f"{datetime.now().strftime('%c')} : [P2P] : Error getting secret: {str(e)}")
+            logger.error(f'Error getting secret: {str(e)}')
             secret = None
         finally:
             return secret
@@ -680,7 +682,7 @@ def getSecret(stub, sale_type):
             payment_nodes = PaymentHops.objects.filter(payment_hash__in=payments_30day).exclude(node_pubkey=self_pubkey).values('node_pubkey').annotate(ppm=Round((Sum('fee')/Sum('amt'))*1000000, output_field=IntegerField()), score=Round((Round(Count('id')/1, output_field=IntegerField())+Round(Sum('amt')/100000, output_field=IntegerField()))/10, output_field=IntegerField())).exclude(score=0).order_by('-score', 'ppm')[:10]
             secret = json.dumps({"payment_nodes": list(payment_nodes.values('node_pubkey', 'score', 'ppm'))})
         except Exception as e:
-            print(f"{datetime.now().strftime('%c')} : [P2P] : Error getting secret: {str(e)}")
+            logger.error(f'Error getting secret: {str(e)}')
             secret = None
         finally:
             return secret
@@ -688,9 +690,9 @@ def getSecret(stub, sale_type):
         return None
 
 def serve_trades(stub):
-    print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trades...")
+    logger.info('Serving trades...')
     for trade in get_trades():
-        print(f"{datetime.now().strftime('%c')} : [P2P] : Serving trade: {trade.id}")
+        logger.info(f'Serving trade: {trade.id}')
     for response in stub.SubscribeCustomMessages(ln.SubscribeCustomMessagesRequest()):
         if response.type == 32768:
             from_peer = response.peer
@@ -703,7 +705,7 @@ def serve_trades(stub):
                     if 'type' in request:
                         req_type = request['type']
                         if req_type == '8050005': # request a seller to finalize a trade or give all open trades
-                            print(f"{datetime.now().strftime('%c')} : [P2P] : SELLER ACTION", '|', 'ID:', request['id'], '|', 'Records:', request['records'])
+                            logger.info(f'SELLER ACTION | ID: {request["id"]} | Records: {request["records"]}')
                             select_trade = next((record for record in request['records'] if record['type'] == '0'), None)
                             request_trade = next((record for record in request['records'] if record['type'] == '1'), None)
                             if request_trade:
@@ -723,7 +725,7 @@ def serve_trades(stub):
                                     else:
                                         secret = trade_details.secret
                                     if not secret:
-                                        print(f"{datetime.now().strftime('%c')} : [P2P] : Failed to get secret for:", trade_details.id)
+                                        logger.error(f'Failed to get secret for: {trade_details.id}')
                                         continue
                                     signerstub = lnsigner.SignerStub(lnd_connect())
                                     shared_key = signerstub.DeriveSharedKey(lns.SharedKeyRequest(ephemeral_pubkey=from_peer)).shared_key
@@ -743,16 +745,16 @@ def serve_trades(stub):
                                         trade_details.save()
                                         stub.SendCustomMessage(ln.SendCustomMessageRequest(peer=from_peer, type=32768, data=bytes.fromhex(trade_data)))
                     else:
-                        print(f"{datetime.now().strftime('%c')} : [P2P] : Expected request type in message:", request['id'])
+                        logger.error(f'Expected request type in message: {request["id"]}')
                 if 'response' in msg_response:
                     request = msg_response['response']
                     if 'failure' in request and request['failure'] != None:
                         # failure message returned
-                        print(f"{datetime.now().strftime('%c')} : [P2P] : Failure:", request['failure'])
+                        logger.error(f'Failure: {request["failure"]}')
                     else:
                         if len(request['records']) == 0:
                             # message acknowledgements
-                            print(f"{datetime.now().strftime('%c')} : [P2P] : ACK", '|', 'ID:', request['id'])
+                            logger.info(f'ACK | ID: {request["id"]}')
 
 async def get_open_trades(astub, results):
     try:
