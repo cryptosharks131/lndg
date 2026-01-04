@@ -1,6 +1,6 @@
 //HELPER FUNCTIONS
 function byId(id){ return document.getElementById(id) }
-String.prototype.toInt = function(){ return parseInt(this.replace(/,/g,''))}
+String.prototype.toInt = function(){ return parseInt(this.replace(/\D/g,''))}
 String.prototype.toBool = function(if_false = 0){ return this && /^true$/i.test(this) ? 1 : if_false}
 Number.prototype.intcomma = function(){ return parseInt(this).toLocaleString() }
 HTMLElement.prototype.defaultCloneNode = HTMLElement.prototype.cloneNode
