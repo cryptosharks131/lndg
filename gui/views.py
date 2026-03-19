@@ -2783,7 +2783,8 @@ def get_channeldb_file_size():
             try:
                 # Create SSH client
                 ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # Automatically add host keys
+                ssh.load_system_host_keys()
+                ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
 
                 # Connect to the remote host (eg 10.1.1.2, lnd, 22)
                 ssh.connect(hostname=host_value, username=user_value, port=port)
