@@ -61,6 +61,11 @@ def main():
                         del all_forwards[key]
         except Exception as e:
             logger.error(f'Error while running failed HTLC stream: {str(e)}')
+            try:
+                from django.db import connections
+                connections.close_all()
+            except Exception as db_err:
+                logger.error(f"Error closing database connections: {str(db_err)}")
             sleep(20)
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
-import multiprocessing, sys
+import multiprocessing, sys, time
+from datetime import datetime
 import jobs, rebalancer, htlc_stream, p2p, manage
 import logging
 logger = logging.getLogger('[Controller]')
@@ -22,9 +23,21 @@ def main():
         processes.append(process)
         process.start()
 
-    for process in processes:
-        process.join()
-    logger.info('Stopping all LNDg processes...')
+    try:
+        while True:
+            for process in processes:
+                if not process.is_alive():
+                    logger.error(f"Process {process.name} died with exitcode {process.exitcode}. Exiting controller.")
+                    for p in processes:
+                        if p.is_alive():
+                            p.terminate()
+                    sys.exit(1)
+            time.sleep(2)
+    except KeyboardInterrupt:
+        logger.info('Controller is stopping...')
+        for p in processes:
+            if p.is_alive():
+                p.terminate()
 
 if __name__ == '__main__':
     main()

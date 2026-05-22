@@ -16,12 +16,20 @@ from gui.models import Rebalancer, Channels, LocalSettings, Forwards, Autopilot
 import logging
 logger = logging.getLogger('[Rebalancer]')
 
+def close_db_connections():
+    try:
+        from django.db import connections
+        connections.close_all()
+    except Exception as e:
+        logger.error(f"Error closing database connections: {str(e)}")
+
 @sync_to_async
 def get_out_cans(rebalance, auto_rebalance_channels):
     try:
         return list(auto_rebalance_channels.filter(auto_rebalance=False, percent_outbound__gte=F('ar_out_target')).exclude(remote_pubkey=rebalance.last_hop_pubkey).values_list('chan_id', flat=True))
     except Exception as e:
         logger.error(f'Error getting outbound cands: {str(e)}')
+        close_db_connections()
 
 @sync_to_async
 def save_record(record):
@@ -29,6 +37,7 @@ def save_record(record):
         record.save()
     except Exception as e:
         logger.error(f'Error saving database record: {str(e)}')
+        close_db_connections()
 
 @sync_to_async
 def inbound_cans_len(inbound_cans):
@@ -36,6 +45,7 @@ def inbound_cans_len(inbound_cans):
         return len(inbound_cans)
     except Exception as e:
         logger.error(f'Error getting inbound cands: {str(e)}')
+        close_db_connections()
 
 @sync_to_async
 def check_and_set_allow_multishards():
@@ -265,6 +275,7 @@ def auto_schedule() -> List[Rebalancer]:
         return to_schedule
     except Exception as e:
         logger.error(f'Error scheduling rebalances: {str(e)}')
+        close_db_connections()
         return to_schedule
 
 @sync_to_async
@@ -317,6 +328,7 @@ def auto_enable():
                         logger.debug('Case 5: Pass')
     except Exception as e:
         logger.error(f'Error during auto channel enabling: {str(e)}')
+        close_db_connections()
 
 @sync_to_async
 def get_pending_rebals():
@@ -325,6 +337,7 @@ def get_pending_rebals():
         return rebalances, len(rebalances)
     except Exception as e:
         logger.error(f'Error getting pending rebalances: {str(e)}')
+        close_db_connections()
 
 async def async_queue_manager(rebalancer_queue):
     global scheduled_rebalances, active_rebalances, shutdown_rebalancer
@@ -434,6 +447,7 @@ def main():
     except Exception as e:
         error = str(e)
         logger.error(f'Rebalancer loop error: {error}')
+        close_db_connections()
     finally:
         logger.info('Rebalancer loop has been terminated')
 

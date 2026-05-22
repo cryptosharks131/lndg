@@ -41,6 +41,10 @@ def main():
                     sleep(2)  # polling interval
         except Exception as e:
             logger.error(f'Error running p2p service: {str(e)}')
+            try:
+                django.db.connections.close_all()
+            except Exception as db_err:
+                logger.error(f"Error closing database connections: {str(db_err)}")
         finally:
             if 'p2p_thread' in locals() and p2p_thread.is_alive():
                 logger.info('Removing any remaining processes...')

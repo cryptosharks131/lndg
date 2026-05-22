@@ -834,6 +834,11 @@ def main():
             agg_failed_htlcs()
         except Exception as e:
             logger.error(f'Error processing background data: {str(e)}')
+            try:
+                from django.db import connections
+                connections.close_all()
+            except Exception as db_err:
+                logger.error(f"Error closing database connections: {str(db_err)}")
         logger.info('Data execution completed...sleeping for 20 seconds')
         sleep(20)
 
