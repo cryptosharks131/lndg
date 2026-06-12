@@ -78,7 +78,7 @@ services:
       - sh
       - -c
       # Customize network ('mainnet' or 'testnet') and RPC address/port if needed
-      - python initialize.py -net 'mainnet' -rpc '127.0.0.1:10009' -wn && python controller.py runserver 0.0.0.0:8889 > /var/log/lndg-controller.log 2>&1
+      - python initialize.py -net 'mainnet' -rpc '127.0.0.1:10009' -wn && python controller.py runserver 0.0.0.0:8889
     # Use host network mode for simplicity, adjust if needed
     network_mode: "host"
 ```

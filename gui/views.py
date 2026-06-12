@@ -235,7 +235,7 @@ def logs(request):
         try:
             count = request.GET.get('tail', 20)
             grep = request.GET.get('grep', None)
-            logfile = 'data/lndg-controller.log'
+            logfile = str(settings.BASE_DIR / 'data/lndg-controller.log')
             file_size = path.getsize(logfile)-2
             if file_size == 0:
                 logs = ['Logs are empty....']

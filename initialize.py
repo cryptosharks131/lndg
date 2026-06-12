@@ -189,7 +189,7 @@ LOGGING = {
         'app-file': {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': 'data/lndg-controller.log',
+            'filename': os.path.join(BASE_DIR, 'data/lndg-controller.log'),
             'maxBytes': 25*(1024*1024),
             'backupCount': 5,
             'formatter': 'verbose',
@@ -197,7 +197,7 @@ LOGGING = {
         'web-file': {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': 'data/lndg-web.log',
+            'filename': os.path.join(BASE_DIR, 'data/lndg-web.log'),
             'maxBytes': 25*(1024*1024),
             'backupCount': 5,
             'formatter': 'verbose',

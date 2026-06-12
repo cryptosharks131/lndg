@@ -13,9 +13,10 @@ Description=Backend Controller For Lndg
 Environment=PYTHONUNBUFFERED=1
 User=<run_as_user>
 Group=<run_as_user>
+WorkingDirectory=/home/<run_as_user>/lndg
 ExecStart=/home/<run_as_user>/lndg/.venv/bin/python /home/<run_as_user>/lndg/controller.py
-StandardOutput=append:/var/log/lndg-controller.log
-StandardError=append:/var/log/lndg-controller.log
+StandardOutput=journal
+StandardError=journal
 Restart=always
 RestartSec=60s
 [Install]
