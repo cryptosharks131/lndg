@@ -513,7 +513,7 @@
     "total_sent": ch => ({innerHTML: ch.total_sent.intcomma()}),
     "total_received": ch => ({innerHTML: ch.total_received.intcomma()})
   }, {local_commit, local_chan_reserve, initiator}, {
-    "is_active": ch => ({innerHTML: ch.is_active, title: (ch.is_active ? 'Up' : 'Down') + 'time: ' + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
+    "is_active": ch => ({innerHTML: ch.is_active ? 'Online' : 'Offline', title: (ch.is_active ? 'Up' : 'Down') + 'time: ' + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const pending_open_template = {
     "alias": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}),
