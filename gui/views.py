@@ -2502,7 +2502,7 @@ class PaymentsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
     queryset = Payments.objects.all().order_by('-creation_date')
     serializer_class = PaymentSerializer
-    filterset_fields = {'status':['exact','lt','gt'], 'creation_date':['lte','gte'], 'chan_out': ['exact'], 'index': ['lt']}
+    filterset_fields = {'status':['exact','lt','gt'], 'creation_date':['lte','gte','lt'], 'chan_out': ['exact'], 'index': ['lt']}
 
 class PaymentHopsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated] if settings.LOGIN_REQUIRED else []
