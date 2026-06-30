@@ -305,6 +305,10 @@ def initialize_django(adminuser, adminpw):
         except:
             print('Data directory already found...')
         Path(os.path.join(DATA_DIR, 'db.sqlite3')).touch()
+        for log_file in ['lndg-controller.log', 'lndg-web.log']:
+            log_path = Path(os.path.join(DATA_DIR, log_file))
+            if not log_path.exists():
+                log_path.touch()
         settings.configure(
             SECRET_KEY = secrets.token_urlsafe(64),
             DATABASES = {
