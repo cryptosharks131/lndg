@@ -223,7 +223,11 @@ def main(channels):
 
     # Compute new inbound rates
     channels_df['new_inbound_rate'] = channels_df['local_inbound_fee_rate'] + channels_df['inbound_adjustment']
-    channels_df['new_inbound_rate'] = (channels_df['new_inbound_rate'] / increment).round(0) * increment
+    # Only snap to increment multiple when there is an actual adjustment to avoid oscillation at the max cost boundary
+    has_inbound_adj = channels_df['inbound_adjustment'] != 0
+    channels_df.loc[has_inbound_adj, 'new_inbound_rate'] = (
+        (channels_df.loc[has_inbound_adj, 'new_inbound_rate'] / increment).round(0) * increment
+    )
     channels_df['new_inbound_rate'] = channels_df['new_inbound_rate'].clip(-((channels_df['ar_max_cost']/100)*channels_df['local_fee_rate']), 0)
     channels_df['inbound_adjustment'] = channels_df['new_inbound_rate'] - channels_df['local_inbound_fee_rate']
 
