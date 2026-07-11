@@ -700,7 +700,7 @@ def reconnect_peers(stub):
                         logger.error(f'Error reconnecting {peer.alias} {inactive_peer}: {error_msg}')
                     peer.last_reconnected = datetime.now()
                     peer.save()
-                    sleep(random.uniform(2, 10))
+                    sleep(random.uniform(1, 3))
 
 def clean_payments(stub):
     if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
