@@ -71,6 +71,7 @@ class GUIForm(AutoFeesForm):
 class LocalSettingsForm(GUIForm):
     lnd_cleanPayments = forms.IntegerField(label='lnd_cleanPayments', required=False)
     lnd_retentionDays = forms.IntegerField(label='lnd_retentionDays', required=False)
+    lnd_reconnectInterval = forms.IntegerField(label='lnd_reconnectInterval', required=False)
 
 updates_channel_codes = [
     (0, 'base_fee'),

@@ -2032,6 +2032,7 @@ def get_local_settings(*prefixes):
     if 'LND-' in prefixes:
         form.append({'unit': '', 'form_id': 'lnd_cleanPayments', 'value': 0, 'label': 'LND Clean Payments', 'id': 'LND-CleanPayments', 'title': 'Clean LND Payments (toggles failed payment clean-up routine)', 'min':0, 'max':1})
         form.append({'unit': 'days', 'form_id': 'lnd_retentionDays', 'value': 30, 'label': 'LND Retention', 'id': 'LND-RetentionDays', 'title': 'LND Retention days for failed payment data', 'min':1, 'max':1000})
+        form.append({'unit': 'min', 'form_id': 'lnd_reconnectInterval', 'value': 3, 'label': 'LND Reconnect Interval', 'id': 'LND-ReconnectInterval', 'title': 'Minimum minutes between reconnect attempts per inactive peer. Default 3', 'min':1, 'max':1440})
 
     for prefix in prefixes:
         ar_settings = LocalSettings.objects.filter(key__contains=prefix).values('key', 'value').order_by('key')
@@ -2074,6 +2075,7 @@ def update_settings(request):
                     #LND
                     {'form_id': 'lnd_cleanPayments', 'value': 0, 'parse': lambda x: int(x), 'id': 'LND-CleanPayments'},
                     {'form_id': 'lnd_retentionDays', 'value': 30, 'parse': lambda x: int(x), 'id': 'LND-RetentionDays'},
+                    {'form_id': 'lnd_reconnectInterval', 'value': 3, 'parse': lambda x: int(x), 'id': 'LND-ReconnectInterval'},
                     ]
 
         form = LocalSettingsForm(request.POST)

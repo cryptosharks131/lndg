@@ -669,13 +669,18 @@ def update_closures(stub):
                 db_closure.save()
 
 def reconnect_peers(stub):
+    if LocalSettings.objects.filter(key='LND-ReconnectInterval').exists():
+        reconnect_interval = int(LocalSettings.objects.filter(key='LND-ReconnectInterval')[0].value)
+    else:
+        LocalSettings(key='LND-ReconnectInterval', value='3').save()
+        reconnect_interval = 3
     inactive_peers = Channels.objects.filter(is_open=True, is_active=False, private=False).values_list('remote_pubkey', flat=True).distinct()
     if len(inactive_peers) > 0:
         peers = Peers.objects.all()
         for inactive_peer in inactive_peers:
             if peers.filter(pubkey=inactive_peer).exists():
                 peer = peers.filter(pubkey=inactive_peer)[0]
-                if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) > 2):
+                if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) >= reconnect_interval):
                     logger.info(f'Reconnecting peer {peer.alias} {peer.pubkey}, last reconnected at {peer.last_reconnected}')
                     if peer.connected == True:
                         logger.info(f'Inactive channel is still connected to peer, disconnecting peer {peer.alias} {inactive_peer}')
