@@ -680,7 +680,7 @@ def reconnect_peers(stub):
         for inactive_peer in inactive_peers:
             if peers.filter(pubkey=inactive_peer).exists():
                 peer = peers.filter(pubkey=inactive_peer)[0]
-                if peer.last_reconnected == None or (int((datetime.now() - peer.last_reconnected).total_seconds() / 60) >= reconnect_interval):
+                if peer.last_reconnected is None or ((datetime.now() - peer.last_reconnected).total_seconds() >= (reconnect_interval + random.uniform(0, reconnect_interval)) * 60):
                     logger.info(f'Reconnecting peer {peer.alias} {peer.pubkey}, last reconnected at {peer.last_reconnected}')
                     if peer.connected == True:
                         logger.info(f'Inactive channel is still connected to peer, disconnecting peer {peer.alias} {inactive_peer}')
@@ -705,7 +705,6 @@ def reconnect_peers(stub):
                         logger.error(f'Error reconnecting {peer.alias} {inactive_peer}: {error_msg}')
                     peer.last_reconnected = datetime.now()
                     peer.save()
-                    sleep(random.uniform(1, 3))
 
 def clean_payments(stub):
     if LocalSettings.objects.filter(key='LND-CleanPayments').exists():
