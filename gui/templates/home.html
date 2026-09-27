@@ -542,7 +542,7 @@
     "is_active": ch => ({innerHTML: ch.is_active ? 'Online' : 'Offline', title: (ch.is_active ? 'Up' : 'Down') + 'time: ' + formatDate(ch.last_update).replace(" ago", ""), style: {backgroundColor: ch.is_active ? green : red} })
   })
   const pending_open_template = {
-    "alias": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}),
+    "alias": ch => ({innerHTML: `<a href="{{graph_links}}/{{network}}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : escapeHTML(ch.alias) }</a>`, title: ch.remote_node_pub}),
     "channel_point": ch => ({innerHTML: `<a href='{{ network_links }}/{{ network }}tx/${ch.funding_txid}' target="_blank">${ch.channel_point}</a>`}),
     "capacity": ch => ({innerHTML: ch.capacity.intcomma(), title: `Commit Fee: ${ch.commit_fee}`}),
     "local_balance": ch => ({innerHTML: ch.local_balance.intcomma()}),
@@ -617,7 +617,7 @@
   let {capacity, local_balance, remote_balance} = pending_open_template
   const pending_closed_template = Object.assign({}, {
     "channel_id" : ch => ({innerHTML: `<a href="/channel?=${ch.chan_id}" target="_blank">${ch.short_chan_id}</a>`, title: ch.channel_point}),
-    "peer_alias" : ch => ({innerHTML: `<a href="{{ graph_links }}/{{ network }}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : ch.alias }</a>`, title: ch.remote_node_pub}) 
+    "peer_alias" : ch => ({innerHTML: `<a href="{{ graph_links }}/{{ network }}node/${ch.remote_node_pub}" target="_blank">${ch.alias == '' ? ch.remote_node_pub.substr(0,12) : escapeHTML(ch.alias) }</a>`, title: ch.remote_node_pub})
   }, {capacity, local_balance, remote_balance },
   {
     "limbo_bal" : ch => ({innerHTML: ch.limbo_balance.intcomma() }),
