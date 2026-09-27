@@ -61,13 +61,15 @@ def update_payments(stub):
     self_pubkey = _get_self_pubkey(stub)
     inflight_payments = Payments.objects.filter(status=1).order_by('index')
     for payment in inflight_payments:
-        payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
-        # Ignore inflight payments before 30 days
-        if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash and payment.creation_date > (datetime.now() - timedelta(days=30)):
-            update_payment(stub, payment_data[0], self_pubkey)
-        else:
-            payment.status = 3
-            payment.save()
+        if payment.index > 0:
+            payment_data = stub.ListPayments(ln.ListPaymentsRequest(include_incomplete=True, index_offset=payment.index-1, max_payments=1)).payments
+            # Ignore inflight payments before 30 days
+            if len(payment_data) > 0 and payment.payment_hash == payment_data[0].payment_hash and payment.creation_date > (datetime.now() - timedelta(days=30)):
+                update_payment(stub, payment_data[0], self_pubkey)
+                continue
+        logger.warning(f'Unable to find payment in lnd, marking as failed: {payment.index}:{payment.payment_hash}')
+        payment.status = 3
+        payment.save()
 
     # Bulk payment sync
     page_size = 300
@@ -191,12 +193,14 @@ def update_invoices(stub):
     # Refresh all currently open invoices
     open_invoices = Invoices.objects.filter(state=0).order_by('index')
     for open_invoice in open_invoices:
-        invoice_data = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=open_invoice.index-1, num_max_invoices=1)).invoices
-        if len(invoice_data) > 0 and open_invoice.r_hash == invoice_data[0].r_hash.hex():
-            update_invoice(stub, invoice_data[0], open_invoice)
-        else:
-            open_invoice.state = 2
-            open_invoice.save()
+        if open_invoice.index > 0:
+            invoice_data = stub.ListInvoices(ln.ListInvoiceRequest(index_offset=open_invoice.index-1, num_max_invoices=1)).invoices
+            if len(invoice_data) > 0 and open_invoice.r_hash == invoice_data[0].r_hash.hex():
+                update_invoice(stub, invoice_data[0], open_invoice)
+                continue
+        logger.warning(f'Unable to find invoice in lnd, marking as cancelled: {open_invoice.index}:{open_invoice.r_hash}')
+        open_invoice.state = 2
+        open_invoice.save()
 
     # Bulk invoice sync
     index_offset = Invoices.objects.aggregate(Max('index'))['index__max'] or 0
